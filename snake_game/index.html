@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Game</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #000;
+            font-family: Arial, sans-serif;
+            color: #fff;
+        }
+        #menu, #game, #help, #settings, #credits, #gameOver {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+        }
+        #menu.active, #game.active, #help.active, #settings.active, #credits.active, #gameOver.active {
+            display: flex;
+        }
+        canvas {
+            border: 1px solid #fff;
+            background-color: #000;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #4caf50;
+            border: none;
+            color: #fff;
+        }
+        .scoreboard {
+            display: flex;
+            justify-content: space-between;
+            width: 400px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div id="menu" class="active">
+        <h1>Snake Game</h1>
+        <label for="level">Select Level:</label>
+        <select id="level">
+            <option value="1">Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+        </select>
+        <button onclick="startGame()">Start Game</button>
+        <button onclick="showSection('help')">Help</button>
+        <button onclick="showSection('settings')">Settings</button>
+        <button onclick="showSection('credits')">Credits</button>
+    </div>
+    <div id="game">
+        <div class="scoreboard">
+            <div>Score: <span id="score">0</span></div>
+            <div>High Score: <span id="highScore">0</span></div>
+            <div>Lives: <span id="lives">3</span></div>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <div id="help">
+        <h2>Help</h2>
+        <p>Use arrow keys to move the snake.</p>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <div id="settings">
+        <h2>Settings</h2>
+        <label for="music">Choose Music:</label>
+        <select id="music">
+            <option value="none">None</option>
+            <option value="music1">Music 1</option>
+            <option value="music2">Music 2</option>
+        </select>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <div id="credits">
+        <h2>Credits</h2>
+        <p>Developed by WebCraft Maestro</p>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <div id="gameOver">
+        <h2>Game Over</h2>
+        <p>Your final score: <span id="finalScore">0</span></p>
+        <button onclick="restartGame()">Restart Game</button>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <script>
+        let level = 1;
+        let interval;
+        let scoreIncrement = 1;
+
+        function showSection(section) {
+            document.querySelectorAll('div').forEach(div => div.classList.remove('active'));
+            document.getElementById(section).classList.add('active');
+        }
+
+        function startGame() {
+            level = parseInt(document.getElementById('level').value);
+            scoreIncrement = level;
+            showSection('game');
+            setup();
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scale = 20;
+        const rows = canvas.height / scale;
+        const columns = canvas.width / scale;
+        let snake;
+        let fruit;
+        let score = 0;
+        let lives = 3;
+        let highScore = localStorage.getItem('highScore') || 0;
+        document.getElementById('highScore').innerText = highScore;
+
+        function restartGame() {
+            score = 0;
+            lives = 3;
+            document.getElementById('score').innerText = score;
+            document.getElementById('lives').innerText = lives;
+            showSection('game');
+            setup();
+        }
+
+        function setup() {
+            snake = new Snake();
+            fruit = new Fruit();
+            fruit.pickLocation();
+
+            if (interval) clearInterval(interval);
+            interval = window.setInterval(() => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                fruit.draw();
+                snake.update();
+                snake.draw();
+
+                if (snake.eat(fruit)) {
+                    fruit.pickLocation();
+                    score += scoreIncrement;
+                    document.getElementById('score').innerText = score;
+                    if (score > highScore) {
+                        highScore = score;
+                        localStorage.setItem('highScore', highScore);
+                        document.getElementById('highScore').innerText = highScore;
+                    }
+                }
+
+                snake.checkCollision();
+            }, 250 / level);
+        }
+
+        window.addEventListener('keydown', (evt) => {
+            const direction = evt.key.replace('Arrow', '');
+            snake.changeDirection(direction);
+        });
+
+        function Snake() {
+            this.x = 0;
+            this.y = 0;
+            this.xSpeed = scale * 1;
+            this.ySpeed = 0;
+            this.total = 0;
+            this.tail = [];
+
+            this.draw = function() {
+                ctx.fillStyle = "#4caf50";
+
+                for (let i = 0; i < this.tail.length; i++) {
+                    ctx.fillRect(this.tail[i].x, this.tail[i].y, scale, scale);
+                }
+
+                ctx.fillRect(this.x, this.y, scale, scale);
+            };
+
+            this.update = function() {
+                for (let i = 0; i < this.tail.length - 1; i++) {
+                    this.tail[i] = this.tail[i + 1];
+                }
+
+                this.tail[this.total - 1] = { x: this.x, y: this.y };
+
+                this.x += this.xSpeed;
+                this.y += this.ySpeed;
+
+                if (this.x >= canvas.width) {
+                    this.x = 0;
+                }
+
+                if (this.y >= canvas.height) {
+                    this.y = 0;
+                }
+
+                if (this.x < 0) {
+                    this.x = canvas.width - scale;
+                }
+
+                if (this.y < 0) {
+                    this.y = canvas.height - scale;
+                }
+            };
+
+            this.changeDirection = function(direction) {
+                switch (direction) {
+                    case 'Up':
+                        if (this.ySpeed === 0) {
+                            this.xSpeed = 0;
+                            this.ySpeed = -scale * 1;
+                        }
+                        break;
+                    case 'Down':
+                        if (this.ySpeed === 0) {
+                            this.xSpeed = 0;
+                            this.ySpeed = scale * 1;
+                        }
+                        break;
+                    case 'Left':
+                        if (this.xSpeed === 0) {
+                            this.xSpeed = -scale * 1;
+                            this.ySpeed = 0;
+                        }
+                        break;
+                    case 'Right':
+                        if (this.xSpeed === 0) {
+                            this.xSpeed = scale * 1;
+                            this.ySpeed = 0;
+                        }
+                        break;
+                }
+            };
+
+            this.eat = function(fruit) {
+                if (this.x === fruit.x && this.y === fruit.y) {
+                    this.total++;
+                    return true;
+                }
+
+                return false;
+            };
+
+            this.checkCollision = function() {
+                for (let i = 0; i < this.tail.length; i++) {
+                    if (this.x === this.tail[i].x && this.y === this.tail[i].y) {
+                        this.total = 0;
+                        this.tail = [];
+                        lives--;
+                        document.getElementById('lives').innerText = lives;
+                        if (lives === 0) {
+                            document.getElementById('finalScore').innerText = score;
+                            showSection('gameOver');
+                        }
+                    }
+                }
+            };
+        }
+
+        function Fruit() {
+            this.x;
+            this.y;
+
+            this.pickLocation = function() {
+                this.x = Math.floor(Math.random() * rows) * scale;
+                this.y = Math.floor(Math.random() * columns) * scale;
+            };
+
+            this.draw = function() {
+                ctx.fillStyle = "#ff0000";
+                ctx.fillRect(this.x, this.y, scale, scale);
+            };
+        }
+    </script>
+</body>
+</html>
