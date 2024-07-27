@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PNG to ICO Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f9fafb; }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+    <div class="bg-white shadow-md rounded-lg p-8 max-w-md w-full">
+        <h1 class="text-2xl font-bold text-center mb-6">PNG to ICO Converter</h1>
+        <input type="file" id="fileInput" accept=".png" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4">
+        <button id="convertBtn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Convert to ICO
+        </button>
+        <div id="output" class="mt-4 text-center"></div>
+        <div id="imageCard" class="mt-4 hidden">
+            <img id="convertedImage" class="w-full max-w-xs mx-auto" alt="Converted Image" />
+        </div>
+    </div>
+    <footer class="mt-6 text-center text-gray-600">
+        Built on <a href="https://lollms.com" class="text-blue-600 hover:underline">Lollms</a> by <a href="https://github.com/parisneo" class="text-blue-600 hover:underline">ParisNeo</a>
+    </footer>
+    <script>
+        document.getElementById('convertBtn').onclick = function() {
+            const fileInput = document.getElementById('fileInput');
+            if (fileInput.files.length === 0) {
+                alert('Please select a PNG file.');
+                return;
+            }
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0);
+                    canvas.toBlob(function(blob) {
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'converted.ico';
+                        a.textContent = 'Download ICO';
+                        a.className = 'text-blue-600 hover:underline';
+                        document.getElementById('output').innerHTML = '';
+                        document.getElementById('output').appendChild(a);
+                    }, 'image/x-icon');
+                    document.getElementById('convertedImage').src = event.target.result;
+                    document.getElementById('imageCard').classList.remove('hidden');
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+    </script>
+</body>
+</html>
