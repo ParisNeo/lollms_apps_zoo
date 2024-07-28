@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
+    <title>Neon Snake Game</title>
     <style>
         body {
             display: flex;
@@ -12,42 +12,127 @@
             height: 100vh;
             margin: 0;
             background-color: #000;
-            font-family: Arial, sans-serif;
+            font-family: 'Courier New', monospace;
             color: #fff;
+            overflow: hidden;
         }
-        #menu, #game, #help, #settings, #credits, #gameOver {
+        #menu, #game, #help, #settings, #credits, #gameOver, #leaderboard {
             display: none;
             flex-direction: column;
             align-items: center;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
         }
-        #menu.active, #game.active, #help.active, #settings.active, #credits.active, #gameOver.active {
+        #menu.active, #game.active, #help.active, #settings.active, #credits.active, #gameOver.active, #leaderboard.active {
             display: flex;
         }
         canvas {
-            border: 1px solid #fff;
+            border: 2px solid #0f0;
             background-color: #000;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
         }
-        button {
+        button, select {
             margin: 10px;
             padding: 10px 20px;
             font-size: 16px;
             cursor: pointer;
-            background-color: #4caf50;
-            border: none;
-            color: #fff;
+            background-color: transparent;
+            border: 2px solid #0f0;
+            color: #0f0;
+            transition: all 0.3s ease;
+            width: 200px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+        button:hover, select:hover {
+            background-color: #0f0;
+            color: #000;
+            box-shadow: 0 0 20px #0f0;
+        }
+        button:before, select:before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                120deg,
+                transparent,
+                rgba(0, 255, 0, 0.4),
+                transparent
+            );
+            transition: all 0.5s;
+        }
+        button:hover:before, select:hover:before {
+            left: 100%;
         }
         .scoreboard {
             display: flex;
             justify-content: space-between;
-            width: 400px;
+            width: 600px;
             margin-bottom: 10px;
+            font-size: 18px;
+            text-shadow: 0 0 5px #0f0;
+        }
+        #menu h1 {
+            font-size: 48px;
+            text-shadow: 0 0 20px #0f0;
+            animation: neonPulse 1.5s infinite alternate;
+        }
+        @keyframes neonPulse {
+            from {
+                text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #0f0, 0 0 35px #0f0, 0 0 40px #0f0, 0 0 50px #0f0, 0 0 75px #0f0;
+            }
+            to {
+                text-shadow: 0 0 2.5px #fff, 0 0 5px #fff, 0 0 7.5px #fff, 0 0 10px #0f0, 0 0 17.5px #0f0, 0 0 20px #0f0, 0 0 25px #0f0, 0 0 37.5px #0f0;
+            }
+        }
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%230f0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 12px auto;
+            padding-right: 30px;
+        }
+        #leaderboard table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        #leaderboard th, #leaderboard td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #0f0;
+        }
+        #leaderboard th {
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #0f0;
+        }
+        input[type="text"] {
+            margin: 10px;
+            padding: 10px;
+            font-size: 16px;
+            background-color: transparent;
+            border: 2px solid #0f0;
+            color: #0f0;
+            width: 200px;
+        }
+        input[type="text"]::placeholder {
+            color: rgba(0, 255, 0, 0.5);
         }
     </style>
 </head>
 <body>
     <div id="menu" class="active">
         <h1>Snake Game</h1>
-        <label for="level">Select Level:</label>
         <select id="level">
             <option value="1">Level 1</option>
             <option value="2">Level 2</option>
@@ -56,6 +141,7 @@
         <button onclick="startGame()">Start Game</button>
         <button onclick="showSection('help')">Help</button>
         <button onclick="showSection('settings')">Settings</button>
+        <button onclick="showSection('leaderboard')">Leaderboard</button>
         <button onclick="showSection('credits')">Credits</button>
     </div>
     <div id="game">
@@ -64,7 +150,7 @@
             <div>High Score: <span id="highScore">0</span></div>
             <div>Lives: <span id="lives">3</span></div>
         </div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
         <button onclick="showSection('menu')">Back to Menu</button>
     </div>
     <div id="help">
@@ -74,12 +160,22 @@
     </div>
     <div id="settings">
         <h2>Settings</h2>
-        <label for="music">Choose Music:</label>
         <select id="music">
-            <option value="none">None</option>
+            <option value="none">No Music</option>
             <option value="music1">Music 1</option>
             <option value="music2">Music 2</option>
         </select>
+        <button onclick="showSection('menu')">Back to Menu</button>
+    </div>
+    <div id="leaderboard">
+        <h2>Leaderboard</h2>
+        <table id="leaderboardTable">
+            <tr>
+                <th>Rank</th>
+                <th>Name</th>
+                <th>Score</th>
+            </tr>
+        </table>
         <button onclick="showSection('menu')">Back to Menu</button>
     </div>
     <div id="credits">
@@ -90,6 +186,8 @@
     <div id="gameOver">
         <h2>Game Over</h2>
         <p>Your final score: <span id="finalScore">0</span></p>
+        <input type="text" id="playerName" placeholder="Enter your name">
+        <button onclick="saveScore()">Save Score</button>
         <button onclick="restartGame()">Restart Game</button>
         <button onclick="showSection('menu')">Back to Menu</button>
     </div>
@@ -97,10 +195,14 @@
         let level = 1;
         let interval;
         let scoreIncrement = 1;
+        let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
 
         function showSection(section) {
             document.querySelectorAll('div').forEach(div => div.classList.remove('active'));
             document.getElementById(section).classList.add('active');
+            if (section === 'leaderboard') {
+                updateLeaderboard();
+            }
         }
 
         function startGame() {
@@ -275,6 +377,28 @@
                 ctx.fillStyle = "#ff0000";
                 ctx.fillRect(this.x, this.y, scale, scale);
             };
+        }
+
+        function saveScore() {
+            const playerName = document.getElementById('playerName').value;
+            if (playerName) {
+                leaderboard.push({ name: playerName, score: score });
+                leaderboard.sort((a, b) => b.score - a.score);
+                leaderboard = leaderboard.slice(0, 10); // Keep only top 10 scores
+                localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+                showSection('leaderboard');
+            }
+        }
+
+        function updateLeaderboard() {
+            const table = document.getElementById('leaderboardTable');
+            table.innerHTML = '<tr><th>Rank</th><th>Name</th><th>Score</th></tr>';
+            leaderboard.forEach((entry, index) => {
+                const row = table.insertRow(-1);
+                row.insertCell(0).textContent = index + 1;
+                row.insertCell(1).textContent = entry.name;
+                row.insertCell(2).textContent = entry.score;
+            });
         }
     </script>
 </body>
