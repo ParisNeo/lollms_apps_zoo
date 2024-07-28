@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personal Finance Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #f0f4f8;
+        }
+        .transaction-card {
+            transition: all 0.3s ease;
+        }
+        .transaction-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+    <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white w-full p-6 text-center">
+        <h1 class="text-4xl font-bold">Personal Finance Tracker</h1>
+        <p class="mt-2 text-lg">Manage your finances effectively and track your progress over time.</p>
+    </header>
+
+    <main class="flex flex-col items-center w-full max-w-4xl p-4">
+        <button id="add-transaction-btn" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 mb-4">
+            + Add New Transaction
+        </button>
+
+        <section id="transaction-form-section" class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full hidden">
+            <h2 class="text-2xl font-semibold mb-4">Add New Transaction</h2>
+            <form id="transaction-form" class="flex flex-col">
+                <input type="text" id="description" placeholder="Description" class="p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                <input type="number" id="amount" placeholder="Amount" class="p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                <select id="type" class="p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+                <button type="submit" id="submit-btn" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">Add Transaction</button>
+            </form>
+        </section>
+
+        <section class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full">
+            <h2 class="text-2xl font-semibold mb-4">Financial Overview</h2>
+            <canvas id="financeChart" class="w-full h-64"></canvas>
+        </section>
+
+        <section class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full">
+            <h2 class="text-2xl font-semibold mb-4">Archived Transactions</h2>
+            <div class="flex space-x-4 mb-4">
+                <button id="export-btn" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">Export to CSV</button>
+                <button id="import-btn" class="bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700 transition duration-300 ease-in-out transform hover:scale-105">Import from CSV</button>
+            </div>
+            <div id="transaction-list" class="grid grid-cols-1 gap-4"></div>
+        </section>
+    </main>
+
+    <footer class="bg-gradient-to-r from-blue-600 to-blue-800 text-white w-full p-4 text-center mt-6">
+        <p>&copy; 2023 Personal Finance Tracker. All rights reserved.</p>
+    </footer>
+
+    <script>
+        let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+        const transactionList = document.getElementById('transaction-list');
+        const financeChart = document.getElementById('financeChart').getContext('2d');
+        let chart;
+        let editingIndex = -1;
+
+        const addTransactionBtn = document.getElementById('add-transaction-btn');
+        const transactionFormSection = document.getElementById('transaction-form-section');
+        const submitBtn = document.getElementById('submit-btn');
+
+        addTransactionBtn.addEventListener('click', function() {
+            transactionFormSection.classList.toggle('hidden');
+            if (transactionFormSection.classList.contains('hidden')) {
+                addTransactionBtn.textContent = '+ Add New Transaction';
+            } else {
+                addTransactionBtn.textContent = '- Hide Form';
+            }
+        });
+
+        function updateTransactionList() {
+            transactionList.innerHTML = '';
+            transactions.forEach((transaction, index) => {
+                const card = document.createElement('div');
+                card.className = 'transaction-card bg-gray-100 p-4 rounded-lg shadow-md flex justify-between items-center';
+                card.innerHTML = `
+                    <div>
+                        <h3 class="font-semibold">${transaction.description}</h3>
+                        <p class="${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
+                            ${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}
+                        </p>
+                    </div>
+                    <div>
+                        <button class="bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick="editTransaction(${index})">Edit</button>
+                        <button class="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition duration-300 ease-in-out" onclick="deleteTransaction(${index})">Delete</button>
+                    </div>
+                `;
+                transactionList.appendChild(card);
+            });
+            updateChart();
+        }
+
+        function updateChart() {
+            const incomeData = transactions.filter(t => t.type === 'income').map(t => t.amount);
+            const expenseData = transactions.filter(t => t.type === 'expense').map(t => t.amount);
+            const labels = transactions.map((_, index) => `Transaction ${index + 1}`);
+
+            const data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: incomeData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Expense',
+                        data: expenseData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            if (chart) {
+                chart.destroy();
+            }
+
+            chart = new Chart(financeChart, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
+        document.getElementById('transaction-form').addEventListener('submit', function (e) {
+            e.preventDefault();
+            const description = document.getElementById('description').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+
+            if (editingIndex === -1) {
+                transactions.push({ description, amount, type });
+            } else {
+                transactions[editingIndex] = { description, amount, type };
+                editingIndex = -1;
+                submitBtn.textContent = 'Add Transaction';
+            }
+
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateTransactionList();
+            this.reset();
+            transactionFormSection.classList.add('hidden');
+            addTransactionBtn.textContent = '+ Add New Transaction';
+        });
+
+        function deleteTransaction(index) {
+            transactions.splice(index, 1);
+            localStorage.setItem('transactions', JSON.stringify(transactions));
+            updateTransactionList();
+        }
+
+        function editTransaction(index) {
+            const transaction = transactions[index];
+            document.getElementById('description').value = transaction.description;
+            document.getElementById('amount').value = transaction.amount;
+            document.getElementById('type').value = transaction.type;
+
+            editingIndex = index;
+            submitBtn.textContent = 'Update Transaction';
+            transactionFormSection.classList.remove('hidden');
+            addTransactionBtn.textContent = '- Hide Form';
+        }
+
+        document.getElementById('export-btn').addEventListener('click', function () {
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + "Description,Amount,Type\n"
+                + transactions.map(e => `${e.description},${e.amount},${e.type}`).join("\n");
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "transactions.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+
+        document.getElementById('import-btn').addEventListener('click', function () {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.csv';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = event => {
+                    const text = event.target.result;
+                    const rows = text.split("\n").slice(1); // Skip header row
+                    rows.forEach(row => {
+                        const [description, amount, type] = row.split(",");
+                        if (description && amount && type) {
+                            transactions.push({ description, amount: parseFloat(amount), type });
+                        }
+                    });
+                    localStorage.setItem('transactions', JSON.stringify(transactions));
+                    updateTransactionList();
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        updateTransactionList();
+    </script>
+</body>
+</html>
