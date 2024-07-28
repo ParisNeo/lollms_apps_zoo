@@ -5,8 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Email Enhancer App</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/marked/lib/marked.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .settings-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .settings-menu.open {
+            transform: translateX(0);
+        }
+    </style>
     <script>
-        // Load settings from local storage
         document.addEventListener("DOMContentLoaded", () => {
             const hostInput = document.getElementById("host");
             const savedHost = localStorage.getItem("host_address") || "http://localhost:9600";
@@ -29,7 +49,6 @@
             toneSelect.value = savedTone;
         });
 
-        // Save settings to local storage
         function saveSettings() {
             const hostInput = document.getElementById("host");
             const nPredictInput = document.getElementById("n_predict");
@@ -54,10 +73,13 @@
             const tone = document.getElementById("tone").value;
 
             console.log("Enhancing email with prompt:", prompt);
+            document.getElementById("loading").classList.remove("hidden");
 
-            const response = await lollms_generate("<@>system: Enhance the following email.\n<@>email to enhance:\n"+prompt+"\n<@>type: "+emailType+"\n<@>tone: "+tone+"<@>enhanced email:", hostAddress, "-1", nPredict, false, temperature, emailType, tone);
+            const response = await lollms_generate("<@>system: Enhance the following email. Please respond in markdown format.\n<@>email to enhance:\n"+prompt+"\n<@>type: "+emailType+"\n<@>tone: "+tone+"<@>enhanced email:", hostAddress, "-1", nPredict, false, temperature, emailType, tone);
             console.log("Response received:", response);
-            document.getElementById("enhancedEmail").innerText = response;
+            const enhancedEmailDiv = document.getElementById("enhancedEmail");
+            enhancedEmailDiv.innerHTML = marked.parse(response);
+            document.getElementById("loading").classList.add("hidden");
         }
 
         async function lollms_generate(prompt, host_address, personality, n_predict, stream, temperature, emailType, tone) {
@@ -83,7 +105,7 @@
                     headers: headers,
                     body: data
                 });
-                return await response.text(); // Changed to text response
+                return await response.text();
             } catch (error) {
                 console.error(error);
                 return "Error occurred while enhancing email.";
@@ -92,49 +114,55 @@
 
         function toggleSettings() {
             const settingsMenu = document.getElementById("settingsMenu");
-            const mainContent = document.getElementById("mainContent");
-            settingsMenu.classList.toggle("hidden");
-            mainContent.classList.toggle("hidden");
-        }
-
-        function goBack() {
-            toggleSettings();
+            settingsMenu.classList.toggle("open");
         }
     </script>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full">
-    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-2xl transition-transform transform hover:scale-105 duration-300" id="mainContent">
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full p-4">
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full transition-transform transform hover:scale-105 duration-300" id="mainContent">
         <h1 class="text-4xl font-bold mb-4 text-center text-blue-600">Email Enhancer</h1>
-        <textarea id="emailPrompt" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Enter your email content here..."></textarea>
+        <textarea id="emailPrompt" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="6" placeholder="Enter your email content here..."></textarea>
         
-        <label class="block mt-4">Email Type:</label>
-        <select id="emailType" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="Formal">Formal</option>
-            <option value="Informal">Informal</option>
-            <option value="Marketing">Marketing</option>
-        </select>
-        
-        <label class="block mt-2">Tone:</label>
-        <select id="tone" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <option value="Professional">Professional</option>
-            <option value="Friendly">Friendly</option>
-            <option value="Persuasive">Persuasive</option>
-            <option value="Humorous">Humorous</option> <!-- Added humorous tone -->
-        </select>
+        <div class="flex space-x-4 mt-4">
+            <div class="w-1/2">
+                <label class="block">Email Type:</label>
+                <select id="emailType" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="Formal">Formal</option>
+                    <option value="Informal">Informal</option>
+                    <option value="Marketing">Marketing</option>
+                </select>
+            </div>
+            <div class="w-1/2">
+                <label class="block">Tone:</label>
+                <select id="tone" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="Professional">Professional</option>
+                    <option value="Friendly">Friendly</option>
+                    <option value="Persuasive">Persuasive</option>
+                    <option value="Humorous">Humorous</option>
+                </select>
+            </div>
+        </div>
 
-        <button onclick="enhanceEmail()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-700">Enhance Email</button>
+        <button onclick="enhanceEmail()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-700 w-full">Enhance Email</button>
         <h2 class="mt-4 font-semibold">Enhanced Email:</h2>
-        <div id="enhancedEmail" class="border p-3 rounded-lg bg-gray-50"></div>
-        <button onclick="toggleSettings()" class="mt-4 text-blue-600 hover:underline">Settings</button>
+        <div id="loading" class="hidden flex justify-center items-center">
+            <div class="loading h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+        </div>
+        <div id="enhancedEmail" class="border p-3 rounded-lg bg-gray-50 prose max-w-none"></div>
+        <button onclick="toggleSettings()" class="mt-4 text-blue-600 hover:text-blue-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
     </div>
     
-    <div id="settingsMenu" class="hidden mt-4 p-4 border rounded-lg bg-gray-50 shadow-lg">
-        <h3 class="font-semibold">Settings</h3>
-        <button onclick="goBack()" class="text-blue-600 flex items-center hover:underline">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H3m0 0l6 6m-6-6l6-6" />
+    <div id="settingsMenu" class="settings-menu fixed top-0 left-0 h-full w-64 bg-white shadow-lg p-4 overflow-y-auto">
+        <h3 class="font-semibold text-xl mb-4">Settings</h3>
+        <button onclick="toggleSettings()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            Back
         </button>
         <label class="block mt-2">Host Address:</label>
         <input id="host" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" />
@@ -142,7 +170,7 @@
         <input id="n_predict" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" />
         <label class="block mt-2">Temperature:</label>
         <input id="temperature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" step="0.1" />
-        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700">Save Settings</button>
+        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Save Settings</button>
     </div>
 </body>
-</html>
+</html> 
