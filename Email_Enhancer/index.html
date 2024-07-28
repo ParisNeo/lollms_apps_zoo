@@ -116,6 +116,23 @@
             const settingsMenu = document.getElementById("settingsMenu");
             settingsMenu.classList.toggle("open");
         }
+
+        function sendEmail() {
+            const enhancedEmail = document.getElementById("enhancedEmail").innerHTML;
+            const subject = "Enhanced Email"; // You can customize this or let users input it
+            const body = enhancedEmail.replace(/<[^>]*>/g, ''); // Remove HTML tags
+            
+            // Check if the user has Outlook
+            if (navigator.msLaunchUri) {
+                // Outlook URI
+                const outlookUri = `outlook:compose?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.location.href = outlookUri;
+            } else {
+                // Gmail URL
+                const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                window.open(gmailUrl, '_blank');
+            }
+        }
     </script>
 </head>
 <body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full p-4">
@@ -149,6 +166,10 @@
             <div class="loading h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
         </div>
         <div id="enhancedEmail" class="border p-3 rounded-lg bg-gray-50 prose max-w-none"></div>
+        
+        <p class="mt-4 text-sm text-gray-600">Click below to send the enhanced email to your default email client:</p>
+        <button onclick="sendEmail()" class="mt-2 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Send to Email Client</button>
+        
         <button onclick="toggleSettings()" class="mt-4 text-blue-600 hover:text-blue-800">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
