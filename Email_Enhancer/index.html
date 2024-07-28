@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Enhancer App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script>
+        // Load settings from local storage
+        document.addEventListener("DOMContentLoaded", () => {
+            const hostInput = document.getElementById("host");
+            const savedHost = localStorage.getItem("host_address") || "http://localhost:9600";
+            hostInput.value = savedHost;
+
+            const nPredictInput = document.getElementById("n_predict");
+            const savedNpredict = localStorage.getItem("n_predict") || "4096";
+            nPredictInput.value = savedNpredict;
+
+            const temperatureInput = document.getElementById("temperature");
+            const savedTemperature = localStorage.getItem("temperature") || "0.7";
+            temperatureInput.value = savedTemperature;
+
+            const emailTypeSelect = document.getElementById("emailType");
+            const savedEmailType = localStorage.getItem("email_type") || "Formal";
+            emailTypeSelect.value = savedEmailType;
+
+            const toneSelect = document.getElementById("tone");
+            const savedTone = localStorage.getItem("tone") || "Professional";
+            toneSelect.value = savedTone;
+        });
+
+        // Save settings to local storage
+        function saveSettings() {
+            const hostInput = document.getElementById("host");
+            const nPredictInput = document.getElementById("n_predict");
+            const temperatureInput = document.getElementById("temperature");
+            const emailTypeSelect = document.getElementById("emailType");
+            const toneSelect = document.getElementById("tone");
+
+            localStorage.setItem("host_address", hostInput.value);
+            localStorage.setItem("n_predict", nPredictInput.value);
+            localStorage.setItem("temperature", temperatureInput.value);
+            localStorage.setItem("email_type", emailTypeSelect.value);
+            localStorage.setItem("tone", toneSelect.value);
+            alert("Settings saved!");
+        }
+
+        async function enhanceEmail() {
+            const prompt = document.getElementById("emailPrompt").value;
+            const hostAddress = document.getElementById("host").value;
+            const nPredict = document.getElementById("n_predict").value;
+            const temperature = document.getElementById("temperature").value;
+            const emailType = document.getElementById("emailType").value;
+            const tone = document.getElementById("tone").value;
+
+            console.log("Enhancing email with prompt:", prompt);
+
+            const response = await lollms_generate("<@>system: Enhance the following email.\n<@>email to enhance:\n"+prompt+"\n<@>type: "+emailType+"\n<@>tone: "+tone+"<@>enhanced email:", hostAddress, "-1", nPredict, false, temperature, emailType, tone);
+            console.log("Response received:", response);
+            document.getElementById("enhancedEmail").innerText = response;
+        }
+
+        async function lollms_generate(prompt, host_address, personality, n_predict, stream, temperature, emailType, tone) {
+            const url = `${host_address}/lollms_generate`;
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            const data = JSON.stringify({
+                prompt: prompt,
+                model_name: "email-enhancer",
+                personality: personality,
+                n_predict: n_predict,
+                stream: stream,
+                temperature: temperature,
+                email_type: emailType,
+                tone: tone
+            });
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: data
+                });
+                return await response.text(); // Changed to text response
+            } catch (error) {
+                console.error(error);
+                return "Error occurred while enhancing email.";
+            }
+        }
+
+        function toggleSettings() {
+            const settingsMenu = document.getElementById("settingsMenu");
+            const mainContent = document.getElementById("mainContent");
+            settingsMenu.classList.toggle("hidden");
+            mainContent.classList.toggle("hidden");
+        }
+
+        function goBack() {
+            toggleSettings();
+        }
+    </script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full">
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-2xl transition-transform transform hover:scale-105 duration-300" id="mainContent">
+        <h1 class="text-4xl font-bold mb-4 text-center text-blue-600">Email Enhancer</h1>
+        <textarea id="emailPrompt" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="4" placeholder="Enter your email content here..."></textarea>
+        
+        <label class="block mt-4">Email Type:</label>
+        <select id="emailType" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="Formal">Formal</option>
+            <option value="Informal">Informal</option>
+            <option value="Marketing">Marketing</option>
+        </select>
+        
+        <label class="block mt-2">Tone:</label>
+        <select id="tone" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="Professional">Professional</option>
+            <option value="Friendly">Friendly</option>
+            <option value="Persuasive">Persuasive</option>
+            <option value="Humorous">Humorous</option> <!-- Added humorous tone -->
+        </select>
+
+        <button onclick="enhanceEmail()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-700">Enhance Email</button>
+        <h2 class="mt-4 font-semibold">Enhanced Email:</h2>
+        <div id="enhancedEmail" class="border p-3 rounded-lg bg-gray-50"></div>
+        <button onclick="toggleSettings()" class="mt-4 text-blue-600 hover:underline">Settings</button>
+    </div>
+    
+    <div id="settingsMenu" class="hidden mt-4 p-4 border rounded-lg bg-gray-50 shadow-lg">
+        <h3 class="font-semibold">Settings</h3>
+        <button onclick="goBack()" class="text-blue-600 flex items-center hover:underline">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H3m0 0l6 6m-6-6l6-6" />
+            </svg>
+            Back
+        </button>
+        <label class="block mt-2">Host Address:</label>
+        <input id="host" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="text" />
+        <label class="block mt-2">n_predict:</label>
+        <input id="n_predict" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" />
+        <label class="block mt-2">Temperature:</label>
+        <input id="temperature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" step="0.1" />
+        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700">Save Settings</button>
+    </div>
+</body>
+</html>
