@@ -47,6 +47,10 @@
             const toneSelect = document.getElementById("tone");
             const savedTone = localStorage.getItem("tone") || "Professional";
             toneSelect.value = savedTone;
+
+            const emailClient = document.getElementById("emailClient");
+            const email_client = localStorage.getItem("emailClient") || "Gmail";
+            emailClient.value = email_client;
         });
 
         function saveSettings() {
@@ -55,12 +59,14 @@
             const temperatureInput = document.getElementById("temperature");
             const emailTypeSelect = document.getElementById("emailType");
             const toneSelect = document.getElementById("tone");
+            const emailClient = document.getElementById("emailClient");
 
             localStorage.setItem("host_address", hostInput.value);
             localStorage.setItem("n_predict", nPredictInput.value);
             localStorage.setItem("temperature", temperatureInput.value);
             localStorage.setItem("email_type", emailTypeSelect.value);
             localStorage.setItem("tone", toneSelect.value);
+            localStorage.setItem("emailClient", emailClient.value);
             alert("Settings saved!");
         }
 
@@ -75,7 +81,7 @@
             console.log("Enhancing email with prompt:", prompt);
             document.getElementById("loading").classList.remove("hidden");
 
-            const full_prompt = "!@>system: Enhance the following email. Please respond in markdown format.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:"
+            const full_prompt = "!@>system: Enhance the following email. Please respond in markdown format with a well formatted text.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:"
             const response = await lollms_generate(full_prompt, hostAddress, "-1", nPredict, false, temperature, emailType, tone);
             console.log("Response received:", response);
             const enhancedEmailDiv = document.getElementById("enhancedEmail");
@@ -122,16 +128,27 @@
             const enhancedEmail = document.getElementById("enhancedEmail").innerHTML;
             const subject = "Enhanced Email"; // You can customize this or let users input it
             const body = enhancedEmail.replace(/<[^>]*>/g, ''); // Remove HTML tags
+            const emailClient = document.getElementById("emailClient").value;
             
-            // Check if the user has Outlook
-            if (navigator.msLaunchUri) {
-                // Outlook URI
-                const outlookUri = `outlook:compose?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                window.location.href = outlookUri;
+            // Create a mailto link
+            const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+            if (emailClient === 'Outlook') {
+                // Try to launch Outlook using the mailto protocol
+                window.location.href = mailtoLink;
             } else {
-                // Gmail URL
-                const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                window.open(gmailUrl, '_blank');
+                // For other clients, use the web-based approach
+                let emailUrl;
+                switch (emailClient) {
+                    case 'Hotmail':
+                        emailUrl = `https://outlook.live.com/owa/?path=/mail/action/compose&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                        break;
+                    case 'Gmail':
+                    default:
+                        emailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                        break;
+                }
+                window.open(emailUrl, '_blank');
             }
         }
     </script>
@@ -193,6 +210,12 @@
         <label class="block mt-2">Temperature:</label>
         <input id="temperature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" step="0.1" />
         <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Save Settings</button>
+        <label class="block mt-2">Email Client:</label>
+        <select id="emailClient" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <option value="Gmail">Gmail</option>
+            <option value="Outlook">Outlook</option>
+            <option value="Hotmail">Hotmail</option>
+        </select>
     </div>
 </body>
 </html>
