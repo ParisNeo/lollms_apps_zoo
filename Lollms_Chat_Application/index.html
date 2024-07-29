@@ -28,7 +28,13 @@
 
         <!-- Main chat area -->
         <main class="flex-grow bg-white rounded-lg shadow-lg p-4 flex flex-col h-screen">
-            <h1 id="current-discussion-name" class="text-2xl font-bold mb-4 text-purple-600">Chat Application</h1>
+            <div class="flex justify-between items-center mb-4">
+                <h1 id="current-discussion-name" class="text-2xl font-bold text-purple-600">Chat Application</h1>
+                <div>
+                    <button id="export-md" class="bg-green-500 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-600 mr-2">Export to MD</button>
+                    <button id="export-json" class="bg-blue-500 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-600">Export to JSON</button>
+                </div>
+            </div>            
             <div id="chat-box" class="flex-grow overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg" style="height: calc(100vh - 200px);">
                 <!-- Chat messages will be displayed here -->
             </div>
@@ -94,6 +100,18 @@
         const saveDiscussionNameButton = document.getElementById('save-discussion-name');
         const cancelDiscussionNameButton = document.getElementById('cancel-discussion-name');
 
+        document.getElementById('export-md').addEventListener('click', () => {
+            if (currentDiscussionIndex !== -1) {
+                exportToMarkdown();
+            }
+        });
+
+        document.getElementById('export-json').addEventListener('click', () => {
+            if (currentDiscussionIndex !== -1) {
+                exportToJSON();
+            }
+        });
+        
         function showNameModal(callback) {
             nameModal.classList.remove('hidden');
             discussionNameInput.value = '';
@@ -208,7 +226,28 @@
                 saveDiscussions();
             });
         }
+        function exportToMarkdown() {
+            let markdown = `# ${discussions[currentDiscussionIndex].name}\n\n`;
+            discussions[currentDiscussionIndex].messages.forEach(msg => {
+                markdown += `## ${msg.role === 'user' ? 'You' : 'AI'}\n\n${msg.content}\n\n`;
+            });
+            downloadFile(`${discussions[currentDiscussionIndex].name}.md`, markdown);
+        }
 
+        function exportToJSON() {
+            const json = JSON.stringify(discussions[currentDiscussionIndex], null, 2);
+            downloadFile(`${discussions[currentDiscussionIndex].name}.json`, json);
+        }
+
+        function downloadFile(filename, content) {
+            const element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
+            element.setAttribute('download', filename);
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+        }
         function appendMessage(sender, message) {
             const messageElement = document.createElement('div');
             messageElement.className = `mb-4 p-4 rounded-lg ${sender === 'You' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'} max-w-3/4`;
@@ -223,11 +262,24 @@
             // Parse markdown and render
             contentElement.innerHTML = marked.parse(message);
             
-            // Highlight code blocks
+            // Add copy button to code blocks
             contentElement.querySelectorAll('pre code').forEach((block) => {
+                const pre = block.parentNode;
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 rounded px-2 py-1 text-sm';
+                copyButton.textContent = 'Copy';
+                copyButton.addEventListener('click', () => {
+                    navigator.clipboard.writeText(block.textContent).then(() => {
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyButton.textContent = 'Copy';
+                        }, 2000);
+                    });
+                });
+                pre.style.position = 'relative';
+                pre.appendChild(copyButton);
                 hljs.highlightElement(block);
-            });
-            
+            });            
             messageElement.appendChild(senderElement);
             messageElement.appendChild(contentElement);
             chatBox.appendChild(messageElement);
@@ -322,6 +374,14 @@
             border-left: 4px solid #9ca3af;
             padding-left: 1rem;
             font-style: italic;
+        }
+            
+        .copy-btn {
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        pre:hover .copy-btn {
+            opacity: 1;
         }
     </style>
 </body>
