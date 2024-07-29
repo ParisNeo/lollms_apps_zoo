@@ -81,11 +81,23 @@
             console.log("Enhancing email with prompt:", prompt);
             document.getElementById("loading").classList.remove("hidden");
 
-            const full_prompt = "!@>system: Enhance the following email. Please respond in markdown format with a well formatted text.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:"
-            const response = await lollms_generate(full_prompt, hostAddress, "-1", nPredict, false, temperature, emailType, tone);
-            console.log("Response received:", response);
+            // Generate enhanced email body
+            const bodyPrompt = "!@>system: Enhance the following email. Please respond in markdown format with a well formatted text.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:";
+            const enhancedBody = await lollms_generate(bodyPrompt, hostAddress, "-1", nPredict, false, temperature, emailType, tone);
+            
+            // Generate subject for the enhanced email
+            const subjectPrompt = "!@>system: Generate a concise and appropriate subject line for the following email. Respond with only the subject line.\n!@>email body:\n" + enhancedBody+"\n!@>language: use the same language as the original email.\n"+"!@>proposed subject:";
+            const generatedSubject = await lollms_generate(subjectPrompt, hostAddress, "-1", "64", false, temperature, emailType, tone);
+
+            console.log("Enhanced email body:", enhancedBody);
+            console.log("Generated subject:", generatedSubject);
+
             const enhancedEmailDiv = document.getElementById("enhancedEmail");
-            enhancedEmailDiv.innerHTML = marked.parse(response);
+            enhancedEmailDiv.innerHTML = marked.parse(enhancedBody);
+
+            const generatedSubjectDiv = document.getElementById("generatedSubject");
+            generatedSubjectDiv.textContent = generatedSubject.trim();
+
             document.getElementById("loading").classList.add("hidden");
         }
 
@@ -126,13 +138,13 @@
 
         function sendEmail() {
             const enhancedEmail = document.getElementById("enhancedEmail").innerHTML;
-            const subject = "Enhanced Email"; // You can customize this or let users input it
+            const subject = document.getElementById("generatedSubject").textContent;
             const body = enhancedEmail.replace(/<[^>]*>/g, ''); // Remove HTML tags
             const emailClient = document.getElementById("emailClient").value;
             
             // Create a mailto link
             const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-        
+
             if (emailClient === 'Outlook') {
                 // Try to launch Outlook using the mailto protocol
                 window.location.href = mailtoLink;
@@ -179,6 +191,10 @@
         </div>
 
         <button onclick="enhanceEmail()" class="mt-4 bg-blue-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-blue-700 w-full">Enhance Email</button>
+        
+        <h2 class="mt-4 font-semibold">Generated Subject:</h2>
+        <div id="generatedSubject" class="border p-3 rounded-lg bg-gray-50 mb-4"></div>
+        
         <h2 class="mt-4 font-semibold">Enhanced Email:</h2>
         <div id="loading" class="hidden flex justify-center items-center">
             <div class="loading h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
