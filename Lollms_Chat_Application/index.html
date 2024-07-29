@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Chat Application</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/lollms_js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4 flex">
+        <!-- Sidebar for discussions list -->
+        <aside class="w-1/4 bg-white rounded-lg shadow-lg p-4 mr-4">
+            <h2 class="text-xl font-bold mb-4 text-purple-600">Discussions</h2>
+            <ul id="discussions-list" class="space-y-2">
+                <!-- Discussions will be added here dynamically -->
+            </ul>
+            <button id="new-discussion" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-purple-700 w-full">New Discussion</button>
+            <button id="open-config" class="mt-2 bg-gray-500 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-gray-600 w-full">Configure</button>
+        </aside>
+
+        <!-- Main chat area -->
+        <main class="flex-grow bg-white rounded-lg shadow-lg p-4 flex flex-col h-screen">
+            <h1 id="current-discussion-name" class="text-2xl font-bold mb-4 text-purple-600">Chat Application</h1>
+            <div id="chat-box" class="flex-grow overflow-y-auto mb-4 p-4 bg-gray-50 rounded-lg" style="height: calc(100vh - 200px);">
+                <!-- Chat messages will be displayed here -->
+            </div>
+            <div class="flex">
+                <input type="text" id="user-input" class="flex-grow border border-gray-300 rounded-lg p-2" placeholder="Type your message...">
+                <button id="send-button" class="ml-2 bg-purple-600 text-white rounded-lg px-4 py-2 transition duration-300 hover:bg-purple-700">Send</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- Configuration modal -->
+    <div id="config-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96">
+            <h2 class="text-xl font-bold mb-4">Configuration</h2>
+            <input type="text" id="host-input" class="w-full mb-2 p-2 border rounded" placeholder="Host Name">
+            <input type="text" id="username-input" class="w-full mb-4 p-2 border rounded" placeholder="User Name">
+            <div class="flex justify-end">
+                <button id="save-config" class="bg-purple-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-purple-700">Save</button>
+                <button id="close-config" class="ml-2 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition duration-300 hover:bg-gray-400">Close</button>
+            </div>
+        </div>
+    </div>
+    <div id="name-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg w-96">
+            <h2 class="text-xl font-bold mb-4">New Discussion</h2>
+            <input type="text" id="discussion-name-input" class="w-full mb-4 p-2 border rounded" placeholder="Enter discussion name">
+            <div class="flex justify-end">
+                <button id="save-discussion-name" class="bg-purple-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-purple-700">Save</button>
+                <button id="cancel-discussion-name" class="ml-2 bg-gray-300 text-gray-800 py-2 px-4 rounded-lg transition duration-300 hover:bg-gray-400">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        const ctx_size = 4096;
+        let lc;
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const discussionsList = document.getElementById('discussions-list');
+        const newDiscussionButton = document.getElementById('new-discussion');
+        const configModal = document.getElementById('config-modal');
+        const saveConfigButton = document.getElementById('save-config');
+        const closeConfigButton = document.getElementById('close-config');
+        const openConfigButton = document.getElementById('open-config');
+        const hostInput = document.getElementById('host-input');
+        const usernameInput = document.getElementById('username-input');
+        const currentDiscussionName = document.getElementById('current-discussion-name');
+
+        let discussions = [];
+        let currentDiscussionIndex = -1;
+
+        // Default configuration
+        const defaultConfig = {
+            host: 'http://localhost:9600',
+            username: 'User'
+        };
+
+        // Load configuration from local storage or use default
+        let config = JSON.parse(localStorage.getItem('chatConfig')) || defaultConfig;
+
+        const nameModal = document.getElementById('name-modal');
+        const discussionNameInput = document.getElementById('discussion-name-input');
+        const saveDiscussionNameButton = document.getElementById('save-discussion-name');
+        const cancelDiscussionNameButton = document.getElementById('cancel-discussion-name');
+
+        function showNameModal(callback) {
+            nameModal.classList.remove('hidden');
+            discussionNameInput.value = '';
+            discussionNameInput.focus();
+
+            function handleSave() {
+                const name = discussionNameInput.value.trim();
+                if (name) {
+                    callback(name);
+                }
+                hideNameModal();
+            }
+
+            function handleCancel() {
+                hideNameModal();
+                callback(null);
+            }
+
+            saveDiscussionNameButton.addEventListener('click', handleSave);
+            cancelDiscussionNameButton.addEventListener('click', handleCancel);
+            discussionNameInput.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape') handleCancel();
+            });
+        }
+
+        function hideNameModal() {
+            nameModal.classList.add('hidden');
+            saveDiscussionNameButton.removeEventListener('click', handleSave);
+            cancelDiscussionNameButton.removeEventListener('click', handleCancel);
+            discussionNameInput.removeEventListener('keyup', handleKeyup);
+        }
+
+        // Initialize Lollms client
+        function initLollmsClient() {
+            lc = new LollmsClient(config.host, config.username, ctx_size);
+        }
+
+        // Save configuration to local storage
+        function saveConfig() {
+            localStorage.setItem('chatConfig', JSON.stringify(config));
+        }
+
+        // Load configuration and initialize client
+        window.addEventListener('load', () => {
+            hostInput.value = config.host;
+            usernameInput.value = config.username;
+            initLollmsClient();
+            loadDiscussions();
+        });
+
+        openConfigButton.addEventListener('click', () => {
+            configModal.classList.remove('hidden');
+        });
+
+        saveConfigButton.addEventListener('click', () => {
+            config.host = hostInput.value;
+            config.username = usernameInput.value;
+            saveConfig();
+            initLollmsClient();
+            configModal.classList.add('hidden');
+        });
+
+        closeConfigButton.addEventListener('click', () => {
+            configModal.classList.add('hidden');
+        });
+
+        sendButton.addEventListener('click', async () => {
+            const userMessage = userInput.value;
+            if (userMessage.trim() === '') return;
+
+            // If no current discussion, create a new one
+            if (currentDiscussionIndex === -1) {
+                showNameModal((name) => {
+                    if (name) {
+                        currentDiscussionIndex = discussions.length;
+                        discussions.push({ name, messages: [] });
+                        updateDiscussionsList();
+                        currentDiscussionName.textContent = name;
+                        sendMessage(userMessage);
+                    }
+                });
+            } else {
+                sendMessage(userMessage);
+            }
+        });
+
+        function sendMessage(userMessage) {
+            // Display user message
+            appendMessage('You', userMessage);
+            userInput.value = '';
+
+            // Add message to current discussion
+            discussions[currentDiscussionIndex].messages.push({ role: 'user', content: userMessage });
+
+            // Prepare prompt for Lollms
+            const system_prompt = "You are a helpful assistant.";
+            const prompt = lc.system_message() + system_prompt + 
+                discussions[currentDiscussionIndex].messages.map(msg => 
+                    (msg.role === 'user' ? lc.user_message() : lc.ai_message()) + msg.content
+                ).join(lc.template.separator_template) + 
+                lc.template.separator_template + lc.ai_message();
+
+            // Generate AI response
+            lc.generate(prompt).then(generated_text => {
+                appendMessage('AI', generated_text);
+
+                // Add AI response to current discussion
+                discussions[currentDiscussionIndex].messages.push({ role: 'assistant', content: generated_text });
+
+                // Save discussions
+                saveDiscussions();
+            });
+        }
+
+        function appendMessage(sender, message) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `mb-4 p-4 rounded-lg ${sender === 'You' ? 'bg-blue-100 ml-auto' : 'bg-gray-100'} max-w-3/4`;
+            
+            const senderElement = document.createElement('div');
+            senderElement.className = `font-bold mb-2 ${sender === 'You' ? 'text-blue-600' : 'text-gray-800'}`;
+            senderElement.textContent = sender;
+            
+            const contentElement = document.createElement('div');
+            contentElement.className = 'prose';
+            
+            // Parse markdown and render
+            contentElement.innerHTML = marked.parse(message);
+            
+            // Highlight code blocks
+            contentElement.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+            
+            messageElement.appendChild(senderElement);
+            messageElement.appendChild(contentElement);
+            chatBox.appendChild(messageElement);
+            
+            // Render math expressions
+            renderMathInElement(contentElement, {
+                delimiters: [
+                    {left: '$$', right: '$$', display: true},
+                    {left: '$', right: '$', display: false},
+                ],
+                throwOnError: false
+            });
+            
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function updateDiscussionsList() {
+            discussionsList.innerHTML = '';
+            discussions.forEach((discussion, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'flex justify-between items-center cursor-pointer hover:bg-gray-100 p-2 rounded';
+                listItem.innerHTML = `
+                    <span>${discussion.name}</span>
+                    <button class="text-red-500 hover:text-red-700">×</button>
+                `;
+                listItem.querySelector('span').addEventListener('click', () => loadDiscussion(index));
+                listItem.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    removeDiscussion(index);
+                });
+                discussionsList.appendChild(listItem);
+            });
+        }
+
+        function loadDiscussion(index) {
+            currentDiscussionIndex = index;
+            chatBox.innerHTML = '';
+            currentDiscussionName.textContent = discussions[index].name;
+            discussions[index].messages.forEach(msg => appendMessage(msg.role === 'user' ? 'You' : 'AI', msg.content));
+        }
+
+        function removeDiscussion(index) {
+            discussions.splice(index, 1);
+            saveDiscussions();
+            updateDiscussionsList();
+            if (currentDiscussionIndex === index) {
+                currentDiscussionIndex = -1;
+                chatBox.innerHTML = '';
+                currentDiscussionName.textContent = 'Chat Application';
+            }
+        }
+
+        newDiscussionButton.addEventListener('click', () => {
+            showNameModal((name) => {
+                if (name) {
+                    const newIndex = discussions.length;
+                    discussions.push({ name, messages: [] });
+                    saveDiscussions();
+                    updateDiscussionsList();
+                    loadDiscussion(newIndex);
+                }
+            });
+        });
+
+        function saveDiscussions() {
+            localStorage.setItem('discussions', JSON.stringify(discussions));
+        }
+
+        function loadDiscussions() {
+            const savedDiscussions = localStorage.getItem('discussions');
+            if (savedDiscussions) {
+                discussions = JSON.parse(savedDiscussions);
+                updateDiscussionsList();
+            }
+        }
+    </script>
+    <style>
+        .prose {
+            max-width: 100%;
+        }
+        .prose pre {
+            background-color: #f3f4f6;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .prose code {
+            background-color: #e5e7eb;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+        }
+        .prose blockquote {
+            border-left: 4px solid #9ca3af;
+            padding-left: 1rem;
+            font-style: italic;
+        }
+    </style>
+</body>
+</html>
