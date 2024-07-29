@@ -6,28 +6,15 @@
     <title>TodoMaster Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
         body.dark-mode {
             background-color: #222;
             color: #e4e4e4;
         }
-        body {
-            color: black; /* Set text color to black in light theme */
-        }
-        body.dark-mode header {
-            background-color: #fff; /* Change header background color in dark mode */
-            color: #222; /* Change text color in dark mode */
-        }
-        .dark-mode .project-card {
+        .dark-mode .card {
             background-color: #333;
-        }
-        .dark-mode nav {
-            background-color: #444;
-        }
-        .dark-mode #settings, .dark-mode #help {
-            background-color: #333;
-        }
-        .dark-mode .todo-item {
-            background-color: #444; /* Dark background for todo items in dark mode */
         }
         .fade-in {
             animation: fadeIn 0.5s ease-in-out;
@@ -36,93 +23,75 @@
             from { opacity: 0; }
             to { opacity: 1; }
         }
-        .project-card {
-            transition: transform 0.2s;
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .project-card:hover {
-            transform: scale(1.05);
-        }
-        h1, h2, h3 {
-            font-size: 1.5rem; /* Increased font size */
-        }
-        p, span {
-            font-size: 1.2rem; /* Increased font size */
-        }
-        nav {
-            transition: background-color 0.3s ease;
-        }
-        nav a {
-            transition: color 0.3s ease;
-        }
-        nav a:hover {
-            color: #ffcc00; /* Change color on hover */
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
         }
         .title-animation {
             animation: titleBounce 1s infinite;
             text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
         }
         @keyframes titleBounce {
-            0%, 20%, 50%, 80%, 100% {
-                transform: translateY(0);
-            }
-            40% {
-                transform: translateY(-10px);
-            }
-            60% {
-                transform: translateY(-5px);
-            }
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
         }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 transition-colors duration-300">
-    <header class="bg-gray-300 text-gray-800 p-5 text-center relative">
-        <h1 class="text-4xl font-bold title-animation">TodoMaster Pro</h1>
-        <span class="theme-toggle absolute top-1/2 right-5 transform -translate-y-1/2 cursor-pointer text-3xl" onclick="toggleTheme()">🌙</span>
-    </header>
-    <nav class="bg-gray-400 p-2">
-        <ul class="flex justify-center space-x-4">
-            <li><a href="#" class="text-white font-bold transition duration-300" onclick="showPage('home')">Accueil</a></li>
-            <li><a href="#" class="text-white font-bold transition duration-300" onclick="showPage('settings')">Paramètres</a></li>
-            <li><a href="#" class="text-white font-bold transition duration-300" onclick="showPage('help')">Aide</a></li>
-        </ul>
-    </nav>
     <div class="container mx-auto p-5">
+        <header class="text-center relative mb-8">
+            <h1 class="text-4xl font-bold title-animation">TodoMaster Pro</h1>
+            <span class="theme-toggle absolute top-1/2 right-5 transform -translate-y-1/2 cursor-pointer text-3xl" onclick="toggleTheme()">🌙</span>
+        </header>
+
         <div id="home" class="fade-in">
-            <h2 class="text-3xl font-semibold">Vos Projets de Tâches</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 mt-5" id="project-grid"></div>
-            <button class="bg-blue-500 text-white px-4 py-2 rounded mt-5" onclick="createNewProject()">Créer un Nouveau Projet</button>
+            <h2 class="text-3xl font-semibold mb-5">Your Todo Projects</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5" id="project-grid"></div>
+            <button class="bg-blue-500 text-white px-4 py-2 rounded mt-5" onclick="createNewProject()">Create New Project</button>
+            <button class="bg-gray-500 text-white px-4 py-2 rounded mt-5 ml-2" onclick="showPage('settings')">Settings</button>
+            <button class="bg-gray-500 text-white px-4 py-2 rounded mt-5 ml-2" onclick="showPage('help')">Help</button>
         </div>
-        <div id="settings" style="display: none;" class="fade-in">
-            <h2 class="text-3xl font-semibold">Paramètres</h2>
-            <label for="language" class="block mt-4">Langue :</label>
+
+        <div id="settings" class="fade-in" style="display: none;">
+            <h2 class="text-3xl font-semibold mb-5">Settings</h2>
+            <label for="language" class="block mt-4">Language:</label>
             <select id="language" class="mt-2 p-2 border" onchange="changeLanguage()">
-                <option value="en">Anglais</option>
-                <option value="fr">Français</option>
-                <option value="es">Espagnol</option>
+                <option value="en">English</option>
+                <option value="fr">French</option>
+                <option value="es">Spanish</option>
             </select>
         </div>
-        <div id="help" style="display: none;" class="fade-in">
-            <h2 class="text-3xl font-semibold">Aide</h2>
-            <p class="mt-2">Bienvenue sur TodoMaster Pro ! Voici comment utiliser l'application :</p>
+
+        <div id="help" class="fade-in" style="display: none;">
+            <h2 class="text-3xl font-semibold mb-5">Help</h2>
+            <p class="mt-2">Welcome to TodoMaster Pro! Here's how to use the app:</p>
             <ul class="list-disc ml-5 mt-2">
-                <li>Créez de nouveaux projets depuis la page d'accueil</li>
-                <li>Ajoutez, modifiez et supprimez des tâches dans chaque projet</li>
-                <li>Utilisez des commandes vocales pour ajouter des tâches ou lire votre liste</li>
-                <li>Changez la langue dans les paramètres</li>
+                <li>Create new projects from the home page</li>
+                <li>Add, edit, and delete tasks in each project</li>
+                <li>Use voice commands to add tasks or read your list</li>
+                <li>Change the language in settings</li>
             </ul>
         </div>
-        <div id="project-view" style="display: none;" class="fade-in">
-            <h2 id="project-title" class="text-3xl font-semibold"></h2>
-            <input type="text" id="todo-input" placeholder="Ajouter une nouvelle tâche" class="border p-2 mt-2 w-full md:w-3/4">
-            <button class="bg-blue-500 text-white px-4 py-2 rounded mt-2" id="add-todo" onclick="addTodo()">Ajouter</button>
+
+        <div id="project-view" class="fade-in" style="display: none;">
+            <h2 id="project-title" class="text-3xl font-semibold mb-5"></h2>
+            <input type="text" id="todo-input" placeholder="Add a new task" class="border p-2 mt-2 w-full md:w-3/4">
+            <button class="bg-blue-500 text-white px-4 py-2 rounded mt-2" id="add-todo" onclick="addTodo()">Add</button>
             <button class="voice-btn bg-orange-500 text-white px-4 py-2 rounded mt-2" onclick="startVoiceRecognition()">🎤</button>
             <button class="voice-btn bg-orange-500 text-white px-4 py-2 rounded mt-2" onclick="readTodoList()">🔊</button>
-            <h3 class="mt-5">Tâches Non Terminées</h3>
+            <h3 class="mt-5 font-semibold">Undone Tasks</h3>
             <ul id="todo-list" class="list-none p-0"></ul>
-            <h3 class="mt-5">Tâches Terminées</h3>
+            <h3 class="mt-5 font-semibold">Done Tasks</h3>
             <ul id="done-list" class="list-none p-0"></ul>
         </div>
+
+        <button id="back-btn" class="fixed bottom-5 left-5 bg-gray-500 text-white px-4 py-2 rounded" onclick="showPage('home')" style="display: none;">Back to Home</button>
     </div>
+
     <script>
         let currentLanguage = localStorage.getItem('language') || 'en';
         let projects = JSON.parse(localStorage.getItem('projects')) || [];
@@ -189,8 +158,9 @@
         function showPage(pageId) {
             document.querySelectorAll('.fade-in').forEach(page => page.style.display = 'none');
             document.getElementById(pageId).style.display = 'block';
+            document.getElementById('back-btn').style.display = pageId !== 'home' ? 'block' : 'none';
             if (pageId === 'home') {
-                renderProjects(); // Ensure projects are rendered when showing home
+                renderProjects();
             }
         }
 
@@ -209,7 +179,7 @@
             projectGrid.innerHTML = '';
             projects.forEach((project, index) => {
                 const card = document.createElement('div');
-                card.className = 'project-card bg-white rounded-lg shadow p-5 cursor-pointer hover:shadow-lg transition fade-in';
+                card.className = 'card bg-white rounded-lg shadow p-5 cursor-pointer hover:shadow-lg transition fade-in';
                 const undoneCount = project.todos ? project.todos.filter(todo => !todo.done).length : 0;
                 const doneCount = project.todos ? project.todos.filter(todo => todo.done).length : 0;
                 card.innerHTML = `
@@ -221,7 +191,11 @@
                         <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteProject(${index})">❌</button>
                     </div>
                 `;
-                card.onclick = () => openProject(index);
+                card.onclick = (e) => {
+                    if (!e.target.closest('button')) {
+                        openProject(index);
+                    }
+                };
                 projectGrid.appendChild(card);
             });
         }
@@ -248,12 +222,12 @@
             doneList.innerHTML = '';
             currentProject.todos.forEach((todo, index) => {
                 const li = document.createElement('li');
-                li.className = 'todo-item bg-white rounded-lg shadow p-2 mb-2 flex justify-between items-center dark:bg-gray-600'; // Added dark mode class
+                li.className = 'card bg-white rounded-lg shadow p-2 mb-2 flex justify-between items-center';
                 li.innerHTML = `
                     <span>${todo.text}</span>
                     <div>
-                        <button class="bg-blue-500 text-white px-2 py-1 rounded" onclick="toggleTodo(${index})">${todo.done ? 'Annuler' : 'Fait'}</button>
-                        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteTodo(${index})">Supprimer</button>
+                        <button class="bg-blue-500 text-white px-2 py-1 rounded" onclick="toggleTodo(${index})">${todo.done ? 'Undo' : 'Done'}</button>
+                        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteTodo(${index})">Delete</button>
                     </div>
                 `;
                 if (todo.done) {
@@ -262,7 +236,6 @@
                     todoList.appendChild(li);
                 }
             });
-            updateProjectCard();
         }
 
         function addTodo() {
@@ -303,9 +276,9 @@
             document.getElementById('add-todo').textContent = translations[currentLanguage].addTodo;
             document.querySelectorAll('.voice-btn')[0].textContent = translations[currentLanguage].voiceInput;
             document.querySelectorAll('.voice-btn')[1].textContent = translations[currentLanguage].readList;
-            document.querySelector('button.btn').textContent = translations[currentLanguage].createNewProject;
-            document.querySelectorAll('nav ul li a')[1].textContent = translations[currentLanguage].settings;
-            document.querySelectorAll('nav ul li a')[2].textContent = translations[currentLanguage].help;
+            document.querySelector('button.bg-blue-500').textContent = translations[currentLanguage].createNewProject;
+            document.querySelectorAll('button.bg-gray-500')[0].textContent = translations[currentLanguage].settings;
+            document.querySelectorAll('button.bg-gray-500')[1].textContent = translations[currentLanguage].help;
             document.querySelector('label[for="language"]').textContent = translations[currentLanguage].language;
             document.querySelector('#help p').textContent = translations[currentLanguage].welcomeMessage;
             document.querySelector('#home h2').textContent = translations[currentLanguage].yourTodoProjects;
@@ -336,34 +309,19 @@
             document.body.classList.toggle('dark-mode');
             currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
             localStorage.setItem('theme', currentTheme);
+            updateThemeIcon();
+        }
+
+        function updateThemeIcon() {
+            const themeToggle = document.querySelector('.theme-toggle');
+            themeToggle.textContent = currentTheme === 'dark' ? '☀️' : '🌙';
         }
 
         function initializeTheme() {
             if (currentTheme === 'dark') {
                 document.body.classList.add('dark-mode');
             }
-        }
-
-        function updateProjectCard() {
-            const projectGrid = document.getElementById('project-grid');
-            projectGrid.innerHTML = '';
-            projects.forEach((project, index) => {
-                const card = document.createElement('div');
-                card.className = 'project-card bg-white rounded-lg shadow p-5 cursor-pointer hover:shadow-lg transition fade-in';
-                const undoneCount = project.todos ? project.todos.filter(todo => !todo.done).length : 0;
-                const doneCount = project.todos ? project.todos.filter(todo => todo.done).length : 0;
-                card.innerHTML = `
-                    <h3 class="text-lg font-semibold">${project.name}</h3>
-                    <p>${undoneCount} ${translations[currentLanguage].undoneTodos}, ${doneCount} ${translations[currentLanguage].doneTodos}</p>
-                    <div class="flex space-x-2 mt-3">
-                        <button class="bg-green-500 text-white px-2 py-1 rounded" onclick="exportProject(${index})">${translations[currentLanguage].exportProject}</button>
-                        <button class="bg-yellow-500 text-white px-2 py-1 rounded" onclick="importProject(${index})">${translations[currentLanguage].importProject}</button>
-                        <button class="bg-red-500 text-white px-2 py-1 rounded" onclick="deleteProject(${index})">❌</button>
-                    </div>
-                `;
-                card.onclick = () => openProject(index);
-                projectGrid.appendChild(card);
-            });
+            updateThemeIcon();
         }
 
         function exportProject(index) {
@@ -409,6 +367,8 @@
         updateLanguage();
         initializeTheme();
 
+        // Set initial language in select element
+        document.getElementById('language').value = currentLanguage;
     </script>
 </body>
 </html>
