@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Translator App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://unpkg.com/pptx-text-extractor@1.0.4/dist/pptx-text-extractor.min.js"></script>
+    <style>
+        .loading {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .settings-menu {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .settings-menu.open {
+            transform: translateX(0);
+        }
+    </style>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const hostInput = document.getElementById("host");
+            const savedHost = localStorage.getItem("host_address") || "http://localhost:9600";
+            hostInput.value = savedHost;
+
+            const nPredictInput = document.getElementById("n_predict");
+            const savedNpredict = localStorage.getItem("n_predict") || "1024";
+            nPredictInput.value = savedNpredict;
+
+            const temperatureInput = document.getElementById("temperature");
+            const savedTemperature = localStorage.getItem("temperature") || "0.7";
+            temperatureInput.value = savedTemperature;
+
+            const fileInput = document.getElementById("fileInput");
+            fileInput.addEventListener("change", handleFileUpload);
+            
+        });
+
+        function saveSettings() {
+            const hostInput = document.getElementById("host");
+            const nPredictInput = document.getElementById("n_predict");
+            const temperatureInput = document.getElementById("temperature");
+
+            localStorage.setItem("host_address", hostInput.value);
+            localStorage.setItem("n_predict", nPredictInput.value);
+            localStorage.setItem("temperature", temperatureInput.value);
+            alert("Settings saved!");
+        }
+
+        async function translateContent() {
+            const sourceText = document.getElementById("sourceText");
+            const content = sourceText.value;
+            console.log("Translating text from", sourceLang, "to", targetLang);
+            document.getElementById("loading").classList.remove("hidden");
+
+            console.log(content)
+
+            function tokenize(content) {
+                return content.split(' ');
+            }
+
+            const tokens = tokenize(content);
+            const maxTokens = parseInt(document.getElementById("n_predict").value);
+
+            if (tokens.length > maxTokens) {
+                alert("File content exceeds token limit. It will be split into chunks for translation.");
+                const chunks = splitIntoChunks(content, maxTokens, tokenizer);
+                translated = await translateChunks(chunks);
+            } else {
+                translated = await translateText(content);
+            }
+            const translatedTextDiv = document.getElementById("translatedText");
+            // Render Markdown to HTML
+            const renderedHTML = marked.parse(translated);
+            document.getElementById("translatedText").innerHTML = renderedHTML;            
+            console.log("Translating text from", sourceLang, "to", targetLang);
+            document.getElementById("loading").classList.add("hidden");
+
+
+        }
+        async function translateText(sourceText) {
+            const sourceLang = document.getElementById("sourceLang").value;
+            const targetLang = document.getElementById("targetLang").value;
+            const hostAddress = document.getElementById("host").value;
+            const nPredict = document.getElementById("n_predict").value;
+            const temperature = document.getElementById("temperature").value;
+
+            const prompt = `!@>system: Translate the following text from ${sourceLang} to ${targetLang}. Provide only the translated text without any additional commentary.\n!@>text to translate:\n${sourceText}\n!@>translation:`;
+            
+            const translatedText = await lollms_generate(prompt, hostAddress, "-1", nPredict, false, temperature);
+
+            console.log("Translated text:", translatedText);
+
+            const translatedTextDiv = document.getElementById("translatedText");
+            return translatedText.trim();
+        }
+
+        async function lollms_generate(prompt, host_address, personality, n_predict, stream, temperature) {
+            const url = `${host_address}/lollms_generate`;
+            const headers = {
+                'Content-Type': 'application/json',
+            };
+
+            const data = JSON.stringify({
+                prompt: prompt,
+                model_name: "universal-translator",
+                personality: personality,
+                n_predict: n_predict,
+                stream: stream,
+                temperature: temperature
+            });
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: headers,
+                    body: data
+                });
+                return await response.text();
+            } catch (error) {
+                console.error(error);
+                return "Error occurred while translating text.";
+            }
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            console.log("Loading file")
+            if (!file) return;
+
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+            let content = '';
+
+            try {
+                switch (fileExtension) {
+                    case 'txt':
+                    case 'md':
+                    case 'markdown':
+                    case 'rtf':
+                    case 'log':
+                    case 'csv':
+                    case 'json':
+                    case 'xml':
+                    case 'html':
+                    case 'htm':
+                    case 'css':
+                    case 'js':
+                    case 'py':
+                    case 'java':
+                    case 'c':
+                    case 'cpp':
+                        content = await readTextFile(file);
+                        break;
+                    case 'docx':
+                        content = await readDocxFile(file);
+                        break;
+                    case 'pdf':
+                        content = await readPdfFile(file);
+                        break;
+                    case 'pptx':
+                        content = await readPptxFile(file);
+                        break;
+                    default:
+                        throw new Error('Unsupported file type');
+                }
+
+            } catch (error) {
+                console.error('Error processing file:', error);
+                alert('Error processing file: ' + error.message);
+            }
+            const sourceText = document.getElementById("sourceText");
+            sourceText.value = content;
+
+        }
+
+        function readTextFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        function readDocxFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    mammoth.extractRawText({arrayBuffer: e.target.result})
+                        .then(result => resolve(result.value))
+                        .catch(reject);
+                };
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function readPdfFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const pdf = await pdfjsLib.getDocument({data: e.target.result}).promise;
+                    let text = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const content = await page.getTextContent();
+                        text += content.items.map(item => item.str).join(' ') + '\n';
+                    }
+                    resolve(text);
+                };
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function readPptxFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        if (typeof PptxTextExtractor === 'undefined') {
+                            throw new Error('PptxTextExtractor is not defined. The library might not be loaded correctly.');
+                        }
+                        const text = await PptxTextExtractor.extractText(e.target.result);
+                        resolve(text.join('\n'));
+                    } catch (error) {
+                        console.error('Error extracting text from PPTX:', error);
+                        reject(new Error('Unable to process PPTX file. ' + error.message));
+                    }
+                };
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function splitIntoChunks(text, maxTokens, tokenizer) {
+            const chunks = [];
+            let currentChunk = "";
+            const sentences = text.split(/(?<=[.!?])\s+/);
+
+            for (const sentence of sentences) {
+                const potentialChunk = currentChunk + sentence;
+                const tokens = tokenizer.encode(potentialChunk);
+
+                if (tokens.length <= maxTokens) {
+                    currentChunk = potentialChunk;
+                } else {
+                    if (currentChunk) chunks.push(currentChunk.trim());
+                    currentChunk = sentence;
+                }
+            }
+
+            if (currentChunk) chunks.push(currentChunk.trim());
+            return chunks;
+        }
+
+        async function translateChunks(chunks) {
+            const translatedChunks = [];
+            for (let i = 0; i < chunks.length; i++) {
+                translated = await translateText(chunks[i]);
+                translatedChunks.push(translated);
+            }
+            return translatedChunks.join("\n\n");
+        }
+
+        function toggleSettings() {
+            const settingsMenu = document.getElementById("settingsMenu");
+            settingsMenu.classList.toggle("open");
+        }
+
+        function copyTranslation() {
+            const translatedText = document.getElementById("translatedText").textContent;
+            navigator.clipboard.writeText(translatedText).then(() => {
+                alert("Translation copied to clipboard!");
+            }, (err) => {
+                console.error('Could not copy text: ', err);
+            });
+        }
+    </script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full p-4">
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl transition-transform transform" id="mainContent">
+        <h1 class="text-4xl font-bold mb-4 text-center text-purple-600">Universal Translator</h1>
+        <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+            <div class="w-full md:w-1/2">
+                <label class="block mb-2">Source Language:</label>
+                <select id="sourceLang" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="English">English</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Russian">Russian</option>
+                    <option value="Arabic">Arabic</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Portuguese">Portuguese</option>
+                    <option value="Italian">Italian</option>
+                </select>
+            </div>
+            <div class="w-full md:w-1/2">
+                <label class="block mb-2">Target Language:</label>
+                <select id="targetLang" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+                    <option value="Spanish">Spanish</option>
+                    <option value="English">English</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Chinese">Chinese</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="Russian">Russian</option>
+                    <option value="Arabic">Arabic</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Portuguese">Portuguese</option>
+                    <option value="Italian">Italian</option>
+                </select>
+            </div>
+        </div>
+        
+        <textarea id="sourceText" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500 mt-4" rows="6" placeholder="Enter text to translate..."></textarea>
+        
+        <div class="mt-4">
+            <label for="fileInput" class="block mb-2">Or upload a file to translate:</label>
+            <input type="file" id="fileInput" accept=".txt,.md,.markdown,.rtf,.log,.csv,.json,.xml,.html,.htm,.css,.js,.py,.java,.c,.cpp,.docx,.pdf,.pptx" class="w-full p-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
+        </div>
+        
+        <button onclick="translateContent()" class="mt-4 bg-purple-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-purple-700 w-full">Translate</button>
+        
+        <h2 class="mt-4 font-semibold">Translated Text:</h2>
+        <div id="loading" class="hidden flex justify-center items-center mt-2">
+            <div class="loading h-8 w-8 border-4 border-purple-600 border-t-transparent rounded-full"></div>
+        </div>
+        <div id="translatedText" class="border p-3 rounded-lg bg-gray-50 mt-2 min-h-[100px]"></div>
+        
+        <button onclick="copyTranslation()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Copy Translation</button>
+        
+        <button onclick="toggleSettings()" class="mt-4 text-purple-600 hover:text-purple-800">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+    </div>
+    
+    <div id="settingsMenu" class="settings-menu fixed top-0 left-0 h-full w-64 bg-white shadow-lg p-4 overflow-y-auto">
+        <h3 class="font-semibold text-xl mb-4">Settings</h3>
+        <button onclick="toggleSettings()" class="absolute top-2 right-2 text-gray-500 hover:text-gray-700">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <label class="block mt-2">Host Address:</label>
+        <input id="host" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="text" />
+        <label class="block mt-2">n_predict:</label>
+        <input id="n_predict" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="number" />
+        <label class="block mt-2">Temperature:</label>
+        <input id="temperature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="number" step="0.1" />
+        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Save Settings</button>
+    </div>
+</body>
+</html>
