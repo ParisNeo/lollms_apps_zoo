@@ -75,7 +75,8 @@
             console.log("Enhancing email with prompt:", prompt);
             document.getElementById("loading").classList.remove("hidden");
 
-            const response = await lollms_generate("<@>system: Enhance the following email. Please respond in markdown format.\n<@>email to enhance:\n"+prompt+"\n<@>type: "+emailType+"\n<@>tone: "+tone+"<@>enhanced email:", hostAddress, "-1", nPredict, false, temperature, emailType, tone);
+            const full_prompt = "!@>system: Enhance the following email. Please respond in markdown format.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:"
+            const response = await lollms_generate(full_prompt, hostAddress, "-1", nPredict, false, temperature, emailType, tone);
             console.log("Response received:", response);
             const enhancedEmailDiv = document.getElementById("enhancedEmail");
             enhancedEmailDiv.innerHTML = marked.parse(response);
