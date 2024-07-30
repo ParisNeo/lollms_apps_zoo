@@ -6,9 +6,11 @@
     <title>Personal Finance Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
     <style>
         body {
             background-color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         .transaction-card {
             transition: all 0.3s ease;
@@ -16,6 +18,19 @@
         .transaction-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #555;
         }
     </style>
 </head>
@@ -25,10 +40,16 @@
         <p class="mt-2 text-lg">Manage your finances effectively and track your progress over time.</p>
     </header>
 
-    <main class="flex flex-col items-center w-full max-w-4xl p-4">
-        <button id="add-transaction-btn" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105 mb-4">
-            + Add New Transaction
-        </button>
+    <main class="flex flex-col items-center w-full max-w-6xl p-4">
+        <div class="flex justify-between w-full mb-4">
+            <button id="add-transaction-btn" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">
+                + Add New Transaction
+            </button>
+            <div>
+                <button id="export-btn" class="bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700 transition duration-300 ease-in-out transform hover:scale-105 mr-2">Export to Excel</button>
+                <button id="import-btn" class="bg-purple-600 text-white p-3 rounded-lg hover:bg-purple-700 transition duration-300 ease-in-out transform hover:scale-105">Import from Excel</button>
+            </div>
+        </div>
 
         <section id="transaction-form-section" class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full hidden">
             <h2 class="text-2xl font-semibold mb-4">Add New Transaction</h2>
@@ -39,34 +60,39 @@
                     <option value="income">Income</option>
                     <option value="expense">Expense</option>
                 </select>
+                <input type="date" id="date" class="p-3 mb-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
                 <button type="submit" id="submit-btn" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">Add Transaction</button>
             </form>
         </section>
 
-        <section class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full">
-            <h2 class="text-2xl font-semibold mb-4">Financial Overview</h2>
-            <canvas id="financeChart" class="w-full h-64"></canvas>
-        </section>
+        <div class="flex w-full space-x-4 mt-6">
+            <section class="bg-white shadow-lg rounded-lg p-6 w-1/2">
+                <h2 class="text-2xl font-semibold mb-4">Financial Overview</h2>
+                <canvas id="financeChart" class="w-full h-64"></canvas>
+            </section>
+            
+            <section class="bg-white shadow-lg rounded-lg p-6 w-1/2">
+                <h2 class="text-2xl font-semibold mb-4">Monthly Summary</h2>
+                <canvas id="monthlySummaryChart" class="w-full h-64"></canvas>
+            </section>
+        </div>
 
         <section class="bg-white shadow-lg rounded-lg p-6 mt-6 w-full">
-            <h2 class="text-2xl font-semibold mb-4">Archived Transactions</h2>
-            <div class="flex space-x-4 mb-4">
-                <button id="export-btn" class="bg-green-600 text-white p-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105">Export to CSV</button>
-                <button id="import-btn" class="bg-yellow-600 text-white p-3 rounded-lg hover:bg-yellow-700 transition duration-300 ease-in-out transform hover:scale-105">Import from CSV</button>
-            </div>
-            <div id="transaction-list" class="grid grid-cols-1 gap-4"></div>
+            <h2 class="text-2xl font-semibold mb-4">Transaction History</h2>
+            <div id="transaction-list" class="grid grid-cols-1 gap-4 max-h-96 overflow-y-auto custom-scrollbar"></div>
         </section>
     </main>
 
     <footer class="bg-gradient-to-r from-blue-600 to-blue-800 text-white w-full p-4 text-center mt-6">
-        <p>&copy; 2023 Personal Finance Tracker. All rights reserved.</p>
+        <p>&copy; Personal Finance Tracker app. By ParisNeo using Lollms Apps Maker</p>
     </footer>
 
     <script>
         let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
         const transactionList = document.getElementById('transaction-list');
         const financeChart = document.getElementById('financeChart').getContext('2d');
-        let chart;
+        const monthlySummaryChart = document.getElementById('monthlySummaryChart').getContext('2d');
+        let chart, monthlyChart;
         let editingIndex = -1;
 
         const addTransactionBtn = document.getElementById('add-transaction-btn');
@@ -84,7 +110,7 @@
 
         function updateTransactionList() {
             transactionList.innerHTML = '';
-            transactions.forEach((transaction, index) => {
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date)).forEach((transaction, index) => {
                 const card = document.createElement('div');
                 card.className = 'transaction-card bg-gray-100 p-4 rounded-lg shadow-md flex justify-between items-center';
                 card.innerHTML = `
@@ -93,6 +119,7 @@
                         <p class="${transaction.type === 'income' ? 'text-green-600' : 'text-red-600'}">
                             ${transaction.type === 'income' ? '+' : '-'}$${transaction.amount.toFixed(2)}
                         </p>
+                        <p class="text-sm text-gray-500">${new Date(transaction.date).toLocaleDateString()}</p>
                     </div>
                     <div>
                         <button class="bg-yellow-500 text-white p-2 rounded-lg hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick="editTransaction(${index})">Edit</button>
@@ -101,13 +128,18 @@
                 `;
                 transactionList.appendChild(card);
             });
-            updateChart();
+            updateCharts();
         }
 
-        function updateChart() {
+        function updateCharts() {
+            updateFinanceChart();
+            updateMonthlySummaryChart();
+        }
+
+        function updateFinanceChart() {
             const incomeData = transactions.filter(t => t.type === 'income').map(t => t.amount);
             const expenseData = transactions.filter(t => t.type === 'expense').map(t => t.amount);
-            const labels = transactions.map((_, index) => `Transaction ${index + 1}`);
+            const labels = transactions.map(t => new Date(t.date).toLocaleDateString());
 
             const data = {
                 labels: labels,
@@ -151,16 +183,78 @@
             });
         }
 
+        function updateMonthlySummaryChart() {
+            const monthlySummary = transactions.reduce((acc, transaction) => {
+                const date = new Date(transaction.date);
+                const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
+                if (!acc[monthYear]) {
+                    acc[monthYear] = { income: 0, expense: 0 };
+                }
+                if (transaction.type === 'income') {
+                    acc[monthYear].income += transaction.amount;
+                } else {
+                    acc[monthYear].expense += transaction.amount;
+                }
+                return acc;
+            }, {});
+
+            const labels = Object.keys(monthlySummary);
+            const incomeData = labels.map(month => monthlySummary[month].income);
+            const expenseData = labels.map(month => monthlySummary[month].expense);
+
+            const data = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Income',
+                        data: incomeData,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Expense',
+                        data: expenseData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            };
+
+            if (monthlyChart) {
+                monthlyChart.destroy();
+            }
+
+            monthlyChart = new Chart(monthlySummaryChart, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
         document.getElementById('transaction-form').addEventListener('submit', function (e) {
             e.preventDefault();
             const description = document.getElementById('description').value;
             const amount = parseFloat(document.getElementById('amount').value);
             const type = document.getElementById('type').value;
+            const date = document.getElementById('date').value;
 
             if (editingIndex === -1) {
-                transactions.push({ description, amount, type });
+                transactions.push({ description, amount, type, date });
             } else {
-                transactions[editingIndex] = { description, amount, type };
+                transactions[editingIndex] = { description, amount, type, date };
                 editingIndex = -1;
                 submitBtn.textContent = 'Add Transaction';
             }
@@ -183,6 +277,7 @@
             document.getElementById('description').value = transaction.description;
             document.getElementById('amount').value = transaction.amount;
             document.getElementById('type').value = transaction.type;
+            document.getElementById('date').value = transaction.date;
 
             editingIndex = index;
             submitBtn.textContent = 'Update Transaction';
@@ -191,38 +286,35 @@
         }
 
         document.getElementById('export-btn').addEventListener('click', function () {
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + "Description,Amount,Type\n"
-                + transactions.map(e => `${e.description},${e.amount},${e.type}`).join("\n");
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "transactions.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const ws = XLSX.utils.json_to_sheet(transactions);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Transactions");
+            XLSX.writeFile(wb, "transactions.xlsx");
         });
 
         document.getElementById('import-btn').addEventListener('click', function () {
             const input = document.createElement('input');
             input.type = 'file';
-            input.accept = '.csv';
+            input.accept = '.xlsx, .xls';
             input.onchange = e => {
                 const file = e.target.files[0];
                 const reader = new FileReader();
                 reader.onload = event => {
-                    const text = event.target.result;
-                    const rows = text.split("\n").slice(1); // Skip header row
-                    rows.forEach(row => {
-                        const [description, amount, type] = row.split(",");
-                        if (description && amount && type) {
-                            transactions.push({ description, amount: parseFloat(amount), type });
-                        }
-                    });
+                    const data = new Uint8Array(event.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+                    transactions = jsonData.map(item => ({
+                        description: item.description,
+                        amount: parseFloat(item.amount),
+                        type: item.type,
+                        date: item.date
+                    }));
                     localStorage.setItem('transactions', JSON.stringify(transactions));
                     updateTransactionList();
                 };
-                reader.readAsText(file);
+                reader.readAsArrayBuffer(file);
             };
             input.click();
         });
