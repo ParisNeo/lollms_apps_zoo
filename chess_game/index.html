@@ -204,6 +204,7 @@
                 }
             }
             updateTurnIndicator();
+            enableMoves();  
         }
 
         function handleClick(event) {
@@ -228,6 +229,8 @@
                             gameStatus.textContent = `Checkmate! ${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} wins!`;
                             winnerInput.style.display = 'block';
                             showCredits();
+                            // Add this line to disable further moves
+                            board.removeEventListener('click', handleClick);
                         } else {
                             gameStatus.textContent = `${oppositeColor.charAt(0).toUpperCase() + oppositeColor.slice(1)} is in check!`;
                         }
@@ -247,7 +250,24 @@
                 selectPiece(square);
             }
         }
-
+        function enableMoves() {
+            const squares = document.querySelectorAll('.square');
+            squares.forEach(square => square.addEventListener('click', handleClick));
+        }
+        function resetGame() {
+            board.innerHTML = '';
+            gameStatus.textContent = '';
+            winnerInput.style.display = 'none';
+            selectedPiece = null;
+            currentPlayer = 'white';
+            whiteScore = 0;
+            blackScore = 0;
+            gameBoard = [];
+            createBoard();
+            updateTurnIndicator();
+            updateScore();
+            enableMoves();  // Add this line
+        }
         function selectPiece(square) {
             const piece = square.textContent;
             if (piece && ((currentPlayer === 'white' && piece.charCodeAt(0) >= 9812 && piece.charCodeAt(0) <= 9817) ||
@@ -331,7 +351,7 @@
             }
         }
 
-        function showBishopMoves(row, col) {
+        function    showBishopMoves(row, col) {
             const directions = [[-1, -1], [-1, 1], [1, -1], [1, 1]];
             for (const [dx, dy] of directions) {
                 let newRow = row + dx;
@@ -497,12 +517,14 @@
                     const piece = gameBoard[row][col];
                     if (piece && ((color === 'white' && piece.charCodeAt(0) >= 9818) || (color === 'black' && piece.charCodeAt(0) <= 9817))) {
                         if (canAttack(row, col, kingPosition.row, kingPosition.col)) {
+                            console.log("In check")
                             return true;
                         }
                     }
                 }
             }
 
+            console.log("Not in check")
             return false;
         }
 
@@ -563,24 +585,128 @@
             return false;
         }
 
-        function wouldBeInCheck(fromRow, fromCol, toRow, toCol) {
-            const tempPiece = gameBoard[toRow][toCol];
-            gameBoard[toRow][toCol] = gameBoard[fromRow][fromCol];
-            gameBoard[fromRow][fromCol] = '';
-            const inCheck = isInCheck(currentPlayer);
-            gameBoard[fromRow][fromCol] = gameBoard[toRow][toCol];
-            gameBoard[toRow][toCol] = tempPiece;
-            return inCheck;
+        function wouldBeInCheck(fromRow, fromCol, toRow, toCol, color) {
+            const tempBoard = gameBoard.map(row => [...row]);
+            console.log("Moving piece from", fromRow, fromCol, "to", toRow, toCol);
+            console.log("Piece being moved:", tempBoard[fromRow][fromCol]);
+            tempBoard[toRow][toCol] = tempBoard[fromRow][fromCol];
+            tempBoard[fromRow][fromCol] = '';
+            
+            console.log("Temporary board after move:");
+            console.table(tempBoard);
+            
+            return isInCheckOnBoard(color, tempBoard);
+        }
+
+        function isInCheckOnBoard(color, board) {
+            const king = color === 'white' ? '♔' : '♚';
+            let kingPosition = null;
+
+            // Find the king's position
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col] === king) {
+                        kingPosition = { row, col };
+                        break;
+                    }
+                }
+                if (kingPosition) break;
+            }
+
+            // If king is not found, log an error and return true (as if in check)
+            if (!kingPosition) {
+                console.error(`King not found for ${color}. Board state:`, board);
+                return true;
+            }
+
+            // Check if any opponent's piece can attack the king
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = board[row][col];
+                    if (piece && ((color === 'white' && piece.charCodeAt(0) >= 9818) || (color === 'black' && piece.charCodeAt(0) <= 9817))) {
+                        if (canAttackOnBoard(row, col, kingPosition.row, kingPosition.col, board)) {
+                            console.log(`${color} king at (${kingPosition.row},${kingPosition.col}) can be attacked by piece at (${row},${col})`);
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
+        }
+        function printBoard(board) {
+            for (let row = 0; row < 8; row++) {
+                console.log(board[row].map(piece => piece || '.').join(' '));
+            }
+        }
+        function canAttackOnBoard(fromRow, fromCol, toRow, toCol, board) {
+            const piece = board[fromRow][fromCol];
+            switch (piece) {
+                case '♔': case '♚': // King
+                    return Math.abs(fromRow - toRow) <= 1 && Math.abs(fromCol - toCol) <= 1;
+                    case '♕': case '♛': // Queen
+                        return canAttackStraightOnBoard(fromRow, fromCol, toRow, toCol, board) || 
+                            canAttackDiagonalOnBoard(fromRow, fromCol, toRow, toCol, board);
+                case '♖': case '♜': // Rook
+                    return canAttackStraightOnBoard(fromRow, fromCol, toRow, toCol, board);
+                case '♗': case '♝': // Bishop
+                    return canAttackDiagonalOnBoard(fromRow, fromCol, toRow, toCol, board);
+                case '♘': case '♞': // Knight
+                    const dx = Math.abs(fromRow - toRow);
+                    const dy = Math.abs(fromCol - toCol);
+                    return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+                case '♙': case '♟': // Pawn
+                    const direction = piece === '♙' ? -1 : 1;
+                    return (Math.abs(fromCol - toCol) === 1 && fromRow + direction === toRow);
+            }
+            return false;
+        }
+        function canAttackStraightOnBoard(fromRow, fromCol, toRow, toCol, board) {
+            if (fromRow === toRow) {
+                const step = fromCol < toCol ? 1 : -1;
+                for (let col = fromCol + step; col !== toCol; col += step) {
+                    if (board[fromRow][col] !== '') return false;
+                }
+                return true;
+            }
+            if (fromCol === toCol) {
+                const step = fromRow < toRow ? 1 : -1;
+                for (let row = fromRow + step; row !== toRow; row += step) {
+                    if (board[row][fromCol] !== '') return false;
+                }
+                return true;
+            }
+            return false;
+        }
+        function canAttackDiagonalOnBoard(fromRow, fromCol, toRow, toCol, board) {
+            if (Math.abs(fromRow - toRow) === Math.abs(fromCol - toCol)) {
+                const rowStep = fromRow < toRow ? 1 : -1;
+                const colStep = fromCol < toCol ? 1 : -1;
+                let row = fromRow + rowStep;
+                let col = fromCol + colStep;
+                while (row !== toRow && col !== toCol) {
+                    if (board[row][col] !== '') return false;
+                    row += rowStep;
+                    col += colStep;
+                }
+                return true;
+            }
+            return false;
         }
 
         function isCheckmate(color) {
+            if (!isInCheck(color)) return false;
+            console.log("Check detected. Current board state:");
+            printBoard(gameBoard);            
+            
             for (let fromRow = 0; fromRow < 8; fromRow++) {
                 for (let fromCol = 0; fromCol < 8; fromCol++) {
                     const piece = gameBoard[fromRow][fromCol];
                     if (piece && ((color === 'white' && piece.charCodeAt(0) <= 9817) || (color === 'black' && piece.charCodeAt(0) >= 9818))) {
                         for (let toRow = 0; toRow < 8; toRow++) {
                             for (let toCol = 0; toCol < 8; toCol++) {
-                                if (canAttack(fromRow, fromCol, toRow, toCol) && !wouldBeInCheck(fromRow, fromCol, toRow, toCol)) {
+                                if (canMove(fromRow, fromCol, toRow, toCol) && !wouldBeInCheck(fromRow, fromCol, toRow, toCol, color)) {
+                                    console.log("move is possible from (", fromRow, ",", fromCol, ") to (", toRow, ",", toCol, ")");
                                     return false;
                                 }
                             }
@@ -588,8 +714,26 @@
                     }
                 }
             }
+            console.log("Checkmate detected");
             return true;
         }
+
+    function canMove(fromRow, fromCol, toRow, toCol) {
+        const piece = gameBoard[fromRow][fromCol];
+        const targetPiece = gameBoard[toRow][toCol];
+        
+        // Check if the move is to a different square
+        if (fromRow === toRow && fromCol === toCol) return false;
+        
+        // Check if the target square is empty or contains an opponent's piece
+        if (targetPiece !== '' && ((currentPlayer === 'black' && targetPiece.charCodeAt(0) <= 9817) || 
+                                (currentPlayer === 'white' && targetPiece.charCodeAt(0) >= 9818))) {
+            return false;
+        }
+        console.log("piece ",piece," cam move from (", fromRow, ",", fromCol, ") to (", toRow, ",", toCol, ")")
+        // Use the existing canAttack function to check if the move is valid for the piece
+        return canAttack(fromRow, fromCol, toRow, toCol);
+    }
 
         function saveWinner() {
             const winnerName = winnerNameInput.value.trim();
