@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Groovy Tunes Player</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .theme-default {
+            --bg-color: #f3f4f6;
+            --text-color: #1f2937;
+            --accent-color: #3b82f6;
+            --hover-color: rgba(0, 0, 0, 0.05);
+            --sidebar-bg: #e5e7eb;
+        }
+        .theme-dark {
+            --bg-color: #1f2937;
+            --text-color: #f3f4f6;
+            --accent-color: #60a5fa;
+            --hover-color: rgba(255, 255, 255, 0.1);
+            --sidebar-bg: #111827;
+        }
+        .theme-neon {
+            --bg-color: #0c0c0c;
+            --text-color: #00ff00;
+            --accent-color: #ff00ff;
+            --hover-color: rgba(0, 255, 0, 0.1);
+            --sidebar-bg: #1a1a1a;
+        }
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+        }
+        .btn {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+        .btn:hover {
+            filter: brightness(110%);
+        }
+        .track-item:hover,
+        .playlist-item:hover {
+            background-color: var(--hover-color);
+        }
+        .track-item.dragging {
+            opacity: 0.5;
+        }
+        .sidebar {
+            background-color: var(--sidebar-bg);
+        }
+        .playlist-item {
+            background-color: var(--bg-color);
+            border: 1px solid var(--accent-color);
+        }
+        #themeSelect,
+        #audioUpload + label {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+        #progressBarContainer {
+            background-color: var(--text-color);
+            opacity: 0.3;
+        }
+        #progressBar {
+            background-color: var(--accent-color);
+        }
+        .playing {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+        .playing:hover {
+            background-color: var(--accent-color);
+            filter: brightness(110%);
+        }     
+        
+        #visualizerContainer {
+            background-color: var(--bg-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 4px;
+        }
+        
+        #animationSelect {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+    </style>
+</head>
+<body class="theme-default">
+    <div class="flex h-screen">
+        <!-- Playlists Sidebar -->
+        <div class="w-64 sidebar  p-4 overflow-y-auto">
+            <h2 class="text-xl font-bold mb-4">Playlists</h2>
+            <ul id="playlistsList" class="space-y-2"></ul>
+            <button id="createPlaylistBtn" class="btn text-white px-4 py-2 rounded mt-4 w-full">
+                <i class="fas fa-plus mr-2"></i>Create Playlist
+            </button>
+            <div class="mb-4 pt-4 flex justify-center items-center bottom-2">
+                <label for="animationSelect" class="mr-2">Animation:</label>
+                <select id="animationSelect" class="border border-gray-300 rounded px-3 py-2">
+                    <option value="none">None</option>
+                    <option value="time">Waveform</option>
+                    <option value="spectrum">Spectrum</option>
+                </select>
+            </div>        
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col p-6">
+            <h1 class="text-3xl font-bold text-center mb-4">Groovy Tunes Player</h1>
+            <div class="mb-4 flex justify-between items-center">
+                <input type="file" id="audioUpload" accept="audio/*" class="hidden" multiple>
+                <label for="audioUpload" class="btn px-4 py-2 rounded cursor-pointer">
+                    <i class="fas fa-upload mr-2"></i>Upload Tracks
+                </label>
+                <select id="themeSelect" class="border border-gray-300 rounded px-3 py-2">
+                    <option value="default">Default Theme</option>
+                    <option value="dark">Dark Theme</option>
+                    <option value="neon">Neon Theme</option>
+                </select>
+            </div>
+            <ul id="audioList" class="flex-grow overflow-y-auto mb-4"></ul>
+            <div class="flex justify-end mb-4">
+                <button id="exportPlaylistBtn" class="btn text-white px-4 py-2 rounded">
+                    <i class="fas fa-file-export mr-2"></i>Export Playlist
+                </button>
+            </div>
+            <div id="playerControls" class="flex justify-center items-center space-x-4 mb-4">
+                <button id="prevBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-step-backward"></i></button>
+                <button id="playBtn" class="btn text-white p-4 rounded-full"><i class="fas fa-play"></i></button>
+                <button id="nextBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-step-forward"></i></button>
+                <button id="shuffleBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-random"></i></button>
+            </div>
+            <div id="progressBarContainer" class="w-full bg-gray-200 rounded-full h-2 mb-2 cursor-pointer">
+                <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+            </div>
+            <p id="currentTrack" class="text-center font-semibold"></p>
+        </div>
+    </div>
+
+    <audio id="audioPlayer" class="hidden"></audio>
+    <div id="visualizerContainer" class="w-full h-16 mb-4 hidden">
+        <canvas id="visualizer" class="w-full h-full"></canvas>
+    </div>
+    <script>
+        console.log('Visualizer container:', document.getElementById('visualizerContainer'));
+        console.log('Visualizer canvas:', document.getElementById('visualizer'));
+    </script>
+    <script>
+        let audioSource;
+        const audioUpload = document.getElementById('audioUpload');
+        const audioList = document.getElementById('audioList');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const createPlaylistBtn = document.getElementById('createPlaylistBtn');
+        const exportPlaylistBtn = document.getElementById('exportPlaylistBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const currentTrack = document.getElementById('currentTrack');
+        const themeSelect = document.getElementById('themeSelect');
+
+        let audioFiles = [];
+        let currentIndex = 0;
+        let isPlaying = false;
+        let isShuffled = false;
+        let db;
+
+        // Initialize IndexedDB
+        const dbName = 'AudioPlayerDB';
+        const dbVersion = 1;
+        const request = indexedDB.open(dbName, dbVersion);
+
+        request.onerror = function(event) {
+            console.error("IndexedDB error:", event.target.error);
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            loadTracksFromDB();
+        };
+
+        request.onupgradeneeded = function(event) {
+            db = event.target.result;
+            const objectStore = db.createObjectStore("tracks", { keyPath: "name" });
+        };
+
+        function loadTracksFromDB() {
+            const transaction = db.transaction(["tracks"], "readonly");
+            const objectStore = transaction.objectStore("tracks");
+            const request = objectStore.getAll();
+
+            request.onsuccess = function(event) {
+                audioFiles = event.target.result;
+                updateAudioList();
+            };
+        }
+
+        function saveTracksToDB() {
+            const transaction = db.transaction(["tracks"], "readwrite");
+            const objectStore = transaction.objectStore("tracks");
+
+            audioFiles.forEach(track => {
+                objectStore.put(track);
+            });
+        }
+
+        audioUpload.addEventListener('change', (event) => {
+            const files = Array.from(event.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const track = { name: file.name, data: e.target.result };
+                    audioFiles.push(track);
+                    saveTracksToDB();
+                    updateAudioList();
+                };
+                reader.readAsArrayBuffer(file);
+            });
+            audioUpload.value = '';
+        });
+
+        function updateAudioList() {
+            audioList.innerHTML = '';
+            audioFiles.forEach((file, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'track-item flex justify-between items-center p-2 border-b cursor-move';
+                listItem.draggable = true;
+                listItem.dataset.index = index;
+                listItem.innerHTML = `
+                    <span class="flex-grow">${file.name}</span>
+                    <button class="remove-btn text-red-500 px-2" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                audioList.appendChild(listItem);
+            });
+            addDragAndDropListeners();
+            updateTrackHighlight();  // Add this line
+        }
+
+        function addDragAndDropListeners() {
+            const trackItems = document.querySelectorAll('.track-item');
+            trackItems.forEach(item => {
+                item.addEventListener('dragstart', dragStart);
+                item.addEventListener('dragover', dragOver);
+                item.addEventListener('drop', drop);
+                item.addEventListener('dragend', dragEnd);
+            });
+        }
+
+        function dragStart(e) {
+            e.dataTransfer.setData('text/plain', e.target.dataset.index);
+            e.target.classList.add('dragging');
+        }
+
+        function dragOver(e) {
+            e.preventDefault();
+        }
+
+        function drop(e) {
+            e.preventDefault();
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = parseInt(e.target.closest('.track-item').dataset.index);
+            const movedItem = audioFiles.splice(fromIndex, 1)[0];
+            audioFiles.splice(toIndex, 0, movedItem);
+            updateAudioList();
+            saveTracksToDB();
+        }
+
+        function dragEnd(e) {
+            e.target.classList.remove('dragging');
+        }
+
+        audioList.addEventListener('click', (event) => {
+            if (event.target.classList.contains('remove-btn') || event.target.closest('.remove-btn')) {
+                const index = parseInt(event.target.closest('.remove-btn').dataset.index);
+                audioFiles.splice(index, 1);
+                updateAudioList();
+                saveTracksToDB();
+            } else if (event.target.closest('.track-item')) {
+                currentIndex = parseInt(event.target.closest('.track-item').dataset.index);
+                playTrack();
+            }
+        });
+
+        playBtn.addEventListener('click', togglePlay);
+        prevBtn.addEventListener('click', playPrevious);
+        nextBtn.addEventListener('click', playNext);
+        shuffleBtn.addEventListener('click', toggleShuffle);
+
+        function togglePlay() {
+            if (audioFiles.length === 0) return;
+            if (isPlaying) {
+                audioPlayer.pause();
+                playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            } else {
+                playTrack();
+            }
+            isPlaying = !isPlaying;
+        }
+
+        function playTrack() {
+            const track = audioFiles[currentIndex];
+            const blob = new Blob([track.data], { type: 'audio/mpeg' });
+            const url = URL.createObjectURL(blob);
+            audioPlayer.src = url;
+            audioPlayer.play();
+            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            isPlaying = true;
+            currentTrack.textContent = track.name;
+            updateTrackHighlight();  // Add this line
+            onPlayTrack();
+            visualizerContainer.classList.remove('hidden');
+            resizeCanvas();
+
+        }
+
+        function playPrevious() {
+            currentIndex = (currentIndex - 1 + audioFiles.length) % audioFiles.length;
+            playTrack();
+            updateTrackHighlight();  // Add this line
+        }
+        
+        function playNext() {
+            currentIndex = (currentIndex + 1) % audioFiles.length;
+            playTrack();
+            updateTrackHighlight();  // Add this line
+        }
+
+        function toggleShuffle() {
+            isShuffled = !isShuffled;
+            shuffleBtn.classList.toggle('text-blue-500');
+        }
+
+        progressBarContainer.addEventListener('click', (event) => {
+            const rect = progressBarContainer.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const clickedValue = x / rect.width;
+            audioPlayer.currentTime = clickedValue * audioPlayer.duration;
+        });
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+        });
+
+        audioPlayer.addEventListener('ended', playNext);
+
+        exportPlaylistBtn.addEventListener('click', () => {
+            const playlistData = JSON.stringify(audioFiles.map(track => track.name), null, 2);
+            const blob = new Blob([playlistData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'playlist.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        themeSelect.addEventListener('change', (event) => {
+            document.body.className = `theme-${event.target.value}`;
+        });
+
+        function updatePlaylistsList() {
+            const playlistsList = document.getElementById('playlistsList');
+            playlistsList.innerHTML = '';
+            const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+            playlists.forEach((playlist, index) => {
+                const listItem = document.createElement('li');
+                listItem.className = 'playlist-item flex justify-between items-center p-2 bg-white rounded shadow cursor-pointer';
+                listItem.innerHTML = `
+                    <span>${playlist.name}</span>
+                    <button class="remove-playlist-btn text-red-500 px-2" data-index="${index}">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                `;
+                playlistsList.appendChild(listItem);
+            });
+        }
+
+        document.getElementById('playlistsList').addEventListener('click', (event) => {
+            if (event.target.classList.contains('remove-playlist-btn') || event.target.closest('.remove-playlist-btn')) {
+                const index = parseInt(event.target.closest('.remove-playlist-btn').dataset.index);
+                const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+                playlists.splice(index, 1);
+                localStorage.setItem('playlists', JSON.stringify(playlists));
+                updatePlaylistsList();
+            } else if (event.target.closest('.playlist-item')) {
+                const index = Array.from(event.target.closest('.playlist-item').parentNode.children).indexOf(event.target.closest('.playlist-item'));
+                const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+                const selectedPlaylist = playlists[index];
+                audioFiles = audioFiles.filter(file => selectedPlaylist.tracks.includes(file.name));
+                updateAudioList();
+            }
+        });
+
+        createPlaylistBtn.addEventListener('click', () => {
+            const playlistName = prompt('Enter playlist name:');
+            if (playlistName) {
+                const playlist = { name: playlistName, tracks: audioFiles.map(track => track.name) };
+                const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+                playlists.push(playlist);
+                localStorage.setItem('playlists', JSON.stringify(playlists));
+                updatePlaylistsList();
+                alert('Playlist created successfully!');
+            }
+        });
+
+        function highlightPlayingTrack(index) {
+            // Remove 'playing' class from all tracks
+            document.querySelectorAll('.track-item').forEach(item => {
+                item.classList.remove('playing');
+            });
+            
+            // Add 'playing' class to the current track
+            const currentTrack = document.querySelector(`.track-item[data-index="${index}"]`);
+            if (currentTrack) {
+                currentTrack.classList.add('playing');
+            }
+        }
+        
+        function updateTrackHighlight() {
+            highlightPlayingTrack(currentIndex);
+        }
+
+        function setTheme(themeName) {
+            document.body.className = `theme-${themeName}`;
+            localStorage.setItem('theme', themeName);
+            themeSelect.value = themeName;
+        }
+
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+            } else {
+                setTheme('default');
+            }
+        }
+
+        themeSelect.addEventListener('change', (event) => {
+            setTheme(event.target.value);
+        });
+        loadSavedTheme();
+        updatePlaylistsList();
+        const visualizerContainer = document.getElementById('visualizerContainer');
+        const visualizer = document.getElementById('visualizer');
+        const animationSelect = document.getElementById('animationSelect');
+        console.log('Initial animation type:', animationSelect.value);
+        let animationFrame;
+        let audioContext;
+        let analyser;
+        let dataArray;
+        
+        animationSelect.addEventListener('change', (event) => {
+            const animationType = event.target.value;
+            if (animationType === 'none') {
+                visualizerContainer.classList.add('hidden');
+                cancelAnimationFrame(animationFrame);
+            } else {
+                visualizerContainer.classList.remove('hidden');
+                setupAudioContext();
+                if (animationType === 'time') {
+                    animateWaveform();
+                } else if (animationType === 'spectrum') {
+                    animateSpectrum();
+                }
+            }
+        });
+        
+        function setupAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                audioSource = audioContext.createMediaElementSource(audioPlayer);
+                audioSource.connect(analyser);
+                analyser.connect(audioContext.destination);
+                analyser.fftSize = 2048; // Increased for better resolution
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+            }
+        }
+        
+        function animateWaveform() {
+            const ctx = visualizer.getContext('2d');
+            const width = visualizer.width;
+            const height = visualizer.height;
+        
+            function draw() {
+                animationFrame = requestAnimationFrame(draw);
+        
+                analyser.getByteTimeDomainData(dataArray);
+        
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color');
+                ctx.fillRect(0, 0, width, height);
+        
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent-color');
+        
+                ctx.beginPath();
+        
+                const sliceWidth = width * 1.0 / dataArray.length;
+                let x = 0;
+        
+                for (let i = 0; i < dataArray.length; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * height / 2;
+        
+                    if (i === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+        
+                    x += sliceWidth;
+                }
+        
+                ctx.lineTo(width, height / 2);
+                ctx.stroke();
+            }
+        
+            draw();
+        }
+        
+        function animateSpectrum() {
+            console.log('Animating spectrum');
+            const ctx = visualizer.getContext('2d');
+            const width = visualizer.width;
+            const height = visualizer.height;
+        
+            function draw() {
+                animationFrame = requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                ctx.clearRect(0, 0, width, height);
+                const barWidth = width / dataArray.length;
+                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent-color');
+                for (let i = 0; i < dataArray.length; i++) {
+                    const barHeight = (dataArray[i] / 255) * height;
+                    ctx.fillRect(i * barWidth, height - barHeight, barWidth, barHeight);
+                }
+            }
+        
+            draw();
+        }
+        
+        function onPlayTrack() {
+            console.log('onPlayTrack called');
+            const animationType = animationSelect.value;
+            console.log('Animation type:', animationType);
+            if (animationType !== 'none') {
+                setupAudioContext();
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                if (animationType === 'time') {
+                    animateWaveform(); // Changed from animateTime to animateWaveform
+                } else if (animationType === 'spectrum') {
+                    animateSpectrum();
+                }
+            }
+        }
+        // Ensure the canvas size matches its display size
+        function resizeCanvas() {
+            visualizer.width = visualizer.offsetWidth;
+            visualizer.height = visualizer.offsetHeight;
+            if (animationSelect.value !== 'none') onPlayTrack();
+            
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+    </script>
+</body>
+</html>
