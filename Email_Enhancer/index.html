@@ -51,6 +51,10 @@
             const emailClient = document.getElementById("emailClient");
             const email_client = localStorage.getItem("emailClient") || "Gmail";
             emailClient.value = email_client;
+
+            const signatureInput = document.getElementById("signature");
+            const savedSignature = localStorage.getItem("signature") || "";
+            signatureInput.value = savedSignature;
         });
 
         function saveSettings() {
@@ -60,7 +64,9 @@
             const emailTypeSelect = document.getElementById("emailType");
             const toneSelect = document.getElementById("tone");
             const emailClient = document.getElementById("emailClient");
+            const signatureInput = document.getElementById("signature");
 
+            localStorage.setItem("signature", signatureInput.value);
             localStorage.setItem("host_address", hostInput.value);
             localStorage.setItem("n_predict", nPredictInput.value);
             localStorage.setItem("temperature", temperatureInput.value);
@@ -77,12 +83,13 @@
             const temperature = document.getElementById("temperature").value;
             const emailType = document.getElementById("emailType").value;
             const tone = document.getElementById("tone").value;
+            const signature = document.getElementById("signature").value;
 
             console.log("Enhancing email with prompt:", prompt);
             document.getElementById("loading").classList.remove("hidden");
 
             // Generate enhanced email body
-            const bodyPrompt = "!@>system: Enhance the following email. Please respond in markdown format with a well formatted text.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"!@>enhanced email:";
+            const bodyPrompt = "!@>system: Enhance the following email. Please respond in markdown format with a well formatted text. Include the signature at the end of the email, maintaining any formatting (such as line breaks) present in the signature.\n!@>email to enhance:\n"+prompt+"\n!@>language: use the same language as the original email.\n!@>type: "+emailType+"\n!@>tone: "+tone+"\n!@>signature:\n"+signature+"\n!@>enhanced email:";
             const enhancedBody = await lollms_generate(bodyPrompt, hostAddress, "-1", nPredict, false, temperature, emailType, tone);
             
             // Generate subject for the enhanced email
@@ -225,13 +232,15 @@
         <input id="n_predict" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" />
         <label class="block mt-2">Temperature:</label>
         <input id="temperature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" type="number" step="0.1" />
-        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Save Settings</button>
+        <label class="block mt-2">Signature:</label>
+        <textarea id="signature" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Enter your email signature"></textarea>
         <label class="block mt-2">Email Client:</label>
         <select id="emailClient" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
             <option value="Gmail">Gmail</option>
             <option value="Outlook">Outlook</option>
             <option value="Hotmail">Hotmail</option>
         </select>
+        <button onclick="saveSettings()" class="mt-4 bg-green-600 text-white py-2 px-4 rounded-lg transition duration-300 hover:bg-green-700 w-full">Save Settings</button>
     </div>
 </body>
 </html>

@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced YouTube Script Enhancer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/lollms_js"></script>
+    <style>
+        body {
+            background-color: #f0f4f8;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white shadow-lg rounded-lg p-8 w-full max-w-2xl">
+        <h1 class="text-3xl font-bold text-center mb-6 gradient-bg text-white p-4 rounded-lg">Advanced YouTube Script Enhancer</h1>
+        
+        <div class="mb-4">
+            <label for="scriptInput" class="block text-sm font-medium text-gray-700 mb-2">Original Script</label>
+            <textarea id="scriptInput" rows="6" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Paste your YouTube script here..."></textarea>
+        </div>
+        
+        <div class="mb-4">
+            <label for="toneSelect" class="block text-sm font-medium text-gray-700 mb-2">Select Tone</label>
+            <select id="toneSelect" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <option value="Humorous">Humorous</option>
+                <option value="Professional">Professional</option>
+                <option value="Casual">Casual</option>
+                <option value="Formal">Formal</option>
+            </select>
+        </div>
+        
+        <button id="enhanceButton" class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out transform hover:scale-105">Enhance Script</button>
+        
+        <div class="mt-6">
+            <h2 class="text-xl font-semibold mb-2">Enhanced Script:</h2>
+            <div id="enhancedOutput" class="w-full p-4 border border-gray-300 rounded-md bg-gray-50 min-h-[150px] max-h-[300px] overflow-y-auto"></div>
+        </div>
+        
+        <div class="mt-4 flex justify-end">
+            <button id="copyButton" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-300 ease-in-out mr-2">Copy to Clipboard</button>
+            <button id="toggleMarkdownButton" class="bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 transition duration-300 ease-in-out">Toggle Markdown</button>
+        </div>
+    </div>
+
+    <script>
+        const ctx_size = 4096;
+        const max_gen_size = 4096;
+        const lc = new LollmsClient(null, null, ctx_size, -1, max_gen_size);
+
+        let isMarkdownRendered = false;
+        let enhancedText = '';
+
+        document.getElementById('enhanceButton').addEventListener('click', async () => {
+            const userScript = document.getElementById('scriptInput').value;
+            const selectedTone = document.getElementById('toneSelect').value;
+            const systemPrompt = `Enhance the following YouTube script with a ${selectedTone.toLowerCase()} tone. Please respond with a well formatted text. Do not write annotations, just enhance the script and answer with one or multiple paragraphs.`;
+            const prompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message("youtube script") + "\n" + userScript + lc.template.separator_template + lc.user_message("language") + "use the same language as the original script." + lc.template.separator_template + `!@>type: ${selectedTone}\n` + lc.ai_message("enhanced youtube script").trim();
+            
+            try {
+                enhancedText = await lc.generate(prompt);
+                document.getElementById('enhancedOutput').innerHTML = enhancedText;
+            } catch (error) {
+                console.error("Error generating text:", error);
+            }
+        });
+
+        document.getElementById('copyButton').addEventListener('click', () => {
+            navigator.clipboard.writeText(enhancedText).then(() => {
+                alert('Enhanced script copied to clipboard!');
+            });
+        });
+
+        document.getElementById('toggleMarkdownButton').addEventListener('click', () => {
+            const outputDiv = document.getElementById('enhancedOutput');
+            if (isMarkdownRendered) {
+                outputDiv.innerHTML = enhancedText;
+            } else {
+                outputDiv.innerHTML = marked.parse(enhancedText);
+            }
+            isMarkdownRendered = !isMarkdownRendered;
+        });
+    </script>
+</body>
+</html>
