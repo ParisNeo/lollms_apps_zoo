@@ -85,28 +85,52 @@
             background-color: var(--accent-color);
             color: var(--bg-color);
         }
+        .animation-btn {
+            transition: all 0.3s ease;
+        }
+
+        .animation-btn.bg-accent-color {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .animation-btn:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body class="theme-default">
     <div class="flex h-screen">
         <!-- Playlists Sidebar -->
-        <div class="w-64 sidebar  p-4 overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">Playlists</h2>
-            <ul id="playlistsList" class="space-y-2"></ul>
-            <button id="createPlaylistBtn" class="btn text-white px-4 py-2 rounded mt-4 w-full">
-                <i class="fas fa-plus mr-2"></i>Create Playlist
-            </button>
-            <div class="mb-4 pt-4 flex justify-center items-center bottom-2">
-                <label for="animationSelect" class="mr-2">Animation:</label>
-                <select id="animationSelect" class="border border-gray-300 rounded px-3 py-2">
-                    <option value="none">None</option>
-                    <option value="time">Waveform</option>
-                    <option value="spectrum">Spectrum</option>
-                </select>
-            </div>        
-        </div>
-
-        <!-- Main Content -->
+        <div class="w-64 sidebar p-4 flex flex-col">
+            <div class="flex-grow overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Playlists</h2>
+                <ul id="playlistsList" class="space-y-2"></ul>
+                <button id="createPlaylistBtn" class="btn text-white px-4 py-2 rounded mt-4 w-full">
+                    <i class="fas fa-plus mr-2"></i>Create Playlist
+                </button>
+            </div>
+            <div class="mt-auto pt-4">
+                <h3 class="text-lg font-semibold mb-2">Visualizer</h3>
+                <div id="animationToolbar" class="flex justify-around items-center">
+                    <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+                        </svg>
+                    </button>
+                    <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="time">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </button>
+                    <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="spectrum">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>        <!-- Main Content -->
         <div class="flex-1 flex flex-col p-6">
             <h1 class="text-3xl font-bold text-center mb-4">Groovy Tunes Player</h1>
             <div class="mb-4 flex justify-between items-center">
@@ -126,6 +150,9 @@
                     <i class="fas fa-file-export mr-2"></i>Export Playlist
                 </button>
             </div>
+            <div id="visualizerContainer" class="w-full h-16 mb-4 hidden">
+                <canvas id="visualizer" class="w-full h-full"></canvas>
+            </div>
             <div id="playerControls" class="flex justify-center items-center space-x-4 mb-4">
                 <button id="prevBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-step-backward"></i></button>
                 <button id="playBtn" class="btn text-white p-4 rounded-full"><i class="fas fa-play"></i></button>
@@ -140,9 +167,6 @@
     </div>
 
     <audio id="audioPlayer" class="hidden"></audio>
-    <div id="visualizerContainer" class="w-full h-16 mb-4 hidden">
-        <canvas id="visualizer" class="w-full h-full"></canvas>
-    </div>
     <script>
         console.log('Visualizer container:', document.getElementById('visualizerContainer'));
         console.log('Visualizer canvas:', document.getElementById('visualizer'));
@@ -449,28 +473,43 @@
         updatePlaylistsList();
         const visualizerContainer = document.getElementById('visualizerContainer');
         const visualizer = document.getElementById('visualizer');
-        const animationSelect = document.getElementById('animationSelect');
-        console.log('Initial animation type:', animationSelect.value);
         let animationFrame;
         let audioContext;
         let analyser;
         let dataArray;
         
-        animationSelect.addEventListener('change', (event) => {
-            const animationType = event.target.value;
-            if (animationType === 'none') {
+        const animationToolbar = document.getElementById('animationToolbar');
+        let currentAnimationType = 'none';
+
+        animationToolbar.addEventListener('click', (event) => {
+            const button = event.target.closest('.animation-btn');
+            if (button) {
+                const animationType = button.dataset.type;
+                setAnimationType(animationType);
+            }
+        });
+        
+        function setAnimationType(type) {
+            currentAnimationType = type;
+            document.querySelectorAll('.animation-btn').forEach(btn => {
+                btn.classList.toggle('bg-accent-color', btn.dataset.type === type);
+            });
+
+            if (type === 'none') {
                 visualizerContainer.classList.add('hidden');
                 cancelAnimationFrame(animationFrame);
             } else {
                 visualizerContainer.classList.remove('hidden');
                 setupAudioContext();
-                if (animationType === 'time') {
+                if (type === 'time') {
                     animateWaveform();
-                } else if (animationType === 'spectrum') {
+                } else if (type === 'spectrum') {
                     animateSpectrum();
                 }
             }
-        });
+
+            saveVisualizerStatus(type);
+        }
         
         function setupAudioContext() {
             if (!audioContext) {
@@ -549,16 +588,15 @@
         
         function onPlayTrack() {
             console.log('onPlayTrack called');
-            const animationType = animationSelect.value;
-            console.log('Animation type:', animationType);
-            if (animationType !== 'none') {
+            console.log('Animation type:', currentAnimationType);
+            if (currentAnimationType !== 'none') {
                 setupAudioContext();
                 if (audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
-                if (animationType === 'time') {
-                    animateWaveform(); // Changed from animateTime to animateWaveform
-                } else if (animationType === 'spectrum') {
+                if (currentAnimationType === 'time') {
+                    animateWaveform();
+                } else if (currentAnimationType === 'spectrum') {
                     animateSpectrum();
                 }
             }
@@ -570,7 +608,21 @@
             if (animationSelect.value !== 'none') onPlayTrack();
             
         }
-        
+
+        function saveVisualizerStatus(type) {
+            localStorage.setItem('visualizerType', type);
+        }
+
+        function loadVisualizerStatus() {
+            return localStorage.getItem('visualizerType') || 'none';
+        }
+        function initializeVisualizer() {
+            const savedType = loadVisualizerStatus();
+            setAnimationType(savedType);
+        }
+
+        // Call this function when the page loads
+        document.addEventListener('DOMContentLoaded', initializeVisualizer);
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
