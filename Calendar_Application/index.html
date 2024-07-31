@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendar Application</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
+    <style>
+        #calendar {
+            max-width: 900px;
+            margin: 40px auto;
+        }
+        .dark-mode {
+            color: #ffffff !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800 dark:bg-gray-800 dark:text-white">
+    <div class="container mx-auto p-5">
+        <h1 class="text-3xl font-bold text-center mb-5">Calendar Application</h1>
+        <div class="flex justify-between mb-4">
+            <button id="themeToggle" class="bg-yellow-500 text-white px-4 py-2 rounded dark:dark-mode">Toggle Theme</button>
+            <button id="addEvent" class="bg-green-500 text-white px-4 py-2 rounded dark:dark-mode">Add Event</button>
+        </div>
+        <div id="calendar"></div>
+    </div>
+
+    <div id="eventModal" class="fixed inset-0 bg-gray-800 bg-opacity-50 hidden justify-center items-center dark:bg-gray-700">
+        <div class="bg-white dark:bg-gray-700 p-5 rounded shadow-lg w-1/3">
+            <h2 class="text-xl font-bold mb-4 dark:text-white">Add Event</h2>
+            <input type="text" id="eventTitle" placeholder="Event Title" class="border p-2 w-full mb-4 dark:bg-gray-600 dark:text-white">
+            <input type="datetime-local" id="eventDate" class="border p-2 w-full mb-4 dark:bg-gray-600 dark:text-white">
+            <button id="saveEvent" class="bg-blue-500 text-white px-4 py-2 rounded dark:dark-mode">Save Event</button>
+            <button id="closeModal" class="bg-red-500 text-white px-4 py-2 rounded ml-2 dark:dark-mode">Close</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load theme from local storage
+            const storedTheme = localStorage.getItem('calendarTheme') || 'light';
+            document.body.classList.toggle('bg-gray-800', storedTheme === 'dark');
+            document.body.classList.toggle('bg-gray-100', storedTheme === 'light');
+            document.body.classList.toggle('text-white', storedTheme === 'dark');
+
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                },
+                events: [],
+                dateClick: function(info) {
+                    openModal(info.dateStr);
+                }
+            });
+            calendar.render();
+
+            document.getElementById('themeToggle').addEventListener('click', function() {
+                const newTheme = storedTheme === 'light' ? 'dark' : 'light';
+                localStorage.setItem('calendarTheme', newTheme);
+                document.body.classList.toggle('bg-gray-800', newTheme === 'dark');
+                document.body.classList.toggle('bg-gray-100', newTheme === 'light');
+                document.body.classList.toggle('text-white', newTheme === 'dark');
+            });
+
+            document.getElementById('addEvent').addEventListener('click', function() {
+                openModal();
+            });
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('saveEvent').addEventListener('click', saveEvent);
+
+            function openModal(dateStr) {
+                document.getElementById('eventModal').classList.remove('hidden');
+                if (dateStr) {
+                    document.getElementById('eventDate').value = dateStr;
+                }
+            }
+
+            function closeModal() {
+                document.getElementById('eventModal').classList.add('hidden');
+                document.getElementById('eventTitle').value = '';
+                document.getElementById('eventDate').value = '';
+            }
+
+            function saveEvent() {
+                var title = document.getElementById('eventTitle').value;
+                var date = document.getElementById('eventDate').value;
+                if (title && date) {
+                    calendar.addEvent({
+                        title: title,
+                        start: date,
+                        allDay: true
+                    });
+                    closeModal();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
