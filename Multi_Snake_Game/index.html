@@ -9,9 +9,11 @@
 <body class="bg-black flex items-center justify-center h-screen">
     <div id="gameContainer" class="text-center">
         <h1 class="text-4xl font-bold text-white mb-4">Multi-Snake Game</h1>
-        <div id="menu" class="mb-4">
-            <button id="startButton" class="bg-green-500 text-white px-4 py-2 rounded mr-2">Start Game</button>
-            <button id="leaderboardButton" class="bg-blue-500 text-white px-4 py-2 rounded">Leaderboard</button>
+        <div id="menu" class="mb-4 flex flex-col items-center">
+            <button id="startButton" class="bg-green-500 text-white px-4 py-2 rounded mb-2 w-40">Start Game</button>
+            <button id="settingsButton" class="bg-purple-500 text-white px-4 py-2 rounded mb-2 w-40">Settings</button>
+            <button id="leaderboardButton" class="bg-blue-500 text-white px-4 py-2 rounded mb-2 w-40">Leaderboard</button>
+            <button id="creditsButton" class="bg-yellow-500 text-white px-4 py-2 rounded mb-2 w-40">Credits</button>
         </div>
         <div id="levelSelect" class="mb-4 hidden">
             <p class="text-white mb-2">Select number of snakes:</p>
@@ -35,6 +37,26 @@
                 <tbody></tbody>
             </table>
             <button id="backToMenuButton" class="bg-red-500 text-white px-4 py-2 rounded mt-4">Back to Menu</button>
+        </div>
+        <div id="settingsMenu" class="hidden">
+            <h2 class="text-2xl font-bold text-white mb-2">Settings</h2>
+            <div class="mb-4">
+                <p class="text-white mb-2">Background Music:</p>
+                <select id="musicSelect" class="bg-gray-700 text-white px-4 py-2 rounded mb-2">
+                    <option value="none">None</option>
+                </select>
+                <input type="file" id="musicUpload" accept="audio/*" class="hidden">
+                <button id="uploadMusicButton" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">Upload Music</button>
+                <button id="removeMusicButton" class="bg-red-500 text-white px-4 py-2 rounded">Remove Selected</button>
+            </div>
+            <button id="saveSettingsButton" class="bg-green-500 text-white px-4 py-2 rounded mr-2">Save Settings</button>
+            <button id="resetButton" class="bg-red-500 text-white px-4 py-2 rounded">Reset All Data</button>
+        </div>
+        <div id="creditsSection" class="hidden">
+            <h2 class="text-2xl font-bold text-white mb-2">Credits</h2>
+            <p class="text-white mb-2">Built by ParisNeo for his beloved daughter</p>
+            <p class="text-white mb-2">Game ideas by ParisNeo's daughter</p>
+            <button id="backFromCreditsButton" class="bg-red-500 text-white px-4 py-2 rounded mt-4">Back to Menu</button>
         </div>
     </div>
 
@@ -258,11 +280,28 @@
             menuElement.classList.add('hidden');
             leaderboardElement.classList.remove('hidden');
         }
+        const creditsButton = document.getElementById('creditsButton');
+        const creditsSection = document.getElementById('creditsSection');
+        const backFromCreditsButton = document.getElementById('backFromCreditsButton');
 
+        function showCredits() {
+            menuElement.classList.add('hidden');
+            creditsSection.classList.remove('hidden');
+        }
+
+        function hideCredits() {
+            creditsSection.classList.add('hidden');
+            showMenu();
+        }
+
+        creditsButton.addEventListener('click', showCredits);
+        backFromCreditsButton.addEventListener('click', hideCredits);
         function showMenu() {
             menuElement.classList.remove('hidden');
             levelSelectElement.classList.add('hidden');
             leaderboardElement.classList.add('hidden');
+            settingsMenu.classList.add('hidden');
+            creditsSection.classList.add('hidden');
             canvas.classList.add('hidden');
             timerElement.classList.add('hidden');
         }
@@ -381,6 +420,196 @@
                 startGame(numSnakes);
             });
         });
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsMenu = document.getElementById('settingsMenu');
+        const saveSettingsButton = document.getElementById('saveSettingsButton');
+        const resetButton = document.getElementById('resetButton');
+        const musicSelect = document.getElementById('musicSelect');
+        const musicUpload = document.getElementById('musicUpload');
+        const uploadMusicButton = document.getElementById('uploadMusicButton');
+        const removeMusicButton = document.getElementById('removeMusicButton');
+
+        let backgroundMusic = new Audio();
+        let currentMusicChoice = 'none';
+        let uploadedSongs = [];
+        let db;
+
+        // Open IndexedDB
+        const dbPromise = indexedDB.open('SnakeGameMusic', 1);
+
+        dbPromise.onupgradeneeded = function(event) {
+            db = event.target.result;
+            db.createObjectStore('songs', { keyPath: 'name' });
+        };
+
+        dbPromise.onsuccess = function(event) {
+            db = event.target.result;
+            loadSettings();
+        };
+
+        dbPromise.onerror = function(event) {
+            console.error('IndexedDB error:', event.target.error);
+        };
+
+        function loadSettings() {
+            const savedSettings = JSON.parse(localStorage.getItem('snakeGameSettings')) || {};
+            currentMusicChoice = savedSettings.music || 'none';
+            uploadedSongs = savedSettings.uploadedSongs || [];
+            
+            updateMusicSelect();
+            musicSelect.value = currentMusicChoice;
+            leaderboard = JSON.parse(localStorage.getItem('snakeGameLeaderboard')) || [];
+        }
+
+        function updateMusicSelect() {
+            musicSelect.innerHTML = '<option value="none">None</option>';
+            uploadedSongs.forEach(song => {
+                const option = document.createElement('option');
+                option.value = song.name;
+                option.textContent = song.name;
+                musicSelect.appendChild(option);
+            });
+        }
+
+        function saveSettings() {
+            const settings = {
+                music: musicSelect.value,
+                uploadedSongs: uploadedSongs.map(song => ({ name: song.name }))
+            };
+            localStorage.setItem('snakeGameSettings', JSON.stringify(settings));
+            localStorage.setItem('snakeGameLeaderboard', JSON.stringify(leaderboard));
+        }
+
+        function resetAllData() {
+            localStorage.removeItem('snakeGameSettings');
+            localStorage.removeItem('snakeGameLeaderboard');
+            
+            const transaction = db.transaction(['songs'], 'readwrite');
+            const objectStore = transaction.objectStore('songs');
+            objectStore.clear();
+            
+            leaderboard = [];
+            uploadedSongs = [];
+            loadSettings();
+            alert('All data has been reset.');
+            showMenu();
+        }
+
+        function playBackgroundMusic() {
+            backgroundMusic.pause();
+            if (currentMusicChoice !== 'none') {
+                const transaction = db.transaction(['songs'], 'readonly');
+                const objectStore = transaction.objectStore('songs');
+                const request = objectStore.get(currentMusicChoice);
+                
+                request.onsuccess = function(event) {
+                    const song = event.target.result;
+                    if (song) {
+                        backgroundMusic.src = URL.createObjectURL(song.data);
+                        backgroundMusic.loop = true;
+                        backgroundMusic.play();
+                    }
+                };
+            }
+        }
+
+        uploadMusicButton.addEventListener('click', () => {
+            musicUpload.click();
+        });
+
+        musicUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const transaction = db.transaction(['songs'], 'readwrite');
+                const objectStore = transaction.objectStore('songs');
+                
+                const request = objectStore.add({ name: file.name, data: file });
+                
+                request.onsuccess = function() {
+                    uploadedSongs.push({ name: file.name });
+                    updateMusicSelect();
+                    saveSettings();
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Error adding song:', event.target.error);
+                };
+            }
+        });
+
+        removeMusicButton.addEventListener('click', () => {
+            const selectedSong = musicSelect.value;
+            if (selectedSong !== 'none') {
+                const transaction = db.transaction(['songs'], 'readwrite');
+                const objectStore = transaction.objectStore('songs');
+                
+                const request = objectStore.delete(selectedSong);
+                
+                request.onsuccess = function() {
+                    uploadedSongs = uploadedSongs.filter(song => song.name !== selectedSong);
+                    updateMusicSelect();
+                    saveSettings();
+                    if (currentMusicChoice === selectedSong) {
+                        currentMusicChoice = 'none';
+                        musicSelect.value = 'none';
+                        backgroundMusic.pause();
+                    }
+                };
+                
+                request.onerror = function(event) {
+                    console.error('Error removing song:', event.target.error);
+                };
+            }
+        });
+
+        settingsButton.addEventListener('click', () => {
+            menuElement.classList.add('hidden');
+            settingsMenu.classList.remove('hidden');
+        });
+
+        saveSettingsButton.addEventListener('click', () => {
+            currentMusicChoice = musicSelect.value;
+            saveSettings();
+            playBackgroundMusic();
+            showMenu();
+        });
+
+        resetButton.addEventListener('click', resetAllData);
+
+    // Load settings when the game starts
+    dbPromise.onsuccess = function(event) {
+        db = event.target.result;
+        loadSettings();
+        playBackgroundMusic();
+    };
+    // Load settings when the game starts
+    loadSettings();
+    playBackgroundMusic();
+
+    function showMenu() {
+        menuElement.classList.remove('hidden');
+        levelSelectElement.classList.add('hidden');
+        leaderboardElement.classList.add('hidden');
+        settingsMenu.classList.add('hidden');
+        canvas.classList.add('hidden');
+        timerElement.classList.add('hidden');
+    }
+
+    function updateLeaderboard() {
+        snakes.forEach(snake => {
+            const existingEntry = leaderboard.find(entry => entry.name === snake.name);
+            if (existingEntry) {
+                existingEntry.score = Math.max(existingEntry.score, snake.length);
+            } else {
+                leaderboard.push({ name: snake.name, score: snake.length });
+            }
+        });
+
+        leaderboard.sort((a, b) => b.score - a.score);
+        saveSettings();
+    }   
+    loadSettings();
+    playBackgroundMusic();     
     </script>
 </body>
 </html>
