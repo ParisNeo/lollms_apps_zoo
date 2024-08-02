@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Snake Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black flex items-center justify-center h-screen">
+    <div class="text-center">
+        <h1 class="text-4xl font-bold text-white mb-4">Multi-Snake Game</h1>
+        <canvas id="gameCanvas" width="800" height="600" class="border border-white"></canvas>
+        <p id="timer" class="text-xl text-white mt-4">Time: 60</p>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const timerElement = document.getElementById('timer');
+
+        const WIDTH = 800;
+        const HEIGHT = 600;
+        const GRID_SIZE = 20;
+        const GRID_WIDTH = WIDTH / GRID_SIZE;
+        const GRID_HEIGHT = HEIGHT / GRID_SIZE;
+
+        const COLORS = {
+            BLACK: '#000000',
+            WHITE: '#FFFFFF',
+            RED: '#FF0000',
+            YELLOW: '#FFFF00'
+        };
+
+        class Snake {
+            constructor(x, y, color, name) {
+                this.body = [{x, y}];
+                this.direction = ['UP', 'DOWN', 'LEFT', 'RIGHT'][Math.floor(Math.random() * 4)];
+                this.color = color;
+                this.length = 1;
+                this.name = name;
+            }
+
+            move() {
+                const head = this.body[0];
+                let newHead;
+
+                switch (this.direction) {
+                    case 'UP':
+                        newHead = {x: head.x, y: (head.y - 1 + GRID_HEIGHT) % GRID_HEIGHT};
+                        break;
+                    case 'DOWN':
+                        newHead = {x: head.x, y: (head.y + 1) % GRID_HEIGHT};
+                        break;
+                    case 'LEFT':
+                        newHead = {x: (head.x - 1 + GRID_WIDTH) % GRID_WIDTH, y: head.y};
+                        break;
+                    case 'RIGHT':
+                        newHead = {x: (head.x + 1) % GRID_WIDTH, y: head.y};
+                        break;
+                }
+
+                this.body.unshift(newHead);
+                if (this.body.length > this.length) {
+                    this.body.pop();
+                }
+            }
+
+            grow(amount = 1) {
+                this.length += amount;
+            }
+        }
+
+        function generateFood(numFoods) {
+            const foods = [];
+            while (foods.length < numFoods) {
+                const food = {
+                    x: Math.floor(Math.random() * GRID_WIDTH),
+                    y: Math.floor(Math.random() * GRID_HEIGHT)
+                };
+                if (!foods.some(f => f.x === food.x && f.y === food.y)) {
+                    foods.push(food);
+                }
+            }
+            return foods;
+        }
+
+        function aiControl(snake, food) {
+            const head = snake.body[0];
+            const dx = food.x - head.x;
+            const dy = food.y - head.y;
+
+            if (Math.abs(dx) > Math.abs(dy)) {
+                if (dx > 0 && snake.direction !== 'LEFT') {
+                    snake.direction = 'RIGHT';
+                } else if (dx < 0 && snake.direction !== 'RIGHT') {
+                    snake.direction = 'LEFT';
+                }
+            } else {
+                if (dy > 0 && snake.direction !== 'UP') {
+                    snake.direction = 'DOWN';
+                } else if (dy < 0 && snake.direction !== 'DOWN') {
+                    snake.direction = 'UP';
+                }
+            }
+        }
+
+        function checkCollisions(snakes, foods) {
+            for (let i = 0; i < snakes.length; i++) {
+                const snake = snakes[i];
+                const head = snake.body[0];
+
+                // Check for food collision
+                const foodIndex = foods.findIndex(food => food.x === head.x && food.y === head.y);
+                if (foodIndex !== -1) {
+                    snake.grow();
+                    foods.splice(foodIndex, 1);
+                    foods.push(generateFood(1)[0]);
+                }
+
+                // Check for collision with other snakes
+                for (let j = 0; j < snakes.length; j++) {
+                    if (i !== j) {
+                        const otherSnake = snakes[j];
+                        if (otherSnake.body.some(segment => segment.x === head.x && segment.y === head.y)) {
+                            if (snake.length > otherSnake.length) {
+                                // Convert the smaller snake's body into food
+                                otherSnake.body.forEach(segment => {
+                                    foods.push({x: segment.x, y: segment.y});
+                                });
+                                snake.grow(otherSnake.length);
+                                snakes.splice(j, 1);
+                                j--;
+
+                                // End the game if the player's snake is eaten
+                                if (otherSnake === humanSnake) {
+                                    endGame();
+                                }
+                            } else {
+                                // Convert the current snake's body into food
+                                snake.body.forEach(segment => {
+                                    foods.push({x: segment.x, y: segment.y});
+                                });
+                                snakes.splice(i, 1);
+                                i--;
+
+                                // End the game if the player's snake is eaten
+                                if (snake === humanSnake) {
+                                    endGame();
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        function getLongestSnake(snakes) {
+            return snakes.reduce((longest, snake) => snake.length > longest.length ? snake : longest);
+        }
+
+        function getPlayerRank() {
+            const sortedSnakes = snakes.slice().sort((a, b) => b.length - a.length);
+            return sortedSnakes.findIndex(snake => snake === humanSnake) + 1;
+        }
+
+        function endGame() {
+            gameOver = true;
+            const playerRank = getPlayerRank();
+            winner = getLongestSnake(snakes);
+            
+            ctx.fillStyle = COLORS.BLACK;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            ctx.fillStyle = COLORS.WHITE;
+            ctx.font = '48px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(`Game Over!`, WIDTH / 2, HEIGHT / 2 - 60);
+            ctx.fillText(`Winner: ${winner.name}`, WIDTH / 2, HEIGHT / 2);
+            ctx.fillText(`Your Rank: ${playerRank} / ${snakes.length}`, WIDTH / 2, HEIGHT / 2 + 60);
+        }
+
+
+        const snakeNames = ['Human', 'Python', 'Cobra', 'Viper', 'Anaconda'];
+        const snakes = snakeNames.map((name, index) => {
+            const color = index === 0 ? COLORS.WHITE : `rgb(${Math.random() * 205 + 50}, ${Math.random() * 205 + 50}, ${Math.random() * 205 + 50})`;
+            return new Snake(
+                Math.floor(Math.random() * GRID_WIDTH),
+                Math.floor(Math.random() * GRID_HEIGHT),
+                color,
+                name
+            );
+        });
+
+        const humanSnake = snakes[0];
+        let foods = generateFood(10);
+        let gameOver = false;
+        let winner = null;
+
+        document.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                case 'ArrowUp':
+                    if (humanSnake.direction !== 'DOWN') humanSnake.direction = 'UP';
+                    break;
+                case 'ArrowDown':
+                    if (humanSnake.direction !== 'UP') humanSnake.direction = 'DOWN';
+                    break;
+                case 'ArrowLeft':
+                    if (humanSnake.direction !== 'RIGHT') humanSnake.direction = 'LEFT';
+                    break;
+                case 'ArrowRight':
+                    if (humanSnake.direction !== 'LEFT') humanSnake.direction = 'RIGHT';
+                    break;
+            }
+        });
+
+        function drawGame() {
+            ctx.fillStyle = COLORS.BLACK;
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+            foods.forEach(food => {
+                ctx.fillStyle = COLORS.RED;
+                ctx.fillRect(food.x * GRID_SIZE, food.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+            });
+
+            snakes.forEach(snake => {
+                ctx.fillStyle = snake.color;
+                snake.body.forEach(segment => {
+                    ctx.fillRect(segment.x * GRID_SIZE, segment.y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+                });
+            });
+
+            const longestSnake = getLongestSnake(snakes);
+            ctx.fillStyle = COLORS.YELLOW;
+            ctx.fillRect(longestSnake.body[0].x * GRID_SIZE, longestSnake.body[0].y * GRID_SIZE, GRID_SIZE, GRID_SIZE);
+        }
+
+        function gameLoop() {
+            if (gameOver) {
+                return;
+            }
+
+            snakes.forEach((snake, index) => {
+                if (index !== 0) {
+                    aiControl(snake, foods[0]);
+                }
+                snake.move();
+            });
+
+            checkCollisions(snakes, foods);
+            drawGame();
+
+            setTimeout(gameLoop, 100);
+        }
+
+        const startTime = Date.now();
+        const gameDuration = 60000; // 60 seconds
+
+        function updateTimer() {
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = Math.max(0, Math.floor((gameDuration - elapsedTime) / 1000));
+            timerElement.textContent = `Time: ${remainingTime}`;
+
+            if (remainingTime <= 0 && !gameOver) {
+                endGame();
+            } else if (!gameOver) {
+                requestAnimationFrame(updateTimer);
+            }
+        }
+
+        gameLoop();
+        updateTimer();
+    </script>
+</body>
+</html>
