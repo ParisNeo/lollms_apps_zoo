@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GitHub Docker Code Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="/lollms_js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/languages/dockerfile.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/languages/yaml.min.js"></script>
+    <style>
+        body {
+            background-color: #f9fafb;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center min-h-screen">
+    <div class="bg-white shadow-md rounded-lg p-6 w-full max-w-lg">
+        <h1 class="text-2xl font-bold mb-4 text-center">GitHub Docker Code Generator</h1>
+        <input type="text" id="githubLink" placeholder="Enter GitHub Repository URL" class="border border-gray-300 rounded-md p-2 w-full mb-4" />
+        <div class="mb-4">
+            <label for="contextSize" class="block text-sm font-medium text-gray-700">Maximum Context Size:</label>
+            <input type="number" id="contextSize" value="128000" min="1000" step="1000" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+        </div>
+        <button id="generateButton" class="bg-blue-500 text-white rounded-md p-2 w-full">Generate Docker Code</button>
+        <div id="spinner" class="mt-4 flex justify-center hidden">
+            <div class="spinner"></div>
+        </div>
+        <div id="output" class="mt-4"></div>
+        <a id="downloadLink" class="hidden mt-4 bg-green-500 text-white rounded-md p-2 w-full text-center" download="docker_files.zip">Download Docker Files</a>
+    </div>
+
+    <script>
+        const max_gen_size = 4096;
+        let lc;
+
+        document.getElementById('generateButton').addEventListener('click', async () => {
+            const githubLink = document.getElementById('githubLink').value;
+            const contextSize = parseInt(document.getElementById('contextSize').value);
+            lc = new LollmsClient(null, null, contextSize);
+
+            document.getElementById('spinner').classList.remove('hidden');
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('downloadLink').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/proxy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url: githubLink }),
+                });
+                const data = await response.json();
+                const githubText = data.content;
+
+                const system_prompt = `
+                Extract Dockerfile and docker-compose.yml from the following GitHub repository description.
+                Generate two separate files with the correct content for containerizing the application.
+                Use markdown code tags to clearly separate the files:
+                \`\`\`dockerfile
+                # Dockerfile content here
+                \`\`\`
+                \`\`\`docker-compose.yml
+                # docker-compose.yml content here
+                \`\`\`
+                Ensure the generated files are complete and ready to use for containerizing the application.
+                `;
+                const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message() + githubText;
+
+                const generated_text = await lc.generate(prompt);
+                console.log(generated_text)
+                const codes = extractCodeBlocks(generated_text);
+
+                if (codes.length === 0) {
+                    throw new Error("No Docker files were generated. Please try again.");
+                }
+
+                let zip = new JSZip();
+                let outputHtml = '';
+
+                codes.forEach((code) => {
+                    const fileName = code.type === 'dockerfile' ? 'Dockerfile' : 'docker-compose.yml';
+                    zip.file(fileName, code.content);
+                    outputHtml += `<h3 class="mt-4 font-bold">${fileName}</h3>`;
+                    outputHtml += `<pre class="bg-gray-100 p-2 rounded-md overflow-x-auto"><code class="language-${code.type === 'dockerfile' ? 'dockerfile' : 'yaml'}">${escapeHtml(code.content)}</code></pre>`;
+                });
+
+                const blob = await zip.generateAsync({ type: "blob" });
+                const url = URL.createObjectURL(blob);
+                document.getElementById('downloadLink').href = url;
+                document.getElementById('downloadLink').classList.remove('hidden');
+                document.getElementById('output').innerHTML = outputHtml;
+                hljs.highlightAll();
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('output').innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                if (error.message.includes("No Docker files were generated")) {
+                    document.getElementById('output').innerHTML += `<p class="mt-2">The AI was unable to generate the Docker files correctly. Please try again or modify your input.</p>`;
+                }
+            } finally {
+                document.getElementById('spinner').classList.add('hidden');
+            }
+        });
+
+        function extractCodeBlocks(text) {
+            const codeBlockRegex = /```(\w+)\n([\s\S]*?)```/g;
+            const codeBlocks = [];
+            let match;
+
+            while ((match = codeBlockRegex.exec(text)) !== null) {
+                codeBlocks.push({
+                    type: match[1],
+                    content: match[2].trim()
+                });
+            }
+
+            return codeBlocks;
+        }
+
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
