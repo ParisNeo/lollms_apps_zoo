@@ -4,9 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LOLLMS Idea Forge</title>
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+
+   <!-- Prism CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+   <!-- Prism JS -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+   <!-- If you want additional languages, include them like this -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
+
     <script src="/lollms_js"></script>
     <style>
         .fade-in {
@@ -27,210 +56,388 @@
         .dark {
             color-scheme: dark;
         }
-
         .dark body {
             background-color: #1a202c;
             color: #e2e8f0;
         }
-
         .dark .bg-white {
             background-color: #2d3748;
         }
-
         .dark .text-gray-900 {
             color: #e2e8f0;
         }
-
         .dark .hover\:bg-gray-200:hover {
             background-color: #4a5568;
         }
-
         .dark .border {
             border-color: #4a5568;
         }
-
         .dark input, .dark select {
             background-color: #2d3748;
             color: #e2e8f0;
         }
-
         .dark button {
             background-color: #4a5568;
             color: #e2e8f0;
         }
-
         .dark button:hover {
             background-color: #718096;
         }
         body {
-            padding-bottom: 60px; /* Adjust this value based on your footer's height */
+            padding-bottom: 60px;
         }
-
         main {
-            min-height: calc(100vh - 60px); /* Adjust 60px based on your footer's height */
+            min-height: calc(100vh - 60px);
         }
-
         #help-section {
             max-width: 800px;
             margin: 0 auto;
         }
-
         #help-section h2 {
             text-align: center;
             margin-bottom: 1.5rem;
         }
-
         #help-section h3 {
             color: #553c9a;
         }
-
         #help-section .dark h3 {
             color: #d6bcfa;
         }
-
         #help-section p, #help-section li {
             line-height: 1.6;
         }
-
         #help-section .bg-purple-100 {
             background-color: rgba(237, 233, 254, 0.5);
         }
-
         #help-section .dark .bg-purple-900 {
             background-color: rgba(76, 29, 149, 0.5);
         }
-
         /* Updated styles for dark mode */
         .dark #help-section {
             color: #e2e8f0;
         }
-
         .dark #help-section h2 {
             color: #a78bfa;
         }
-
         .dark #help-section h3 {
             color: #d6bcfa;
         }
-
         .dark #help-section .bg-white {
             background-color: #1a202c;
         }
-
         .dark #help-section .text-gray-600,
         .dark #help-section .text-gray-700 {
             color: #cbd5e0;
         }
-
         .dark #help-section .text-purple-700,
         .dark #help-section .text-purple-800 {
             color: #e9d8fd;
         }
-
         .dark #help-section button {
             background-color: #8b5cf6;
         }
-
         .dark #help-section button:hover {
             background-color: #7c3aed;
         }
+        /* Styles for rendered Markdown */
+        .markdown-content h1 {
+            font-size: 2em;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .markdown-content h2 {
+            font-size: 1.5em;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .markdown-content h3 {
+            font-size: 1.17em;
+            margin-top: 0.5em;
+            margin-bottom: 0.5em;
+        }
+        .markdown-content p {
+            margin-bottom: 1em;
+        }
+        .markdown-content ul, .markdown-content ol {
+            margin-left: 1.5em;
+            margin-bottom: 1em;
+        }
+        .markdown-content code {
+            background-color: #f0f0f0;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .markdown-content pre {
+            background-color: #f0f0f0;
+            padding: 1em;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .dark .markdown-content code {
+            background-color: #2d3748;
+        }
+        .dark .markdown-content pre {
+            background-color: #2d3748;
+        }
+        .ascii-art {
+            font-family: monospace;
+            white-space: pre;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .code-block {
+            position: relative;
+        }
+        .copy-button {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            padding: 3px 8px;
+            font-size: 12px;
+            background-color: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        pre {
+            margin-top: 30px; /* Make space for the copy button */
+        }
+
+
+        .code-block-wrapper {
+        background-color: #f5f5f5;
+        border-radius: 4px;
+        margin: 20px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .code-block-header {
+        padding: 10px;
+        background-color: #e0e0e0;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        display: flex;
+        justify-content: space-between;
+        align-items: left;
+        }
+
+        .language-label {
+        font-weight: bold;
+        color: #333;
+        }
+
+        .copy-button {
+        background-color: #4CAF50;
+        border: none;
+        color: white;
+        padding: 5px 10px;
+        text-align: center;
+        text-decoration: none;
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 3px;
+        transition: background-color 0.3s ease;
+        display: flex;
+        align-items: center;
+        }
+
+        .copy-button:hover {
+        background-color: #45a049;
+        }
+
+        .copy-button svg {
+        margin-right: 5px;
+        }
+
+        .copy-button.copied {
+        background-color: #2196F3;
+        }
+
+        pre.line-numbers {
+        margin: 0;
+        padding: 10px 0;
+        font-family: 'Courier New', Courier, monospace;
+        font-size: 14px;
+        line-height: 1.3;
+        overflow-x: auto;
+        }
+
+        code {
+        display: block;
+        padding: 0 10px;
+        }
+
+        .code-line {
+        display: block;
+        white-space: pre;
+        }
+
+        .line-number {
+        display: inline-block;
+        width: 30px;
+        text-align: right;
+        color: #999;
+        padding-right: 10px;
+        user-select: none;
+        }
+
+        .line-content {
+        display: inline;
+        }
+
+        .code-line:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+        }
+
+
+
     </style>
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 transition-colors duration-200">
     <div id="app" class="container mx-auto px-4 py-8">
-        <header class="mb-8 flex justify-between items-center">
-            <div class="flex items-center">
-                <img src="/apps/LOLLMS_Idea_Forge/icon.png" alt="LOLLMS Idea Forge Icon" class="w-10 h-10 mr-4 rounded-lg shadow-md">
-                <h1 class="text-4xl font-bold">LOLLMS Idea Forge</h1>
+        <header class="bg-gradient-to-r rounded from-purple-600 to-indigo-600 py-6 px-8 mb-8">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center">
+                    <img src="/apps/LOLLMS_Idea_Forge/icon.png" alt="LOLLMS Idea Forge Icon" class="w-12 h-12 mr-4 rounded-lg shadow-md">
+                    <h1 class="text-4xl font-bold text-white">LOLLMS Idea Forge</h1>
+                </div>
+                <nav class="flex items-center space-x-4">
+                    <button id="projects-btn" class="px-4 py-2 rounded-md text-white hover:bg-white hover:bg-opacity-20 transition duration-300 ease-in-out">Projects</button>
+                    <button id="settings-btn" class="px-4 py-2 rounded-md text-white hover:bg-white hover:bg-opacity-20 transition duration-300 ease-in-out">Settings</button>
+                    <button id="help-btn" class="p-2 rounded-md text-white hover:bg-white hover:bg-opacity-20 transition duration-300 ease-in-out" aria-label="Help">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </button>
+                    <button id="theme-toggle" class="p-2 rounded-full text-white hover:bg-white hover:bg-opacity-20 transition duration-300 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+                </nav>
             </div>
-            <nav>
-                <button id="projects-btn" class="px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Projects</button>
-                <button id="settings-btn" class="px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Settings</button>
-                <button id="help-btn" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Help">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </button>
-                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                </button>
-            </nav>
         </header>
 
+
         <main>
-            <section id="projects-section" class="mb-8 hidden">
-                <h2 class="text-2xl font-semibold mb-4">Projects</h2>
-                <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Projects will be dynamically added here -->
-                </div>
-                <button id="new-project-btn" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">New Project</button>
-            </section>
-
-            <section id="settings-section" class="mb-8 hidden">
-                <h2 class="text-2xl font-semibold mb-4">Settings</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label for="context-size" class="font-medium">Context Size:</label>
-                        <input type="number" id="context-size" class="border rounded p-2" value="128000">
+            <section id="projects-section" class="mb-8">
+                <div class="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+                    <div class="w-full mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 py-6 px-8">
+                            <h1 class="text-3xl font-bold text-white">Projects</h1>
+                        </div>
+                        
+                        <section id="projects" class="p-8">
+                            <div id="projects-content" class="space-y-6">
+                                <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <!-- Projects will be dynamically added here -->
+                                </div>
+                                <div class="pt-4">
+                                    <button id="new-project-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                        New Project
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
                     </div>
-                    <div>
-                        <label for="max-gen-size" class="font-medium">Max Generation Size:</label>
-                        <input type="number" id="max-gen-size" class="border rounded p-2" value="4096">
-                    </div>
-                    <div>
-                        <label for="lollms-host" class="font-medium">LOLLMS Host Address:</label>
-                        <input type="text" id="lollms-host" class="border rounded p-2" value="http://localhost:9600">
-                    </div>
-                    <button id="save-settings" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save Settings</button>
                 </div>
             </section>
-
+            
+            <section id="settings-section" class="mb-8">
+                <div class="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+                    <div class="w-full mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 py-6 px-8">
+                            <h1 class="text-3xl font-bold text-white">Settings</h1>
+                        </div>
+                        
+                        <section id="settings" class="p-8">
+                            <div id="settings-content" class="space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label for="context-size" class="block text-sm font-medium text-gray-700">Context Size</label>
+                                        <input type="number" id="context-size" value="128000" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label for="max-gen-size" class="block text-sm font-medium text-gray-700">Max Generation Size</label>
+                                        <input type="number" id="max-gen-size" value="4096" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="lollms-host" class="block text-sm font-medium text-gray-700">LOLLMS Host Address</label>
+                                    <input type="text" id="lollms-host" value="http://localhost:9600" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div class="pt-4">
+                                    <button id="save-settings" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                        Save Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </section>
+                    </div>
+                </div>
+            </section>
+            
             <section id="idea-generation" class="mb-8">
-                <h2 class="text-2xl font-semibold mb-4">Idea Generation</h2>
-                <div id="idea-generation-section" class="space-y-4">
-                    <div>
-                        <label for="num-ideas" class="font-medium">Number of Ideas:</label>
-                        <input type="number" id="num-ideas" min="1" class="border rounded p-2">
+                <div class="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
+                    <div class="w-full mx-auto bg-white rounded-lg shadow-xl overflow-hidden">
+                        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 py-6 px-8">
+                            <h1 class="text-3xl font-bold text-white">Idea Generation</h1>
+                        </div>
+                        
+                        <section id="idea-generation" class="p-8">
+                            <div id="idea-generation-section" class="space-y-6">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div class="space-y-2">
+                                        <label for="num-ideas" class="block text-sm font-medium text-gray-700">Number of Ideas</label>
+                                        <input type="number" id="num-ideas" min="1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                    </div>
+                                    <div class="space-y-2">
+                                        <label for="idea-category" class="block text-sm font-medium text-gray-700">Idea Category</label>
+                                        <select id="idea-category" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md">
+                                            <option value="brainstorming">Brainstorming</option>
+                                            <option value="mind-mapping">Mind Mapping</option>
+                                            <option value="product-development">Product Development</option>
+                                            <option value="marketing-strategies">Marketing Strategies</option>
+                                            <option value="problem-solving">Problem Solving</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="idea-tags" class="block text-sm font-medium text-gray-700">Idea Tags</label>
+                                    <input type="text" id="idea-tags" placeholder="Comma-separated tags" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-purple-500 focus:border-purple-500 sm:text-sm">
+                                </div>
+                                <div class="space-y-2">
+                                    <label for="reasoning-steps" class="block text-sm font-medium text-gray-700">Reasoning Steps</label>
+                                    <select id="reasoning-steps" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md">
+                                        <option value="default">Default (10-step)</option>
+                                        <option value="api-specific">API-Specific</option>
+                                        <option value="custom">Custom</option>
+                                        <option value="8-stage">8-Stage Process</option>
+                                        <option value="lollms-library">LOLLMS Library Integration</option>
+                                    </select>
+                                </div>
+                                <div class="pt-4">
+                                    <button id="generate-ideas" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                                        Generate Ideas
+                                    </button>
+                                </div>
+                            </div>
+                                
+                            <div id="idea-display-section" class="mt-12 hidden">
+                                <h2 class="text-2xl font-semibold mb-6 text-gray-900">Generated Ideas</h2>
+                                <div id="idea-list" class="space-y-6"></div>
+                            </div>
+                
+                            <div id="loading-animation" class="hidden mt-8 flex justify-center">
+                                <svg class="animate-spin h-10 w-10 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </div>
+                        </section>
                     </div>
-                    <div>
-                        <label for="idea-category" class="font-medium">Idea Category:</label>
-                        <select id="idea-category" class="border rounded p-2">
-                            <option value="brainstorming">Brainstorming</option>
-                            <option value="mind-mapping">Mind Mapping</option>
-                            <option value="product-development">Product Development</option>
-                            <option value="marketing-strategies">Marketing Strategies</option>
-                            <option value="problem-solving">Problem Solving</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="idea-tags" class="font-medium">Idea Tags:</label>
-                        <input type="text" id="idea-tags" placeholder="Comma-separated tags" class="border rounded p-2 w-full">
-                    </div>
-                    <div>
-                        <label for="reasoning-steps" class="font-medium">Reasoning Steps:</label>
-                        <select id="reasoning-steps" class="border rounded p-2">
-                            <option value="default">Default (10-step)</option>
-                            <option value="api-specific">API-Specific</option>
-                            <option value="custom">Custom</option>
-                            <option value="8-stage">8-Stage Process</option>
-                            <option value="lollms-library">LOLLMS Library Integration</option>
-                        </select>
-                    </div>
-                    <button id="generate-ideas" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Generate Ideas</button>
-                </div>
-
-                <div id="idea-display-section" class="mt-8 hidden">
-                    <h2 class="text-2xl font-semibold mb-4">Generated Ideas</h2>
-                    <ul id="idea-list" class="list-disc pl-5 space-y-2"></ul>
-                </div>
-
-                <div id="loading-animation" class="hidden mt-8 flex justify-center">
-                    <svg class="animate-spin h-10 w-10 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
                 </div>
             </section>
             <section id="help-section" class="mb-8 hidden">
@@ -281,6 +488,7 @@
         let contextSize = parseInt(localStorage.getItem('contextSize')) || 128000;
         let maxGenSize = parseInt(localStorage.getItem('maxGenSize')) || 4096;
         let lollmsHostAddress = localStorage.getItem('lollmsHostAddress') || "http://localhost:9600";
+        let currentProjectId = parseInt(localStorage.getItem('lollms-ideas-forge-currentProjectId'));
 
         let lc = new LollmsClient(
             lollmsHostAddress, null, contextSize, -1, maxGenSize, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS
@@ -315,6 +523,7 @@
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setTheme(true);
         }
+
         // Navigation
         const projectsBtn = document.getElementById('projects-btn');
         const settingsBtn = document.getElementById('settings-btn');
@@ -365,7 +574,7 @@
         const newProjectBtn = document.getElementById('new-project-btn');
 
         function loadProjects() {
-            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+            const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
             projectsList.innerHTML = '';
             projects.forEach(project => {
                 const projectCard = document.createElement('div');
@@ -385,45 +594,78 @@
             const name = prompt('Enter project name:');
             if (name) {
                 const description = prompt('Enter project description:');
-                const projects = JSON.parse(localStorage.getItem('projects')) || [];
+                const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
                 const newProject = {
                     id: Date.now(),
                     name,
                     description,
-                    ideas: []
+                    ideas: ""
                 };
                 projects.push(newProject);
-                localStorage.setItem('projects', JSON.stringify(projects));
+                localStorage.setItem('lollms_ideas_forge_projects', JSON.stringify(projects));
                 loadProjects();
             }
         });
 
-        projectsList.addEventListener('click', (e) => {
+        projectsList.addEventListener('click', async (e) => {
             if (e.target.classList.contains('open-project')) {
                 const projectId = parseInt(e.target.getAttribute('data-id'));
-                openProject(projectId);
+                console.log("Lioading project: ",projectId)
+                currentProjectId = projectId
+                localStorage.setItem('lollms-ideas-forge-currentProjectId', currentProjectId);
+                await openProject(projectId);
             } else if (e.target.classList.contains('delete-project')) {
                 const projectId = parseInt(e.target.getAttribute('data-id'));
                 deleteProject(projectId);
             }
         });
 
-        function openProject(projectId) {
-            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+        async function openProject(projectId) {
+            const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
             const project = projects.find(p => p.id === projectId);
             if (project) {
                 projectsSection.classList.add('hidden');
                 ideaGeneration.classList.remove('hidden');
                 // Load project data into idea generation form
-                // You can implement this part based on your project structure
+                document.getElementById('num-ideas').value = project.numIdeas || '';
+                document.getElementById('idea-category').value = project.category || 'brainstorming';
+                document.getElementById('idea-tags').value = project.tags || '';
+                document.getElementById('reasoning-steps').value = project.reasoningSteps || 'default';
+                // Load previous ideas if any
+                const ideaList = document.getElementById('idea-list');
+                ideaList.innerHTML = '';
+                const ideaDisplaySection = document.getElementById('idea-display-section');
+                ideaDisplaySection.classList.add('hidden');
+
+                if (project.ideas) {
+                    ideaList.innerHTML = '';
+                    const ideaElement = document.createElement('div');
+                    ideaElement.className = 'bg-white dark:bg-gray-700 p-4 rounded-lg shadow fade-in markdown-content';
+                    ideaElement.innerHTML = await renderMarkdown(project.ideas);
+                    ideaList.appendChild(ideaElement);
+                    setTimeout(() => ideaElement.classList.add('show'), 100);
+                    ideaDisplaySection.classList.remove('hidden');
+                }
+
+                // Update page title with project name
+                document.title = `${project.name} - LOLLMS Idea Forge`;
+
+                // Animate the transition
+                anime({
+                    targets: '#idea-generation',
+                    opacity: [0, 1],
+                    translateY: [20, 0],
+                    easing: 'easeOutExpo',
+                    duration: 800
+                });
             }
         }
 
         function deleteProject(projectId) {
             if (confirm('Are you sure you want to delete this project?')) {
-                const projects = JSON.parse(localStorage.getItem('projects')) || [];
+                const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
                 const updatedProjects = projects.filter(p => p.id !== projectId);
-                localStorage.setItem('projects', JSON.stringify(updatedProjects));
+                localStorage.setItem('lollms_ideas_forge_projects', JSON.stringify(updatedProjects));
                 loadProjects();
             }
         }
@@ -444,38 +686,316 @@
             const reasoningSteps = document.getElementById('reasoning-steps').value;
 
             const system_prompt = `Generate ${numIdeas} creative ideas for the ${category} category. 
-                                   Use the following tags: ${tags}. 
-                                   Apply the ${reasoningSteps} reasoning process.`;
+                Use the following tags: ${tags}. 
+                Apply the ${reasoningSteps} reasoning process.
+                Format your response using Markdown, including code blocks and mathematical equations where appropriate.
+                
+                For each idea:
+                1. Provide a formal introduction and problem statement.
+                2. Detail your reasoning process, breaking it down into clear, logical steps.
+                3. Present your solution, including any relevant code snippets or mathematical formulas.
+                4. If applicable, include a Mermaid diagram to visually represent the idea or process.
+                5. Conclude with a summary of the idea's potential impact and implementation considerations.
+
+                Mermaid diagram syntax:
+                \`\`\`mermaid
+                // Your diagram code here
+                \`\`\`
+
+                Ensure your response is thorough, well-structured, and academically rigorous.`;
             
             const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message();
 
             try {
+                const loadingAnimation = document.getElementById('loading-animation');
+                const ideaDisplaySection = document.getElementById('idea-display-section');
+                const ideaList = document.getElementById('idea-list');
+
                 loadingAnimation.classList.remove('hidden');
                 ideaDisplaySection.classList.add('hidden');
 
                 const generated_text = await lc.generate(prompt);
-                const ideas = generated_text.split('\n').filter(idea => idea.trim() !== '');
-                
+
+                if (typeof generated_text !== 'string') {
+                    throw new Error('Generated text is not a string');
+                }
+
                 ideaList.innerHTML = '';
-                ideas.forEach((idea, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = idea;
-                    li.className = 'fade-in';
-                    ideaList.appendChild(li);
-                    setTimeout(() => li.classList.add('show'), index * 100);
-                });
+                const ideaElement = document.createElement('div');
+                ideaElement.className = 'bg-white dark:bg-gray-700 p-4 rounded-lg shadow fade-in markdown-content';
+                ideaElement.innerHTML = await renderMarkdown(generated_text);
+                ideaList.appendChild(ideaElement);
+                setTimeout(() => ideaElement.classList.add('show'), 100);
 
                 loadingAnimation.classList.add('hidden');
                 ideaDisplaySection.classList.remove('hidden');
+
+                // Save generated ideas to the current project
+                const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
+                console.log("Projects:",projects)
+                const projectIndex = projects.findIndex(p => p.id === currentProjectId);
+                if (projectIndex !== -1) {
+                    projects[projectIndex].ideas = generated_text;
+                    projects[projectIndex].numIdeas = numIdeas;
+                    projects[projectIndex].category = category;
+                    projects[projectIndex].tags = tags;
+                    projects[projectIndex].reasoningSteps = reasoningSteps;
+                    localStorage.setItem('lollms_ideas_forge_projects', JSON.stringify(projects));
+                    console.log("Project saved successfully")
+                }
+                else{
+                    console.error("Project index not found")
+                }
             } catch (error) {
                 console.error('Error generating ideas:', error);
                 alert('An error occurred while generating ideas. Please try again.');
             } finally {
-                loadingAnimation.classList.add('hidden');
+                document.getElementById('loading-animation').classList.add('hidden');
             }
         }
-
         generateIdeasBtn.addEventListener('click', generateIdeas);
+
+        async function renderMermaidDiagrams(text) {
+            const mermaidCodeRegex = /```mermaid\n([\s\S]*?)```/g;
+            const matches = text.match(mermaidCodeRegex);
+            
+            if (!matches) return text; // Return original text if no Mermaid code found
+
+            for (const match of matches) {
+                const mermaidCode = match.replace(/```mermaid\n/, '').replace(/```$/, '');
+                const uniqueId = 'mermaid-' + Math.random().toString(36).substr(2, 9);
+                
+                try {
+                    const result = await mermaid.render(uniqueId, mermaidCode);
+                    const htmlCode = `
+                        <div class="mermaid-container" style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
+                            <div class="mermaid-controls" style="top: 10px; right: 10px; z-index: 1000;">
+                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" style="margin-right: 5px;">Zoom In</button>
+                                <button onclick="zoomMermaid('${uniqueId}', 0.9)">Zoom Out</button>
+                            </div>
+                            <div class="mermaid-diagram" id="${uniqueId}" style="transform-origin: center; transition: transform 0.3s;">
+                                ${result.svg}
+                            </div>
+                        </div>
+                    `;
+                    text = text.replace(match, htmlCode);
+                } catch (error) {
+                    console.error('Mermaid rendering failed:', error);
+                    text = text.replace(match, `<div class="mermaid-error">Failed to render diagram</div>`);
+                }
+            }
+
+            return text;
+        }
+        function zoomMermaid(id, factor) {
+            const diagram = document.getElementById(id);
+            const currentScale = diagram.style.transform ? parseFloat(diagram.style.transform.replace('scale(', '').replace(')', '')) : 1;
+            const newScale = currentScale * factor;
+            diagram.style.transform = `scale(${newScale})`;
+        }
+        async function renderCodeBlocks(text) {
+        if (typeof Prism === 'undefined') {
+            throw new Error('Prism is not loaded. Please include Prism.js in your project.');
+        }
+
+        const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+
+        const renderedText = await text.replace(codeBlockRegex, (match, language, code) => {
+            language = language || 'plaintext';
+            
+            if (!Prism.languages[language]) {
+            console.warn(`Language '${language}' is not supported by Prism. Falling back to plaintext.`);
+            language = 'plaintext';
+            }
+
+            const highlightedCode = Prism.highlight(code.trim(), Prism.languages[language], language);
+
+            const lines = highlightedCode.split('\n');
+            const numberedLines = lines.map((line, index) => 
+            `<span class="code-line"><span class="line-number">${index + 1}</span><span class="line-content">${line}</span></span>`
+            ).join('');
+
+            return `<div class="code-block-wrapper">
+            <div class="code-block-header">
+                <div class="language-label">${language}</div>
+                <button class="copy-button" onclick="copyCode(this)">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
+                </button>
+            </div>
+            <pre class="line-numbers"><code class="language-${language}">${numberedLines}</code></pre>
+            </div>`;
+        });
+
+        return renderedText;
+        }
+
+        function copyCode(button) {
+        const codeBlock = button.closest('.code-block-wrapper').querySelector('code');
+        const codeLines = codeBlock.querySelectorAll('.code-line');
+        let codeText = '';
+        
+        codeLines.forEach((line) => {
+            const lineNumber = line.querySelector('.line-number').textContent;
+            const lineContent = line.querySelector('.line-content').textContent;
+            codeText += `${lineNumber} ${lineContent}\n`;
+        });
+
+        navigator.clipboard.writeText(codeText.trim()).then(() => {
+            button.classList.add('copied');
+            button.querySelector('svg').style.display = 'none';
+            button.innerHTML = 'Copied!';
+            setTimeout(() => {
+            button.classList.remove('copied');
+            button.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                Copy
+            `;
+            }, 2000);
+        }).catch(err => {
+            console.error('Failed to copy text: ', err);
+        });
+        }
+        
+              
+        async function highlightCode(code, language) {
+            // Make sure the language is supported by your highlighting library
+            const supportedLanguage = Prism.languages[language] ? language : 'plaintext';
+            return Prism.highlight(code, Prism.languages[supportedLanguage], supportedLanguage);
+        }     
+        async function renderMarkdown(text) {
+            // Handle Mermaid graphs first
+            let mermaidCounter = 0;
+
+            text = await renderMermaidDiagrams(text);
+            
+            // Handle code blocks with syntax highlighting and copy button
+            text = await renderCodeBlocks(text);
+
+            // Handle inline code with copy button
+            text = text.replace(/`([^`]+)`/g, function(match, code) {
+                return `<code>
+                    <button class="copy-button" onclick="copyCode(this)">Copy</button>
+                    ${code}
+                </code>`;
+            });
+
+            // Handle LaTeX-style math equations
+            text = text.replace(/\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^\n]+?)\$/g, function(match, p1, p2, p3) {
+                const equation = p1 || p2 || p3;
+                return '<span class="math">' + equation + '</span>';
+            });
+
+            // Handle tables
+            text = text.replace(/^\|(.+)\|$/gm, function(match, tableRow) {
+                const cells = tableRow.split('|').map(cell => cell.trim());
+                const isHeader = cells.every(cell => cell.match(/^:?-+:?$/));
+                
+                if (isHeader) {
+                return ''; // Remove separator row
+                }
+                
+                const cellType = match.trim().startsWith('|') ? 'td' : 'th';
+                const renderedCells = cells.map(cell => `<${cellType}>${cell}</${cellType}>`).join('');
+                return `<tr>${renderedCells}</tr>`;
+            });
+            text = text.replace(/<tr>(.+?)<\/tr>/g, '<table>$&</table>');
+
+            // Handle headers
+            text = text.replace(/^(#{1,6})\s+(.*?)$/gm, function(match, hashes, content) {
+                const level = hashes.length;
+                return '<h' + level + '>' + content + '</h' + level + '>';
+            });
+
+            // Handle bold text
+            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            // Handle italic text
+            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+            // Handle links
+            text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
+
+            // Handle unordered lists
+            text = text.replace(/^\s*[-*+]\s+(.*?)$/gm, '<li>$1</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
+
+            // Handle ordered lists
+            text = text.replace(/^\s*(\d+)\.\s+(.*?)$/gm, '<li>$2</li>');
+            text = text.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
+
+            // Handle blockquotes
+            text = text.replace(/^>\s+(.*?)$/gm, '<blockquote>$1</blockquote>');
+
+            // Handle horizontal rules
+            text = text.replace(/^(-{3,}|_{3,}|\*{3,})$/gm, '<hr>');
+
+            // Handle paragraphs
+            text = text.replace(/^(?!<[uo]l|<blockquote|<h\d|<pre|<hr|<table)(.+)$/gm, '<p>$1</p>');
+
+
+            return text;
+        }
+        // Helper function to escape HTML special characters
+        function escapeHtml(unsafe) {
+            if (typeof unsafe !== 'string') {
+                console.log("Found unsafe string:", text)
+                return '';
+            }
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Function to initialize Mermaid
+        function initializeMermaid() {
+            if (typeof mermaid === 'undefined') {
+                console.error('Mermaid library is not loaded');
+                return;
+            }
+
+            mermaid.initialize({ startOnLoad: false });
+            document.querySelectorAll('.mermaid-placeholder').forEach((el) => {
+                const mermaidCode = decodeURIComponent(el.getAttribute('data-mermaid'));
+                console.log('Rendering Mermaid diagram:', mermaidCode);
+                
+                try {
+                    mermaid.render(el.id, mermaidCode, (svgCode) => {
+                        el.innerHTML = svgCode;
+                        el.classList.remove('mermaid-placeholder');
+                        el.classList.add('mermaid');
+                    });
+                } catch (error) {
+                    console.error('Error rendering Mermaid diagram:', error);
+                    el.innerHTML = '<p>Error rendering diagram</p>';
+                }
+            });
+        }
+        // Function to check if required libraries are loaded
+        function checkRequiredLibraries() {
+            if (typeof marked === 'undefined') {
+                console.error('marked library is not loaded');
+                return false;
+            }
+            if (typeof katex === 'undefined') {
+                console.error('KaTeX library is not loaded');
+                return false;
+            }
+            if (typeof mermaid === 'undefined') {
+                console.error('mermaid library is not loaded');
+                return false;
+            }
+            return true;
+        }
 
         // Animation for page elements
         function animatePageLoad() {
@@ -546,140 +1066,6 @@
             ideaGeneration.classList.add('hidden');
             projectsSection.classList.remove('hidden');
             backBtn.classList.add('hidden');
-        });
-
-        // Update openProject function to show back button
-        function openProject(projectId) {
-            const projects = JSON.parse(localStorage.getItem('projects')) || [];
-            const project = projects.find(p => p.id === projectId);
-            if (project) {
-                projectsSection.classList.add('hidden');
-                ideaGeneration.classList.remove('hidden');
-                backBtn.classList.remove('hidden');
-                // Load project data into idea generation form
-                document.getElementById('num-ideas').value = project.numIdeas || '';
-                document.getElementById('idea-category').value = project.category || 'brainstorming';
-                document.getElementById('idea-tags').value = project.tags || '';
-                document.getElementById('reasoning-steps').value = project.reasoningSteps || 'default';
-                // Load previous ideas if any
-                ideaList.innerHTML = '';
-                project.ideas.forEach((idea, index) => {
-                    const li = document.createElement('li');
-                    li.textContent = idea;
-                    li.className = 'fade-in';
-                    ideaList.appendChild(li);
-                    setTimeout(() => li.classList.add('show'), index * 100);
-                });
-                if (project.ideas.length > 0) {
-                    ideaDisplaySection.classList.remove('hidden');
-                }
-            }
-        }
-
-        // Update generateIdeas function to save ideas to the current project
-        async function generateIdeas() {
-            const numIdeas = document.getElementById('num-ideas').value;
-            const category = document.getElementById('idea-category').value;
-            const tags = document.getElementById('idea-tags').value;
-            const reasoningSteps = document.getElementById('reasoning-steps').value;
-
-            const system_prompt = `Generate ${numIdeas} creative ideas for the ${category} category. 
-                                   Use the following tags: ${tags}. 
-                                   Apply the ${reasoningSteps} reasoning process.`;
-            
-            const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message();
-
-            try {
-                const generated_text = await lc.generate(prompt);
-                const ideas = generated_text.split('\n').filter(idea => idea.trim() !== '');
-                
-                const ideaList = document.getElementById('idea-list');
-                ideaList.innerHTML = '';
-                ideas.forEach(idea => {
-                    const li = document.createElement('li');
-                    li.textContent = idea;
-                    ideaList.appendChild(li);
-                });
-                // Save generated ideas to the current project
-                const projects = JSON.parse(localStorage.getItem('projects')) || [];
-                const currentProjectId = parseInt(localStorage.getItem('currentProjectId'));
-                const projectIndex = projects.findIndex(p => p.id === currentProjectId);
-                if (projectIndex !== -1) {
-                    projects[projectIndex].ideas = ideas;
-                    projects[projectIndex].numIdeas = numIdeas;
-                    projects[projectIndex].category = category;
-                    projects[projectIndex].tags = tags;
-                    projects[projectIndex].reasoningSteps = reasoningSteps;
-                    localStorage.setItem('projects', JSON.stringify(projects));
-                }
-                document.getElementById('generate-ideas').addEventListener('click', generateIdeas);
-             
-            } catch (error) {
-                console.error('Error generating ideas:', error);
-                alert('An error occurred while generating ideas. Please try again.');
-            }
-        }
-        function openProject(projectId) {
-            const projects = JSON.parse(localStorage.getItem('projects')) || [];
-            const project = projects.find(p => p.id === projectId);
-            if (project) {
-                localStorage.setItem('currentProjectId', projectId);
-                projectsSection.classList.add('hidden');
-                ideaGeneration.classList.remove('hidden');
-                backBtn.classList.remove('hidden');
-
-                // Load project data into idea generation form
-                document.getElementById('num-ideas').value = project.numIdeas || '';
-                document.getElementById('idea-category').value = project.category || 'brainstorming';
-                document.getElementById('idea-tags').value = project.tags || '';
-                document.getElementById('reasoning-steps').value = project.reasoningSteps || 'default';
-
-                // Load previous ideas if any
-                ideaList.innerHTML = '';
-                ideaDisplaySection.classList.add('hidden');
-
-                if (project.ideas && project.ideas.length > 0) {
-                    project.ideas.forEach((idea, index) => {
-                        const li = document.createElement('li');
-                        li.textContent = idea;
-                        li.className = 'fade-in';
-                        ideaList.appendChild(li);
-                        setTimeout(() => li.classList.add('show'), index * 100);
-                    });
-                    ideaDisplaySection.classList.remove('hidden');
-                }
-
-                // Update page title with project name
-                document.title = `${project.name} - LOLLMS Idea Forge`;
-
-                // Animate the transition
-                anime({
-                    targets: '#idea-generation',
-                    opacity: [0, 1],
-                    translateY: [20, 0],
-                    easing: 'easeOutExpo',
-                    duration: 800
-                });
-            }
-        }
-
-        backBtn.addEventListener('click', () => {
-            localStorage.removeItem('currentProjectId');
-            ideaGeneration.classList.add('hidden');
-            projectsSection.classList.remove('hidden');
-            backBtn.classList.add('hidden');
-
-            // Clear form fields
-            document.getElementById('num-ideas').value = '';
-            document.getElementById('idea-category').value = 'brainstorming';
-            document.getElementById('idea-tags').value = '';
-            document.getElementById('reasoning-steps').value = 'default';
-
-            // Clear idea list
-            ideaList.innerHTML = '';
-            ideaDisplaySection.classList.add('hidden');
-
-            // Reset page title
             document.title = 'LOLLMS Idea Forge';
 
             // Animate the transition
@@ -704,16 +1090,19 @@
             ideaGeneration.classList.add('hidden');
             helpSection.classList.remove('hidden');
         });
+
         document.getElementById('close-help').addEventListener('click', () => {
             helpSection.classList.add('hidden');
             projectsSection.classList.remove('hidden');
         });
+
         // Show projects section by default
         window.addEventListener('DOMContentLoaded', (event) => {
             projectsSection.classList.remove('hidden');
             settingsSection.classList.add('hidden');
             ideaGeneration.classList.add('hidden');
             loadProjects(); // Ensure projects are loaded
+            initializeMermaid();
         });
     </script>
 </body>

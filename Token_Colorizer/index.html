@@ -1,67 +1,173 @@
-<!-- Start of HTML Document -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Token Colorizer</title>
+    <title>Advanced Token Colorizer</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-light: #f3f4f6;
+            --bg-dark: #1f2937;
+            --text-light: #1f2937;
+            --text-dark: #f3f4f6;
+        }
+        body {
+            transition: background-color 0.3s, color 0.3s;
+        }
+        body.dark {
+            background-color: var(--bg-dark);
+            color: var(--text-dark);
+        }
+        .token-word {
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .token-word::after {
+            content: attr(data-token-id);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+        .token-word:hover::after {
+            opacity: 1;
+        }
+    </style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+<body class="flex flex-col min-h-screen bg-gray-100 text-gray-800">
 
-    <!-- Start of Header Section -->
-    <header class="mb-8">
-        <h1 class="text-4xl font-bold text-center">Token Colorizer</h1>
-        <p class="text-lg text-center text-gray-600">Enter a prompt to see its words colored by their token IDs.</p>
-    </header>
-    <!-- End of Header Section -->
+<header class="bg-white shadow-md py-6 transition-all duration-300 relative">
+    <div class="container mx-auto px-4">
+        <h1 class="text-4xl font-bold text-center">Advanced Token Colorizer</h1>
+        <p class="text-lg text-center text-gray-600 mt-2">Enter a prompt to see its words colored by their token IDs.</p>
+    </div>
+    <button id="toggleDarkMode" class="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center">
+        <svg id="sunIcon" class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path></svg>
+        <svg id="moonIcon" class="w-6 h-6 mr-2 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+        <span id="modeText">Dark Mode</span>
+    </button>
+</header>
 
-    <!-- Start of Input Section -->
-    <section class="w-full max-w-md">
-        <textarea id="promptInput" rows="4" class="w-full p-2 border border-gray-300 rounded" placeholder="Type your prompt here..."></textarea>
-        <button id="colorizeButton" class="mt-4 w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Colorize Tokens</button>
-    </section>
-    <!-- End of Input Section -->
+<main class="container mx-auto px-4 py-8 flex-grow">
+    <div class="max-w-3xl mx-auto">
+        <section class="mb-8">
+            <textarea id="promptInput" rows="4" class="w-full p-4 border border-gray-300 rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300" placeholder="Type your prompt here..."></textarea>
+            <div class="mt-4">
+                <button id="colorizeButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105">Colorize Tokens</button>
+            </div>
+        </section>
 
-    <!-- Start of Output Section -->
-    <section class="mt-8 w-full max-w-md">
-        <h2 class="text-2xl font-semibold">Output:</h2>
-        <div id="outputContainer" class="mt-2 p-4 border border-gray-300 rounded bg-white"></div>
-        <p id="tokenCount" class="mt-2 text-lg font-medium"></p>
-    </section>
-    <!-- End of Output Section -->
+        <section>
+            <h2 class="text-2xl font-semibold mb-4">Output:</h2>
+            <p id="tokenCount" class="mt-4 text-lg font-medium"></p>
+            <div id="outputContainer" class="p-6 border border-gray-300 rounded-lg bg-white min-h-[200px] transition-all duration-300 whitespace-pre-wrap shadow-lg"></div>
+        </section>
+    </div>
+</main>
 
-    <!-- Start of Footer Section -->
-    <footer class="mt-8 text-center text-gray-500">
-        <p>&copy; 2023 Token Colorizer. All rights reserved.</p>
-    </footer>
-    <!-- End of Footer Section -->
+<footer class="bg-white shadow-md py-4 transition-all duration-300 mt-auto">
+    <div class="container mx-auto px-4">
+        <p class="text-center text-gray-600">&copy; 2023 Advanced Token Colorizer. All rights reserved.</p>
+        <p class="text-center text-gray-500 mt-2">Built by Code Warrior using Claude Sonnet on lollms system by ParisNeo</p>
+    </div>
+</footer>
 
-    <!-- Start of JavaScript Section -->
-    <script>
-        //section_start: script
-        document.getElementById('colorizeButton').addEventListener('click', function() {
-            const prompt = document.getElementById('promptInput').value;
-            const words = prompt.split(' ');
-            const outputContainer = document.getElementById('outputContainer');
-            outputContainer.innerHTML = '';
-            let tokenCount = words.length;
+<script src="/lollms_js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script>
+const lc = new LollmsClient(
+    null,    // Host address (default: http://localhost:9600)
+    null,    // Model name (default model used)
+    4096,    // Context size
+    -1,      // Personality
+    4096,    // Max tokens to be predicted
+    0.1,     // Temperature
+    50,      // Top K
+    0.95,    // Top P
+    0.8,     // Repeat penalty
+    40,      // Repeat last N
+    null,    // Seed
+    8,       // Number of threads
+    "",      // Service key
+    ELF_GENERATION_FORMAT.LOLLMS // Default generation mode
+);
 
-            words.forEach((word, index) => {
-                const tokenId = index + 1; // Simple token ID based on index
-                const color = `hsl(${(tokenId * 37) % 360}, 100%, 50%)`; // Generate color based on token ID
-                const span = document.createElement('span');
-                span.textContent = word + ' ';
-                span.style.color = color;
-                outputContainer.appendChild(span);
-            });
+document.getElementById('colorizeButton').addEventListener('click', async function() {
+    const prompt = document.getElementById('promptInput').value;
+    const outputContainer = document.getElementById('outputContainer');
+    outputContainer.innerHTML = '';
 
-            document.getElementById('tokenCount').textContent = `Total Tokens: ${tokenCount}`;
+    try {
+        const tokens = await lc.tokenize(prompt);
+        let tokenCount = tokens.length;
+
+        tokens.forEach((token, index) => {
+            const [tokenText, tokenId] = token;
+            const hue = (index * 137.5) % 360;
+            const color = `hsl(${hue}, 80%, 50%)`;
+            const span = document.createElement('span');
+            span.textContent = tokenText;
+            span.style.color = color;
+            span.classList.add('token-word');
+            span.dataset.tokenId = tokenId;
+            outputContainer.appendChild(span);
         });
-        //section_end: script
-    </script>
-    <!-- End of JavaScript Section -->
+
+        document.getElementById('tokenCount').textContent = `Total Tokens: ${tokenCount}`;
+    } catch (error) {
+        console.error('Error during tokenization:', error);
+        outputContainer.textContent = 'An error occurred during tokenization.';
+    }
+});
+
+const body = document.body;
+const toggleButton = document.getElementById('toggleDarkMode');
+const sunIcon = document.getElementById('sunIcon');
+const moonIcon = document.getElementById('moonIcon');
+const modeText = document.getElementById('modeText');
+
+function setDarkMode(isDark) {
+    body.classList.toggle('dark', isDark);
+    sunIcon.classList.toggle('hidden', isDark);
+    moonIcon.classList.toggle('hidden', !isDark);
+    modeText.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+    localStorage.setItem('darkMode', isDark);
+
+    const elementsToToggle = [
+        document.querySelector('header'),
+        document.querySelector('footer'),
+        document.getElementById('promptInput'),
+        document.getElementById('outputContainer')
+    ];
+
+    elementsToToggle.forEach(el => {
+        el.classList.toggle('bg-gray-800', isDark);
+        el.classList.toggle('text-gray-200', isDark);
+    });
+
+    document.getElementById('toggleDarkMode').classList.toggle('bg-gray-700', isDark);
+    document.getElementById('toggleDarkMode').classList.toggle('text-gray-200', isDark);
+}
+
+toggleButton.addEventListener('click', function() {
+    const isDark = !body.classList.contains('dark');
+    setDarkMode(isDark);
+});
+
+if (localStorage.getItem('darkMode') === 'true') {
+    setDarkMode(true);
+}
+</script>
 
 </body>
 </html>
-<!-- End of HTML Document -->
