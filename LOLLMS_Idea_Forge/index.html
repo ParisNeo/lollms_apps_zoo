@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOLLMS Idea Forge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <script src="/lollms_js"></script>
+    <style>
+        .fade-in {
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        .fade-in.show {
+            opacity: 1;
+        }
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Dark mode styles */
+        .dark {
+            color-scheme: dark;
+        }
+
+        .dark body {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+
+        .dark .bg-white {
+            background-color: #2d3748;
+        }
+
+        .dark .text-gray-900 {
+            color: #e2e8f0;
+        }
+
+        .dark .hover\:bg-gray-200:hover {
+            background-color: #4a5568;
+        }
+
+        .dark .border {
+            border-color: #4a5568;
+        }
+
+        .dark input, .dark select {
+            background-color: #2d3748;
+            color: #e2e8f0;
+        }
+
+        .dark button {
+            background-color: #4a5568;
+            color: #e2e8f0;
+        }
+
+        .dark button:hover {
+            background-color: #718096;
+        }
+        body {
+            padding-bottom: 60px; /* Adjust this value based on your footer's height */
+        }
+
+        main {
+            min-height: calc(100vh - 60px); /* Adjust 60px based on your footer's height */
+        }
+
+        #help-section {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #help-section h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        #help-section h3 {
+            color: #553c9a;
+        }
+
+        #help-section .dark h3 {
+            color: #d6bcfa;
+        }
+
+        #help-section p, #help-section li {
+            line-height: 1.6;
+        }
+
+        #help-section .bg-purple-100 {
+            background-color: rgba(237, 233, 254, 0.5);
+        }
+
+        #help-section .dark .bg-purple-900 {
+            background-color: rgba(76, 29, 149, 0.5);
+        }
+
+        /* Updated styles for dark mode */
+        .dark #help-section {
+            color: #e2e8f0;
+        }
+
+        .dark #help-section h2 {
+            color: #a78bfa;
+        }
+
+        .dark #help-section h3 {
+            color: #d6bcfa;
+        }
+
+        .dark #help-section .bg-white {
+            background-color: #1a202c;
+        }
+
+        .dark #help-section .text-gray-600,
+        .dark #help-section .text-gray-700 {
+            color: #cbd5e0;
+        }
+
+        .dark #help-section .text-purple-700,
+        .dark #help-section .text-purple-800 {
+            color: #e9d8fd;
+        }
+
+        .dark #help-section button {
+            background-color: #8b5cf6;
+        }
+
+        .dark #help-section button:hover {
+            background-color: #7c3aed;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 transition-colors duration-200">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-center">
+            <div class="flex items-center">
+                <img src="/apps/LOLLMS_Idea_Forge/icon.png" alt="LOLLMS Idea Forge Icon" class="w-10 h-10 mr-4 rounded-lg shadow-md">
+                <h1 class="text-4xl font-bold">LOLLMS Idea Forge</h1>
+            </div>
+            <nav>
+                <button id="projects-btn" class="px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Projects</button>
+                <button id="settings-btn" class="px-4 py-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700">Settings</button>
+                <button id="help-btn" class="p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700" aria-label="Help">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+            </nav>
+        </header>
+
+        <main>
+            <section id="projects-section" class="mb-8 hidden">
+                <h2 class="text-2xl font-semibold mb-4">Projects</h2>
+                <div id="projects-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Projects will be dynamically added here -->
+                </div>
+                <button id="new-project-btn" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">New Project</button>
+            </section>
+
+            <section id="settings-section" class="mb-8 hidden">
+                <h2 class="text-2xl font-semibold mb-4">Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="context-size" class="font-medium">Context Size:</label>
+                        <input type="number" id="context-size" class="border rounded p-2" value="128000">
+                    </div>
+                    <div>
+                        <label for="max-gen-size" class="font-medium">Max Generation Size:</label>
+                        <input type="number" id="max-gen-size" class="border rounded p-2" value="4096">
+                    </div>
+                    <div>
+                        <label for="lollms-host" class="font-medium">LOLLMS Host Address:</label>
+                        <input type="text" id="lollms-host" class="border rounded p-2" value="http://localhost:9600">
+                    </div>
+                    <button id="save-settings" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save Settings</button>
+                </div>
+            </section>
+
+            <section id="idea-generation" class="mb-8">
+                <h2 class="text-2xl font-semibold mb-4">Idea Generation</h2>
+                <div id="idea-generation-section" class="space-y-4">
+                    <div>
+                        <label for="num-ideas" class="font-medium">Number of Ideas:</label>
+                        <input type="number" id="num-ideas" min="1" class="border rounded p-2">
+                    </div>
+                    <div>
+                        <label for="idea-category" class="font-medium">Idea Category:</label>
+                        <select id="idea-category" class="border rounded p-2">
+                            <option value="brainstorming">Brainstorming</option>
+                            <option value="mind-mapping">Mind Mapping</option>
+                            <option value="product-development">Product Development</option>
+                            <option value="marketing-strategies">Marketing Strategies</option>
+                            <option value="problem-solving">Problem Solving</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="idea-tags" class="font-medium">Idea Tags:</label>
+                        <input type="text" id="idea-tags" placeholder="Comma-separated tags" class="border rounded p-2 w-full">
+                    </div>
+                    <div>
+                        <label for="reasoning-steps" class="font-medium">Reasoning Steps:</label>
+                        <select id="reasoning-steps" class="border rounded p-2">
+                            <option value="default">Default (10-step)</option>
+                            <option value="api-specific">API-Specific</option>
+                            <option value="custom">Custom</option>
+                            <option value="8-stage">8-Stage Process</option>
+                            <option value="lollms-library">LOLLMS Library Integration</option>
+                        </select>
+                    </div>
+                    <button id="generate-ideas" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Generate Ideas</button>
+                </div>
+
+                <div id="idea-display-section" class="mt-8 hidden">
+                    <h2 class="text-2xl font-semibold mb-4">Generated Ideas</h2>
+                    <ul id="idea-list" class="list-disc pl-5 space-y-2"></ul>
+                </div>
+
+                <div id="loading-animation" class="hidden mt-8 flex justify-center">
+                    <svg class="animate-spin h-10 w-10 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            </section>
+            <section id="help-section" class="mb-8 hidden">
+                <h2 class="text-3xl font-bold mb-6 text-purple-600 dark:text-purple-400">Help & Getting Started</h2>
+                <div class="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <div class="border-l-4 border-purple-500 pl-4">
+                        <h3 class="text-2xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Welcome to LOLLMS Idea Forge</h3>
+                        <p class="text-gray-600 dark:text-gray-400">This powerful tool helps you generate creative ideas for various purposes. Let's get you started!</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">How to Use</h3>
+                        <ol class="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-200">
+                            <li>Create a new project or select an existing one from the Projects section.</li>
+                            <li>In the Idea Generation section, specify the number of ideas, category, and tags.</li>
+                            <li>Choose a reasoning process for idea generation.</li>
+                            <li>Click "Generate Ideas" to create new ideas based on your inputs.</li>
+                            <li>View and manage your generated ideas in the project.</li>
+                        </ol>
+                    </div>
+                    <div class="bg-purple-100 dark:bg-purple-900 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold mb-3 text-purple-800 dark:text-purple-200">Pro Tips</h3>
+                        <ul class="list-disc list-inside space-y-2 text-purple-700 dark:text-purple-300">
+                            <li>Use specific tags to guide the idea generation process.</li>
+                            <li>Experiment with different reasoning steps for varied results.</li>
+                            <li>Save your favorite ideas within projects for future reference.</li>
+                            <li>Regularly review and refine your ideas to spark new innovations.</li>
+                        </ul>
+                    </div>
+                    <div class="mt-6 text-center">
+                        <button id="close-help" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Got it, let's create!
+                        </button>
+                    </div>
+                    <div class="mt-6 text-sm text-gray-600 dark:text-gray-300 italic">
+                        <p>This tool was created by ParisNeo from idea suggestions given by a lollms fan called <strong class="dark:text-white">Truman Show Participant</strong>. Special thanks for given those ideas.</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="fixed bottom-0 left-0 right-0 text-center py-4 bg-gray-100 dark:bg-gray-800">
+            <p>&copy; 2024 LOLLMS Idea Forge</p>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize LOLLMS client and settings
+        let contextSize = parseInt(localStorage.getItem('contextSize')) || 128000;
+        let maxGenSize = parseInt(localStorage.getItem('maxGenSize')) || 4096;
+        let lollmsHostAddress = localStorage.getItem('lollmsHostAddress') || "http://localhost:9600";
+
+        let lc = new LollmsClient(
+            lollmsHostAddress, null, contextSize, -1, maxGenSize, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS
+        );
+
+        let tl = new TasksLibrary(lc);
+
+        // Theme toggle
+        const themeToggle = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+
+        function setTheme(isDark) {
+            if (isDark) {
+                console.log("Going to dark mode")
+                htmlElement.classList.add('dark');
+            } else {
+                console.log("Going to light mode")
+                htmlElement.classList.remove('dark');
+            }
+            localStorage.setItem('darkMode', isDark);
+        }
+
+        themeToggle.addEventListener('click', () => {
+            const isDark = !htmlElement.classList.contains('dark');
+            setTheme(isDark);
+        });
+
+        // Initialize theme
+        const savedTheme = localStorage.getItem('darkMode');
+        if (savedTheme !== null) {
+            setTheme(JSON.parse(savedTheme));
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            setTheme(true);
+        }
+        // Navigation
+        const projectsBtn = document.getElementById('projects-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const projectsSection = document.getElementById('projects-section');
+        const settingsSection = document.getElementById('settings-section');
+        const ideaGeneration = document.getElementById('idea-generation');
+
+        projectsBtn.addEventListener('click', () => {
+            projectsSection.classList.remove('hidden');
+            settingsSection.classList.add('hidden');
+            ideaGeneration.classList.add('hidden');
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            projectsSection.classList.add('hidden');
+            settingsSection.classList.remove('hidden');
+            ideaGeneration.classList.add('hidden');
+        });
+
+        // Settings
+        const contextSizeInput = document.getElementById('context-size');
+        const maxGenSizeInput = document.getElementById('max-gen-size');
+        const lollmsHostInput = document.getElementById('lollms-host');
+        const saveSettingsBtn = document.getElementById('save-settings');
+
+        contextSizeInput.value = contextSize;
+        maxGenSizeInput.value = maxGenSize;
+        lollmsHostInput.value = lollmsHostAddress;
+
+        saveSettingsBtn.addEventListener('click', () => {
+            contextSize = parseInt(contextSizeInput.value);
+            maxGenSize = parseInt(maxGenSizeInput.value);
+            lollmsHostAddress = lollmsHostInput.value;
+
+            localStorage.setItem('contextSize', contextSize);
+            localStorage.setItem('maxGenSize', maxGenSize);
+            localStorage.setItem('lollmsHostAddress', lollmsHostAddress);
+
+            lc = new LollmsClient(
+                lollmsHostAddress, null, contextSize, -1, maxGenSize, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS
+            );
+
+            alert('Settings saved successfully!');
+        });
+
+        // Projects
+        const projectsList = document.getElementById('projects-list');
+        const newProjectBtn = document.getElementById('new-project-btn');
+
+        function loadProjects() {
+            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+            projectsList.innerHTML = '';
+            projects.forEach(project => {
+                const projectCard = document.createElement('div');
+                projectCard.className = 'bg-white dark:bg-gray-700 p-4 rounded-lg shadow fade-in';
+                projectCard.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-2">${project.name}</h3>
+                    <p class="mb-2">${project.description}</p>
+                    <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 open-project" data-id="${project.id}">Open</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 delete-project" data-id="${project.id}">Delete</button>
+                `;
+                projectsList.appendChild(projectCard);
+                setTimeout(() => projectCard.classList.add('show'), 10);
+            });
+        }
+
+        newProjectBtn.addEventListener('click', () => {
+            const name = prompt('Enter project name:');
+            if (name) {
+                const description = prompt('Enter project description:');
+                const projects = JSON.parse(localStorage.getItem('projects')) || [];
+                const newProject = {
+                    id: Date.now(),
+                    name,
+                    description,
+                    ideas: []
+                };
+                projects.push(newProject);
+                localStorage.setItem('projects', JSON.stringify(projects));
+                loadProjects();
+            }
+        });
+
+        projectsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('open-project')) {
+                const projectId = parseInt(e.target.getAttribute('data-id'));
+                openProject(projectId);
+            } else if (e.target.classList.contains('delete-project')) {
+                const projectId = parseInt(e.target.getAttribute('data-id'));
+                deleteProject(projectId);
+            }
+        });
+
+        function openProject(projectId) {
+            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                projectsSection.classList.add('hidden');
+                ideaGeneration.classList.remove('hidden');
+                // Load project data into idea generation form
+                // You can implement this part based on your project structure
+            }
+        }
+
+        function deleteProject(projectId) {
+            if (confirm('Are you sure you want to delete this project?')) {
+                const projects = JSON.parse(localStorage.getItem('projects')) || [];
+                const updatedProjects = projects.filter(p => p.id !== projectId);
+                localStorage.setItem('projects', JSON.stringify(updatedProjects));
+                loadProjects();
+            }
+        }
+
+        // Load projects on page load
+        loadProjects();
+
+        // Idea Generation
+        const generateIdeasBtn = document.getElementById('generate-ideas');
+        const loadingAnimation = document.getElementById('loading-animation');
+        const ideaDisplaySection = document.getElementById('idea-display-section');
+        const ideaList = document.getElementById('idea-list');
+
+        async function generateIdeas() {
+            const numIdeas = document.getElementById('num-ideas').value;
+            const category = document.getElementById('idea-category').value;
+            const tags = document.getElementById('idea-tags').value;
+            const reasoningSteps = document.getElementById('reasoning-steps').value;
+
+            const system_prompt = `Generate ${numIdeas} creative ideas for the ${category} category. 
+                                   Use the following tags: ${tags}. 
+                                   Apply the ${reasoningSteps} reasoning process.`;
+            
+            const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message();
+
+            try {
+                loadingAnimation.classList.remove('hidden');
+                ideaDisplaySection.classList.add('hidden');
+
+                const generated_text = await lc.generate(prompt);
+                const ideas = generated_text.split('\n').filter(idea => idea.trim() !== '');
+                
+                ideaList.innerHTML = '';
+                ideas.forEach((idea, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = idea;
+                    li.className = 'fade-in';
+                    ideaList.appendChild(li);
+                    setTimeout(() => li.classList.add('show'), index * 100);
+                });
+
+                loadingAnimation.classList.add('hidden');
+                ideaDisplaySection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating ideas:', error);
+                alert('An error occurred while generating ideas. Please try again.');
+            } finally {
+                loadingAnimation.classList.add('hidden');
+            }
+        }
+
+        generateIdeasBtn.addEventListener('click', generateIdeas);
+
+        // Animation for page elements
+        function animatePageLoad() {
+            anime({
+                targets: 'header, main > section',
+                opacity: [0, 1],
+                translateY: [20, 0],
+                easing: 'easeOutExpo',
+                duration: 1000,
+                delay: anime.stagger(200)
+            });
+        }
+
+        // Call animation function when the page loads
+        window.addEventListener('load', animatePageLoad);
+
+        // Smooth scrolling for internal links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Initialize tooltips
+        const tooltips = document.querySelectorAll('[data-tooltip]');
+        tooltips.forEach(tooltip => {
+            tooltip.addEventListener('mouseenter', () => {
+                const tooltipText = tooltip.getAttribute('data-tooltip');
+                const tooltipEl = document.createElement('div');
+                tooltipEl.className = 'bg-gray-800 text-white p-2 rounded absolute z-10 text-sm';
+                tooltipEl.textContent = tooltipText;
+                tooltip.appendChild(tooltipEl);
+            });
+            tooltip.addEventListener('mouseleave', () => {
+                const tooltipEl = tooltip.querySelector('div');
+                if (tooltipEl) tooltipEl.remove();
+            });
+        });
+
+        // Add responsive menu for mobile devices
+        const menuToggle = document.createElement('button');
+        menuToggle.innerHTML = '&#9776;'; // Hamburger icon
+        menuToggle.className = 'md:hidden p-2 rounded hover:bg-gray-200 dark:hover:bg-gray-700';
+        const nav = document.querySelector('nav');
+        nav.parentNode.insertBefore(menuToggle, nav);
+
+        menuToggle.addEventListener('click', () => {
+            nav.classList.toggle('hidden');
+        });
+
+        // Make sure the menu is visible on larger screens
+        window.addEventListener('resize', () => {
+            if (window.innerWidth >= 768) { // md breakpoint
+                nav.classList.remove('hidden');
+            }
+        });
+
+        // Add a back button for project view
+        const backBtn = document.createElement('button');
+        backBtn.textContent = 'Back to Projects';
+        backBtn.className = 'bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 mb-4 hidden';
+        ideaGeneration.insertBefore(backBtn, ideaGeneration.firstChild);
+
+        backBtn.addEventListener('click', () => {
+            ideaGeneration.classList.add('hidden');
+            projectsSection.classList.remove('hidden');
+            backBtn.classList.add('hidden');
+        });
+
+        // Update openProject function to show back button
+        function openProject(projectId) {
+            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                projectsSection.classList.add('hidden');
+                ideaGeneration.classList.remove('hidden');
+                backBtn.classList.remove('hidden');
+                // Load project data into idea generation form
+                document.getElementById('num-ideas').value = project.numIdeas || '';
+                document.getElementById('idea-category').value = project.category || 'brainstorming';
+                document.getElementById('idea-tags').value = project.tags || '';
+                document.getElementById('reasoning-steps').value = project.reasoningSteps || 'default';
+                // Load previous ideas if any
+                ideaList.innerHTML = '';
+                project.ideas.forEach((idea, index) => {
+                    const li = document.createElement('li');
+                    li.textContent = idea;
+                    li.className = 'fade-in';
+                    ideaList.appendChild(li);
+                    setTimeout(() => li.classList.add('show'), index * 100);
+                });
+                if (project.ideas.length > 0) {
+                    ideaDisplaySection.classList.remove('hidden');
+                }
+            }
+        }
+
+        // Update generateIdeas function to save ideas to the current project
+        async function generateIdeas() {
+            const numIdeas = document.getElementById('num-ideas').value;
+            const category = document.getElementById('idea-category').value;
+            const tags = document.getElementById('idea-tags').value;
+            const reasoningSteps = document.getElementById('reasoning-steps').value;
+
+            const system_prompt = `Generate ${numIdeas} creative ideas for the ${category} category. 
+                                   Use the following tags: ${tags}. 
+                                   Apply the ${reasoningSteps} reasoning process.`;
+            
+            const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message();
+
+            try {
+                const generated_text = await lc.generate(prompt);
+                const ideas = generated_text.split('\n').filter(idea => idea.trim() !== '');
+                
+                const ideaList = document.getElementById('idea-list');
+                ideaList.innerHTML = '';
+                ideas.forEach(idea => {
+                    const li = document.createElement('li');
+                    li.textContent = idea;
+                    ideaList.appendChild(li);
+                });
+                // Save generated ideas to the current project
+                const projects = JSON.parse(localStorage.getItem('projects')) || [];
+                const currentProjectId = parseInt(localStorage.getItem('currentProjectId'));
+                const projectIndex = projects.findIndex(p => p.id === currentProjectId);
+                if (projectIndex !== -1) {
+                    projects[projectIndex].ideas = ideas;
+                    projects[projectIndex].numIdeas = numIdeas;
+                    projects[projectIndex].category = category;
+                    projects[projectIndex].tags = tags;
+                    projects[projectIndex].reasoningSteps = reasoningSteps;
+                    localStorage.setItem('projects', JSON.stringify(projects));
+                }
+                document.getElementById('generate-ideas').addEventListener('click', generateIdeas);
+             
+            } catch (error) {
+                console.error('Error generating ideas:', error);
+                alert('An error occurred while generating ideas. Please try again.');
+            }
+        }
+        function openProject(projectId) {
+            const projects = JSON.parse(localStorage.getItem('projects')) || [];
+            const project = projects.find(p => p.id === projectId);
+            if (project) {
+                localStorage.setItem('currentProjectId', projectId);
+                projectsSection.classList.add('hidden');
+                ideaGeneration.classList.remove('hidden');
+                backBtn.classList.remove('hidden');
+
+                // Load project data into idea generation form
+                document.getElementById('num-ideas').value = project.numIdeas || '';
+                document.getElementById('idea-category').value = project.category || 'brainstorming';
+                document.getElementById('idea-tags').value = project.tags || '';
+                document.getElementById('reasoning-steps').value = project.reasoningSteps || 'default';
+
+                // Load previous ideas if any
+                ideaList.innerHTML = '';
+                ideaDisplaySection.classList.add('hidden');
+
+                if (project.ideas && project.ideas.length > 0) {
+                    project.ideas.forEach((idea, index) => {
+                        const li = document.createElement('li');
+                        li.textContent = idea;
+                        li.className = 'fade-in';
+                        ideaList.appendChild(li);
+                        setTimeout(() => li.classList.add('show'), index * 100);
+                    });
+                    ideaDisplaySection.classList.remove('hidden');
+                }
+
+                // Update page title with project name
+                document.title = `${project.name} - LOLLMS Idea Forge`;
+
+                // Animate the transition
+                anime({
+                    targets: '#idea-generation',
+                    opacity: [0, 1],
+                    translateY: [20, 0],
+                    easing: 'easeOutExpo',
+                    duration: 800
+                });
+            }
+        }
+
+        backBtn.addEventListener('click', () => {
+            localStorage.removeItem('currentProjectId');
+            ideaGeneration.classList.add('hidden');
+            projectsSection.classList.remove('hidden');
+            backBtn.classList.add('hidden');
+
+            // Clear form fields
+            document.getElementById('num-ideas').value = '';
+            document.getElementById('idea-category').value = 'brainstorming';
+            document.getElementById('idea-tags').value = '';
+            document.getElementById('reasoning-steps').value = 'default';
+
+            // Clear idea list
+            ideaList.innerHTML = '';
+            ideaDisplaySection.classList.add('hidden');
+
+            // Reset page title
+            document.title = 'LOLLMS Idea Forge';
+
+            // Animate the transition
+            anime({
+                targets: '#projects-section',
+                opacity: [0, 1],
+                translateY: [20, 0],
+                easing: 'easeOutExpo',
+                duration: 800
+            });
+
+            // Refresh the projects list
+            loadProjects();
+        });
+
+        const helpBtn = document.getElementById('help-btn');
+        const helpSection = document.getElementById('help-section');
+
+        helpBtn.addEventListener('click', () => {
+            projectsSection.classList.add('hidden');
+            settingsSection.classList.add('hidden');
+            ideaGeneration.classList.add('hidden');
+            helpSection.classList.remove('hidden');
+        });
+        document.getElementById('close-help').addEventListener('click', () => {
+            helpSection.classList.add('hidden');
+            projectsSection.classList.remove('hidden');
+        });
+        // Show projects section by default
+        window.addEventListener('DOMContentLoaded', (event) => {
+            projectsSection.classList.remove('hidden');
+            settingsSection.classList.add('hidden');
+            ideaGeneration.classList.add('hidden');
+            loadProjects(); // Ensure projects are loaded
+        });
+    </script>
+</body>
+</html>

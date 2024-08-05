@@ -1,0 +1,67 @@
+<!-- Start of HTML Document -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Colorizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- Start of Header Section -->
+    <header class="mb-8">
+        <h1 class="text-4xl font-bold text-center">Token Colorizer</h1>
+        <p class="text-lg text-center text-gray-600">Enter a prompt to see its words colored by their token IDs.</p>
+    </header>
+    <!-- End of Header Section -->
+
+    <!-- Start of Input Section -->
+    <section class="w-full max-w-md">
+        <textarea id="promptInput" rows="4" class="w-full p-2 border border-gray-300 rounded" placeholder="Type your prompt here..."></textarea>
+        <button id="colorizeButton" class="mt-4 w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600">Colorize Tokens</button>
+    </section>
+    <!-- End of Input Section -->
+
+    <!-- Start of Output Section -->
+    <section class="mt-8 w-full max-w-md">
+        <h2 class="text-2xl font-semibold">Output:</h2>
+        <div id="outputContainer" class="mt-2 p-4 border border-gray-300 rounded bg-white"></div>
+        <p id="tokenCount" class="mt-2 text-lg font-medium"></p>
+    </section>
+    <!-- End of Output Section -->
+
+    <!-- Start of Footer Section -->
+    <footer class="mt-8 text-center text-gray-500">
+        <p>&copy; 2023 Token Colorizer. All rights reserved.</p>
+    </footer>
+    <!-- End of Footer Section -->
+
+    <!-- Start of JavaScript Section -->
+    <script>
+        //section_start: script
+        document.getElementById('colorizeButton').addEventListener('click', function() {
+            const prompt = document.getElementById('promptInput').value;
+            const words = prompt.split(' ');
+            const outputContainer = document.getElementById('outputContainer');
+            outputContainer.innerHTML = '';
+            let tokenCount = words.length;
+
+            words.forEach((word, index) => {
+                const tokenId = index + 1; // Simple token ID based on index
+                const color = `hsl(${(tokenId * 37) % 360}, 100%, 50%)`; // Generate color based on token ID
+                const span = document.createElement('span');
+                span.textContent = word + ' ';
+                span.style.color = color;
+                outputContainer.appendChild(span);
+            });
+
+            document.getElementById('tokenCount').textContent = `Total Tokens: ${tokenCount}`;
+        });
+        //section_end: script
+    </script>
+    <!-- End of JavaScript Section -->
+
+</body>
+</html>
+<!-- End of HTML Document -->
