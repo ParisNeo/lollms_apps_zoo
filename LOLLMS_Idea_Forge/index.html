@@ -410,11 +410,11 @@
                                 <div class="space-y-2">
                                     <label for="reasoning-steps" class="block text-sm font-medium text-gray-700">Reasoning Steps</label>
                                     <select id="reasoning-steps" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm rounded-md">
-                                        <option value="default">Default (10-step)</option>
-                                        <option value="api-specific">API-Specific</option>
-                                        <option value="custom">Custom</option>
-                                        <option value="8-stage">8-Stage Process</option>
-                                        <option value="lollms-library">LOLLMS Library Integration</option>
+                                        <option value="default">Default</option>
+                                        <option value="chain of thoughts">Chain of thoughts</option>
+                                        <option value="tree of thought">Tree of thoughts</option>
+                                        <option value="8-stage process">8-Stage Process</option>
+                                        <option value="10-steps reasoning">10-step reasoning</option>
                                     </select>
                                 </div>
                                 <div class="pt-4">
@@ -489,10 +489,12 @@
         let lollmsHostAddress = localStorage.getItem('lollmsHostAddress') || "http://localhost:9600";
         let currentProjectId = parseInt(localStorage.getItem('lollms-ideas-forge-currentProjectId'));
 
+        console.log("contextSize:",contextSize)
+        console.log("maxGenSize:",maxGenSize)
         let lc = new LollmsClient(
             lollmsHostAddress, null, contextSize, -1, maxGenSize, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS
         );
-
+        console.log("lc.n_predict", lc.n_predict)
         let tl = new TasksLibrary(lc);
 
         // Theme toggle
@@ -684,7 +686,7 @@
             const tags = document.getElementById('idea-tags').value;
             const reasoningSteps = document.getElementById('reasoning-steps').value;
 
-            const system_prompt = `Generate ${numIdeas} creative ideas for the ${category} category. 
+            const system_prompt = `Generate ${numIdeas} creative ideas for ${category}. 
                 Use the following tags: ${tags}. 
                 Apply the ${reasoningSteps} reasoning process.
                 Format your response using Markdown, including code blocks and mathematical equations where appropriate.
@@ -771,16 +773,27 @@
                             <div class="mermaid-diagram" id="${uniqueId}" style="transform-origin: center; transition: transform 0.3s;">
                                 ${result.svg}
                             </div>
-                            <div class="absolute top-0 left-0 flex gap-2 p-2">
-                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M10 18a8 8 0 110-16 8 8 0 010 16zm3.707-8.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                            <div class="absolute top-0 left-0 flex gap-1 p-1">
+                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100">
+                                    <circle cx="40" cy="40" r="25" stroke="black" stroke-width="5" fill="none" />
+                                    <line x1="60" y1="60" x2="80" y2="80" stroke="black" stroke-width="5" />
+                                    <line x1="50" y1="40" x2="30" y2="40" stroke="black" stroke-width="3" />
+                                    <line x1="40" y1="30" x2="40" y2="50" stroke="black" stroke-width="3" />
                                     </svg>
                                 </button>
-                                <button onclick="zoomMermaid('${uniqueId}', 0.9)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                        <path d="M10 18a8 8 0 110-16 8 8 0 010 16zm-3.707-8.707a1 1 0 00-1.414 1.414L9 10.586 10.293 11.707a1 1 0 001.414-1.414l-2-2a1 1 0 00-1.414 0l-4 4z" />
+                                <button onclick="zoomMermaid('${uniqueId}', 0.9)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100">
+                                    <circle cx="40" cy="40" r="25" stroke="black" stroke-width="5" fill="none" />
+                                    <line x1="60" y1="60" x2="80" y2="80" stroke="black" stroke-width="5" />
+                                    <line x1="50" y1="40" x2="30" y2="40" stroke="black" stroke-width="3" />
                                     </svg>
+                                </button>
+                                <button onclick="saveMermaidAsPNG('${uniqueId}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
+                                    PNG
+                                </button>
+                                <button onclick="saveMermaidAsSVG('${uniqueId}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
+                                    SVG
                                 </button>
                             </div>
                         </div>
@@ -794,6 +807,49 @@
 
             return text;
         }
+        function saveMermaidAsPNG(id) {
+            const svg = document.querySelector(`#${id} svg`);
+            const svgData = new XMLSerializer().serializeToString(svg);
+            
+            // Create a canvas with a higher resolution
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            
+            // Set a scale factor for higher resolution (e.g., 2 for double resolution)
+            const scaleFactor = 2;
+            
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width * scaleFactor;
+                canvas.height = img.height * scaleFactor;
+                
+                // Scale the context to draw the image at a higher resolution
+                ctx.scale(scaleFactor, scaleFactor);
+                ctx.drawImage(img, 0, 0);
+                
+                const pngFile = canvas.toDataURL("image/png");
+                const downloadLink = document.createElement("a");
+                downloadLink.download = "mermaid_diagram.png";
+                downloadLink.href = pngFile;
+                downloadLink.click();
+            };
+            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
+        }
+
+        function saveMermaidAsSVG(id) {
+            const svg = document.querySelector(`#${id} svg`);
+            const svgData = new XMLSerializer().serializeToString(svg);
+            const svgBlob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
+            const svgUrl = URL.createObjectURL(svgBlob);
+            const downloadLink = document.createElement("a");
+            downloadLink.href = svgUrl;
+            downloadLink.download = "mermaid_diagram.svg";
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+
 
         function zoomMermaid(id, factor) {
             const diagram = document.getElementById(id);
