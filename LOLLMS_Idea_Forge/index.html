@@ -191,7 +191,6 @@
             position: relative;
         }
         .copy-button {
-            position: absolute;
             top: 5px;
             right: 5px;
             padding: 3px 8px;
@@ -768,13 +767,21 @@
                 try {
                     const result = await mermaid.render(uniqueId, mermaidCode);
                     const htmlCode = `
-                        <div class="mermaid-container" style="display: flex; justify-content: center; align-items: center; margin: 20px 0;">
-                            <div class="mermaid-controls" style="top: 10px; right: 10px; z-index: 1000;">
-                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" style="margin-right: 5px;">Zoom In</button>
-                                <button onclick="zoomMermaid('${uniqueId}', 0.9)">Zoom Out</button>
-                            </div>
+                        <div class="relative flex justify-center items-center mt-4 mb-4">
                             <div class="mermaid-diagram" id="${uniqueId}" style="transform-origin: center; transition: transform 0.3s;">
                                 ${result.svg}
+                            </div>
+                            <div class="absolute top-0 left-0 flex gap-2 p-2">
+                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded inline-flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 18a8 8 0 110-16 8 8 0 010 16zm3.707-8.707a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                                    </svg>
+                                </button>
+                                <button onclick="zoomMermaid('${uniqueId}', 0.9)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold py-2 px-4 rounded inline-flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M10 18a8 8 0 110-16 8 8 0 010 16zm-3.707-8.707a1 1 0 00-1.414 1.414L9 10.586 10.293 11.707a1 1 0 001.414-1.414l-2-2a1 1 0 00-1.414 0l-4 4z" />
+                                    </svg>
+                                </button>
                             </div>
                         </div>
                     `;
@@ -787,6 +794,7 @@
 
             return text;
         }
+
         function zoomMermaid(id, factor) {
             const diagram = document.getElementById(id);
             const currentScale = diagram.style.transform ? parseFloat(diagram.style.transform.replace('scale(', '').replace(')', '')) : 1;
@@ -868,7 +876,60 @@
             // Make sure the language is supported by your highlighting library
             const supportedLanguage = Prism.languages[language] ? language : 'plaintext';
             return Prism.highlight(code, Prism.languages[supportedLanguage], supportedLanguage);
-        }     
+        }
+
+        async function handle_tables(text){
+            // Handle tables
+            let alignments = [];
+            let tableRows = [];
+            let isInTable = false;
+            let hasHeader = false;
+
+            // Process the text line by line
+            text = text.split('\n').map(line => {
+                // Check if the line is a table row
+                if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+                    isInTable = true;
+                    const tableRow = line.trim().slice(1, -1); // Remove leading and trailing |
+                    const cells = tableRow.split('|').map(cell => cell.trim());
+                    
+                    if (cells.every(cell => cell.match(/^:?-+:?$/))) {
+                        // This is the header separator row
+                        alignments = cells.map(cell => {
+                            if (cell.startsWith(':') && cell.endsWith(':')) return 'center';
+                            if (cell.endsWith(':')) return 'right';
+                            return 'left';
+                        });
+                        hasHeader = true;
+                        return ''; // Remove separator row
+                    }
+                    
+                    const cellType = !hasHeader ? 'th' : 'td';
+                    const renderedCells = cells.map((cell, cellIndex) => 
+                        `<${cellType} class="border px-4 py-2" style="text-align: ${alignments[cellIndex] || 'left'};">${cell}</${cellType}>`
+                    ).join('');
+                    
+                    tableRows.push(`<tr>${renderedCells}</tr>`);
+                    return ''; // Remove the original Markdown line
+                } else if (isInTable) {
+                    // We've reached the end of the table
+                    isInTable = false;
+                    hasHeader = false;
+                    const tableContent = tableRows.join('');
+                    tableRows = []; // Reset for next table
+                    return `<table class="table-auto w-full border-collapse border border-gray-300">${tableContent}</table>`;
+                }
+                return line; // Return non-table lines unchanged
+            }).join('\n');
+
+            // Handle case where table is at the end of the text
+            if (isInTable) {
+                const tableContent = tableRows.join('');
+                text += `<table class="table-auto w-full border-collapse border border-gray-300">${tableContent}</table>`;
+            }
+            return text
+        }
+
         async function renderMarkdown(text) {
             // Handle Mermaid graphs first
             let mermaidCounter = 0;
@@ -892,20 +953,13 @@
                 return '<span class="math">' + equation + '</span>';
             });
 
-            // Handle tables
-            text = text.replace(/^\|(.+)\|$/gm, function(match, tableRow) {
-                const cells = tableRow.split('|').map(cell => cell.trim());
-                const isHeader = cells.every(cell => cell.match(/^:?-+:?$/));
-                
-                if (isHeader) {
-                return ''; // Remove separator row
-                }
-                
-                const cellType = match.trim().startsWith('|') ? 'td' : 'th';
-                const renderedCells = cells.map(cell => `<${cellType}>${cell}</${cellType}>`).join('');
-                return `<tr>${renderedCells}</tr>`;
-            });
-            text = text.replace(/<tr>(.+?)<\/tr>/g, '<table>$&</table>');
+            text = await handle_tables(text)
+
+            // Wrap table rows with table tags
+            text = text.replace(/(<tr>.+?<\/tr>)+/g, match => 
+                `<table class="table-auto w-full border-collapse border border-gray-300">${match}</table>`
+            );
+
 
             // Handle headers
             text = text.replace(/^(#{1,6})\s+(.*?)$/gm, function(match, hashes, content) {
@@ -937,8 +991,7 @@
             text = text.replace(/^(-{3,}|_{3,}|\*{3,})$/gm, '<hr>');
 
             // Handle paragraphs
-            text = text.replace(/^(?!<[uo]l|<blockquote|<h\d|<pre|<hr|<table)(.+)$/gm, '<p>$1</p>');
-
+            //text = text.replace(/^(?!<[uo]l|<blockquote|<h\d|<pre|<hr|<table|<li|<button)(.+)$/gm, '<p class="mb-4">$1</p>');
 
             return text;
         }
