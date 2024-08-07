@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Powered Code Editor</title>
+    <script src="/lollms_js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'roboto': ['Roboto', 'sans-serif'],
+                        'fira': ['Fira Code', 'monospace'],
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        .CodeMirror {
+            height: 500px;
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body class="font-roboto bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <div class="container mx-auto px-4 py-8 mb-24">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400">AI-Powered Code Editor</h1>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <div class="mb-4">
+                <label for="codeFile" class="block font-semibold mb-2">Select Code File:</label>
+                <input type="file" id="codeFile" accept=".py,.js,.html,.css" onchange="loadFile()" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+            </div>
+            <div class="mb-4">
+                <label for="instruction" class="block font-semibold mb-2">Modification Instruction:</label>
+                <textarea id="instruction" rows="4" placeholder="Enter your modification instruction" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded"></textarea>
+            </div>
+            <button onclick="processCode()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Process</button>
+            <div id="loader" class="hidden mt-4">
+                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+            </div>
+            <div id="executionSteps" class="mt-4 p-4 bg-gray-200 dark:bg-gray-700 rounded font-fira text-sm whitespace-pre-wrap"></div>
+        </div>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden mb-80">
+            <div class="flex border-b border-gray-200 dark:border-gray-700">
+                <button onclick="switchTab('before')" class="tab py-2 px-4 font-semibold focus:outline-none" data-tab="before">Before</button>
+                <button onclick="switchTab('after')" class="tab py-2 px-4 font-semibold focus:outline-none" data-tab="after">After</button>
+            </div>
+            <div id="beforeContainer" class="code-editor-container">
+                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Before</div>
+                <textarea id="beforeCode"></textarea>
+            </div>
+            <div id="afterContainer" class="code-editor-container hidden">
+                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">After</div>
+                <textarea id="afterCode"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="configMenu" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Settings</h2>
+            <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label for="temperature" class="block font-semibold mb-1">Temperature:</label>
+                <input type="number" id="temperature" value="0.1" step="0.1" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+            </div>
+            <div>
+                <label for="top_p" class="block font-semibold mb-1">Top P:</label>
+                <input type="number" id="top_p" value="0.95" step="0.01" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+            </div>
+            <div>
+                <label for="ctx_size" class="block font-semibold mb-1">Context Size:</label>
+                <input type="number" id="ctx_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+            </div>
+            <div>
+                <label for="max_generation_size" class="block font-semibold mb-1">Max Generation Size:</label>
+                <input type="number" id="max_generation_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let beforeEditor, afterEditor;
+        let darkMode = localStorage.getItem('darkMode') === 'true';
+
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            document.documentElement.classList.toggle('dark', darkMode);
+            localStorage.setItem('darkMode', darkMode);
+        }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem('settings')) || {};
+            document.getElementById('temperature').value = settings.temperature || 0.1;
+            document.getElementById('top_p').value = settings.top_p || 0.95;
+            document.getElementById('ctx_size').value = settings.ctx_size || 4096;
+            document.getElementById('max_generation_size').value = settings.max_generation_size || 4096;
+        }
+
+        function saveSettings() {
+            const settings = {
+                temperature: parseFloat(document.getElementById('temperature').value),
+                top_p: parseFloat(document.getElementById('top_p').value),
+                ctx_size: parseInt(document.getElementById('ctx_size').value),
+                max_generation_size: parseInt(document.getElementById('max_generation_size').value),
+            };
+            localStorage.setItem('settings', JSON.stringify(settings));
+        }
+
+        function createLollmsClient() {
+            const settings = JSON.parse(localStorage.getItem('settings')) || {};
+            return new LollmsClient(
+                null,
+                null,
+                settings.ctx_size || 4096,
+                -1,
+                settings.max_generation_size || 4096,
+                settings.temperature || 0.1,
+                50,
+                settings.top_p || 0.95,
+                0.8,
+                40,
+                null,
+                8,
+                "",
+                ELF_GENERATION_FORMAT.LOLLMS
+            );
+        }
+
+        function initCodeMirror() {
+            beforeEditor = CodeMirror.fromTextArea(document.getElementById('beforeCode'), {
+                lineNumbers: true,
+                mode: 'javascript',
+                theme: darkMode ? 'monokai' : 'default',
+                readOnly: true
+            });
+
+            afterEditor = CodeMirror.fromTextArea(document.getElementById('afterCode'), {
+                lineNumbers: true,
+                mode: 'javascript',
+                theme: darkMode ? 'monokai' : 'default',
+                readOnly: true
+            });
+        }
+
+        function switchTab(tab) {
+            const tabs = document.querySelectorAll('.tab');
+            const containers = document.querySelectorAll('.code-editor-container');
+
+            tabs.forEach(t => t.classList.remove('bg-blue-500', 'text-white'));
+            containers.forEach(c => c.classList.add('hidden'));
+
+            document.querySelector(`[data-tab="${tab}"]`).classList.add('bg-blue-500', 'text-white');
+            document.getElementById(`${tab}Container`).classList.remove('hidden');
+        }
+
+        async function loadFile() {
+            const file = document.getElementById('codeFile').files[0];
+            if (file) {
+                const originalCode = await readFile(file);
+                beforeEditor.setValue(originalCode);
+                setEditorMode(file.name);
+            }
+        }
+
+        function setEditorMode(filename) {
+            const extension = filename.split('.').pop().toLowerCase();
+            let mode;
+            switch (extension) {
+                case 'py':
+                    mode = 'python';
+                    break;
+                case 'js':
+                    mode = 'javascript';
+                    break;
+                case 'html':
+                    mode = 'htmlmixed';
+                    break;
+                case 'css':
+                    mode = 'css';
+                    break;
+                default:
+                    mode = 'javascript';
+            }
+            beforeEditor.setOption('mode', mode);
+            afterEditor.setOption('mode', mode);
+        }
+
+        async function processCode() {
+            const file = document.getElementById('codeFile').files[0];
+            const instruction = document.getElementById('instruction').value;
+            const loader = document.getElementById('loader');
+            const executionSteps = document.getElementById('executionSteps');
+            
+            if (!file || !instruction) {
+                alert('Please select a file and enter an instruction.');
+                return;
+            }
+
+            loader.classList.remove('hidden');
+            afterEditor.setValue('');
+            executionSteps.textContent = '';
+
+            const originalCode = beforeEditor.getValue();
+            const prompt = `Given the following code:
+
+${originalCode}
+
+Apply this modification: ${instruction}
+
+Provide a list of changes in the following format:
+CHANGE <start_line>-<end_line>:
+\`\`\`
+<new_code>
+\`\`\`
+
+ADD <after_line>:
+\`\`\`
+<new_code>
+\`\`\`
+
+REMOVE <start_line>-<end_line>
+
+Only provide the changes, do not repeat unchanged code. Use line ranges for multi-line modifications.
+
+After listing the changes, provide a brief explanation of your decision-making process and why you chose to make these specific modifications.`;
+
+            try {
+                const lc = createLollmsClient();
+                const tl = new TasksLibrary(lc);
+                
+                executionSteps.textContent += "Generating AI response...\n";
+                const response = await lc.generate(prompt);
+                executionSteps.textContent += "AI response received.\n";
+
+                executionSteps.textContent += "Parsing changes...\n";
+                const { changes, explanation } = parseChangesAndExplanation(response);
+                executionSteps.textContent += `${changes.length} changes identified.\n`;
+
+                executionSteps.textContent += "Applying changes to the code...\n";
+                const modifiedCode = applyChanges(originalCode, changes);
+                afterEditor.setValue(modifiedCode);
+                executionSteps.textContent += "Changes applied successfully.\n";
+
+                executionSteps.textContent += "\nAI Explanation:\n" + explanation + "\n";
+
+                executionSteps.textContent += "\nDetailed changes:\n";
+                changes.forEach(change => {
+                    executionSteps.textContent += `${change.type} (Lines ${change.startLine}-${change.endLine}):\n`;
+                    executionSteps.textContent += change.content + "\n\n";
+                });
+
+                executionSteps.textContent += "Process completed.\n";
+                switchTab('after');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while processing the code.');
+                executionSteps.textContent += `Error: ${error.message}\n`;
+            } finally {
+                loader.classList.add('hidden');
+            }
+        }
+
+        function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = event => resolve(event.target.result);
+                reader.onerror = error => reject(error);
+                reader.readAsText(file);
+            });
+        }
+
+        function applyChanges(originalCode, changes) {
+            const lines = originalCode.split('\n');
+
+            changes.sort((a, b) => b.startLine - a.startLine); // Sort changes in reverse order
+
+            changes.forEach(change => {
+                switch (change.type) {
+                    case 'CHANGE':
+                        lines.splice(change.startLine - 1, change.endLine - change.startLine + 1, ...change.content.split('\n'));
+                        break;
+                    case 'ADD':
+                        lines.splice(change.startLine, 0, ...change.content.split('\n'));
+                        break;
+                    case 'REMOVE':
+                        lines.splice(change.startLine - 1, change.endLine - change.startLine + 1);
+                        break;
+                }
+            });
+
+            return lines.join('\n');
+        }
+
+        function parseChangesAndExplanation(aiResponse) {
+            const changes = [];
+            const lines = aiResponse.split('\n');
+            let currentChange = null;
+            let collectingCode = false;
+            let explanation = '';
+            let collectingExplanation = false;
+
+            lines.forEach(line => {
+                if (collectingExplanation) {
+                    explanation += line + '\n';
+                } else if (collectingCode) {
+                    if (line.trim() === '```') {
+                        collectingCode = false;
+                        changes.push(currentChange);
+                        currentChange = null;
+                    } else {
+                        currentChange.content += line + '\n';
+                    }
+                } else {
+                    const changeMatch = line.match(/^(CHANGE|ADD|REMOVE) (\d+)(?:-(\d+))?:?$/);
+                    if (changeMatch) {
+                        currentChange = {
+                            type: changeMatch[1],
+                            startLine: parseInt(changeMatch[2]),
+                            endLine: changeMatch[3] ? parseInt(changeMatch[3]) : parseInt(changeMatch[2]),
+                            content: ''
+                        };
+                        if (changeMatch[1] === 'REMOVE') {
+                            changes.push(currentChange);
+                            currentChange = null;
+                        } else {
+                            collectingCode = true;
+                        }
+                    } else if (line.toLowerCase().includes('explanation') || line.toLowerCase().includes('decision-making process')) {
+                        collectingExplanation = true;
+                    }
+                }
+            });
+
+            return { changes, explanation: explanation.trim() };
+        }
+
+        window.onload = () => {
+            initCodeMirror();
+            loadSettings();
+            document.documentElement.classList.toggle('dark', darkMode);
+
+            // Add event listeners for settings changes
+            document.querySelectorAll('#configMenu input').forEach(input => {
+                input.addEventListener('change', saveSettings);
+            });
+        };
+    </script>
+</body>
+</html>
