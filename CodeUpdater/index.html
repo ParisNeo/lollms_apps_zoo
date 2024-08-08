@@ -5,16 +5,51 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI-Powered Code Editor</title>
     <script src="/lollms_js"></script>
+    <script src="/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" type="text/css" href="/lollms_markdown_renderer_css">
+
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+
+   <!-- Prism CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+   <!-- Prism JS -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+   <!-- If you want additional languages, include them like this -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -34,79 +69,264 @@
             font-family: 'Fira Code', monospace;
             font-size: 14px;
         }
+        .config-menu {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            z-index: 50;
+        }
     </style>
 </head>
 <body class="font-roboto bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-    <div class="container mx-auto px-4 py-8 mb-24">
-        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400">AI-Powered Code Editor</h1>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
-            <div class="mb-4">
-                <label for="codeFile" class="block font-semibold mb-2">Select Code File:</label>
-                <input type="file" id="codeFile" accept=".py,.js,.html,.css" onchange="loadFile()" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
+    <div id="projectsPage" class="container mx-auto px-4 py-8 mb-24">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400 animate-pulse">Projects List</h1>
+        <div class="flex flex-col justify-between mb-4">
+            <div id="projectCards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"></div>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 mr-4">
+                <div class="mb-4">
+                    <label for="projectName" class="block font-semibold mb-2">Project Name:</label>
+                    <input type="text" id="projectName" placeholder="Enter project name" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div class="flex justify-between">
+                    <button onclick="createProject()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Create Project</button>
+                    <button onclick="deleteProject()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">Delete Project</button>
+                </div>
             </div>
-            <div class="mb-4">
-                <label for="instruction" class="block font-semibold mb-2">Modification Instruction:</label>
-                <textarea id="instruction" rows="4" placeholder="Enter your modification instruction" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded"></textarea>
-            </div>
-            <button onclick="processCode()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Process</button>
-            <div id="loader" class="hidden mt-4">
-                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-            </div>
-            <div id="executionSteps" class="mt-4 p-4 bg-gray-200 dark:bg-gray-700 rounded font-fira text-sm whitespace-pre-wrap"></div>
         </div>
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden mb-80">
-            <div class="flex border-b border-gray-200 dark:border-gray-700">
-                <button onclick="switchTab('before')" class="tab py-2 px-4 font-semibold focus:outline-none" data-tab="before">Before</button>
-                <button onclick="switchTab('after')" class="tab py-2 px-4 font-semibold focus:outline-none" data-tab="after">After</button>
+    </div>
+    <div id="projectPage" class="container mx-auto px-4 py-8 mb-24 hidden">
+        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400 animate-pulse">AI-Powered Code Editor</h1>    
+        <div class="flex mb-8 animate__animated animate__fadeInUp h-full">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 min-w-[500px]">
+                <button onclick="showProjectsPage()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4">
+                    Back to Projects List
+                </button>            
+                <div class="mb-4">
+                    <label for="codeFile" class="block font-semibold mb-2">Select Code File:</label>
+                    <input type="file" id="codeFile" accept=".py,.js,.html,.css" onchange="loadFile()" class="hidden">
+                    <button onclick="document.getElementById('codeFile').click();" class="w-full p-2 bg-blue-500 text-white rounded transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        Import Code File
+                    </button>
+                </div>
+                <label for="versionSelector" class="block font-semibold mb-2">Select Version:</label>
+                <select id="versionSelector" onchange="loadVersion(this.value)" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                    <option value="">Select a version</option>
+                </select>        
+                <div class="mb-4">
+                    <label for="instruction" class="block font-semibold mb-2">Modification Instruction:</label>
+                    <textarea id="instruction" rows="4" placeholder="Enter your modification instruction" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400"></textarea>
+                </div>
+                <button onclick="processCode()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Process</button>
+                <div id="loader" class="hidden mt-4">
+                    <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
+                </div>
+                <div id="executionSteps" class="mt-4 p-4 bg-gray-200 dark:bg-gray-700 rounded font-fira text-sm whitespace-pre-wrap"></div>
             </div>
-            <div id="beforeContainer" class="code-editor-container">
-                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Before</div>
-                <textarea id="beforeCode"></textarea>
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 mr-4 stretch">
+                <div class="flex border-b border-gray-200 dark:border-gray-700">
+                    <button onclick="switchTab('currentCode')" class="tab py-2 px-4 font-semibold focus:outline-none hover:bg-blue-500 hover:text-white transition duration-300" data-tab="currentCode">Current Code</button>
+                    <button onclick="switchTab('suggestedCode')" class="tab py-2 px-4 font-semibold focus:outline-none hover:bg-blue-500 hover:text-white transition duration-300" data-tab="suggestedCode">Suggested Code</button>
+                </div>
+                <div id="currentCodeContainer" class="code-editor-container stretch">
+                    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Current Code</div>
+                    <textarea id="currentCode"></textarea>
+                </div>
+                <div id="suggestedCodeContainer" class="code-editor-container stretch hidden">
+                    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Suggested Update</div>
+                    <textarea id="suggestedCode"></textarea>
+                    <button onclick="validateUpdate()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">Validate Update</button>
+                </div>
             </div>
-            <div id="afterContainer" class="code-editor-container hidden">
-                <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">After</div>
-                <textarea id="afterCode"></textarea>
+
+        </div>
+    </div>
+    
+    <div id="configMenu" class="fixed bottom-0 left-0 right-0 config-menu p-4 hidden animate__animated animate__fadeInUp">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold">Settings</h2>
+                <button onclick="toggleConfigMenu()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white transition duration-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label for="temperature" class="block font-semibold mb-1">Temperature:</label>
+                    <input type="number" id="temperature" value="0.1" step="0.1" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="top_p" class="block font-semibold mb-1">Top P:</label>
+                    <input type="number" id="top_p" value="0.95" step="0.01" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="ctx_size" class="block font-semibold mb-1">Context Size:</label>
+                    <input type="number" id="ctx_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="max_generation_size" class="block font-semibold mb-1">Max Generation Size:</label>
+                    <input type="number" id="max_generation_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="debug" class="block font-semibold mb-1">Debug Mode:</label>
+                    <input type="checkbox" id="debug" class="rounded">
+                </div>
+                <div>
+                    <label for="host_name" class="block font-semibold mb-1">Host Name:</label>
+                    <input type="text" id="host_name" value="http://localhost:9600" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
+                <div>
+                    <label for="debug" class="block font-semibold mb-1">Debug:</label>
+                                        <input type="checkbox" id="debug" value="false" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
+                </div>
             </div>
         </div>
     </div>
 
-    <div id="configMenu" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-4 shadow-lg">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-xl font-semibold">Settings</h2>
-            <button onclick="toggleDarkMode()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-                </svg>
-            </button>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-                <label for="temperature" class="block font-semibold mb-1">Temperature:</label>
-                <input type="number" id="temperature" value="0.1" step="0.1" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
-            </div>
-            <div>
-                <label for="top_p" class="block font-semibold mb-1">Top P:</label>
-                <input type="number" id="top_p" value="0.95" step="0.01" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
-            </div>
-            <div>
-                <label for="ctx_size" class="block font-semibold mb-1">Context Size:</label>
-                <input type="number" id="ctx_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
-            </div>
-            <div>
-                <label for="max_generation_size" class="block font-semibold mb-1">Max Generation Size:</label>
-                <input type="number" id="max_generation_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded">
-            </div>
-        </div>
-    </div>
+    <button onclick="toggleConfigMenu()" class="fixed bottom-4 right-4 p-4 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition duration-300 animate-bounce">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
+        </svg>
+    </button>
 
     <script>
-        let beforeEditor, afterEditor;
+        const mr = new MarkdownRenderer()
+        mr.initMermaid()
+
+        class Project {
+            constructor(name) {
+                this.name = name;
+                this.codeVersions = [];
+                this.currentVersionIndex = -1;
+            }
+
+            addVersion(code) {
+                // Remove versions after the current index
+                this.codeVersions = this.codeVersions.slice(0, this.currentVersionIndex + 1);
+                this.codeVersions.push(code);
+                this.currentVersionIndex++;
+            }
+
+            loadVersion(index) {
+                if (index >= 0 && index < this.codeVersions.length) {
+                    const version = this.codeVersions[index];
+                    // Update the editor with the selected version
+                    currentCodeEditor.setValue(version);
+                    this.currentVersionIndex = index;
+                }
+            }
+        }
+
+        let projects = JSON.parse(localStorage.getItem('projects')) || [];
+
+        // Convert the stored data into Project objects
+        projects = projects.map(projectData => {
+            const project = new Project(projectData.name);
+            project.codeVersions = projectData.codeVersions;
+            project.currentVersionIndex = projectData.currentVersionIndex;
+            return project;
+        });
+        let currentProject = null;
+
+        function initCodeEditors() {
+            currentEditor = CodeMirror.fromTextArea(document.getElementById('currentCode'), {
+                lineNumbers: true,
+                mode: 'javascript',
+                theme: darkMode ? 'monokai' : 'default',
+                readOnly: false
+            });
+
+            suggestedUpdateEditor = CodeMirror.fromTextArea(document.getElementById('suggestedCode'), {
+                lineNumbers: true,
+                mode: 'javascript',
+                theme:darkMode ? 'monokai' : 'default',
+                readOnly: false
+            });
+        }
+
+        function updateProjectList() {
+            const projectList = document.getElementById('projectList');
+            projectList.innerHTML = '<option value="">Select a project</option>'; // Reset options
+            projects.forEach((project, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = project.name;
+                projectList.appendChild(option);
+            });
+            updateProjectCards();
+        }
+
+        function createProject() {
+            const projectName = document.getElementById('projectName').value;
+            if (projectName) {
+                const project = new Project(projectName);
+                projects.push(project);
+                updateProjectList();
+                currentProject = project;
+                document.getElementById('projectName').value = '';
+                saveProjects();
+            } else {
+                alert('Please enter a project name.');
+            }
+        }
+
+        function loadProject(index) {
+            if (index >= 0 && index < projects.length) {
+                currentProject = projects[index];
+                console.log(projects)
+                updateVersionSelector();
+                showProjectPage();
+            } else {
+                currentProject = null;
+                clearVersionSelector();
+            }
+        }
+
+        function deleteProject() {
+            const projectIndex = document.getElementById('projectList').value;
+            if (projectIndex !== '') {
+                projects.splice(projectIndex, 1);
+                updateProjectList();
+                currentProject = null;
+                clearVersionSelector();
+                saveProjects();
+            } else {
+                alert('Please select a project to delete.');
+            }
+        }
+
+        function updateVersionSelector() {
+            const versionSelector = document.getElementById('versionSelector');
+            versionSelector.innerHTML = '<option value="">Select a version</option>'; // Reset options
+            if (currentProject) {
+                currentProject.codeVersions.forEach((version, index) => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `Version ${index + 1}`;
+                    versionSelector.appendChild(option);
+                });
+            }
+        }
+
+        function clearVersionSelector() {
+            const versionSelector = document.getElementById('versionSelector');
+            versionSelector.innerHTML = '<option value="">Select a version</option>';
+        }
+
+        let currentCodeEditor, suggestedCodeEditor;
         let darkMode = localStorage.getItem('darkMode') === 'true';
+        let configMenuVisible = false;
 
         function toggleDarkMode() {
             darkMode = !darkMode;
             document.documentElement.classList.toggle('dark', darkMode);
             localStorage.setItem('darkMode', darkMode);
+        }
+
+        function toggleConfigMenu() {
+            const configMenu = document.getElementById('configMenu');
+            configMenuVisible = !configMenuVisible;
+            configMenu.classList.toggle('hidden', !configMenuVisible);
         }
 
         function loadSettings() {
@@ -115,6 +335,8 @@
             document.getElementById('top_p').value = settings.top_p || 0.95;
             document.getElementById('ctx_size').value = settings.ctx_size || 4096;
             document.getElementById('max_generation_size').value = settings.max_generation_size || 4096;
+            document.getElementById('host_name').value = settings.host_name || "http://localhost:9600";
+            document.getElementById('debug').checked = settings.debug || false;            
         }
 
         function saveSettings() {
@@ -123,6 +345,8 @@
                 top_p: parseFloat(document.getElementById('top_p').value),
                 ctx_size: parseInt(document.getElementById('ctx_size').value),
                 max_generation_size: parseInt(document.getElementById('max_generation_size').value),
+                host_name: document.getElementById('host_name').value,
+                debug: document.getElementById('debug').checked
             };
             localStorage.setItem('settings', JSON.stringify(settings));
         }
@@ -130,7 +354,7 @@
         function createLollmsClient() {
             const settings = JSON.parse(localStorage.getItem('settings')) || {};
             return new LollmsClient(
-                null,
+                settings.host_name || "http://localhost:9600",
                 null,
                 settings.ctx_size || 4096,
                 -1,
@@ -148,18 +372,21 @@
         }
 
         function initCodeMirror() {
-            beforeEditor = CodeMirror.fromTextArea(document.getElementById('beforeCode'), {
+            // Modify the initialization of CodeMirror
+            currentCodeEditor = CodeMirror.fromTextArea(document.getElementById('currentCode'), {
                 lineNumbers: true,
                 mode: 'javascript',
                 theme: darkMode ? 'monokai' : 'default',
-                readOnly: true
+                readOnly: false,
+                viewportMargin: Infinity // Allow the editor to stretch
             });
 
-            afterEditor = CodeMirror.fromTextArea(document.getElementById('afterCode'), {
+            suggestedCodeEditor = CodeMirror.fromTextArea(document.getElementById('suggestedCode'), {
                 lineNumbers: true,
                 mode: 'javascript',
                 theme: darkMode ? 'monokai' : 'default',
-                readOnly: true
+                readOnly: true,
+                viewportMargin: Infinity // Allow the editor to stretch
             });
         }
 
@@ -178,8 +405,15 @@
             const file = document.getElementById('codeFile').files[0];
             if (file) {
                 const originalCode = await readFile(file);
-                beforeEditor.setValue(originalCode);
+                currentCodeEditor.setValue(originalCode);
+                if (currentProject) {
+                    currentProject.addVersion(originalCode);
+                } else {
+                    alert('Please create a project or select an existing one to load the code file.');
+                }
+                updateVersionSelector();
                 setEditorMode(file.name);
+                saveProjects();
             }
         }
 
@@ -202,80 +436,142 @@
                 default:
                     mode = 'javascript';
             }
-            beforeEditor.setOption('mode', mode);
-            afterEditor.setOption('mode', mode);
+            currentCodeEditor.setOption('mode', mode);
+            suggestedCodeEditor.setOption('mode', mode);
+        }
+
+        function loadVersion(index) {
+            if (currentProject) {
+                currentProject.loadVersion(index);
+            }
+        }
+
+        function validateUpdate() {
+            const suggestedUpdate = suggestedCodeEditor.getValue();
+            if (suggestedUpdate && currentProject) {
+                currentProject.addVersion(suggestedUpdate);
+                currentCodeEditor.setValue(suggestedUpdate);
+                updateVersionSelector();
+                alert('Update validated and saved as the current code.');
+                saveProjects();
+            } else {
+                alert('No suggested update to validate or no project selected.');
+            }
         }
 
         async function processCode() {
+            const settings = JSON.parse(localStorage.getItem('settings'));
             const file = document.getElementById('codeFile').files[0];
             const instruction = document.getElementById('instruction').value;
             const loader = document.getElementById('loader');
             const executionSteps = document.getElementById('executionSteps');
-            
-            if (!file || !instruction) {
-                alert('Please select a file and enter an instruction.');
+
+            if (!currentProject) {
+                alert('Please create a project or select an existing one before processing the code.');
+                return;
+            }
+
+            const originalCode = currentCodeEditor.getValue();
+            if (!originalCode || !instruction) {
+                alert('Please select a file or enter an original code or select a version to start from and enter an instruction.');
                 return;
             }
 
             loader.classList.remove('hidden');
-            afterEditor.setValue('');
             executionSteps.textContent = '';
+            let execution_steps_raw = "";
+            async function addSteps(new_text) {
+                execution_steps_raw += new_text;
+                executionSteps.innerHTML = await mr.renderMarkdown(execution_steps_raw);
+            }
 
-            const originalCode = beforeEditor.getValue();
             const prompt = `Given the following code:
 
+\`\`\`python
 ${originalCode}
+\`\`\`
 
 Apply this modification: ${instruction}
-
-Provide a list of changes in the following format:
-CHANGE <start_line>-<end_line>:
+To update existing code:
+\`\`\`python
+# REPLACE
+# ORIGINAL
+<old_code>
+# SET
+<new_code_snippet>
 \`\`\`
-<new_code>
+The ORIGINAL statement (<old_code>) should contain valid code from the orginal code. It should be a full statement and not just a fragment of a statement.
+The SET statement (<new_code_snippet>) is mandatory. You should put the new lines of code just after it.
+Make sure if possible to change full statements or functions. The code to SET must be fully working and without placeholders.
+If there is no ambiguity, just use a single line of code for each (first line to be changed and last line to be changed).
+When providing code changes, make sure to respect the indentation in Python. Only provide the changes, do not repeat unchanged code. Use comments to indicate the type of change.
+If too many changes needs to be done, and you think a full rewrite of the code is much more adequate, use this syntax:
+\`\`\`python
+# FULL_REWRITE
+<new_full_code>
 \`\`\`
-
-ADD <after_line>:
-\`\`\`
-<new_code>
-\`\`\`
-
-REMOVE <start_line>-<end_line>
-
-Only provide the changes, do not repeat unchanged code. Use line ranges for multi-line modifications.
-
-After listing the changes, provide a brief explanation of your decision-making process and why you chose to make these specific modifications.`;
+Select the best between full rewrite and replace according to the amount of text to update.`;
 
             try {
                 const lc = createLollmsClient();
                 const tl = new TasksLibrary(lc);
-                
-                executionSteps.textContent += "Generating AI response...\n";
+
+                await addSteps("Querying AI ...\n");
+                const prompt_named_tokens = await lc.tokenize(prompt);
+
+                await addSteps(`Number of tokens in query: ${prompt_named_tokens.length}...\n`);
+                if (settings.debug){
+                    console.log("prompt")
+                    console.log(prompt)
+                }
+
+                await addSteps("Generating AI response...\n");
                 const response = await lc.generate(prompt);
-                executionSteps.textContent += "AI response received.\n";
+                const response_named_tokens = await lc.tokenize(response);
 
-                executionSteps.textContent += "Parsing changes...\n";
-                const { changes, explanation } = parseChangesAndExplanation(response);
-                executionSteps.textContent += `${changes.length} changes identified.\n`;
+                await addSteps(`Number of tokens in response: ${response_named_tokens.length}...\n`);
+                await addSteps("AI response received.\n");
+                await addSteps("## AI response:\n");
+                await addSteps(response + "\n");
 
-                executionSteps.textContent += "Applying changes to the code...\n";
-                const modifiedCode = applyChanges(originalCode, changes);
-                afterEditor.setValue(modifiedCode);
-                executionSteps.textContent += "Changes applied successfully.\n";
+                codes = tl.extractCodeBlocks(response);
 
-                executionSteps.textContent += "\nAI Explanation:\n" + explanation + "\n";
+                if (codes.length == 0) {
+                    await addSteps("The AI answer didn't contain any useful code\nTry changing the LLM you are using or update your prompt.");
+                    return;
+                }
 
-                executionSteps.textContent += "\nDetailed changes:\n";
-                changes.forEach(change => {
-                    executionSteps.textContent += `${change.type} (Lines ${change.startLine}-${change.endLine}):\n`;
-                    executionSteps.textContent += change.content + "\n\n";
-                });
+                const query = codes[0].content;
+                const { updatedCode, modifications, hasQuery } = tl.updateCode(originalCode, query);
 
-                executionSteps.textContent += "Process completed.\n";
-                switchTab('after');
+                await addSteps("## Modification explanation")
+                if (hasQuery) {
+                    await addSteps(`The code query contained ${modifications.length} modification(s):\n`);
+                    for (const modification of modifications) {
+                        await addSteps(`- Replaced:\n\`\`\`\n${modification.oldCode}\n\`\`\`\nWith:\n\`\`\`\n${modification.newCode}\n\`\`\`\n`);
+                    }
+                    await addSteps("<p style=\"color:green\">Changes applied successfully.\n</p>");
+                    console.log(currentProject);
+                    currentProject.addVersion(updatedCode);
+                    suggestedCodeEditor.setValue(updatedCode);
+                    updateVersionSelector();
+                    saveProjects();
+                } else {
+                    await addSteps("<p style=\"color:red\">No code query was present in the response.\n</p>Make sure your LLM has enough context to answer the question.");
+                    return;
+                }
+
+                // Check if the code was modified
+                if (updatedCode === originalCode) {
+                    await addSteps("No changes were made to the code.\n");
+                }
+
+                await addSteps("Process completed.\n");
+                switchTab('suggestedCode');
             } catch (error) {
                 console.error('Error:', error);
                 alert('An error occurred while processing the code.');
-                executionSteps.textContent += `Error: ${error.message}\n`;
+                await addSteps(`Error: ${error.message}\n`);
             } finally {
                 loader.classList.add('hidden');
             }
@@ -290,70 +586,56 @@ After listing the changes, provide a brief explanation of your decision-making p
             });
         }
 
-        function applyChanges(originalCode, changes) {
-            const lines = originalCode.split('\n');
-
-            changes.sort((a, b) => b.startLine - a.startLine); // Sort changes in reverse order
-
-            changes.forEach(change => {
-                switch (change.type) {
-                    case 'CHANGE':
-                        lines.splice(change.startLine - 1, change.endLine - change.startLine + 1, ...change.content.split('\n'));
-                        break;
-                    case 'ADD':
-                        lines.splice(change.startLine, 0, ...change.content.split('\n'));
-                        break;
-                    case 'REMOVE':
-                        lines.splice(change.startLine - 1, change.endLine - change.startLine + 1);
-                        break;
-                }
-            });
-
-            return lines.join('\n');
+        function saveProjects() {
+            localStorage.setItem('projects', JSON.stringify(projects));
         }
 
-        function parseChangesAndExplanation(aiResponse) {
-            const changes = [];
-            const lines = aiResponse.split('\n');
-            let currentChange = null;
-            let collectingCode = false;
-            let explanation = '';
-            let collectingExplanation = false;
-
-            lines.forEach(line => {
-                if (collectingExplanation) {
-                    explanation += line + '\n';
-                } else if (collectingCode) {
-                    if (line.trim() === '```') {
-                        collectingCode = false;
-                        changes.push(currentChange);
-                        currentChange = null;
-                    } else {
-                        currentChange.content += line + '\n';
-                    }
-                } else {
-                    const changeMatch = line.match(/^(CHANGE|ADD|REMOVE) (\d+)(?:-(\d+))?:?$/);
-                    if (changeMatch) {
-                        currentChange = {
-                            type: changeMatch[1],
-                            startLine: parseInt(changeMatch[2]),
-                            endLine: changeMatch[3] ? parseInt(changeMatch[3]) : parseInt(changeMatch[2]),
-                            content: ''
-                        };
-                        if (changeMatch[1] === 'REMOVE') {
-                            changes.push(currentChange);
-                            currentChange = null;
-                        } else {
-                            collectingCode = true;
-                        }
-                    } else if (line.toLowerCase().includes('explanation') || line.toLowerCase().includes('decision-making process')) {
-                        collectingExplanation = true;
-                    }
-                }
-            });
-
-            return { changes, explanation: explanation.trim() };
+        function showProjectsPage() {
+            document.getElementById('projectsPage').classList.remove('hidden');
+            document.getElementById('projectPage').classList.add('hidden');
+            updateProjectCards();
         }
+
+        function showProjectPage() {
+            document.getElementById('projectsPage').classList.add('hidden');
+            document.getElementById('projectPage').classList.remove('hidden');
+        }
+
+        function updateProjectCards() {
+            const projectCards = document.getElementById('projectCards');
+            projectCards.innerHTML = '';
+            projects.forEach((project, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 cursor-pointer hover:scale-105 transition-transform duration-300';
+                card.onclick = () => {
+                loadProject(index);
+                showProjectPage();
+                };
+
+                const cardTitle = document.createElement('h3');
+                cardTitle.className = 'text-lg font-semibold mb-2';
+                cardTitle.textContent = project.name;
+
+                const cardVersions = document.createElement('p');
+                cardVersions.className = 'text-gray-500 dark:text-gray-400';
+                cardVersions.textContent = `${project.codeVersions.length} versions`;
+
+                // Add a delete project button
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-2';
+                deleteButton.textContent = 'Delete Project';
+                deleteButton.onclick = () => {
+                // Add logic to delete the project here
+                console.log(`Deleting project: ${project.name}`);
+                };
+
+                card.appendChild(cardTitle);
+                card.appendChild(cardVersions);
+                card.appendChild(deleteButton);
+                projectCards.appendChild(card);
+            });
+            }
+
 
         window.onload = () => {
             initCodeMirror();
@@ -364,7 +646,10 @@ After listing the changes, provide a brief explanation of your decision-making p
             document.querySelectorAll('#configMenu input').forEach(input => {
                 input.addEventListener('change', saveSettings);
             });
+
+            showProjectsPage();
         };
     </script>
+
 </body>
 </html>
