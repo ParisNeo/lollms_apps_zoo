@@ -1,0 +1,95 @@
+<!-- Start of HTML Document -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF to DOCX Converter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    <script src="/lollms_markdown_renderer"></script>
+</head>
+<body class="bg-gray-100">
+
+    <!-- Start of Header Section -->
+    <header class="bg-blue-600 text-white p-4">
+        <h1 class="text-3xl font-bold text-center">PDF to DOCX Converter</h1>
+        <p class="text-center">Convert your PDF files to DOCX format easily!</p>
+    </header>
+    <!-- End of Header Section -->
+
+    <!-- Start of Upload Section -->
+    <section class="my-8 p-4">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Upload PDF File</h2>
+            <input type="file" id="pdfFile" accept=".pdf" class="mb-4 w-full border border-gray-300 rounded p-2">
+            <button id="convertBtn" class="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">Convert to DOCX</button>
+            <div id="result" class="mt-4"></div>
+        </div>
+    </section>
+    <!-- End of Upload Section -->
+
+    <!-- Start of Help Section -->
+    <section class="my-8 p-4">
+        <div class="max-w-md mx-auto bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Help</h2>
+            <p class="mb-2">This application allows you to convert PDF files to DOCX format easily. Please follow the steps below:</p>
+            <ol class="list-decimal list-inside mb-4">
+                <li>Open the app folder and run the server.py before starting. Read the README.md for more details.</li>
+                <li>Ensure that the FastAPI server is running. You can start it by executing <code>uvicorn server:app --reload</code> in your terminal.</li>
+                <li>Upload your PDF file using the file input above.</li>
+                <li>Click the "Convert to DOCX" button.</li>
+                <li>Once the conversion is complete, a download link will appear for you to download the converted DOCX file.</li>
+            </ol>
+            <p class="text-red-500">Note: It is mandatory to run <code>server.py</code> for the conversion to work.</p>
+        </div>
+    </section>
+    <!-- End of Help Section -->
+
+    <!-- Start of Footer Section -->
+    <footer class="bg-gray-800 text-white text-center p-4 mt-8">
+        <p>&copy; 2024 PDF to DOCX Converter. Built by Lollms.</p>
+    </footer>
+    <!-- End of Footer Section -->
+
+    <!-- Start of JavaScript Section -->
+    <script>
+        const mr = new MarkdownRenderer()
+        document.getElementById('convertBtn').addEventListener('click', function() {
+            const fileInput = document.getElementById('pdfFile');
+            const resultDiv = document.getElementById('result');
+    
+            if (fileInput.files.length === 0) {
+                resultDiv.innerHTML = '<p class="text-red-500">Please upload a PDF file.</p>';
+                return;
+            }
+    
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+    
+            resultDiv.innerHTML = '<p class="text-blue-500">Converting...</p>';
+    
+            fetch('http://127.0.0.1:8000/convert_pdf2docx', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.blob(); // Correctly return the blob
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                resultDiv.innerHTML = `<p class="text-green-500">Conversion successful! <a href="${url}" class="text-blue-600" download="converted.docx">Download DOCX</a></p>`;
+            })
+            .catch(error => {
+                resultDiv.innerHTML = '<p class="text-red-500">Conversion failed. Please try again.</p><p>Error: ' + error + '</p>';
+            });
+        });
+    </script>
+    <!-- End of JavaScript Section -->
+
+</body>
+</html>
+<!-- End of HTML Document -->
