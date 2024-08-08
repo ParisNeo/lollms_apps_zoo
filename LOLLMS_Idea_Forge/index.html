@@ -39,263 +39,10 @@
    <!-- To read docx files -->
    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.8/mammoth.browser.min.js"></script>
 
-    <script src="/lollms_js"></script>
-    <style>
-        .fade-in {
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
-        .fade-in.show {
-            opacity: 1;
-        }
-        .spin {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        /* Dark mode styles */
-        .dark {
-            color-scheme: dark;
-        }
-        .dark body {
-            background-color: #1a202c;
-            color: #e2e8f0;
-        }
-        .dark .bg-white {
-            background-color: #2d3748;
-        }
-        .dark .text-gray-900 {
-            color: #e2e8f0;
-        }
-        .dark .hover\:bg-gray-200:hover {
-            background-color: #4a5568;
-        }
-        .dark .border {
-            border-color: #4a5568;
-        }
-        .dark input, .dark select {
-            background-color: #2d3748;
-            color: #e2e8f0;
-        }
-        .dark button {
-            background-color: #4a5568;
-            color: #e2e8f0;
-        }
-        .dark button:hover {
-            background-color: #718096;
-        }
-        body {
-            padding-bottom: 60px;
-        }
-        main {
-            min-height: calc(100vh - 60px);
-        }
-        #help-section {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        #help-section h2 {
-            text-align: center;
-            margin-bottom: 1.5rem;
-        }
-        #help-section h3 {
-            color: #553c9a;
-        }
-        #help-section .dark h3 {
-            color: #d6bcfa;
-        }
-        #help-section p, #help-section li {
-            line-height: 1.6;
-        }
-        #help-section .bg-purple-100 {
-            background-color: rgba(237, 233, 254, 0.5);
-        }
-        #help-section .dark .bg-purple-900 {
-            background-color: rgba(76, 29, 149, 0.5);
-        }
-        /* Updated styles for dark mode */
-        .dark #help-section {
-            color: #e2e8f0;
-        }
-        .dark #help-section h2 {
-            color: #a78bfa;
-        }
-        .dark #help-section h3 {
-            color: #d6bcfa;
-        }
-        .dark #help-section .bg-white {
-            background-color: #1a202c;
-        }
-        .dark #help-section .text-gray-600,
-        .dark #help-section .text-gray-700 {
-            color: #cbd5e0;
-        }
-        .dark #help-section .text-purple-700,
-        .dark #help-section .text-purple-800 {
-            color: #e9d8fd;
-        }
-        .dark #help-section button {
-            background-color: #8b5cf6;
-        }
-        .dark #help-section button:hover {
-            background-color: #7c3aed;
-        }
-        /* Styles for rendered Markdown */
-        .markdown-content h1 {
-            font-size: 2em;
-            margin-top: 0.5em;
-            margin-bottom: 0.5em;
-        }
-        .markdown-content h2 {
-            font-size: 1.5em;
-            margin-top: 0.5em;
-            margin-bottom: 0.5em;
-        }
-        .markdown-content h3 {
-            font-size: 1.17em;
-            margin-top: 0.5em;
-            margin-bottom: 0.5em;
-        }
-        .markdown-content p {
-            margin-bottom: 1em;
-        }
-        .markdown-content ul, .markdown-content ol {
-            margin-left: 1.5em;
-            margin-bottom: 1em;
-        }
-        .markdown-content code {
-            background-color: #f0f0f0;
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-family: monospace;
-        }
-        .markdown-content pre {
-            background-color: #f0f0f0;
-            padding: 1em;
-            border-radius: 5px;
-            overflow-x: auto;
-        }
-        .dark .markdown-content code {
-            background-color: #2d3748;
-        }
-        .dark .markdown-content pre {
-            background-color: #2d3748;
-        }
-        .ascii-art {
-            font-family: monospace;
-            white-space: pre;
-            background-color: #f0f0f0;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .code-block {
-            position: relative;
-        }
-        .copy-button {
-            top: 5px;
-            right: 5px;
-            padding: 3px 8px;
-            font-size: 12px;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 3px;
-            cursor: pointer;
-        }
-        pre {
-            margin-top: 30px; /* Make space for the copy button */
-        }
+   <script src="/lollms_js"></script>
+   <script src="/lollms_markdown_renderer"></script>
+   <link rel="stylesheet" type="text/css" href="/lollms_markdown_renderer_css">
 
-
-        .code-block-wrapper {
-        background-color: #f5f5f5;
-        border-radius: 4px;
-        margin: 20px 0;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .code-block-header {
-        padding: 10px;
-        background-color: #e0e0e0;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
-        display: flex;
-        justify-content: space-between;
-        align-items: left;
-        }
-
-        .language-label {
-        font-weight: bold;
-        color: #333;
-        }
-
-        .copy-button {
-        background-color: #4CAF50;
-        border: none;
-        color: white;
-        padding: 5px 10px;
-        text-align: center;
-        text-decoration: none;
-        font-size: 14px;
-        cursor: pointer;
-        border-radius: 3px;
-        transition: background-color 0.3s ease;
-        display: flex;
-        align-items: center;
-        }
-
-        .copy-button:hover {
-        background-color: #45a049;
-        }
-
-        .copy-button svg {
-        margin-right: 5px;
-        }
-
-        .copy-button.copied {
-        background-color: #2196F3;
-        }
-
-        pre.line-numbers {
-        margin: 0;
-        padding: 10px 0;
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 14px;
-        line-height: 1.3;
-        overflow-x: auto;
-        }
-
-        code {
-        display: block;
-        padding: 0 10px;
-        }
-
-        .code-line {
-        display: block;
-        white-space: pre;
-        }
-
-        .line-number {
-        display: inline-block;
-        width: 30px;
-        text-align: right;
-        color: #999;
-        padding-right: 10px;
-        user-select: none;
-        }
-
-        .line-content {
-        display: inline;
-        }
-
-        .code-line:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-        }
-
-
-
-    </style>
 </head>
 <body class="bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-100 transition-colors duration-200">
     <div id="app" class="container mx-auto px-4 py-8">
@@ -438,67 +185,74 @@
                                         Generate Ideas
                                     </button>
                                 </div>
-                            </div>
-                                
-                            <div id="idea-display-section" class="mt-12 hidden">
-                                <h2 class="text-2xl font-semibold mb-6 text-gray-900">Generated Ideas</h2>
-                                <div id="idea-list" class="space-y-6"></div>
-                            </div>
-                
-                            <div id="loading-animation" class="hidden mt-8 flex justify-center">
-                                <svg class="animate-spin h-10 w-10 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
-                        </section>
+                                <div id="idea-display-section" class="mt-12 hidden">
+                                    <div class="flex justify-between items-center mb-6">
+                                        <h2 class="text-2xl font-semibold text-gray-900">Generated Ideas</h2>
+                                        <button id="back-to-projects" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                                            Back to Projects
+                                        </button>
+                                    </div>
+                                    <div id="idea-list" class="space-y-6"></div>
+                                </div>
+                    
+                                <div id="loading-animation" class="hidden mt-8 flex justify-center">
+                                    <svg class="animate-spin h-10 w-10 text-purple-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </section>
+                        </div>
                     </div>
-                </div>
-            </section>
-            <section id="help-section" class="mb-8 hidden">
-                <h2 class="text-3xl font-bold mb-6 text-purple-600 dark:text-purple-400">Help & Getting Started</h2>
-                <div class="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
-                    <div class="border-l-4 border-purple-500 pl-4">
-                        <h3 class="text-2xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Welcome to LOLLMS Idea Forge</h3>
-                        <p class="text-gray-600 dark:text-gray-400">This powerful tool helps you generate creative ideas for various purposes. Let's get you started!</p>
+                </section>
+                <section id="help-section" class="mb-8 hidden">
+                    <h2 class="text-3xl font-bold mb-6 text-purple-600 dark:text-purple-400">Help & Getting Started</h2>
+                    <div class="space-y-6 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                        <div class="border-l-4 border-purple-500 pl-4">
+                            <h3 class="text-2xl font-semibold mb-2 text-gray-800 dark:text-gray-200">Welcome to LOLLMS Idea Forge</h3>
+                            <p class="text-gray-600 dark:text-gray-400">This powerful tool helps you generate creative ideas for various purposes. Let's get you started!</p>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">How to Use</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-200">
+                                <li>Create a new project or select an existing one from the Projects section.</li>
+                                <li>In the Idea Generation section, specify the number of ideas, category, and tags.</li>
+                                <li>Choose a reasoning process for idea generation.</li>
+                                <li>Click "Generate Ideas" to create new ideas based on your inputs.</li>
+                                <li>View and manage your generated ideas in the project.</li>
+                            </ol>
+                        </div>
+                        <div class="bg-purple-100 dark:bg-purple-900 p-4 rounded-lg">
+                            <h3 class="text-xl font-semibold mb-3 text-purple-800 dark:text-purple-200">Pro Tips</h3>
+                            <ul class="list-disc list-inside space-y-2 text-purple-700 dark:text-purple-300">
+                                <li>Use specific tags to guide the idea generation process.</li>
+                                <li>Experiment with different reasoning steps for varied results.</li>
+                                <li>Save your favorite ideas within projects for future reference.</li>
+                                <li>Regularly review and refine your ideas to spark new innovations.</li>
+                            </ul>
+                        </div>
+                        <div class="mt-6 text-center">
+                            <button id="close-help" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                                Got it, let's create!
+                            </button>
+                        </div>
+                        <div class="mt-6 text-sm text-gray-600 dark:text-gray-300 italic">
+                            <p>This tool was created by ParisNeo from idea suggestions given by a lollms fan called <strong class="dark:text-white">Truman Show Participant</strong>. Special thanks for given those ideas.</p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="text-xl font-semibold mb-3 text-gray-800 dark:text-gray-200">How to Use</h3>
-                        <ol class="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-200">
-                            <li>Create a new project or select an existing one from the Projects section.</li>
-                            <li>In the Idea Generation section, specify the number of ideas, category, and tags.</li>
-                            <li>Choose a reasoning process for idea generation.</li>
-                            <li>Click "Generate Ideas" to create new ideas based on your inputs.</li>
-                            <li>View and manage your generated ideas in the project.</li>
-                        </ol>
-                    </div>
-                    <div class="bg-purple-100 dark:bg-purple-900 p-4 rounded-lg">
-                        <h3 class="text-xl font-semibold mb-3 text-purple-800 dark:text-purple-200">Pro Tips</h3>
-                        <ul class="list-disc list-inside space-y-2 text-purple-700 dark:text-purple-300">
-                            <li>Use specific tags to guide the idea generation process.</li>
-                            <li>Experiment with different reasoning steps for varied results.</li>
-                            <li>Save your favorite ideas within projects for future reference.</li>
-                            <li>Regularly review and refine your ideas to spark new innovations.</li>
-                        </ul>
-                    </div>
-                    <div class="mt-6 text-center">
-                        <button id="close-help" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
-                            Got it, let's create!
-                        </button>
-                    </div>
-                    <div class="mt-6 text-sm text-gray-600 dark:text-gray-300 italic">
-                        <p>This tool was created by ParisNeo from idea suggestions given by a lollms fan called <strong class="dark:text-white">Truman Show Participant</strong>. Special thanks for given those ideas.</p>
-                    </div>
-                </div>
-            </section>
-        </main>
-
-        <footer class="fixed bottom-0 left-0 right-0 text-center py-4 bg-gray-100 dark:bg-gray-800">
-            <p>&copy; 2024 LOLLMS Idea Forge</p>
-        </footer>
-    </div>
+                </section>
+            </main>
+    
+            <footer class="fixed bottom-0 left-0 right-0 text-center py-4 bg-gray-100 dark:bg-gray-800">
+                <p>&copy; 2024 LOLLMS Idea Forge</p>
+            </footer>
+        </div>
+    
 
     <script>
+        // Markdown renderer
+        const mr = new MarkdownRenderer()
+
         // Initialize LOLLMS client and settings
         let contextSize = parseInt(localStorage.getItem('contextSize')) || 128000;
         let maxGenSize = parseInt(localStorage.getItem('maxGenSize')) || 4096;
@@ -540,24 +294,45 @@
         } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setTheme(true);
         }
-
+    
         // Navigation
         const projectsBtn = document.getElementById('projects-btn');
         const settingsBtn = document.getElementById('settings-btn');
         const projectsSection = document.getElementById('projects-section');
         const settingsSection = document.getElementById('settings-section');
         const ideaGeneration = document.getElementById('idea-generation');
+        const backToProjectsBtn = document.getElementById('back-to-projects');
 
         projectsBtn.addEventListener('click', () => {
             projectsSection.classList.remove('hidden');
             settingsSection.classList.add('hidden');
             ideaGeneration.classList.add('hidden');
+            loadProjects();
         });
 
         settingsBtn.addEventListener('click', () => {
             projectsSection.classList.add('hidden');
             settingsSection.classList.remove('hidden');
             ideaGeneration.classList.add('hidden');
+        });
+
+        backToProjectsBtn.addEventListener('click', () => {
+            ideaGeneration.classList.add('hidden');
+            projectsSection.classList.remove('hidden');
+            backToProjectsBtn.classList.add('hidden');
+            document.title = 'LOLLMS Idea Forge';
+
+            // Animate the transition
+            anime({
+                targets: '#projects-section',
+                opacity: [0, 1],
+                translateY: [20, 0],
+                easing: 'easeOutExpo',
+                duration: 800
+            });
+
+            // Refresh the projects list
+            loadProjects();
         });
 
         // Settings
@@ -599,8 +374,10 @@
                 projectCard.innerHTML = `
                     <h3 class="text-xl font-semibold mb-2">${project.name}</h3>
                     <p class="mb-2">${project.description}</p>
-                    <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 open-project" data-id="${project.id}">Open</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 delete-project" data-id="${project.id}">Delete</button>
+                    <div class="flex justify-between">
+                        <button class="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 open-project" data-id="${project.id}">Open</button>
+                        <button class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 delete-project" data-id="${project.id}">Delete</button>
+                    </div>
                 `;
                 projectsList.appendChild(projectCard);
                 setTimeout(() => projectCard.classList.add('show'), 10);
@@ -643,7 +420,7 @@
             if (project) {
                 const projectsSection = document.getElementById('projects-section');
                 const ideaGeneration = document.getElementById('idea-generation');
-                const backBtn = document.querySelector('button');
+                const backBtn = document.getElementById('back-to-projects');
 
                 if (projectsSection) projectsSection.classList.add('hidden');
                 if (ideaGeneration) ideaGeneration.classList.remove('hidden');
@@ -652,6 +429,17 @@
                 const ideaDisplaySection = document.getElementById('idea-display-section');
                 if (ideaDisplaySection) {
                     ideaDisplaySection.innerHTML = '';
+
+                    const projectNameElement = document.createElement('h2');
+                    projectNameElement.className = 'text-2xl font-semibold mb-2 text-gray-900';
+                    projectNameElement.textContent = project.name;
+
+                    const projectDescriptionElement = document.createElement('p');
+                    projectDescriptionElement.className = 'text-gray-600 mb-4';
+                    projectDescriptionElement.textContent = project.description;
+
+                    ideaDisplaySection.appendChild(projectNameElement);
+                    ideaDisplaySection.appendChild(projectDescriptionElement);
 
                     if (project.sessions && project.sessions.length > 0) {
                         const { tabContainer, contentContainer } = await createSessionTabs(project);
@@ -726,7 +514,7 @@
 
                 const content = document.createElement('div');
                 content.className = 'hidden session-content';
-                const rendered = await renderMarkdown(session.ideas);
+                const rendered = await mr.renderMarkdown(session.ideas);
                 
                 const editButton = `
                     <button class="edit-btn bg-blue-500 text-white p-2 rounded hover:bg-blue-600">
@@ -829,7 +617,7 @@
             }
 
             async function updateRenderedMarkdown(textarea, renderedElement) {
-                const newRendered = await renderMarkdown(textarea.value);
+                const newRendered = await mr.renderMarkdown(textarea.value);
                 renderedElement.innerHTML = newRendered;
             }
 
@@ -869,8 +657,6 @@
 
         // Load projects on page load
         loadProjects();
-
-
 
         // Idea Generation
         const generateIdeasBtn = document.getElementById('generate-ideas');
@@ -921,6 +707,8 @@
 
                 Ensure your response is thorough, well-structured, and academically rigorous.`;
             
+            console.log("system_prompt")
+            console.log(system_prompt)
             const prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.ai_message();
 
             try {
@@ -999,352 +787,6 @@
 
         generateIdeasBtn.addEventListener('click', generateIdeas);
 
-        async function renderMermaidDiagrams(text) {
-            const mermaidCodeRegex = /```mermaid\n([\s\S]*?)```/g;
-            const matches = text.match(mermaidCodeRegex);
-            
-            if (!matches) return text; // Return original text if no Mermaid code found
-
-            for (const match of matches) {
-                const mermaidCode = match.replace(/```mermaid\n/, '').replace(/```$/, '');
-                const uniqueId = 'mermaid-' + Math.random().toString(36).substr(2, 9);
-                
-                try {
-                    const result = await mermaid.render(uniqueId, mermaidCode);
-                    const htmlCode = `
-                        <div class="relative flex justify-center items-center mt-4 mb-4">
-                            <div class="mermaid-diagram" id="${uniqueId}" style="transform-origin: center; transition: transform 0.3s;">
-                                ${result.svg}
-                            </div>
-                            <div class="absolute top-0 left-0 flex gap-1 p-1">
-                                <button onclick="zoomMermaid('${uniqueId}', 1.1)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100">
-                                    <circle cx="40" cy="40" r="25" stroke="black" stroke-width="5" fill="none" />
-                                    <line x1="60" y1="60" x2="80" y2="80" stroke="black" stroke-width="5" />
-                                    <line x1="50" y1="40" x2="30" y2="40" stroke="black" stroke-width="3" />
-                                    <line x1="40" y1="30" x2="40" y2="50" stroke="black" stroke-width="3" />
-                                    </svg>
-                                </button>
-                                <button onclick="zoomMermaid('${uniqueId}', 0.9)" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 100 100">
-                                    <circle cx="40" cy="40" r="25" stroke="black" stroke-width="5" fill="none" />
-                                    <line x1="60" y1="60" x2="80" y2="80" stroke="black" stroke-width="5" />
-                                    <line x1="50" y1="40" x2="30" y2="40" stroke="black" stroke-width="3" />
-                                    </svg>
-                                </button>
-                                <button onclick="saveMermaidAsPNG('${uniqueId}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
-                                    PNG
-                                </button>
-                                <button onclick="saveMermaidAsSVG('${uniqueId}')" class="bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold p-1 rounded inline-flex items-center">
-                                    SVG
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                    text = text.replace(match, htmlCode);
-                } catch (error) {
-                    console.error('Mermaid rendering failed:', error);
-                    text = text.replace(match, `<div class="mermaid-error">Failed to render diagram</div>`);
-                }
-            }
-
-            return text;
-        }
-        function saveMermaidAsPNG(id) {
-            const svg = document.querySelector(`#${id} svg`);
-            const svgData = new XMLSerializer().serializeToString(svg);
-            
-            // Create a canvas with a higher resolution
-            const canvas = document.createElement("canvas");
-            const ctx = canvas.getContext("2d");
-            
-            // Set a scale factor for higher resolution (e.g., 2 for double resolution)
-            const scaleFactor = 2;
-            
-            const img = new Image();
-            img.onload = function() {
-                canvas.width = img.width * scaleFactor;
-                canvas.height = img.height * scaleFactor;
-                
-                // Scale the context to draw the image at a higher resolution
-                ctx.scale(scaleFactor, scaleFactor);
-                ctx.drawImage(img, 0, 0);
-                
-                const pngFile = canvas.toDataURL("image/png");
-                const downloadLink = document.createElement("a");
-                downloadLink.download = "mermaid_diagram.png";
-                downloadLink.href = pngFile;
-                downloadLink.click();
-            };
-            img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svgData)));
-        }
-
-        function saveMermaidAsSVG(id) {
-            const svg = document.querySelector(`#${id} svg`);
-            const svgData = new XMLSerializer().serializeToString(svg);
-            const svgBlob = new Blob([svgData], {type: "image/svg+xml;charset=utf-8"});
-            const svgUrl = URL.createObjectURL(svgBlob);
-            const downloadLink = document.createElement("a");
-            downloadLink.href = svgUrl;
-            downloadLink.download = "mermaid_diagram.svg";
-            document.body.appendChild(downloadLink);
-            downloadLink.click();
-            document.body.removeChild(downloadLink);
-        }
-
-
-
-        function zoomMermaid(id, factor) {
-            const diagram = document.getElementById(id);
-            const currentScale = diagram.style.transform ? parseFloat(diagram.style.transform.replace('scale(', '').replace(')', '')) : 1;
-            const newScale = currentScale * factor;
-            diagram.style.transform = `scale(${newScale})`;
-        }
-        async function renderCodeBlocks(text) {
-        if (typeof Prism === 'undefined') {
-            throw new Error('Prism is not loaded. Please include Prism.js in your project.');
-        }
-
-        const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-
-        const renderedText = await text.replace(codeBlockRegex, (match, language, code) => {
-            language = language || 'plaintext';
-            
-            if (!Prism.languages[language]) {
-            console.warn(`Language '${language}' is not supported by Prism. Falling back to plaintext.`);
-            language = 'plaintext';
-            }
-
-            const highlightedCode = Prism.highlight(code.trim(), Prism.languages[language], language);
-
-            const lines = highlightedCode.split('\n');
-            const numberedLines = lines.map((line, index) => 
-            `<span class="code-line"><span class="line-number">${index + 1}</span><span class="line-content">${line}</span></span>`
-            ).join('');
-
-            return `<div class="code-block-wrapper">
-            <div class="code-block-header">
-                <div class="language-label">${language}</div>
-                <button class="copy-button" onclick="copyCode(this)">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy
-                </button>
-            </div>
-            <pre class="line-numbers"><code class="language-${language}">${numberedLines}</code></pre>
-            </div>`;
-        });
-
-        return renderedText;
-        }
-
-        function copyCode(button) {
-        const codeBlock = button.closest('.code-block-wrapper').querySelector('code');
-        const codeLines = codeBlock.querySelectorAll('.code-line');
-        let codeText = '';
-        
-        codeLines.forEach((line) => {
-            const lineNumber = line.querySelector('.line-number').textContent;
-            const lineContent = line.querySelector('.line-content').textContent;
-            codeText += `${lineNumber} ${lineContent}\n`;
-        });
-
-        navigator.clipboard.writeText(codeText.trim()).then(() => {
-            button.classList.add('copied');
-            button.querySelector('svg').style.display = 'none';
-            button.innerHTML = 'Copied!';
-            setTimeout(() => {
-            button.classList.remove('copied');
-            button.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                </svg>
-                Copy
-            `;
-            }, 2000);
-        }).catch(err => {
-            console.error('Failed to copy text: ', err);
-        });
-        }
-        
-              
-        async function highlightCode(code, language) {
-            // Make sure the language is supported by your highlighting library
-            const supportedLanguage = Prism.languages[language] ? language : 'plaintext';
-            return Prism.highlight(code, Prism.languages[supportedLanguage], supportedLanguage);
-        }
-
-        async function handle_tables(text){
-            // Handle tables
-            let alignments = [];
-            let tableRows = [];
-            let isInTable = false;
-            let hasHeader = false;
-
-            // Process the text line by line
-            text = text.split('\n').map(line => {
-                // Check if the line is a table row
-                if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-                    isInTable = true;
-                    const tableRow = line.trim().slice(1, -1); // Remove leading and trailing |
-                    const cells = tableRow.split('|').map(cell => cell.trim());
-                    
-                    if (cells.every(cell => cell.match(/^:?-+:?$/))) {
-                        // This is the header separator row
-                        alignments = cells.map(cell => {
-                            if (cell.startsWith(':') && cell.endsWith(':')) return 'center';
-                            if (cell.endsWith(':')) return 'right';
-                            return 'left';
-                        });
-                        hasHeader = true;
-                        return ''; // Remove separator row
-                    }
-                    
-                    const cellType = !hasHeader ? 'th' : 'td';
-                    const renderedCells = cells.map((cell, cellIndex) => 
-                        `<${cellType} class="border px-4 py-2" style="text-align: ${alignments[cellIndex] || 'left'};">${cell}</${cellType}>`
-                    ).join('');
-                    
-                    tableRows.push(`<tr>${renderedCells}</tr>`);
-                    return ''; // Remove the original Markdown line
-                } else if (isInTable) {
-                    // We've reached the end of the table
-                    isInTable = false;
-                    hasHeader = false;
-                    const tableContent = tableRows.join('');
-                    tableRows = []; // Reset for next table
-                    return `<table class="table-auto w-full border-collapse border border-gray-300">${tableContent}</table>`;
-                }
-                return line; // Return non-table lines unchanged
-            }).join('\n');
-
-            // Handle case where table is at the end of the text
-            if (isInTable) {
-                const tableContent = tableRows.join('');
-                text += `<table class="table-auto w-full border-collapse border border-gray-300">${tableContent}</table>`;
-            }
-            return text
-        }
-
-        async function renderMarkdown(text) {
-            // Handle Mermaid graphs first
-            let mermaidCounter = 0;
-
-            text = await renderMermaidDiagrams(text);
-            
-            // Handle code blocks with syntax highlighting and copy button
-            text = await renderCodeBlocks(text);
-
-            // Handle inline code
-            text = text.replace(/`([^`]+)`/g, function(match, code) {
-                return `<b>${code}</b>`;
-            });
-
-            // Handle LaTeX-style math equations
-            text = text.replace(/\\\[([\s\S]*?)\\\]|\$\$([\s\S]*?)\$\$|\$([^\n]+?)\$/g, function(match, p1, p2, p3) {
-                const equation = p1 || p2 || p3;
-                return '<span class="math">' + equation + '</span>';
-            });
-
-            text = await handle_tables(text)
-
-            // Wrap table rows with table tags
-            text = text.replace(/(<tr>.+?<\/tr>)+/g, match => 
-                `<table class="table-auto w-full border-collapse border border-gray-300">${match}</table>`
-            );
-
-
-            // Handle headers
-            text = text.replace(/^(#{1,6})\s+(.*?)$/gm, function(match, hashes, content) {
-                const level = hashes.length;
-                return '<h' + level + '>' + content + '</h' + level + '>';
-            });
-
-            // Handle bold text
-            text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-
-            // Handle italic text
-            text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-
-            // Handle links
-            text = text.replace(/\[([^\]]+)\]\(([^\)]+)\)/g, '<a href="$2">$1</a>');
-
-            // Handle unordered lists
-            text = text.replace(/^\s*[-*+]\s+(.*?)$/gm, '<li>$1</li>');
-            text = text.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-
-            // Handle ordered lists
-            text = text.replace(/^\s*(\d+)\.\s+(.*?)$/gm, '<li>$2</li>');
-            text = text.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
-
-            // Handle blockquotes
-            text = text.replace(/^>\s+(.*?)$/gm, '<blockquote>$1</blockquote>');
-
-            // Handle horizontal rules
-            text = text.replace(/^(-{3,}|_{3,}|\*{3,})$/gm, '<hr>');
-
-            // Handle paragraphs
-            //text = text.replace(/^(?!<[uo]l|<blockquote|<h\d|<pre|<hr|<table|<li|<button)(.+)$/gm, '<p class="mb-4">$1</p>');
-
-            return text;
-        }
-        // Helper function to escape HTML special characters
-        function escapeHtml(unsafe) {
-            if (typeof unsafe !== 'string') {
-                console.log("Found unsafe string:", text)
-                return '';
-            }
-            return unsafe
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
-        }
-
-        // Function to initialize Mermaid
-        function initializeMermaid() {
-            if (typeof mermaid === 'undefined') {
-                console.error('Mermaid library is not loaded');
-                return;
-            }
-
-            mermaid.initialize({ startOnLoad: false });
-            document.querySelectorAll('.mermaid-placeholder').forEach((el) => {
-                const mermaidCode = decodeURIComponent(el.getAttribute('data-mermaid'));
-                console.log('Rendering Mermaid diagram:', mermaidCode);
-                
-                try {
-                    mermaid.render(el.id, mermaidCode, (svgCode) => {
-                        el.innerHTML = svgCode;
-                        el.classList.remove('mermaid-placeholder');
-                        el.classList.add('mermaid');
-                    });
-                } catch (error) {
-                    console.error('Error rendering Mermaid diagram:', error);
-                    el.innerHTML = '<p>Error rendering diagram</p>';
-                }
-            });
-        }
-        // Function to check if required libraries are loaded
-        function checkRequiredLibraries() {
-            if (typeof marked === 'undefined') {
-                console.error('marked library is not loaded');
-                return false;
-            }
-            if (typeof katex === 'undefined') {
-                console.error('KaTeX library is not loaded');
-                return false;
-            }
-            if (typeof mermaid === 'undefined') {
-                console.error('mermaid library is not loaded');
-                return false;
-            }
-            return true;
-        }
         async function exportSession(sessionId, format) {
             const projects = JSON.parse(localStorage.getItem('lollms_ideas_forge_projects')) || [];
             const project = projects.find(p => p.id === currentProjectId);
@@ -1528,7 +970,7 @@
             settingsSection.classList.add('hidden');
             ideaGeneration.classList.add('hidden');
             loadProjects(); // Ensure projects are loaded
-            initializeMermaid();
+            mr.initMermaid()
         });
     </script>
 </body>
