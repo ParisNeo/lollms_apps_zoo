@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bundle Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">Bundle Builder</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div class="mb-4">
+                <label for="bundleName" class="block text-sm font-medium text-gray-700 mb-2">Bundle Name</label>
+                <input type="text" id="bundleName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter bundle name">
+            </div>
+            
+            <div class="mb-4">
+                <label for="newLink" class="block text-sm font-medium text-gray-700 mb-2">Add New Link</label>
+                <div class="flex">
+                    <input type="text" id="newLink" class="flex-grow px-3 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter JS or CSS link">
+                    <button onclick="addLink()" class="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Add</button>
+                </div>
+            </div>
+            
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2">Added Links</h2>
+                <ul id="linkList" class="space-y-2"></ul>
+            </div>
+            
+            <button onclick="generateBundle()" class="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Generate Bundle</button>
+        </div>
+        
+        <div id="result" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4">Generated Bundle</h2>
+            <div class="mb-4">
+                <h3 class="text-lg font-medium mb-2">JavaScript Bundle</h3>
+                <pre id="jsBundle" class="bg-gray-100 p-4 rounded-md overflow-x-auto"></pre>
+            </div>
+            <div>
+                <h3 class="text-lg font-medium mb-2">CSS Bundle</h3>
+                <pre id="cssBundle" class="bg-gray-100 p-4 rounded-md overflow-x-auto"></pre>
+            </div>
+        </div>
+    </div></div>
+
+    <script>
+        let links = [];
+
+        function toggleHelp() {
+            const helpSection = document.getElementById('helpSection');
+            helpSection.classList.toggle('hidden');
+        }
+
+        function addLink() {
+            const newLink = document.getElementById('newLink').value.trim();
+            if (newLink) {
+                links.push(newLink);
+                updateLinkList();
+                document.getElementById('newLink').value = '';
+            }
+        }
+
+        function removeLink(index) {
+            links.splice(index, 1);
+            updateLinkList();
+        }
+
+        function updateLinkList() {
+            const linkList = document.getElementById('linkList');
+            linkList.innerHTML = '';
+            links.forEach((link, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between bg-gray-50 p-2 rounded';
+                li.innerHTML = `
+                    <span class="text-sm">${link}</span>
+                    <button onclick="removeLink(${index})" class="text-red-600 hover:text-red-800 focus:outline-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                linkList.appendChild(li);
+            });
+        }
+
+        async function generateBundle() {
+            const bundleName = document.getElementById('bundleName').value.trim() || 'bundle';
+            
+            try {
+                const response = await axios.post('/generate_bundle', {
+                    name: bundleName,
+                    links: links
+                });
+
+                document.getElementById('jsBundle').textContent = response.data.js_bundle;
+                document.getElementById('cssBundle').textContent = response.data.css_bundle;
+                document.getElementById('result').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating bundle:', error);
+                alert('An error occurred while generating the bundle. Please try again.');
+            }
+        }
+    </script>
+</body>
+</html>

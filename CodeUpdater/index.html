@@ -605,36 +605,59 @@ Select the best between full rewrite and replace according to the amount of text
             const projectCards = document.getElementById('projectCards');
             projectCards.innerHTML = '';
             projects.forEach((project, index) => {
-                const card = document.createElement('div');
-                card.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 cursor-pointer hover:scale-105 transition-transform duration-300';
-                card.onclick = () => {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col justify-between';
+
+            const cardTitle = document.createElement('h3');
+            cardTitle.className = 'text-lg font-semibold mb-2';
+            cardTitle.textContent = project.name;
+
+            const cardVersions = document.createElement('p');
+            cardVersions.className = 'text-gray-500 dark:text-gray-400';
+            cardVersions.textContent = `${project.codeVersions.length} versions`;
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'flex justify-between items-center mt-4';
+
+            // Open button with SVG icon
+            const openButton = document.createElement('button');
+            openButton.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center';
+            openButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                </svg>
+                Open
+            `;
+            openButton.onclick = (event) => {
+                event.stopPropagation();
                 loadProject(index);
                 showProjectPage();
-                };
+            };
 
-                const cardTitle = document.createElement('h3');
-                cardTitle.className = 'text-lg font-semibold mb-2';
-                cardTitle.textContent = project.name;
-
-                const cardVersions = document.createElement('p');
-                cardVersions.className = 'text-gray-500 dark:text-gray-400';
-                cardVersions.textContent = `${project.codeVersions.length} versions`;
-
-                // Add a delete project button
-                const deleteButton = document.createElement('button');
-                deleteButton.className = 'bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mt-2';
-                deleteButton.textContent = 'Delete Project';
-                deleteButton.onclick = () => {
+            // Delete button with SVG icon
+            const deleteButton = document.createElement('button');
+            deleteButton.className = 'bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded flex items-center';
+            deleteButton.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Delete
+            `;
+            deleteButton.onclick = (event) => {
+                event.stopPropagation();
                 // Add logic to delete the project here
                 console.log(`Deleting project: ${project.name}`);
-                };
+            };
 
-                card.appendChild(cardTitle);
-                card.appendChild(cardVersions);
-                card.appendChild(deleteButton);
-                projectCards.appendChild(card);
+            buttonContainer.appendChild(openButton);
+            buttonContainer.appendChild(deleteButton);
+
+            card.appendChild(cardTitle);
+            card.appendChild(cardVersions);
+            card.appendChild(buttonContainer);
+            projectCards.appendChild(card);
             });
-            }
+        }
 
 
         window.onload = () => {

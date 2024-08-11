@@ -41,4 +41,4 @@ async def convert_pdf_to_docx(file: UploadFile = File(...)):
     return FileResponse(docx_file_path, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document', filename=os.path.basename(docx_file_path))
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)
