@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pdf2docx import Converter
 import os
+import uvicorn
 
 app = FastAPI()
 
@@ -39,4 +40,5 @@ async def convert_pdf_to_docx(file: UploadFile = File(...)):
     # Return the DOCX file
     return FileResponse(docx_file_path, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document', filename=os.path.basename(docx_file_path))
 
-# To run the application, use the command: uvicorn server:app --reload
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
