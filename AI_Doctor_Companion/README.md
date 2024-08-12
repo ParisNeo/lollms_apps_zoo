@@ -7,7 +7,7 @@ AI Doctor Companion is an intelligent healthcare application that leverages the 
 1.0
 
 ## Author
-User
+ParisNeo
 
 ## Category
 Health & Fitness
