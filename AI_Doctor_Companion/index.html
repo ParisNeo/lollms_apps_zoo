@@ -130,11 +130,16 @@
         let isThinking = false;
         let allConsultations = [];
         let currentConsultationIndex = -1;
+        let aiIsThinking = "AI is thinking...";
         let systemPrompt = "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis.";
 
         const translations = {
             en: {
                 appTitle: "AI Doctor Companion",
+                send: "Send",
+                exportData: "Export data",
+                importData: "Import data",
+                aiIsThinking: "AI is thinking ...",
                 languageSelection: "Select language",
                 iUnderstand: "I understand",
                 startNewConsultation: "Start New consultation",
@@ -151,6 +156,10 @@
             // Add similar entries for other languages (es, fr, de, zh) with translated system prompts
             es: {
                 appTitle: "Compañero Doctor AI",
+                send: "Enviar",
+                exportData: "Exportar datos",
+                importData: "Importar datos",
+                aiIsThinking: "La IA está pensando ...",
                 languageSelection: "Seleccionar idioma",
                 iUnderstand: "Entiendo",
                 startNewConsultation: "Iniciar nueva consulta",
@@ -166,6 +175,10 @@
             },
             fr: {
                 appTitle: "Compagnon Médecin IA",
+                send: "Envoyer",
+                exportData: "Exporter les données",
+                importData: "Importer les données",
+                aiIsThinking: "L'IA est en train de réfléchir ...",
                 languageSelection: "Selectionnez la langue",
                 iUnderstand: "I understand",
                 startNewConsultation: "Démarrer une nouvelle consultation",
@@ -181,6 +194,10 @@
             },
             de: {
                 appTitle: "AI Arzt Begleiter",
+                send: "Senden",
+                exportData: "Daten exportieren",
+                importData: "Daten importieren",
+                aiIsThinking: "Die KI denkt nach ...",
                 languageSelection: "Sprache auswählen",
                 iUnderstand: "Ich verstehe",
                 startNewConsultation: "Neue Beratung starten",
@@ -196,6 +213,10 @@
             },
             zh: {
                 appTitle: "AI 医生助手",
+                send: "发送",
+                exportData: "导出数据",
+                importData: "导入数据",
+                aiIsThinking: "AI正在思考...",
                 languageSelection: "选择语言",
                 iUnderstand: "我明白",
                 startNewConsultation: "开始新的咨询",
@@ -225,6 +246,12 @@
         document.getElementById('save-consultation').innerText = translations[language].saveConsultation;
         document.getElementById('language-select-label').innerText = translations[language].languageSelection;
         document.getElementById('i-understand').innerText = translations[language].iUnderstand;
+
+
+        document.getElementById('send-button').innerText = translations[language].send;
+        document.getElementById('export-button').innerText = translations[language].exportData;
+        document.getElementById('import-button').innerText = translations[language].importData;
+        
         
         document.getElementById('consultation-title').innerText = translations[language].consultationTitle;
         document.getElementById('diagnosis-title').innerText = translations[language].diagnosisTitle;
@@ -414,7 +441,7 @@
                 const thinkingDiv = document.createElement('div');
                 thinkingDiv.id = 'thinking-indicator';
                 thinkingDiv.className = 'flex items-center justify-center p-4';
-                thinkingDiv.innerHTML = '<div class="thinking-animation mr-3"></div><span class="text-blue-600 font-medium">AI is thinking...</span>';
+                thinkingDiv.innerHTML = `<div class="thinking-animation mr-3"></div><span class="text-blue-600 font-medium">${aiIsThinking}</span>`;
                 document.getElementById('chat-container').appendChild(thinkingDiv);
             } else {
                 const thinkingDiv = document.getElementById('thinking-indicator');
