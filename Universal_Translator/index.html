@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Translator App</title>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+
     <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
@@ -29,21 +32,54 @@
         }
     </style>
     <script>
+        let lc;
+        let hostInput;
+        let ctx_size;
+        let nPredictInput;
+        let temperatureInput;
+
+        function initLollmsClient() {
+            lc = new LollmsClient(
+                hostInput.value,
+                null,
+                parseInt(ctx_size.value),
+                -1,
+                nPredictInput.value,
+                0.1,
+                50,
+                0.95,
+                0.8,
+                40,
+                null,
+                8,
+                "",
+                ELF_GENERATION_FORMAT.LOLLMS
+            );
+            console.log("lollms client initialized")
+
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
-            const hostInput = document.getElementById("host");
+            hostInput = document.getElementById("host");
+            ctx_size = document.getElementById("ctx_size");
+            nPredictInput = document.getElementById("n_predict");
+            temperatureInput = document.getElementById("temperature");
+
             const savedHost = localStorage.getItem("host_address") || "http://localhost:9600";
             hostInput.value = savedHost;
+            
+            const savedctx_size = localStorage.getItem("ctx_size") || "128000";
+            ctx_size.value = savedctx_size;
 
-            const nPredictInput = document.getElementById("n_predict");
-            const savedNpredict = localStorage.getItem("n_predict") || "1024";
+            const savedNpredict = localStorage.getItem("n_predict") || "4096";
             nPredictInput.value = savedNpredict;
 
-            const temperatureInput = document.getElementById("temperature");
             const savedTemperature = localStorage.getItem("temperature") || "0.7";
             temperatureInput.value = savedTemperature;
 
             const fileInput = document.getElementById("fileInput");
             fileInput.addEventListener("change", handleFileUpload);
+            initLollmsClient()
             
         });
 
@@ -61,50 +97,92 @@
         async function translateContent() {
             const sourceText = document.getElementById("sourceText");
             const content = sourceText.value;
+            const sourceLang = document.getElementById("sourceLang").value;
+            const targetLang = document.getElementById("targetLang").value;
             console.log("Translating text from", sourceLang, "to", targetLang);
             document.getElementById("loading").classList.remove("hidden");
 
-            console.log(content)
-
-            function tokenize(content) {
-                return content.split(' ');
-            }
-
-            const tokens = tokenize(content);
             const maxTokens = parseInt(document.getElementById("n_predict").value);
+            const halfContextSize = Math.floor(maxTokens / 2);
 
-            if (tokens.length > maxTokens) {
-                alert("File content exceeds token limit. It will be split into chunks for translation.");
-                const chunks = splitIntoChunks(content, maxTokens, tokenizer);
-                translated = await translateChunks(chunks);
-            } else {
-                translated = await translateText(content);
+            try {
+                const tokens = await lc.tokenize(content);
+                console.log("Total tokens:", tokens.length);
+
+                if (tokens.length > halfContextSize) {
+                    console.log("Content exceeds half context size. Splitting into chunks.");
+                    const chunks = splitIntoChunks(content, tokens, halfContextSize);
+                    const translatedChunks = await translateChunks(chunks, sourceLang, targetLang);
+                    const translatedContent = translatedChunks.join("\n\n");
+                    updateTranslatedText(translatedContent);
+                } else {
+                    const translatedContent = await translateText(content, sourceLang, targetLang);
+                    updateTranslatedText(translatedContent);
+                }
+            } catch (error) {
+                console.error("Error during translation:", error);
+                alert("An error occurred during translation. Please try again.");
+            } finally {
+                document.getElementById("loading").classList.add("hidden");
             }
-            const translatedTextDiv = document.getElementById("translatedText");
-            // Render Markdown to HTML
-            const renderedHTML = marked.parse(translated);
-            document.getElementById("translatedText").innerHTML = renderedHTML;            
-            console.log("Translating text from", sourceLang, "to", targetLang);
-            document.getElementById("loading").classList.add("hidden");
-
-
         }
-        async function translateText(sourceText) {
-            const sourceLang = document.getElementById("sourceLang").value;
-            const targetLang = document.getElementById("targetLang").value;
+
+        function splitIntoChunks(content, tokens, maxChunkTokens) {
+            const chunks = [];
+            let currentChunk = "";
+            let currentChunkTokens = 0;
+            const paragraphs = content.split(/\n\s*\n/);
+
+            for (const paragraph of paragraphs) {
+                const paragraphTokens = tokens.slice(currentChunkTokens, currentChunkTokens + paragraph.length);
+                
+                if (currentChunkTokens + paragraphTokens.length <= maxChunkTokens) {
+                    currentChunk += (currentChunk ? "\n\n" : "") + paragraph;
+                    currentChunkTokens += paragraphTokens.length;
+                } else {
+                    if (currentChunk) {
+                        chunks.push(currentChunk);
+                    }
+                    currentChunk = paragraph;
+                    currentChunkTokens = paragraphTokens.length;
+                }
+            }
+
+            if (currentChunk) {
+                chunks.push(currentChunk);
+            }
+
+            return chunks;
+        }
+
+        async function translateChunks(chunks, sourceLang, targetLang) {
+            const translatedChunks = [];
+            for (let i = 0; i < chunks.length; i++) {
+                const translated = await translateText(chunks[i], sourceLang, targetLang);
+                translatedChunks.push(translated);
+            }
+            return translatedChunks;
+        }
+
+        async function translateText(sourceText, sourceLang, targetLang) {
             const hostAddress = document.getElementById("host").value;
             const nPredict = document.getElementById("n_predict").value;
             const temperature = document.getElementById("temperature").value;
 
-            const prompt = `!@>system: Translate the following text from ${sourceLang} to ${targetLang}. Provide only the translated text without any additional commentary.\n!@>text to translate:\n${sourceText}\n!@>translation:`;
+            const prompt = `<@>system: Translate the following text from ${sourceLang} to ${targetLang}. Provide only the translated text without any additional commentary.\n<@>text to translate:\n${sourceText}\n<@>translation:`;
             
-            const translatedText = await lollms_generate(prompt, hostAddress, "-1", nPredict, false, temperature);
-
-            console.log("Translated text:", translatedText);
-
-            const translatedTextDiv = document.getElementById("translatedText");
+            const translatedText = await lc.generate(prompt, hostAddress, "-1", nPredict, false, temperature);
             return translatedText.trim();
         }
+
+        function updateTranslatedText(translatedContent) {
+            const translatedTextDiv = document.getElementById("translatedText");
+            const renderedHTML = marked.parse(translatedContent);
+            translatedTextDiv.innerHTML = renderedHTML;
+        }
+
+        // The lollms_generate function remains the same
+
 
         async function lollms_generate(prompt, host_address, personality, n_predict, stream, temperature) {
             const url = `${host_address}/lollms_generate`;
@@ -211,17 +289,90 @@
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     const pdf = await pdfjsLib.getDocument({data: e.target.result}).promise;
-                    let text = '';
+                    let markdown = '';
+                    
                     for (let i = 1; i <= pdf.numPages; i++) {
                         const page = await pdf.getPage(i);
                         const content = await page.getTextContent();
-                        text += content.items.map(item => item.str).join(' ') + '\n';
+                        const items = content.items;
+                        
+                        let currentY = null;
+                        let lineContent = '';
+                        let isList = false;
+                        let tableData = [];
+                        
+                        for (let j = 0; j < items.length; j++) {
+                            const item = items[j];
+                            
+                            // Check for new line
+                            if (currentY !== item.transform[5]) {
+                                if (lineContent) {
+                                    markdown += processLine(lineContent, isList) + '\n';
+                                }
+                                lineContent = '';
+                                currentY = item.transform[5];
+                                isList = false;
+                            }
+                            
+                            // Check for list items
+                            if (item.str.match(/^[\u2022\u25E6\u25AA\u25AB\u25CF\u25CB\u25A0\u25A1]/)) {
+                                isList = true;
+                            }
+                            
+                            // Check for table-like structure
+                            if (j < items.length - 1 && Math.abs(item.transform[5] - items[j+1].transform[5]) < 2) {
+                                tableData.push(item.str);
+                            } else {
+                                if (tableData.length > 0) {
+                                    tableData.push(item.str);
+                                    markdown += processTable(tableData) + '\n';
+                                    tableData = [];
+                                } else {
+                                    lineContent += item.str + ' ';
+                                }
+                            }
+                        }
+                        
+                        // Process any remaining content
+                        if (lineContent) {
+                            markdown += processLine(lineContent, isList) + '\n';
+                        }
+                        
+                        markdown += '\n'; // Add extra newline between pages
                     }
-                    resolve(text);
+                    
+                    resolve(markdown.trim());
                 };
                 reader.onerror = (e) => reject(e);
                 reader.readAsArrayBuffer(file);
             });
+        }
+
+        function processLine(line, isList) {
+            line = line.trim();
+            
+            // Check for headers
+            if (line.match(/^#{1,6}\s/)) {
+                return line; // Already in Markdown header format
+            } else if (line.length > 0 && line === line.toUpperCase()) {
+                return `## ${line}`; // Assume all caps lines are headers
+            } else if (isList) {
+                return `- ${line}`; // Convert to Markdown list item
+            } else {
+                return line; // Regular paragraph
+            }
+        }
+
+        function processTable(tableData) {
+            const numColumns = Math.ceil(Math.sqrt(tableData.length)); // Estimate number of columns
+            let markdown = '| ' + tableData.slice(0, numColumns).join(' | ') + ' |\n';
+            markdown += '| ' + '---'.repeat(numColumns).split('').join(' | ') + ' |\n';
+            
+            for (let i = numColumns; i < tableData.length; i += numColumns) {
+                markdown += '| ' + tableData.slice(i, i + numColumns).join(' | ') + ' |\n';
+            }
+            
+            return markdown;
         }
 
         function readPptxFile(file) {
@@ -361,6 +512,8 @@
         </button>
         <label class="block mt-2">Host Address:</label>
         <input id="host" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="text" />
+        <label class="block mt-2">ctx_size:</label>
+        <input id="ctx_size" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="number" />
         <label class="block mt-2">n_predict:</label>
         <input id="n_predict" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500" type="number" />
         <label class="block mt-2">Temperature:</label>
