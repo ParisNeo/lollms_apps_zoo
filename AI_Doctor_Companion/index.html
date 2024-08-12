@@ -31,10 +31,19 @@
     <div class="flex h-screen">
         <!-- Left Panel -->
         <div class="w-1/4 bg-white shadow-lg p-4 overflow-y-auto">
+            <div class="flex justify-between items-center mt-4">
+                <button id="settings-button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Settings
+                </button>
+            </div>        
             <!-- Language Selector -->
             <div class="mb-4">
                 <label id="language-select-label" for="language-select" class="text-lg font-semibold text-blue-700">Select Language:</label>
                 <select id="language-select" class="border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" onchange="changeLanguage()">
+                    <option value="ar">Arabic</option>
                     <option value="en">English</option>
                     <option value="es">Spanish</option>
                     <option value="fr">French</option>
@@ -43,7 +52,7 @@
                     <!-- Add more languages as needed -->
                 </select>
             </div>
-            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Previous Consultations</h2>
+            <h2 id="previous-consultations" class="text-2xl font-semibold mb-4 text-blue-700">Previous Consultations</h2>
             <ul id="previous-consultations-list" class="mb-4"></ul>
             <button onclick="showConsultationView()" id="new-consultation" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium mb-2">New Consultation</button>
             <button onclick="saveConsultation()" id="save-consultation" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">Save Consultation</button>
@@ -63,8 +72,13 @@
                 <div class="flex flex-col space-y-2">
                     <div class="flex">
                         <input type="text" id="user-input" class="flex-grow border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" placeholder="Type your symptoms or answer questions...">
+                        <button id="mic-button" class="bg-green-600 text-white px-4 py-2 hover:bg-green-700 transition duration-300 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </button>
                         <button id="send-button" onclick="sendMessage()" class="bg-blue-600 text-white px-6 py-2 rounded-r-lg hover:bg-blue-700 transition duration-300 font-medium">Send</button>
-                    </div>
+                    </div>                    
                     <div class="flex space-x-2">
                         <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'image')">
                         <button onclick="document.getElementById('image-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">Upload Image</button>
@@ -121,7 +135,25 @@
         </div>
     
     </div>
-    
+    <div id="settings-popup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Settings</h3>
+                <div class="mt-2 px-7 py-3">
+                    <label for="voice-select" class="block text-sm font-medium text-gray-700">Select Voice:</label>
+                    <select id="voice-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <!-- Voice options will be populated here -->
+                    </select>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="close-settings" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+        
 
     <script>
         let lc;
@@ -142,6 +174,7 @@
                 aiIsThinking: "AI is thinking ...",
                 languageSelection: "Select language",
                 iUnderstand: "I understand",
+                previousConsultations: "Previous consultations",
                 startNewConsultation: "Start New consultation",
                 saveConsultation:"Save consultation",
                 consultationTitle: "Consultation",
@@ -162,6 +195,7 @@
                 aiIsThinking: "La IA está pensando ...",
                 languageSelection: "Seleccionar idioma",
                 iUnderstand: "Entiendo",
+                previousConsultations: "Consultas anteriores",
                 startNewConsultation: "Iniciar nueva consulta",
                 saveConsultation: "Guardar consulta",
                 consultationTitle: "Consulta",
@@ -181,6 +215,7 @@
                 aiIsThinking: "L'IA est en train de réfléchir ...",
                 languageSelection: "Selectionnez la langue",
                 iUnderstand: "I understand",
+                previousConsultations: "Consultations précédentes",
                 startNewConsultation: "Démarrer une nouvelle consultation",
                 saveConsultation:"Enregistrer la consultation",
                 consultationTitle: "Consultation",
@@ -200,6 +235,7 @@
                 aiIsThinking: "Die KI denkt nach ...",
                 languageSelection: "Sprache auswählen",
                 iUnderstand: "Ich verstehe",
+                previousConsultations: "Vorherige Konsultationen",
                 startNewConsultation: "Neue Beratung starten",
                 saveConsultation: "Beratung speichern",
                 consultationTitle: "Konsultation",
@@ -219,6 +255,7 @@
                 aiIsThinking: "AI正在思考...",
                 languageSelection: "选择语言",
                 iUnderstand: "我明白",
+                previousConsultations: "之前的咨询",
                 startNewConsultation: "开始新的咨询",
                 saveConsultation: "保存咨询",
                 consultationTitle: "咨询",
@@ -229,15 +266,187 @@
                 welcomeTitle: "欢迎使用 AI 医生助手",
                 welcomeText: "您的虚拟健康助手已准备好为您提供帮助。开始新的咨询以开始。",
                 systemPrompt: "您是一个 AI 医生。询问用户他们的症状，并使用他们的回答来建立诊断。使用可用的传感器数据。使用逐步推理并与患者分享。使用 markdown 会话来增强您的回答和讨论的质量。如果您需要更多信息，请提问，直到您对自己的判断感到自信。只有在您有足够的信息时才提供最终诊断。使用 '## 诊断' 标题来指定最终诊断。在您的回答中使用 markdown 格式以增强可读性。您还可以使用 mermaid 图表来提高解释水平，在这种情况下，将其放在 mermaid markdown 代码标签内。用户可以上传图像、包含传感器数据的 CSV 文件或包含血液检测结果的 PDF 文件。当他们这样做时，分析信息并将其纳入您的诊断。"
-            }
+            },
+            ar: {
+                appTitle: "مساعدك الطبي بالذكاء الاصطناعي",
+                send: "إرسال",
+                exportData: "تصدير البيانات",
+                importData: "استيراد البيانات",
+                aiIsThinking: "الذكاء الاصطناعي يفكر ...",
+                languageSelection: "اختر اللغة",
+                iUnderstand: "أفهم",
+                previousConsultations: "الاستشارات السابقة",
+                startNewConsultation: "بدء استشارة جديدة",
+                saveConsultation: "حفظ الاستشارة",
+                consultationTitle: "استشارة",
+                diagnosisTitle: "التشخيص النهائي",
+                reasoningTitle: "تفكير الذكاء الاصطناعي",
+                disclaimerTitle: "إخلاء المسؤولية",
+                disclaimerText: "رفيق الطبيب الذكاء الاصطناعي هذا هو لأغراض المعلومات فقط ولا ينبغي اعتباره بديلاً عن المشورة الطبية المهنية أو التشخيص أو العلاج. احرص دائمًا على طلب مشورة طبيبك أو مقدم الرعاية الصحية المؤهل الآخر بشأن أي أسئلة قد تكون لديك بخصوص حالة طبية.",
+                welcomeTitle: "مرحبًا بك في رفيق الطبيب الذكاء الاصطناعي",
+                welcomeText: "مساعدك الصحي الافتراضي جاهز لمساعدتك. ابدأ استشارة جديدة للبدء.",
+                systemPrompt: "أنت طبيب ذكاء اصطناعي. اطرح على المستخدم أسئلة حول أعراضهم واستخدم إجاباتهم لبناء تشخيص. استخدم بيانات الاستشعار عند توفرها. استخدم التفكير خطوة بخطوة وشاركها مع المريض. استخدم جلسات التنسيق لتعزيز جودة إجابتك ومناقشتك. إذا كنت بحاجة إلى مزيد من المعلومات، اطرح أسئلة حتى تشعر بالثقة في حكمك. قدم التشخيص النهائي فقط عندما يكون لديك معلومات كافية. استخدم عنوان '## التشخيص' لتحديد التشخيص النهائي. استخدم تنسيق العلامات في إجاباتك لتحسين القراءة. يمكنك أيضًا استخدام مخططات mermaid لمستوى أفضل من الشرح، في هذه الحالة ضعها داخل علامة شفرة صحة الفقرات mermaid. قد يقوم المستخدم بتحميل صور أو ملفات CSV مع بيانات الاستشعار أو ملفات PDF مع نتائج تحليل الدم. عندما يفعلون ذلك، قم بتحليل المعلومات وإدراجها في تشخيصك."
+            }            
         };
 
-    function changeLanguage() {
-        const selectedLanguage = document.getElementById('language-select').value;
-        localStorage.setItem('selectedLanguage', selectedLanguage); // Store the selected language
-        updateLanguage(selectedLanguage); // Update the UI with the selected language
-        systemPrompt = translations[selectedLanguage].systemPrompt; // Update the system prompt
-    }
+
+        let recognition;
+        let isListening = false;
+
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    // Combine final and interim transcripts
+                    const fullTranscript = finalTranscript + interimTranscript;
+                    document.getElementById('user-input').value = fullTranscript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+
+                recognition.onend = function() {
+                    isListening = false;
+                    updateMicButtonState();
+                };
+            } else {
+                console.error('Speech recognition not supported');
+                document.getElementById('mic-button').style.display = 'none';
+            }
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                const selectedLanguage = document.getElementById('language-select').value;
+                recognition.lang = selectedLanguage;
+                recognition.start();
+                isListening = true;
+            }
+            updateMicButtonState();
+        }
+
+        function updateMicButtonState() {
+            const micButton = document.getElementById('mic-button');
+            if (isListening) {
+                micButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                micButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                micButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                micButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        // Add event listener to the mic button
+        document.getElementById('mic-button').addEventListener('click', toggleSpeechRecognition);
+
+
+        let selectedVoice = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsButton = document.getElementById('settings-button');
+            const settingsPopup = document.getElementById('settings-popup');
+            const closeSettingsButton = document.getElementById('close-settings');
+            const voiceSelect = document.getElementById('voice-select');
+
+            settingsButton.addEventListener('click', function() {
+                settingsPopup.classList.remove('hidden');
+                populateVoiceList();
+            });
+
+            closeSettingsButton.addEventListener('click', function() {
+                settingsPopup.classList.add('hidden');
+            });
+
+            voiceSelect.addEventListener('change', function() {
+                selectedVoice = voiceSelect.value;
+            });
+
+            function populateVoiceList() {
+                const selectedLanguage = document.getElementById('language-select').value;
+                const voices = speechSynthesis.getVoices();
+                
+                voiceSelect.innerHTML = '';
+                
+                voices.forEach(function(voice) {
+                    if (voice.lang.startsWith(selectedLanguage)) {
+                        const option = document.createElement('option');
+                        option.textContent = voice.name + ' (' + voice.lang + ')';
+                        option.value = voice.name;
+                        voiceSelect.appendChild(option);
+                    }
+                });
+
+                if (selectedVoice) {
+                    voiceSelect.value = selectedVoice;
+                }
+            }
+
+            // Ensure voices are loaded
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        });
+
+        // Update the readMessage function to use the selected voice
+        function readMessage(button) {
+            const messageText = button.parentElement.textContent.split(':')[1].trim();
+            const selectedLanguage = document.getElementById('language-select').value;
+            
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(messageText);
+                utterance.lang = selectedLanguage;
+
+                if (selectedVoice) {
+                    const voices = speechSynthesis.getVoices();
+                    const voice = voices.find(v => v.name === selectedVoice);
+                    if (voice) {
+                        utterance.voice = voice;
+                    }
+                }
+                
+                speechSynthesis.cancel(); // Stop any ongoing speech
+                speechSynthesis.speak(utterance);
+            } else {
+                console.error('Text-to-speech not supported in this browser.');
+                alert('Text-to-speech is not supported in your browser.');
+            }
+        }
+
+        // Update the changeLanguage function to repopulate the voice list
+        function changeLanguage() {
+            const selectedLanguage = document.getElementById('language-select').value;
+            localStorage.setItem('selectedLanguage', selectedLanguage);
+            updateLanguage(selectedLanguage);
+            systemPrompt = translations[selectedLanguage].systemPrompt;
+            
+            // Update speech recognition language
+            if (recognition) {
+                recognition.lang = selectedLanguage;
+            }
+
+            // Repopulate voice list
+            populateVoiceList();
+        }
+
 
     function updateLanguage(language) {
         document.getElementById('app-title').innerText = translations[language].appTitle;
@@ -251,7 +460,7 @@
         document.getElementById('send-button').innerText = translations[language].send;
         document.getElementById('export-button').innerText = translations[language].exportData;
         document.getElementById('import-button').innerText = translations[language].importData;
-        
+        document.getElementById('previous-consultations').innerText = translations[language].previousConsultations;        
         
         document.getElementById('consultation-title').innerText = translations[language].consultationTitle;
         document.getElementById('diagnosis-title').innerText = translations[language].diagnosisTitle;
@@ -323,7 +532,6 @@
             extractDiagnosis(response);
         }
 
-
         async function sendMessage() {
             if (isThinking) return;
 
@@ -340,7 +548,23 @@
             }).join(lc.template.separator_template) + lc.template.separator_template + lc.ai_message();
 
             setThinking(true);
-            const response = await lc.generate(prompt);
+            
+            // Extract images from consultationHistory
+            const images = consultationHistory.filter(msg => msg.role === "image").map(msg => msg.content);
+            
+            let response;
+            try {
+                // Attempt to generate response with images
+                response = images.length > 0 
+                    ? await lc.generate_with_images(prompt, images) 
+                    : await lc.generate(prompt); // Fallback to generate if no images
+            } catch (error) {
+                // If generate_with_images fails, fallback to generate and notify the user
+                console.error("Image input not supported:", error);
+                response = await lc.generate(prompt);
+                updateChatContainer("AI", "The model you are using does not support image inputs. Here is the response without images:");
+            }
+
             setThinking(false);
             updateChatContainer("AI", response);
             consultationHistory.push({role: "assistant", content: response});
@@ -351,13 +575,141 @@
             extractDiagnosis(response);
         }
 
-        function updateChatContainer(sender, message) {
+        async function handleFileUpload(event, fileType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            let fileContent = '';
+            let fileInfo = '';
+            let images = []; // Array to hold base64 images
+
+            if (fileType === 'image') {
+                fileContent = await readFileAsDataURL(file);
+                images.push(fileContent); // Store the base64 image
+                fileInfo = `[An image file named "${file.name}" (${file.type}) has been uploaded.]`;
+                consultationHistory.push({role: "image", content: fileContent}); // Store in consultationHistory
+                updateChatContainer("You", fileContent, true); // Pass true to indicate it's an image
+            } else if (fileType === 'csv') {
+                fileContent = await readFileAsText(file);
+                fileInfo = `[A CSV file named "${file.name}" has been uploaded. Its content is as follows:]\n\n${fileContent}`;
+                consultationHistory.push({role: "document", content: fileContent}); // Store in consultationHistory
+                updateChatContainer("You", fileInfo);
+            } else if (fileType === 'pdf') {
+                fileContent = await readFileAsArrayBuffer(file);
+                const pdfText = await extractTextFromPDF(fileContent);
+                fileInfo = `[A PDF file named "${file.name}" has been uploaded. Its textual content is as follows:]\n\n${pdfText}`;
+                consultationHistory.push({role: "document", content: pdfText}); // Store in consultationHistory
+                updateChatContainer("You", fileInfo);
+            }
+        }
+
+        function updateChatContainer(sender, message, isImage = false, index) {
             const chatContainer = document.getElementById('chat-container');
             const messageDiv = document.createElement('div');
             messageDiv.className = `mb-4 p-3 rounded-lg ${sender === 'You' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`;
-            messageDiv.innerHTML = `<strong>${sender}:</strong> ${marked.parse(message)}`;
+            
+            if (isImage) {
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong>
+                    <img src="${message}" alt="Uploaded Image" style="max-width: 100%; height: auto;" />
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong> ${marked.parse(message)}
+                    <button onclick="editMessage(this, ${index})" aria-label="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-1.5 1.5-3.708-3.708 1.5-1.5a.5.5 0 0 1 0-.708zM11.207 2.5l-1.5 1.5 3.708 3.708 1.5-1.5-3.708-3.708zM1 13.5V15h1.5l8.5-8.5-1.5-1.5L1 13.5z"/>
+                        </svg>
+                    </button>
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                    <button onclick="readMessage(this)" aria-label="Read">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
+                            <path d="M11.536 14.01A8.473 8.473 0 0 0 14.026 8a8.473 8.473 0 0 0-2.49-6.01l-.708.707A7.476 7.476 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z"/>
+                            <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.483 5.483 0 0 1 11.025 8a5.483 5.483 0 0 1-1.61 3.89l.706.706z"/>
+                            <path d="M10.025 8a4.486 4.486 0 0 1-1.318 3.182L8 10.475A3.489 3.489 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.486 4.486 0 0 1 10.025 8zM7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12V4zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11z"/>
+                        </svg>
+                    </button>
+                `;
+            }
+
             chatContainer.appendChild(messageDiv);
             chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+
+
+        function loadConsultationData(data) {
+            consultationHistory = data.consultationHistory;
+            document.getElementById('chat-container').innerHTML = '';
+            consultationHistory.forEach((msg, index) => {
+                if (msg.role !== "system") {
+                    updateChatContainer(msg.role === "user" ? "You" : msg.role === "image" ? "image": msg.role === "document"? "document" : "AI", msg.content, msg.role=="image", index);
+                }
+            });
+            document.getElementById('diagnosis-container').innerHTML = data.diagnosis;
+            const lastResponse = consultationHistory[consultationHistory.length - 1].content;
+            processMermaidDiagram(lastResponse);
+        }
+
+
+        function editMessage(button, index) {
+            const messageDiv = button.closest('div');
+            if (!messageDiv) return;
+
+            const currentMessage = messageDiv.innerHTML.split('</strong>')[1].split('<button')[0].trim();
+            const newMessage = prompt("Edit your message:", currentMessage);
+
+            if (newMessage !== null && newMessage !== "") {
+                const sender = messageDiv.querySelector('strong').textContent.replace(':', '');
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong> ${marked.parse(newMessage)}
+                    <button onclick="editMessage(this, ${index})" aria-label="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-1.5 1.5-3.708-3.708 1.5-1.5a.5.5 0 0 1 0-.708zM11.207 2.5l-1.5 1.5 3.708 3.708 1.5-1.5-3.708-3.708zM1 13.5V15h1.5l8.5-8.5-1.5-1.5L1 13.5z"/>
+                        </svg>
+                    </button>
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                `;
+                // Update consultationHistory
+                if (consultationHistory[index]) {
+                    consultationHistory[index].content = newMessage;
+                }
+            }
+        }
+
+        function deleteMessage(button, index) {
+            const messageDiv = button.closest('div');
+            if (!messageDiv) return;
+
+            // Update consultationHistory before removing the element
+            if (index !== -1) {
+                consultationHistory.splice(index, 1);
+            }
+
+            messageDiv.remove();
+
+            // Adjust indices for remaining messages
+            const chatContainer = document.getElementById('chat-container');
+            const remainingMessages = chatContainer.querySelectorAll('div');
+            remainingMessages.forEach((msg, newIndex) => {
+                const editBtn = msg.querySelector('button[aria-label="Edit"]');
+                const deleteBtn = msg.querySelector('button[aria-label="Delete"]');
+                if (editBtn) editBtn.setAttribute('onclick', `editMessage(this, ${newIndex})`);
+                if (deleteBtn) deleteBtn.setAttribute('onclick', `deleteMessage(this, ${newIndex})`);
+            });
         }
 
         function extractDiagnosis(response) {
@@ -407,19 +759,6 @@
                 };
                 reader.readAsText(file);
             }
-        }
-
-        function loadConsultationData(data) {
-            consultationHistory = data.consultationHistory;
-            document.getElementById('chat-container').innerHTML = '';
-            consultationHistory.forEach(msg => {
-                if (msg.role !== "system") {
-                    updateChatContainer(msg.role === "user" ? "You" : "AI", msg.content);
-                }
-            });
-            document.getElementById('diagnosis-container').innerHTML = data.diagnosis;
-            const lastResponse = consultationHistory[consultationHistory.length - 1].content;
-            processMermaidDiagram(lastResponse);
         }
 
         function setThinking(thinking) {
@@ -523,41 +862,6 @@
             }
         }
 
-        async function handleFileUpload(event, fileType) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            let fileContent = '';
-            let fileInfo = '';
-
-            if (fileType === 'image') {
-                fileContent = await readFileAsDataURL(file);
-                fileInfo = `[An image file named "${file.name}" (${file.type}) has been uploaded.]`;
-            } else if (fileType === 'csv') {
-                fileContent = await readFileAsText(file);
-                fileInfo = `[A CSV file named "${file.name}" has been uploaded. Its content is as follows:]\n\n${fileContent}`;
-            } else if (fileType === 'pdf') {
-                fileContent = await readFileAsArrayBuffer(file);
-                const pdfText = await extractTextFromPDF(fileContent);
-                fileInfo = `[A PDF file named "${file.name}" has been uploaded. Its textual content is as follows:]\n\n${pdfText}`;
-            }
-
-            updateChatContainer("You", fileInfo);
-            consultationHistory.push({role: "user", content: fileInfo});
-
-            // Simulate AI response to the uploaded file
-            const prompt = `The user has uploaded a ${fileType} file. Please analyze the following information and provide insights or ask follow-up questions:\n\n${fileInfo}`;
-            
-            setThinking(true);
-            const response = await lc.generate(lc.ai_message() + prompt);
-            setThinking(false);
-            
-            updateChatContainer("AI", response);
-            consultationHistory.push({role: "assistant", content: response});
-
-            processMermaidDiagram(response);
-            extractDiagnosis(response);
-        }
 
         function readFileAsDataURL(file) {
             return new Promise((resolve, reject) => {
@@ -588,13 +892,62 @@
 
         async function extractTextFromPDF(arrayBuffer) {
             const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
-            let text = '';
+            let markdownText = '';
+            
             for (let i = 1; i <= pdf.numPages; i++) {
                 const page = await pdf.getPage(i);
                 const content = await page.getTextContent();
-                text += content.items.map(item => item.str).join(' ') + '\n';
+                
+                // Initialize variables to store text and table data
+                let pageText = '';
+                let tableData = [];
+                let currentRow = [];
+                let lastY = null;
+
+                // Process each item in the content
+                content.items.forEach(item => {
+                    const text = item.str;
+                    const fontSize = item.transform[0]; // Approximate font size from transform matrix
+                    const y = item.transform[5]; // Y position of the text
+
+                    // Detect headers based on font size
+                    if (fontSize > 12) { // Assuming larger font sizes are headers
+                        pageText += `## ${text}\n\n`; // Use ## for sub-headers
+                    } else {
+                        // Check if we are still on the same row
+                        if (lastY === null || Math.abs(lastY - y) < 5) { // Adjust threshold as needed
+                            currentRow.push(text);
+                        } else {
+                            // If we have a complete row, push it to tableData
+                            if (currentRow.length > 0) {
+                                tableData.push(currentRow);
+                                currentRow = [text]; // Start a new row
+                            }
+                        }
+                        lastY = y; // Update lastY to current item's Y position
+                        pageText += `${text} `;
+                    }
+                });
+
+                // Push the last row if it exists
+                if (currentRow.length > 0) {
+                    tableData.push(currentRow);
+                }
+
+                // Format tables in Markdown
+                if (tableData.length > 0) {
+                    markdownText += `| ${tableData[0].join(' | ')} |\n`; // Header row
+                    markdownText += `| ${tableData[0].map(() => '---').join(' | ')} |\n`; // Separator row
+                    tableData.forEach(row => {
+                        markdownText += `| ${row.join(' | ')} |\n`;
+                    });
+                    markdownText += '\n'; // New line after table
+                } else {
+                    markdownText += `# Page ${i}\n\n${pageText}\n\n`;
+                }
             }
-            return text;
+            
+            return markdownText;
         }
 
         function showDisclaimer() {
