@@ -31,22 +31,34 @@
     <div class="flex h-screen">
         <!-- Left Panel -->
         <div class="w-1/4 bg-white shadow-lg p-4 overflow-y-auto">
+            <!-- Language Selector -->
+            <div class="mb-4">
+                <label id="language-select-label" for="language-select" class="text-lg font-semibold text-blue-700">Select Language:</label>
+                <select id="language-select" class="border border-gray-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" onchange="changeLanguage()">
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="zh">Chinese</option>
+                    <!-- Add more languages as needed -->
+                </select>
+            </div>
             <h2 class="text-2xl font-semibold mb-4 text-blue-700">Previous Consultations</h2>
             <ul id="previous-consultations-list" class="mb-4"></ul>
-            <button onclick="showConsultationView()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium mb-2">New Consultation</button>
-            <button onclick="saveConsultation()" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">Save Consultation</button>
+            <button onclick="showConsultationView()" id="new-consultation" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium mb-2">New Consultation</button>
+            <button onclick="saveConsultation()" id="save-consultation" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">Save Consultation</button>
         </div>
-
+    
         <!-- Main Content -->
         <div id="main-content" class="flex-1 p-8 overflow-y-auto" style="display: none;">
             <h1 class="flex items-center justify-center space-x-4 text-4xl font-bold text-white">
                 <img src="/apps/AI_DOCTOR_Companion/icon.png" alt="Doctor Icon" class="w-16 h-16 rounded-full border-4 border-white shadow-md">
-                <span class="text-blue-600 px-6 py-3 rounded-lg backdrop-blur-sm">
+                <span class="text-blue-600 px-6 py-3 rounded-lg backdrop-blur-sm" id="app-title">
                     AI Doctor Companion
                 </span>
             </h1>
             <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
-                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Consultation</h2>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700" id="consultation-title">Consultation</h2>
                 <div id="chat-container" class="mb-4 h-96 overflow-y-auto border border-gray-300 rounded-lg p-4 bg-gray-50"></div>
                 <div class="flex flex-col space-y-2">
                     <div class="flex">
@@ -65,50 +77,51 @@
                     </div>
                 </div>
             </div>
-
+    
             <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
-                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Final Diagnosis</h2>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700" id="diagnosis-title">Final Diagnosis</h2>
                 <div id="diagnosis-container" class="mb-4 p-4 bg-blue-50 rounded-lg"></div>
             </div>
-
+    
             <div id="mermaid-container" class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl" style="display: none;">
-                <h2 class="text-2xl font-semibold mb-4 text-blue-700">AI Reasoning</h2>
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700" id="reasoning-title">AI Reasoning</h2>
                 <div id="mermaid-diagram" class="mermaid bg-gray-50 p-4 rounded-lg"></div>
             </div>
-
+    
             <div class="flex justify-between">
                 <button id="export-button" onclick="exportData()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Export Data</button>
                 <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
                 <button id="import-button" onclick="document.getElementById('import-file').click()" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Import Data</button>
             </div>
-
+    
             <!-- Disclaimer Popup -->
             <div id="disclaimer-popup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
                 <div class="bg-white p-8 rounded-lg shadow-xl max-w-md">
-                    <h2 class="text-2xl font-bold mb-4 text-blue-700">Disclaimer</h2>
-                    <p class="mb-4 text-gray-700">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-700" id="disclaimer-title">Disclaimer</h2>
+                    <p class="mb-4 text-gray-700" id="disclaimer-text">
                         This AI Doctor Companion is for informational purposes only and should not be considered a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
                     </p>
                     <div class="flex items-center mb-4">
                         <input type="checkbox" id="dont-show-again" class="mr-2">
                         <label for="dont-show-again" class="text-sm text-gray-600">Don't show this again</label>
                     </div>
-                    <button onclick="closeDisclaimer()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-300">
+                    <button onclick="closeDisclaimer()" id="i-understand" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-300">
                         I Understand
                     </button>
                 </div>
             </div>
-
+    
         </div>
         <!-- Add this just before the "Main Content" div -->
         <div id="welcome-page" class="flex-1 p-8 flex flex-col items-center justify-center">
             <img src="/apps/AI_DOCTOR_Companion/icon.png" alt="Doctor Icon" class="w-[50px] h-[50px] mb-8">
-            <h1 class="text-4xl font-bold text-center mb-8 text-blue-800">Welcome to AI Doctor Companion</h1>
-            <p class="text-xl text-center mb-8 text-gray-700">Your virtual healthcare assistant is ready to help you. Start a new consultation to begin.</p>
-            <button onclick="showConsultationView()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium text-xl">Start New Consultation</button>
+            <h1 class="text-4xl font-bold text-center mb-8 text-blue-800" id="welcome-title">Welcome to AI Doctor Companion</h1>
+            <p class="text-xl text-center mb-8 text-gray-700" id="welcome-text">Your virtual healthcare assistant is ready to help you. Start a new consultation to begin.</p>
+            <button id="start-new-consultation" onclick="showConsultationView()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium text-xl">Start New Consultation</button>
         </div>
-
+    
     </div>
+    
 
     <script>
         let lc;
@@ -117,6 +130,116 @@
         let isThinking = false;
         let allConsultations = [];
         let currentConsultationIndex = -1;
+        let systemPrompt = "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis.";
+
+        const translations = {
+            en: {
+                appTitle: "AI Doctor Companion",
+                languageSelection: "Select language",
+                iUnderstand: "I understand",
+                startNewConsultation: "Start New consultation",
+                saveConsultation:"Save consultation",
+                consultationTitle: "Consultation",
+                diagnosisTitle: "Final Diagnosis",
+                reasoningTitle: "AI Reasoning",
+                disclaimerTitle: "Disclaimer",
+                disclaimerText: "This AI Doctor Companion is for informational purposes only and should not be considered a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.",
+                welcomeTitle: "Welcome to AI Doctor Companion",
+                welcomeText: "Your virtual healthcare assistant is ready to help you. Start a new consultation to begin.",
+                systemPrompt: "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis."
+            },
+            // Add similar entries for other languages (es, fr, de, zh) with translated system prompts
+            es: {
+                appTitle: "Compañero Doctor AI",
+                languageSelection: "Seleccionar idioma",
+                iUnderstand: "Entiendo",
+                startNewConsultation: "Iniciar nueva consulta",
+                saveConsultation: "Guardar consulta",
+                consultationTitle: "Consulta",
+                diagnosisTitle: "Diagnóstico Final",
+                reasoningTitle: "Razonamiento AI",
+                disclaimerTitle: "Descargo de Responsabilidad",
+                disclaimerText: "Este Compañero Doctor AI es solo para fines informativos y no debe considerarse un sustituto del consejo médico profesional, diagnóstico o tratamiento. Siempre busque el consejo de su médico u otro proveedor de salud calificado con cualquier pregunta que pueda tener sobre una condición médica.",
+                welcomeTitle: "Bienvenido a Compañero Doctor AI",
+                welcomeText: "Su asistente virtual de salud está listo para ayudarle. Comience una nueva consulta para comenzar.",
+                systemPrompt: "Eres un médico AI. Pregunta al usuario sobre sus síntomas y utiliza sus respuestas para construir un diagnóstico. Usa datos de sensores cuando estén disponibles. Utiliza un razonamiento paso a paso y compártelo con el paciente. Usa sesiones de markdown para mejorar la calidad de tu respuesta y discusión. Si necesitas más información, haz preguntas hasta que te sientas seguro en tu juicio. Solo proporciona un diagnóstico final cuando tengas suficiente información. Usa el encabezado '## Diagnóstico' para especificar el diagnóstico final. Usa formato markdown en tus respuestas para mejorar la legibilidad. También puedes usar diagramas mermaid para un mejor nivel de explicación, en este caso colócalo dentro de una etiqueta de código markdown mermaid. El usuario puede subir imágenes, archivos CSV con datos de sensores o archivos PDF con resultados de análisis de sangre. Cuando lo hagan, analiza la información e incorpórala en tu diagnóstico."
+            },
+            fr: {
+                appTitle: "Compagnon Médecin IA",
+                languageSelection: "Selectionnez la langue",
+                iUnderstand: "I understand",
+                startNewConsultation: "Démarrer une nouvelle consultation",
+                saveConsultation:"Enregistrer la consultation",
+                consultationTitle: "Consultation",
+                diagnosisTitle: "Diagnostic Final",
+                reasoningTitle: "Raisonnement IA",
+                disclaimerTitle: "Avertissement",
+                disclaimerText: "Ce Compagnon Médecin IA est à des fins d'information uniquement et ne doit pas être considéré comme un substitut aux conseils médicaux professionnels, au diagnostic ou au traitement. Consultez toujours votre médecin ou un autre professionnel de santé qualifié pour toute question que vous pourriez avoir concernant une condition médicale.",
+                welcomeTitle: "Bienvenue à votre Compagnon Médecin IA",
+                welcomeText: "Votre assistant de santé virtuel est prêt à vous aider. Démarrez une nouvelle consultation pour commencer.",
+                systemPrompt: "Vous êtes un médecin basé sur une IA super évoluée. Posez des questions à l'utilisateur sur ses symptômes et utilisez ses réponses pour établir un diagnostic. Utilisez des données de capteurs lorsque cela est possible. Utilisez un raisonnement étape par étape et partagez-le avec le patient. Utilisez des sessions markdown pour améliorer la qualité de votre réponse et de votre discussion. Si vous avez besoin de plus d'informations, posez des questions jusqu'à ce que vous vous sentiez confiant dans votre jugement. Ne fournissez un diagnostic final que lorsque vous avez suffisamment d'informations. Utilisez l'en-tête '## Diagnostic' pour spécifier le diagnostic final. Utilisez le formatage markdown dans vos réponses pour améliorer la lisibilité. Vous pouvez également utiliser des diagrammes mermaid pour un meilleur niveau d'explication, dans ce cas, placez-le à l'intérieur d'une balise de code markdown mermaid. L'utilisateur peut télécharger des images, des fichiers CSV avec des données de capteurs ou des fichiers PDF avec des résultats de tests sanguins. Lorsque cela se produit, analysez les informations et intégrez-les dans votre diagnostic."
+            },
+            de: {
+                appTitle: "AI Arzt Begleiter",
+                languageSelection: "Sprache auswählen",
+                iUnderstand: "Ich verstehe",
+                startNewConsultation: "Neue Beratung starten",
+                saveConsultation: "Beratung speichern",
+                consultationTitle: "Konsultation",
+                diagnosisTitle: "Enddiagnose",
+                reasoningTitle: "AI Argumentation",
+                disclaimerTitle: "Haftungsausschluss",
+                disclaimerText: "Dieser AI Arzt Begleiter dient nur zu Informationszwecken und sollte nicht als Ersatz für professionelle medizinische Beratung, Diagnose oder Behandlung angesehen werden. Wenden Sie sich immer an Ihren Arzt oder einen anderen qualifizierten Gesundheitsdienstleister, wenn Sie Fragen zu einer medizinischen Erkrankung haben.",
+                welcomeTitle: "Willkommen beim AI Arzt Begleiter",
+                welcomeText: "Ihr virtueller Gesundheitsassistent ist bereit, Ihnen zu helfen. Beginnen Sie eine neue Konsultation, um zu beginnen.",
+                systemPrompt: "Sie sind ein AI-Arzt. Stellen Sie dem Benutzer Fragen zu seinen Symptomen und verwenden Sie seine Antworten, um eine Diagnose zu erstellen. Verwenden Sie Sensordaten, wenn verfügbar. Verwenden Sie schrittweises Denken und teilen Sie es mit dem Patienten. Verwenden Sie Markdown-Sitzungen, um die Qualität Ihrer Antwort und Diskussion zu verbessern. Wenn Sie mehr Informationen benötigen, stellen Sie Fragen, bis Sie sich in Ihrem Urteil sicher fühlen. Geben Sie nur eine endgültige Diagnose ab, wenn Sie genügend Informationen haben. Verwenden Sie die Überschrift '## Diagnose', um die endgültige Diagnose anzugeben. Verwenden Sie Markdown-Formatierung in Ihren Antworten, um die Lesbarkeit zu verbessern. Sie können auch Mermaid-Diagramme für ein besseres Erklärungsniveau verwenden; in diesem Fall setzen Sie es in eine Mermaid-Markdown-Code-Tag. Der Benutzer kann Bilder, CSV-Dateien mit Sensordaten oder PDF-Dateien mit Bluttestergebnissen hochladen. Wenn sie dies tun, analysieren Sie die Informationen und integrieren Sie sie in Ihre Diagnose."
+            },
+            zh: {
+                appTitle: "AI 医生助手",
+                languageSelection: "选择语言",
+                iUnderstand: "我明白",
+                startNewConsultation: "开始新的咨询",
+                saveConsultation: "保存咨询",
+                consultationTitle: "咨询",
+                diagnosisTitle: "最终诊断",
+                reasoningTitle: "AI 推理",
+                disclaimerTitle: "免责声明",
+                disclaimerText: "此 AI 医生助手仅供信 息参考，不应被视为专业医疗建议、诊断或治疗的替代品。始终向您的医生或其他合格的医疗提供者咨询有关医疗状况的任何问题。",
+                welcomeTitle: "欢迎使用 AI 医生助手",
+                welcomeText: "您的虚拟健康助手已准备好为您提供帮助。开始新的咨询以开始。",
+                systemPrompt: "您是一个 AI 医生。询问用户他们的症状，并使用他们的回答来建立诊断。使用可用的传感器数据。使用逐步推理并与患者分享。使用 markdown 会话来增强您的回答和讨论的质量。如果您需要更多信息，请提问，直到您对自己的判断感到自信。只有在您有足够的信息时才提供最终诊断。使用 '## 诊断' 标题来指定最终诊断。在您的回答中使用 markdown 格式以增强可读性。您还可以使用 mermaid 图表来提高解释水平，在这种情况下，将其放在 mermaid markdown 代码标签内。用户可以上传图像、包含传感器数据的 CSV 文件或包含血液检测结果的 PDF 文件。当他们这样做时，分析信息并将其纳入您的诊断。"
+            }
+        };
+
+    function changeLanguage() {
+        const selectedLanguage = document.getElementById('language-select').value;
+        localStorage.setItem('selectedLanguage', selectedLanguage); // Store the selected language
+        updateLanguage(selectedLanguage); // Update the UI with the selected language
+        systemPrompt = translations[selectedLanguage].systemPrompt; // Update the system prompt
+    }
+
+    function updateLanguage(language) {
+        document.getElementById('app-title').innerText = translations[language].appTitle;
+        document.getElementById('start-new-consultation').innerText = translations[language].startNewConsultation;
+        document.getElementById('new-consultation').innerText = translations[language].startNewConsultation;
+        document.getElementById('save-consultation').innerText = translations[language].saveConsultation;
+        document.getElementById('language-select-label').innerText = translations[language].languageSelection;
+        document.getElementById('i-understand').innerText = translations[language].iUnderstand;
+        
+        document.getElementById('consultation-title').innerText = translations[language].consultationTitle;
+        document.getElementById('diagnosis-title').innerText = translations[language].diagnosisTitle;
+        document.getElementById('reasoning-title').innerText = translations[language].reasoningTitle;
+        document.getElementById('disclaimer-title').innerText = translations[language].disclaimerTitle;
+        document.getElementById('disclaimer-text').innerText = translations[language].disclaimerText;
+        document.getElementById('welcome-title').innerText = translations[language].welcomeTitle;
+        document.getElementById('welcome-text').innerText = translations[language].welcomeText;
+    }
+    function loadSettings() {
+        const storedLanguage = localStorage.getItem('selectedLanguage') || 'en'; // Default to English if no language is stored
+        document.getElementById('language-select').value = storedLanguage; // Set the dropdown to the stored language
+        updateLanguage(storedLanguage); // Update the UI with the stored language
+        systemPrompt = translations[storedLanguage].systemPrompt; // Set the initial system prompt
+    }
 
         async function initializeLollms() {
             lc = new LollmsClient(
@@ -137,7 +260,6 @@
             );
             tl = new TasksLibrary(lc);
             loadPreviousConsultations();
-            await startNewConsultation();
         }
 
         function showWelcomePage() {
@@ -159,8 +281,6 @@
             document.getElementById('diagnosis-container').innerHTML = '';
             document.getElementById('mermaid-container').style.display = 'none';
             currentConsultationIndex = -1;
-
-            const systemPrompt = "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis.";
             
             let prompt = lc.system_message() + systemPrompt + lc.template.separator_template + 
                         lc.ai_message() + "Welcome! I'm your AI doctor assistant. How can I help you today? Please describe your symptoms or concerns.";
@@ -467,6 +587,7 @@
 
         // Modify the window.onload function to include showDisclaimer
         window.onload = function() {
+            loadSettings();
             initializeLollms();
             showWelcomePage();
             showDisclaimer();
