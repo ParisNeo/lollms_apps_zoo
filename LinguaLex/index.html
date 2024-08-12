@@ -1,34 +1,34 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LinguaLex - Advanced Dictionary</title>
+    <title>LinguaLex - Dictionnaire Avancé</title>
     <script src="/lollms_assets/js/tailwindcss"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <link rel="stylesheet" type="text/css" href="/lollms_assets/css/lollms_markdown_renderer">
 
-    <!-- For code highlighting -->
+    <!-- Pour la mise en évidence du code -->
     <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 
-    <!-- For LaTeX math rendering -->
+    <!-- Pour le rendu LaTeX -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
 
-    <!-- For Mermaid graph rendering -->
+    <!-- Pour le rendu des graphiques Mermaid -->
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 
-    <!-- Prism CSS -->
+    <!-- CSS Prism -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
     
-    <!-- Prism JS -->
+    <!-- JS Prism -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
     
-    <!-- Additional Prism language components -->
+    <!-- Composants linguistiques Prism supplémentaires -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
@@ -49,6 +49,7 @@
     <style>
         body {
             background-color: #f0f4f8;
+            font-size: 16px;
         }
         .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
             color: #4a5568;
@@ -69,39 +70,113 @@
         .prose th {
             background-color: #edf2f7;
         }
+        #loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="font-sans">
+<body class="font-sans text-lg">
     <div class="container mx-auto px-4 py-8">
+    <div class="bg-gradient-to-br from-indigo-100 to-purple-100 min-h-screen flex flex-col items-center justify-center p-4">
         <header class="text-center mb-8">
             <h1 class="text-5xl font-bold text-indigo-700">LinguaLex</h1>
-            <p class="text-xl text-gray-600 mt-2">Advanced Multi-Lingual Dictionary</p>
+            <p class="text-xl text-gray-600 mt-2">Dictionnaire Multilingue Avancé</p>
         </header>
-
-        <div class="flex justify-end mb-4">
-            <button id="settingsBtn" class="text-gray-600 hover:text-indigo-600 transition-colors duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </button>
-        </div>
-
         <div id="settingsPanel" class="bg-white rounded-lg shadow-lg p-6 mb-8 hidden">
-            <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Settings</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Paramètres</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label for="contextSize" class="block text-sm font-medium text-gray-700 mb-1">Context Size</label>
+                    <label for="contextSize" class="block text-sm font-medium text-gray-700 mb-1">Taille du Contexte</label>
                     <input type="number" id="contextSize" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="4096">
                 </div>
                 <div>
-                    <label for="host" class="block text-sm font-medium text-gray-700 mb-1">Host</label>
+                    <label for="host" class="block text-sm font-medium text-gray-700 mb-1">Hôte</label>
                     <input type="text" id="host" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" value="http://localhost:9600">
                 </div>
                 <div>
-                    <label for="defaultAnswerLang" class="block text-sm font-medium text-gray-700 mb-1">Default Answer Language</label>
+                    <label id="language-selector" for="languageSelector" class="block text-sm font-medium text-gray-700 mb-1">Interface language</label>
+                    <select id="languageSelector" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="en">Anglais</option>
+                        <option value="fr">Français</option>
+                        <option value="es">Espagnol</option>
+                        <option value="de">Allemand</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="defaultAnswerLang" class="block text-sm font-medium text-gray-700 mb-1">Langue de Réponse par Défaut</label>
                     <select id="defaultAnswerLang" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                        <option value="same">Same as word language</option>
+                        <option value="same">Même que la langue du mot</option>
+                        <option value="en">Anglais</option>
+                        <option value="fr">Français</option>
+                        <option value="es">Espagnol</option>
+                        <option value="de">Allemand</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
+                    <div class="space-y-2">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showSynonyms" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2">Afficher les synonymes</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showAntonyms" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2">Afficher les antonymes</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="checkbox" id="showTranslation" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="ml-2">Afficher la traduction</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-2xl p-8 w-full">
+            <h2 class="text-3xl font-bold text-indigo-700 mb-6 text-center animate-pulse">WordWise: Multilingual Dictionary</h2>
+            
+            <div class="mb-6 relative">
+                <label for="wordInput" class="block text-sm font-medium text-indigo-700 mb-2">Word or Phrase</label>
+                <input type="text" id="wordInput" placeholder="Enter a word or phrase" class="w-full px-5 py-4 rounded-lg border-2 border-indigo-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 text-lg placeholder-indigo-300 transition-all duration-300 ease-in-out">
+                <span class="absolute right-4 top-1/2 transform -translate-y-1/4 text-indigo-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <div>
+                    <label for="sourceLang" class="block text-sm font-medium text-indigo-700 mb-2">Source Language</label>
+                    <select id="sourceLang" class="w-full rounded-lg border-2 border-indigo-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 py-3 px-4 bg-white text-indigo-700 appearance-none cursor-pointer hover:bg-indigo-50 transition-colors duration-300">
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                        <option value="es">Spanish</option>
+                        <option value="de">German</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="answerLang" class="block text-sm font-medium text-indigo-700 mb-2">Definition Language</label>
+                    <select id="answerLang" class="w-full rounded-lg border-2 border-indigo-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 py-3 px-4 bg-white text-indigo-700 appearance-none cursor-pointer hover:bg-indigo-50 transition-colors duration-300">
+                        <option value="same">Same as input</option>
+                        <option value="en">English</option>
+                        <option value="fr">French</option>
+                        <option value="es">Spanish</option>
+                        <option value="de">German</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="targetLang" class="block text-sm font-medium text-indigo-700 mb-2">Translation Language</label>
+                    <select id="targetLang" class="w-full rounded-lg border-2 border-indigo-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500 py-3 px-4 bg-white text-indigo-700 appearance-none cursor-pointer hover:bg-indigo-50 transition-colors duration-300">
+                        <option value="">No translation</option>
                         <option value="en">English</option>
                         <option value="fr">French</option>
                         <option value="es">Spanish</option>
@@ -109,49 +184,34 @@
                     </select>
                 </div>
             </div>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-lg p-6">
-            <div class="mb-4">
-                <input type="text" id="wordInput" placeholder="Enter a word or expression" class="w-full px-4 py-3 rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-lg">
-            </div>
-            <div class="flex flex-wrap space-x-2 mb-4">
-                <select id="sourceLang" class="rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 mb-2 sm:mb-0">
-                    <option value="en">English</option>
-                    <option value="fr">French</option>
-                    <option value="es">Spanish</option>
-                    <option value="de">German</option>
-                </select>
-                <select id="answerLang" class="rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 mb-2 sm:mb-0">
-                    <option value="same">Same as word language</option>
-                    <option value="en">English</option>
-                    <option value="fr">French</option>
-                    <option value="es">Spanish</option>
-                    <option value="de">German</option>
-                </select>
-                <select id="targetLang" class="rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 mb-2 sm:mb-0">
-                    <option value="">No translation</option>
-                    <option value="en">English</option>
-                    <option value="fr">French</option>
-                    <option value="es">Spanish</option>
-                    <option value="de">German</option>
-                </select>
-                <button id="searchBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50 transition-colors duration-300">
-                    Get definition
-                </button>
-                <button id="copyBtn" class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors duration-300 ml-2">
-                    Copy to Clipboard
-                </button>
-                <button id="saveBtn" class="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 ml-2">
-                    Save as Markdown
-                </button>
-                
-            </div>
-            <div id="loader" class="hidden flex justify-center items-center mt-4">
-                <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-indigo-500"></div>
-            </div>
+            <div id="loader" class="hidden mx-auto mt-4"></div>
             <div id="result" class="prose max-w-none mt-6"></div>
+            <button id="searchBtn" class="w-full mb-4 bg-indigo-600 text-white px-6 py-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg text-lg font-semibold">
+                Get Definition
+            </button>
+
+            <div class="flex justify-end mb-4">
+                <button id="settingsBtn" class="text-gray-600 hover:text-indigo-600 transition-colors duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+    
+            <button id="copyBtn" class="bg-green-600 text-white p-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-opacity-50 transition-colors duration-300 ml-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+            </button>
+            <button id="saveBtn" class="bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors duration-300 ml-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                </svg>
+            </button>
         </div>
+    </div>
+    
     </div>
 
     <script>
@@ -161,15 +221,197 @@
         let ctx_size = 4096;
         let host = "http://localhost:9600";
         let defaultAnswerLang = "same";
+        let showSynonyms = true;
+        let showAntonyms = true;
+        let showTranslation = true;
+
+        const translations = {
+            en: {
+                title: "LinguaLex - Advanced Dictionary",
+                subtitle: "Advanced Multi-Lingual Dictionary",
+                settings: "Settings",
+                contextSize: "Context Size",
+                host: "Host",
+                defaultAnswerLang: "Default Answer Language",
+                options: "Options",
+                showSynonyms: "Show synonyms",
+                showAntonyms: "Show antonyms",
+                showTranslation: "Show translation",
+                enterWord: "Enter a word or expression",
+                getDefinition: "Get definition",
+                copyClipboard: "Copy to Clipboard",
+                saveMarkdown: "Save as Markdown",
+                sameAsWord: "Same as word language",
+                english: "English",
+                french: "French",
+                spanish: "Spanish",
+                german: "German",
+                noTranslation: "No translation"
+            },
+            fr: {
+                title: "LinguaLex - Dictionnaire Avancé",
+                subtitle: "Dictionnaire Multilingue Avancé",
+                settings: "Paramètres",
+                contextSize: "Taille du Contexte",
+                host: "Hôte",
+                defaultAnswerLang: "Langue de Réponse par Défaut",
+                options: "Options",
+                showSynonyms: "Afficher les synonymes",
+                showAntonyms: "Afficher les antonymes",
+                showTranslation: "Afficher la traduction",
+                enterWord: "Entrez un mot ou une expression",
+                getDefinition: "Obtenir la définition",
+                copyClipboard: "Copier dans le presse-papiers",
+                saveMarkdown: "Enregistrer en Markdown",
+                sameAsWord: "Même que la langue du mot",
+                english: "Anglais",
+                french: "Français",
+                spanish: "Espagnol",
+                german: "Allemand",
+                noTranslation: "Pas de traduction"
+            },
+            es: {
+                title: "LinguaLex - Diccionario Avanzado",
+                subtitle: "Diccionario Multilingüe Avanzado",
+                settings: "Configuración",
+                contextSize: "Tamaño del Contexto",
+                host: "Host",
+                defaultAnswerLang: "Idioma de Respuesta Predeterminado",
+                options: "Opciones",
+                showSynonyms: "Mostrar sinónimos",
+                showAntonyms: "Mostrar antónimos",
+                showTranslation: "Mostrar traducción",
+                enterWord: "Ingrese una palabra o expresión",
+                getDefinition: "Obtener definición",
+                copyClipboard: "Copiar al portapapeles",
+                saveMarkdown: "Guardar como Markdown",
+                sameAsWord: "Igual al idioma de la palabra",
+                english: "Inglés",
+                french: "Francés",
+                spanish: "Español",
+                german: "Alemán",
+                noTranslation: "Sin traducción"
+            },
+            de: {
+                title: "LinguaLex - Erweitertes Wörterbuch",
+                subtitle: "Erweitertes Mehrsprachiges Wörterbuch",
+                settings: "Einstellungen",
+                contextSize: "Kontextgröße",
+                host: "Host",
+                defaultAnswerLang: "Standard-Antwortsprache",
+                options: "Optionen",
+                showSynonyms: "Synonyme anzeigen",
+                showAntonyms: "Antonyme anzeigen",
+                showTranslation: "Übersetzung anzeigen",
+                enterWord: "Geben Sie ein Wort oder einen Ausdruck ein",
+                getDefinition: "Definition abrufen",
+                copyClipboard: "In die Zwischenablage kopieren",
+                saveMarkdown: "Als Markdown speichern",
+                sameAsWord: "Gleich wie die Sprache des Wortes",
+                english: "Englisch",
+                french: "Französisch",
+                spanish: "Spanisch",
+                german: "Deutsch",
+                noTranslation: "Keine Übersetzung"
+            }
+        };
+
+        let currentLanguage = 'en'; // Langue par défaut
+
+        function updateLanguage(lang) {
+            currentLanguage = lang;
+            const t = translations[lang]; // Shortcut for current language translations
+
+            // Update title and header elements
+            document.title = t.title;
+            document.querySelector('h2.text-3xl').textContent = t.title;
+            document.querySelector('header p').textContent = t.subtitle;
+
+            // Update settings panel elements
+            document.querySelector('#settingsPanel h2').textContent = t.settings;
+            document.querySelector('label[for="contextSize"]').textContent = t.contextSize;
+            document.querySelector('label[for="host"]').textContent = t.host;
+            document.querySelector('label[for="defaultAnswerLang"]').textContent = t.defaultAnswerLang;
+            // Update checkbox labels
+            document.querySelectorAll('#settingsPanel .space-y-2 label span').forEach((span, index) => {
+                if (index === 0) span.textContent = t.showSynonyms;
+                if (index === 1) span.textContent = t.showAntonyms;
+                if (index === 2) span.textContent = t.showTranslation;
+            });
+
+            // Update main interface elements
+            document.querySelector('#wordInput').placeholder = t.enterWord;
+            document.querySelector('#searchBtn').textContent = t.getDefinition;
+            document.querySelector('#copyBtn').setAttribute('title', t.copyClipboard);
+            document.querySelector('#saveBtn').setAttribute('title', t.saveMarkdown);
+
+            // Update language selection options
+            updateSelectOptions('sourceLang', t);
+            updateSelectOptions('answerLang', t);
+            updateSelectOptions('targetLang', t);
+            updateSelectOptions('defaultAnswerLang', t);
+
+            // Update language selector label
+            document.querySelector('label[for="languageSelector"]').textContent = t.interfaceLanguage;
+
+            // Update error messages or status
+            const errorMessage = document.querySelector('#result p.text-red-600');
+            if (errorMessage) {
+                errorMessage.textContent = t.errorMessage || 'An error occurred. Please try again.';
+            }
+        }
+
+        function updateSelectOptions(selectId, translations) {
+            const select = document.getElementById(selectId);
+            const options = select.options;
+            for (let i = 0; i < options.length; i++) {
+                const option = options[i];
+                switch (option.value) {
+                    case 'same':
+                        option.textContent = translations.sameAsWord;
+                        break;
+                    case 'en':
+                        option.textContent = translations.english;
+                        break;
+                    case 'fr':
+                        option.textContent = translations.french;
+                        break;
+                    case 'es':
+                        option.textContent = translations.spanish;
+                        break;
+                    case 'de':
+                        option.textContent = translations.german;
+                        break;
+                    case '':
+                        if (selectId === 'targetLang') {
+                            option.textContent = translations.noTranslation;
+                        }
+                        break;
+                }
+            }
+        }
+        document.getElementById('languageSelector').addEventListener('change', (e) => {
+            updateLanguage(e.target.value);
+        });
 
         document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOMLoaded")
             ctx_size = localStorage.getItem('ctx_size') || 4096;
             host = localStorage.getItem('host') || "http://localhost:9600";
             defaultAnswerLang = localStorage.getItem('defaultAnswerLang') || "same";
+            showSynonyms = localStorage.getItem('showSynonyms') === 'true';
+            showAntonyms = localStorage.getItem('showAntonyms') === 'true';
+            showTranslation = localStorage.getItem('showTranslation') === 'true';
+            
             document.getElementById('contextSize').value = ctx_size;
             document.getElementById('host').value = host;
             document.getElementById('defaultAnswerLang').value = defaultAnswerLang;
             document.getElementById('answerLang').value = defaultAnswerLang;
+            document.getElementById('showSynonyms').checked = showSynonyms;
+            document.getElementById('showAntonyms').checked = showAntonyms;
+            document.getElementById('showTranslation').checked = showTranslation;
+            
+            updateLanguage(currentLanguage);
             initLollmsClient();
         });
 
@@ -190,6 +432,8 @@
                 "",
                 ELF_GENERATION_FORMAT.LOLLMS
             );
+            console.log("lollms client initialized")
+
         }
 
         document.getElementById('settingsBtn').addEventListener('click', () => {
@@ -215,6 +459,21 @@
             document.getElementById('answerLang').value = defaultAnswerLang;
         });
 
+        document.getElementById('showSynonyms').addEventListener('change', (e) => {
+            showSynonyms = e.target.checked;
+            localStorage.setItem('showSynonyms', showSynonyms);
+        });
+
+        document.getElementById('showAntonyms').addEventListener('change', (e) => {
+            showAntonyms = e.target.checked;
+            localStorage.setItem('showAntonyms', showAntonyms);
+        });
+
+        document.getElementById('showTranslation').addEventListener('change', (e) => {
+            showTranslation = e.target.checked;
+            localStorage.setItem('showTranslation', showTranslation);
+        });
+
         document.getElementById('searchBtn').addEventListener('click', async () => {
             const word = document.getElementById('wordInput').value;
             const sourceLang = document.getElementById('sourceLang').value;
@@ -224,71 +483,32 @@
             if (!word) return;
             document.getElementById('loader').classList.remove("hidden");
 
-            const systemPrompt = `You are a highly knowledgeable dictionary and language expert. Provide a comprehensive explanation for the given word or expression in Markdown format. Use proper styling, including headers, lists, and tables where appropriate. Include the following sections:
+            const systemPrompt = `Vous êtes un expert en dictionnaire et en langues très compétent. Fournissez une explication complète pour le mot ou l'expression donnée au format Markdown. Utilisez un style approprié, y compris des en-têtes, des listes et des tableaux le cas échéant. Incluez les sections suivantes :
 
-# [Word/Expression]
+# [Mot/Expression]
 
-## Definition
+## Définition
 
-## Etymology (if applicable)
+## Étymologie (si applicable)
 
-## Usage examples
+## Exemples d'utilisation
 
-## Synonyms and antonyms (if applicable)
+${showSynonyms ? '## Synonymes\n' : ''}
+${showAntonyms ? '## Antonymes\n' : ''}
 
-## Additional information (e.g., cultural context, idioms, etc.)
+## Informations supplémentaires (par exemple, contexte culturel, expressions idiomatiques, etc.)
 
-If a target language is specified, also provide a translation and explanation in that language under a separate section:
+${showTranslation && targetLang ? `## Traduction et Explication en ${translations[currentLanguage][targetLang]}\n` : ''}
 
-## Translation and Explanation in [Target Language]
+Utilisez un formatage Markdown approprié pour structurer votre réponse, y compris des en-têtes (##, ###), des listes (- ou 1., 2., etc.) et des tableaux si nécessaire. Assurez-vous que le contenu est bien organisé et facile à lire.`;
 
-Use appropriate Markdown formatting to structure your response, including headers (##, ###), lists (- or 1., 2., etc.), and tables if necessary. Ensure that the content is well-organized and easy to read.`;
+            let userPrompt = `Mot/Expression : "${word}"
 
-            let userPrompt = `Word/Expression: "${word}"
+Langue source : ${translations[currentLanguage][sourceLang]}
+Langue de réponse : ${answerLang === 'same' ? translations[currentLanguage][sourceLang] : translations[currentLanguage][answerLang]}
+${targetLang ? `Langue cible : ${translations[currentLanguage][targetLang]}` : ''}
 
-## Definition
-
-[Provide a clear and concise definition of the word or expression here.]
-
-## Etymology (if applicable)
-
-[Explain the origin and historical development of the word or expression, if relevant.]
-
-## Usage examples
-
-- Example 1: [Provide a sentence or context demonstrating the use of the word/expression]
-- Example 2: [Another example showcasing different usage or context]
-- Example 3: [A third example to further illustrate usage]
-
-## Synonyms and antonyms (if applicable)
-
-### Synonyms
-- Synonym 1
-- Synonym 2
-- Synonym 3
-
-### Antonyms
-- Antonym 1
-- Antonym 2
-- Antonym 3
-
-## Additional information
-
-[Provide any relevant cultural context, idiomatic usage, or additional details that would enhance understanding of the word or expression.]
-
-[If a target language is specified, include the following section:]
-
-## Translation and Explanation in [Target Language]
-
-[Provide the translation of the word/expression in the target language, followed by a brief explanation in that language.]
-
-[Include any additional sections or information that may be relevant to the specific word or expression.]
-
-Source Language: ${sourceLang}
-Answer Language: ${answerLang === 'same' ? sourceLang : answerLang}
-${targetLang ? `Target Language: ${targetLang}` : ''}
-
-Please provide a detailed explanation and analysis of this word or expression in the specified answer language, following the Markdown format outlined above. If a target language is specified, include the translation and explanation section in that language.`;
+Veuillez fournir une explication et une analyse détaillées de ce mot ou de cette expression dans la langue de réponse spécifiée, en suivant le format Markdown décrit ci-dessus. Si une langue cible est spécifiée, incluez la section de traduction et d'explication dans cette langue.`;
 
             let prompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message();
 
@@ -301,21 +521,22 @@ Please provide a detailed explanation and analysis of this word or expression in
                     MathJax.typeset();
                 }
             } catch (error) {
-                console.error('Error:', error);
-                document.getElementById('result').innerHTML = '<p class="text-red-600">An error occurred. Please try again.</p>';
+                console.error('Erreur:', error);
+                document.getElementById('result').innerHTML = '<p class="text-red-600">Une erreur s\'est produite. Veuillez réessayer.</p>';
                 document.getElementById('loader').classList.add("hidden");
             }
         });
-        // Function to copy content to clipboard
+
+        // Fonction pour copier le contenu dans le presse-papiers
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text).then(() => {
-                alert('Content copied to clipboard!');
+                alert(translations[currentLanguage].copyClipboard);
             }, (err) => {
-                console.error('Could not copy text: ', err);
+                console.error('Impossible de copier le texte : ', err);
             });
         }
 
-        // Function to save content as Markdown file
+        // Fonction pour sauvegarder le contenu en tant que fichier Markdown
         function saveAsMarkdown(content, filename) {
             const blob = new Blob([content], {type: 'text/markdown'});
             const link = document.createElement('a');
@@ -325,7 +546,7 @@ Please provide a detailed explanation and analysis of this word or expression in
             URL.revokeObjectURL(link.href);
         }
 
-        // Add event listeners for the new buttons
+        // Ajouter des écouteurs d'événements pour les nouveaux boutons
         document.getElementById('copyBtn').addEventListener('click', () => {
             const content = document.getElementById('result').innerText;
             copyToClipboard(content);
