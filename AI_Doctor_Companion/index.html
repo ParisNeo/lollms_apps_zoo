@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Doctor Companion</title>
+    <script src="/lollms_assets/js/mermaid.min"></script>
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .thinking-animation {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-teal-100 min-h-screen font-sans" style="font-family: 'Poppins', sans-serif;">
+    <div class="flex h-screen">
+        <!-- Left Panel -->
+        <div class="w-1/4 bg-white shadow-lg p-4 overflow-y-auto">
+            <h2 class="text-2xl font-semibold mb-4 text-blue-700">Previous Consultations</h2>
+            <ul id="previous-consultations-list" class="mb-4"></ul>
+            <button onclick="showConsultationView()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium mb-2">New Consultation</button>
+            <button onclick="saveConsultation()" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium">Save Consultation</button>
+        </div>
+
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 p-8 overflow-y-auto" style="display: none;">
+            <h1 class="flex items-center justify-center space-x-4 text-4xl font-bold text-white">
+                <img src="/apps/AI_DOCTOR_Companion/icon.png" alt="Doctor Icon" class="w-16 h-16 rounded-full border-4 border-white shadow-md">
+                <span class="text-blue-600 px-6 py-3 rounded-lg backdrop-blur-sm">
+                    AI Doctor Companion
+                </span>
+            </h1>
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Consultation</h2>
+                <div id="chat-container" class="mb-4 h-96 overflow-y-auto border border-gray-300 rounded-lg p-4 bg-gray-50"></div>
+                <div class="flex flex-col space-y-2">
+                    <div class="flex">
+                        <input type="text" id="user-input" class="flex-grow border border-gray-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-300" placeholder="Type your symptoms or answer questions...">
+                        <button id="send-button" onclick="sendMessage()" class="bg-blue-600 text-white px-6 py-2 rounded-r-lg hover:bg-blue-700 transition duration-300 font-medium">Send</button>
+                    </div>
+                    <div class="flex space-x-2">
+                        <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'image')">
+                        <button onclick="document.getElementById('image-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">Upload Image</button>
+                        
+                        <input type="file" id="csv-input" accept=".csv" style="display: none;" onchange="handleFileUpload(event, 'csv')">
+                        <button onclick="document.getElementById('csv-input').click()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition duration-300 font-medium">Upload CSV</button>
+                        
+                        <input type="file" id="pdf-input" accept=".pdf" style="display: none;" onchange="handleFileUpload(event, 'pdf')">
+                        <button onclick="document.getElementById('pdf-input').click()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300 font-medium">Upload PDF</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700">Final Diagnosis</h2>
+                <div id="diagnosis-container" class="mb-4 p-4 bg-blue-50 rounded-lg"></div>
+            </div>
+
+            <div id="mermaid-container" class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl" style="display: none;">
+                <h2 class="text-2xl font-semibold mb-4 text-blue-700">AI Reasoning</h2>
+                <div id="mermaid-diagram" class="mermaid bg-gray-50 p-4 rounded-lg"></div>
+            </div>
+
+            <div class="flex justify-between">
+                <button id="export-button" onclick="exportData()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Export Data</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                <button id="import-button" onclick="document.getElementById('import-file').click()" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Import Data</button>
+            </div>
+
+            <!-- Disclaimer Popup -->
+            <div id="disclaimer-popup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
+                <div class="bg-white p-8 rounded-lg shadow-xl max-w-md">
+                    <h2 class="text-2xl font-bold mb-4 text-blue-700">Disclaimer</h2>
+                    <p class="mb-4 text-gray-700">
+                        This AI Doctor Companion is for informational purposes only and should not be considered a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
+                    </p>
+                    <div class="flex items-center mb-4">
+                        <input type="checkbox" id="dont-show-again" class="mr-2">
+                        <label for="dont-show-again" class="text-sm text-gray-600">Don't show this again</label>
+                    </div>
+                    <button onclick="closeDisclaimer()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition duration-300">
+                        I Understand
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        <!-- Add this just before the "Main Content" div -->
+        <div id="welcome-page" class="flex-1 p-8 flex flex-col items-center justify-center">
+            <img src="/apps/AI_DOCTOR_Companion/icon.png" alt="Doctor Icon" class="w-[50px] h-[50px] mb-8">
+            <h1 class="text-4xl font-bold text-center mb-8 text-blue-800">Welcome to AI Doctor Companion</h1>
+            <p class="text-xl text-center mb-8 text-gray-700">Your virtual healthcare assistant is ready to help you. Start a new consultation to begin.</p>
+            <button onclick="showConsultationView()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium text-xl">Start New Consultation</button>
+        </div>
+
+    </div>
+
+    <script>
+        let lc;
+        let tl;
+        let consultationHistory = [];
+        let isThinking = false;
+        let allConsultations = [];
+        let currentConsultationIndex = -1;
+
+        async function initializeLollms() {
+            lc = new LollmsClient(
+                null,
+                null,
+                4096,
+                -1,
+                4096,
+                0.7,
+                50,
+                0.95,
+                1.1,
+                64,
+                null,
+                8,
+                "",
+                ELF_GENERATION_FORMAT.LOLLMS
+            );
+            tl = new TasksLibrary(lc);
+            loadPreviousConsultations();
+            await startNewConsultation();
+        }
+
+        function showWelcomePage() {
+            document.getElementById('welcome-page').style.display = 'flex';
+            document.getElementById('main-content').style.display = 'none';
+        }
+
+        function showConsultationView() {
+            document.getElementById('welcome-page').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            startNewConsultation();
+        }
+
+
+        // Modify the startNewConsultation function
+        async function startNewConsultation() {
+            consultationHistory = [];
+            document.getElementById('chat-container').innerHTML = '';
+            document.getElementById('diagnosis-container').innerHTML = '';
+            document.getElementById('mermaid-container').style.display = 'none';
+            currentConsultationIndex = -1;
+
+            const systemPrompt = "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis.";
+            
+            let prompt = lc.system_message() + systemPrompt + lc.template.separator_template + 
+                        lc.ai_message() + "Welcome! I'm your AI doctor assistant. How can I help you today? Please describe your symptoms or concerns.";
+
+            setThinking(true);
+            const response = await lc.generate(prompt);
+            setThinking(false);
+            updateChatContainer("AI", response);
+            consultationHistory.push({role: "system", content: systemPrompt});
+            consultationHistory.push({role: "assistant", content: response});
+            
+            processMermaidDiagram(response);
+            extractDiagnosis(response);
+        }
+
+
+        async function sendMessage() {
+            if (isThinking) return;
+
+            const userInput = document.getElementById('user-input').value;
+            if (!userInput) return;
+
+            updateChatContainer("You", userInput);
+            consultationHistory.push({role: "user", content: userInput});
+
+            const prompt = consultationHistory.map(msg => {
+                if (msg.role === "user") return lc.user_message() + msg.content;
+                if (msg.role === "assistant") return lc.ai_message() + msg.content;
+                return "";
+            }).join(lc.template.separator_template) + lc.template.separator_template + lc.ai_message();
+
+            setThinking(true);
+            const response = await lc.generate(prompt);
+            setThinking(false);
+            updateChatContainer("AI", response);
+            consultationHistory.push({role: "assistant", content: response});
+
+            document.getElementById('user-input').value = '';
+
+            processMermaidDiagram(response);
+            extractDiagnosis(response);
+        }
+
+        function updateChatContainer(sender, message) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `mb-4 p-3 rounded-lg ${sender === 'You' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`;
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${marked.parse(message)}`;
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+        function extractDiagnosis(response) {
+            const diagnosisMatch = response.match(/## Diagnosis\s*([\s\S]*?)(?=\n#|$)/i);
+            if (diagnosisMatch) {
+                const diagnosis = diagnosisMatch[1].trim();
+                document.getElementById('diagnosis-container').innerHTML = marked.parse(diagnosis);
+            }
+        }
+
+        function processMermaidDiagram(response) {
+            const codes = tl.extractCodeBlocks(response);
+            const mermaidCode = codes.find(code => code.language === 'mermaid');
+            
+            const mermaidContainer = document.getElementById('mermaid-container');
+            if (mermaidCode) {
+                mermaidContainer.style.display = 'block';
+                const mermaidDiagram = document.getElementById('mermaid-diagram');
+                mermaidDiagram.innerHTML = mermaidCode.content;
+                mermaid.init(undefined, mermaidDiagram);
+            } else {
+                mermaidContainer.style.display = 'none';
+            }
+        }
+
+        function exportData() {
+            const data = {
+                consultationHistory: consultationHistory,
+                diagnosis: document.getElementById('diagnosis-container').innerHTML
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "ai_doctor_consultation.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const importedData = JSON.parse(e.target.result);
+                    loadConsultationData(importedData);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function loadConsultationData(data) {
+            consultationHistory = data.consultationHistory;
+            document.getElementById('chat-container').innerHTML = '';
+            consultationHistory.forEach(msg => {
+                if (msg.role !== "system") {
+                    updateChatContainer(msg.role === "user" ? "You" : "AI", msg.content);
+                }
+            });
+            document.getElementById('diagnosis-container').innerHTML = data.diagnosis;
+            const lastResponse = consultationHistory[consultationHistory.length - 1].content;
+            processMermaidDiagram(lastResponse);
+        }
+
+        function setThinking(thinking) {
+            isThinking = thinking;
+            const buttons = ['send-button', 'export-button', 'import-button'];
+            const userInput = document.getElementById('user-input');
+            
+            buttons.forEach(id => {
+                const button = document.getElementById(id);
+                button.disabled = thinking;
+                button.classList.toggle('opacity-50', thinking);
+                button.classList.toggle('cursor-not-allowed', thinking);
+            });
+            
+            userInput.disabled = thinking;
+            userInput.classList.toggle('bg-gray-100', thinking);
+            
+            if (thinking) {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.id = 'thinking-indicator';
+                thinkingDiv.className = 'flex items-center justify-center p-4';
+                thinkingDiv.innerHTML = '<div class="thinking-animation mr-3"></div><span class="text-blue-600 font-medium">AI is thinking...</span>';
+                document.getElementById('chat-container').appendChild(thinkingDiv);
+            } else {
+                const thinkingDiv = document.getElementById('thinking-indicator');
+                if (thinkingDiv) thinkingDiv.remove();
+            }
+        }
+
+        function saveConsultation() {
+            const data = {
+                consultationHistory: consultationHistory,
+                diagnosis: document.getElementById('diagnosis-container').innerHTML
+            };
+            const timestamp = new Date().toISOString();
+            const consultation = { timestamp, data };
+            
+            if (currentConsultationIndex === -1) {
+                allConsultations.push(consultation);
+                currentConsultationIndex = allConsultations.length - 1;
+            } else {
+                allConsultations[currentConsultationIndex] = consultation;
+            }
+            
+            localStorage.setItem('aiDoctorConsultations', JSON.stringify(allConsultations));
+            updatePreviousConsultationsList();
+        }
+
+        function loadPreviousConsultations() {
+            const savedConsultations = localStorage.getItem('aiDoctorConsultations');
+            if (savedConsultations) {
+                allConsultations = JSON.parse(savedConsultations);
+                updatePreviousConsultationsList();
+            }
+        }
+
+        function updatePreviousConsultationsList() {
+            const list = document.getElementById('previous-consultations-list');
+            list.innerHTML = '';
+            allConsultations.forEach((consultation, index) => {
+                const li = document.createElement('li');
+                li.className = 'mb-2 p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 transition duration-300 flex justify-between items-center';
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = new Date(consultation.timestamp).toLocaleString();
+                dateSpan.onclick = () => {
+                    document.getElementById('welcome-page').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    loadConsultation(index);
+                }
+                li.appendChild(dateSpan);
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '&#x2716;'; // X symbol
+                deleteButton.className = 'text-red-600 hover:text-red-800 font-bold';
+                deleteButton.onclick = (e) => {
+                    e.stopPropagation();
+                    removeConsultation(index);
+                };
+                li.appendChild(deleteButton);
+                
+                list.appendChild(li);
+            });
+        }
+
+        function loadConsultation(index) {
+            currentConsultationIndex = index;
+            const selectedConsultation = allConsultations[index];
+            loadConsultationData(selectedConsultation.data);
+        }
+
+        function removeConsultation(index) {
+            if (confirm('Are you sure you want to delete this consultation?')) {
+                allConsultations.splice(index, 1);
+                localStorage.setItem('aiDoctorConsultations', JSON.stringify(allConsultations));
+                updatePreviousConsultationsList();
+                if (currentConsultationIndex === index) {
+                    startNewConsultation();
+                } else if (currentConsultationIndex > index) {
+                    currentConsultationIndex--;
+                }
+            }
+        }
+
+        async function handleFileUpload(event, fileType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            let fileContent = '';
+            let fileInfo = '';
+
+            if (fileType === 'image') {
+                fileContent = await readFileAsDataURL(file);
+                fileInfo = `[An image file named "${file.name}" (${file.type}) has been uploaded.]`;
+            } else if (fileType === 'csv') {
+                fileContent = await readFileAsText(file);
+                fileInfo = `[A CSV file named "${file.name}" has been uploaded. Its content is as follows:]\n\n${fileContent}`;
+            } else if (fileType === 'pdf') {
+                fileContent = await readFileAsArrayBuffer(file);
+                const pdfText = await extractTextFromPDF(fileContent);
+                fileInfo = `[A PDF file named "${file.name}" has been uploaded. Its textual content is as follows:]\n\n${pdfText}`;
+            }
+
+            updateChatContainer("You", fileInfo);
+            consultationHistory.push({role: "user", content: fileInfo});
+
+            // Simulate AI response to the uploaded file
+            const prompt = `The user has uploaded a ${fileType} file. Please analyze the following information and provide insights or ask follow-up questions:\n\n${fileInfo}`;
+            
+            setThinking(true);
+            const response = await lc.generate(lc.ai_message() + prompt);
+            setThinking(false);
+            
+            updateChatContainer("AI", response);
+            consultationHistory.push({role: "assistant", content: response});
+
+            processMermaidDiagram(response);
+            extractDiagnosis(response);
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function extractTextFromPDF(arrayBuffer) {
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            let text = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(item => item.str).join(' ') + '\n';
+            }
+            return text;
+        }
+
+        function showDisclaimer() {
+            const showDisclaimer = localStorage.getItem('showDisclaimer') !== 'false';
+            if (showDisclaimer) {
+                document.getElementById('disclaimer-popup').style.display = 'flex';
+            }
+        }
+
+        function closeDisclaimer() {
+            const dontShowAgain = document.getElementById('dont-show-again').checked;
+            if (dontShowAgain) {
+                localStorage.setItem('showDisclaimer', 'false');
+            }
+            document.getElementById('disclaimer-popup').style.display = 'none';
+        }
+
+        // Modify the window.onload function to include showDisclaimer
+        window.onload = function() {
+            initializeLollms();
+            showWelcomePage();
+            showDisclaimer();
+        };
+
+        // Add event listener for Enter key in the input field
+        document.getElementById('user-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
