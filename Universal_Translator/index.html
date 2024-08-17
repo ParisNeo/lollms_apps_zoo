@@ -395,27 +395,6 @@
             });
         }
 
-        function splitIntoChunks(text, maxTokens, tokenizer) {
-            const chunks = [];
-            let currentChunk = "";
-            const sentences = text.split(/(?<=[.!?])\s+/);
-
-            for (const sentence of sentences) {
-                const potentialChunk = currentChunk + sentence;
-                const tokens = tokenizer.encode(potentialChunk);
-
-                if (tokens.length <= maxTokens) {
-                    currentChunk = potentialChunk;
-                } else {
-                    if (currentChunk) chunks.push(currentChunk.trim());
-                    currentChunk = sentence;
-                }
-            }
-
-            if (currentChunk) chunks.push(currentChunk.trim());
-            return chunks;
-        }
-
         async function translateChunks(chunks) {
             const translatedChunks = [];
             for (let i = 0; i < chunks.length; i++) {
