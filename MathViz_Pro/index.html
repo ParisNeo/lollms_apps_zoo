@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathViz Pro</title>
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <script src="/apps/MathViz_Pro/math.js"></script>
+    <script src="/apps/MathViz_Pro/plotly-2.24.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.3.0/papaparse.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-white font-sans min-h-screen">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40"></div>
+
+    <div id="calculator" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl hidden z-50 w-80">
+        <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white" data-translate="calcTitle" id="calc-title">Calculator</h2>
+        <input type="text" id="input" class="w-full p-3 border rounded-md mb-4 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white" placeholder="Enter expression...">
+        <div id="result" class="text-lg font-medium mb-4 text-gray-800 dark:text-white"></div>
+        <div class="grid grid-cols-4 gap-2">
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">7</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">8</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">9</button>
+            <button class="btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300">/</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">4</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">5</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">6</button>
+            <button class="btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300">*</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">1</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">2</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">3</button>
+            <button class="btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300">-</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">0</button>
+            <button class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">.</button>
+            <button class="btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">=</button>
+            <button class="btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300">+</button>
+            <button class="btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">sin</button>
+            <button class="btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">cos</button>
+            <button class="btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">tan</button>
+            <button class="btn bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300">^</button>
+            <button class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">(</button>
+            <button class="btn bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">)</button>
+            <button class="btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">π</button>
+            <button class="btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">e</button>
+        </div>
+        <button data-translate="closeCalculatorButton" id="close-calculator" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded w-full transition duration-300">Close</button>
+    </div>
+
+    <div class="container mx-auto p-4">
+        <div class="flex justify-end items-center mb-4 space-x-4">
+            <select id="language" class="p-2 border rounded-md bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+            </select>
+            <button data-translate="toggleDarkModeButton" id="toggle-dark-mode" class="p-2 rounded-full bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-500 transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+        
+        <div class="flex h-screen">
+            <div class="w-1/4 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-y-auto">
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white" data-translate="historyTitle" id="history-title">Plot History</h2>
+                <ul id="history" class="space-y-2"></ul>
+            </div>
+            <div class="w-3/4 p-4 flex flex-col">
+                <h1 class="text-4xl font-bold text-center text-indigo-600 dark:text-indigo-400 mb-6" data-translate="appTitle" id="app-title">MathViz Pro</h1>
+                <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-white" data-translate="plotTitle" id="plot-title">Plotter</h2>
+                <div id="function-inputs" class="space-y-4 mb-4">
+                    <div class="flex items-center space-x-2">
+                        <input type="text" class="function-input w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white" placeholder="Enter function to plot (e.g., sin(x))">
+                        <button class="add-function bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">+</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="xmin" class="block text-gray-700 dark:text-gray-300" data-translate="xminLabel" id="xmin-label">X Min:</label>
+                        <input type="number" id="xmin" value="-10" class="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
+                    </div>
+                    <div>
+                        <label for="xmax" class="block text-gray-700 dark:text-gray-300" data-translate="xmaxLabel" id="xmax-label">X Max:</label>
+                        <input type="number" id="xmax" value="10" class="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
+                    </div>
+                </div>
+                <div class="flex space-x-4 mb-4">
+                    <button data-translate="plotButton" id="plot" class="w-1/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded transition duration-300">Plot</button>
+                    <button data-translate="openCalculatorButton" id="open-calculator" class="w-1/3 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded transition duration-300">Open Calculator</button>
+                    <button data-translate="saveToHistoryButton" id="save-to-history" class="w-1/3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded transition duration-300">Save to History</button>
+                </div>
+                <div class="mb-4">
+                    <label for="csv-file" class="block text-gray-700 dark:text-gray-300 mb-2">Upload CSV File:</label>
+                    <input type="file" id="csv-file" accept=".csv" class="w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white">
+                </div>
+                <div id="plot-container" class="flex-grow bg-white dark:bg-gray-800 rounded-lg shadow-lg"></div>
+                <button id="fullscreen" class="mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">View in Full Screen</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import WebAppLocalizer from '/lollms_assets/js/web.app.localizer';
+
+        const input = document.getElementById('input');
+        const result = document.getElementById('result');
+        const buttons = document.querySelectorAll('.btn');
+        const plotBtn = document.getElementById('plot');
+        const xminInput = document.getElementById('xmin');
+        const xmaxInput = document.getElementById('xmax');
+        const historyList = document.getElementById('history');
+        const calculator = document.getElementById('calculator');
+        const overlay = document.getElementById('overlay');
+        const closeCalculator = document.getElementById('close-calculator');
+        const openCalculator = document.getElementById('open-calculator');
+        const languageSelect = document.getElementById('language');
+        const toggleDarkMode = document.getElementById('toggle-dark-mode');
+        const body = document.body;
+        const functionInputsContainer = document.getElementById('function-inputs');
+        const addFunctionBtn = document.querySelector('.add-function');
+        const csvFileInput = document.getElementById('csv-file');
+        const saveToHistoryBtn = document.getElementById('save-to-history');
+        const fullscreenBtn = document.getElementById('fullscreen');
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    calcTitle: "Calculator",
+                    historyTitle: "Plot History",
+                    appTitle: "MathViz Pro",
+                    plotTitle: "Plotter",
+                    xminLabel: "X Min:",
+                    xmaxLabel: "X Max:",
+                    plotButton: "Plot",
+                    openCalculatorButton: "Open Calculator",
+                    closeCalculatorButton: "Close",
+                    toggleDarkModeButton: "Toggle Dark Mode",
+                    placeholderFunction: "Enter function to plot (e.g., sin(x))",
+                    placeholderInput: "Enter expression...",
+                    saveToHistoryButton: "Save to History",
+                    error: "error"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    calcTitle: "Calculatrice",
+                    historyTitle: "Historique des tracés",
+                    appTitle: "MathViz Pro",
+                    plotTitle: "Traceur",
+                    xminLabel: "X Min:",
+                    xmaxLabel: "X Max:",
+                    plotButton: "Tracer",
+                    openCalculatorButton: "Ouvrir le calculateur",
+                    closeCalculatorButton: "Fermer",
+                    toggleDarkModeButton: "Activer le mode sombre",
+                    placeholderFunction: "Entrez la fonction à tracer (ex: sin(x))",
+                    placeholderInput: "Entrez l'expression...",
+                    saveToHistoryButton: "Sauvegarder dans l'historique",
+                    error:"erreur"
+                }
+            },
+        };
+        const localizer = new WebAppLocalizer(translations, 'MathViz_Pro_', languageSelect);
+
+        const loadHistory = () => {
+            const history = JSON.parse(localStorage.getItem('history')) || [];
+            historyList.innerHTML = '';
+            history.forEach((item, index) => {
+                const li = document.createElement('li');
+                li.classList.add('mb-2', 'p-2', 'bg-gray-100', 'dark:bg-gray-700', 'rounded', 'cursor-pointer', 'hover:bg-gray-200', 'dark:hover:bg-gray-600', 'transition', 'duration-300');
+                
+                const titleSpan = document.createElement('span');
+                titleSpan.textContent = item.title;
+                titleSpan.contentEditable = true;
+                titleSpan.classList.add('mr-2', 'font-bold');
+                
+                const funcSpan = document.createElement('span');
+                funcSpan.textContent = item.func;
+                
+                li.appendChild(titleSpan);
+                li.appendChild(funcSpan);
+                
+                li.addEventListener('click', () => {
+                    const functionInputs = document.querySelectorAll('.function-input');
+                    functionInputs[0].value = item.func;
+                });
+                
+                titleSpan.addEventListener('blur', () => {
+                    history[index].title = titleSpan.textContent;
+                    localStorage.setItem('history', JSON.stringify(history));
+                });
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.classList.add('ml-2', 'text-red-500', 'hover:text-red-700', 'transition', 'duration-300');
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    history.splice(index, 1);
+                    localStorage.setItem('history', JSON.stringify(history));
+                    loadHistory();
+                });
+                li.appendChild(removeBtn);
+                historyList.appendChild(li);
+            });
+        };
+
+        const saveHistory = (title, func) => {
+            const history = JSON.parse(localStorage.getItem('history')) || [];
+            const newItem = { title, func };
+            if (!history.some(item => item.func === func)) {
+                history.push(newItem);
+                localStorage.setItem('history', JSON.stringify(history));
+                loadHistory();
+            }
+        };
+
+        // Function to toggle dark mode
+        const toggleDarkModeHandler = () => {
+            document.documentElement.classList.toggle('dark');
+            
+            // Save the preference to localStorage
+            if (document.documentElement.classList.contains('dark')) {
+                localStorage.setItem('darkMode', 'enabled');
+            } else {
+                localStorage.setItem('darkMode', 'disabled');
+            }
+            
+            console.log("Dark mode toggled and saved");
+        };
+
+        // Function to load the saved preference
+        const loadDarkModePreference = () => {
+            if (localStorage.getItem('darkMode') === 'enabled') {
+                document.documentElement.classList.add('dark');
+            }
+        };
+
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                if (button.textContent === '=') {
+                    try {
+                        result.textContent = math.evaluate(input.value);
+                    } catch (error) {
+                        result.textContent = translations[languageSelect.value].translations.error;
+                    }
+                } else {
+                    input.value += button.textContent;
+                }
+            });
+        });
+
+        const addFunctionInput = () => {
+            const newInput = document.createElement('div');
+            newInput.classList.add('flex', 'items-center', 'space-x-2');
+            newInput.innerHTML = `
+                <input type="text" class="function-input w-full p-3 border rounded-md bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-white" placeholder="Enter function to plot (e.g., sin(x))">
+                <button class="remove-function bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">-</button>
+            `;
+            functionInputsContainer.insertBefore(newInput, addFunctionBtn.parentElement);
+
+            newInput.querySelector('.remove-function').addEventListener('click', () => {
+                functionInputsContainer.removeChild(newInput);
+            });
+        };
+
+        addFunctionBtn.addEventListener('click', addFunctionInput);
+
+
+        const plotFunctions = () => {
+            console.log("Plotting functions...");
+            const functionInputs = document.querySelectorAll('.function-input');
+            const xmin = parseFloat(xminInput.value);
+            const xmax = parseFloat(xmaxInput.value);
+            const x = math.range(xmin, xmax, 0.1).toArray();
+
+            const traces = Array.from(functionInputs).map((input, index) => {
+                const func = input.value;
+                console.log(`Plotting function: ${func}`);
+                try {
+                    const y = x.map(xi => math.evaluate(func, {x:xi}));
+                    return {
+                        x: x,
+                        y: y,
+                        type: 'scatter',
+                        name: func
+                    };
+                } catch (error) {
+                    console.error(`Error evaluating function ${func}:`, error);
+                    return null;
+                }
+            }).filter(trace => trace !== null);
+
+            if (traces.length === 0) {
+                console.error("No valid functions to plot");
+                alert("No valid functions to plot. Please check your input.");
+                return;
+            }
+
+            const layout = {
+                title: 'Function Plot',
+                xaxis: {title: 'x'},
+                yaxis: {title: 'y'},
+                legend: {x: 1, xanchor: 'right', y: 1},
+                autosize: true
+            };
+
+            const config = {
+                responsive: true
+            };
+
+            try {
+                Plotly.newPlot('plot-container', traces, layout, config);
+                console.log("Plot created successfully");
+            } catch (error) {
+                console.error("Error creating plot:", error);
+                alert("An error occurred while creating the plot. Please check the console for details.");
+            }
+        };
+
+        plotBtn.addEventListener('click', plotFunctions);
+
+        csvFileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            Papa.parse(file, {
+                complete: function(results) {
+                    const data = results.data;
+                    const headers = data[0];
+                    const traces = headers.slice(1).map((header, index) => {
+                        return {
+                            x: data.slice(1).map(row => parseFloat(row[0])),
+                            y: data.slice(1).map(row => parseFloat(row[index + 1])),
+                            type: 'scatter',
+                            name: header
+                        };
+                    });
+
+                    const layout = {
+                        title: 'CSV Data Plot',
+                        xaxis: {title: headers[0]},
+                        yaxis: {title: 'Value'},
+                        legend: {x: 1, xanchor: 'right', y: 1},
+                        autosize: true
+                    };
+
+                    const config = {
+                        responsive: true
+                    };
+
+                    Plotly.newPlot('plot-container', traces, layout, config);
+                }
+            });
+        });
+
+        openCalculator.addEventListener('click', () => {
+            calculator.classList.remove('hidden');
+            overlay.classList.remove('hidden');
+            
+            // Add this block inside the openCalculator event listener
+            const input = document.getElementById('input');
+            const result = document.getElementById('result');
+            
+            if (input) {
+                input.addEventListener('input', () => {
+                    try {
+                        result.textContent = math.evaluate(input.value);
+                    } catch (error) {
+                        result.textContent = translations[languageSelect.value].translations.error;
+                    }
+                });
+            }
+        });
+
+        closeCalculator.addEventListener('click', () => {
+            calculator.classList.add('hidden');
+            overlay.classList.add('hidden');
+        });
+
+        overlay.addEventListener('click', () => {
+            calculator.classList.add('hidden');
+            overlay.classList.add('hidden');
+        });
+
+        toggleDarkMode.addEventListener('click', toggleDarkModeHandler);
+
+        saveToHistoryBtn.addEventListener('click', () => {
+            const title = prompt("Enter a title for this plot:");
+            if (title) {
+                const functionInputs = document.querySelectorAll('.function-input');
+                functionInputs.forEach(input => {
+                    if (input.value.trim() !== '') {
+                        saveHistory(title, input.value);
+                    }
+                });
+            }
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            const plotContainer = document.getElementById('plot-container');
+            if (plotContainer.requestFullscreen) {
+                plotContainer.requestFullscreen();
+            } else if (plotContainer.mozRequestFullScreen) { // Firefox
+                plotContainer.mozRequestFullScreen();
+            } else if (plotContainer.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                plotContainer.webkitRequestFullscreen();
+            } else if (plotContainer.msRequestFullscreen) { // IE/Edge
+                plotContainer.msRequestFullscreen();
+            }
+        });
+
+        // Function to resize plot
+        const resizePlot = () => {
+            try{
+                const update = {
+                width: document.getElementById('plot-container').offsetWidth,
+                height: document.getElementById('plot-container').offsetHeight
+            };
+            Plotly.relayout('plot-container', update);
+
+            }
+            catch(ex){
+                console.error("Resize plot failtded :", ex)
+            }
+        };
+
+        // Resize plot on window resize
+        window.addEventListener('resize', resizePlot);
+
+        // Initial plot resize
+        resizePlot();
+
+        // Load history on page load
+        loadHistory();
+        loadDarkModePreference();
+
+        // Set initial dark mode based on system preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Listen for changes in system color scheme
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (e.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        });
+    </script>
+</body>
+</html>
