@@ -6,6 +6,8 @@
     <title>Universal Translator App</title>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
+    
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
 
     <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -37,7 +39,6 @@
         let ctx_size;
         let nPredictInput;
         let temperatureInput;
-
         function initLollmsClient() {
             lc = new LollmsClient(
                 hostInput.value,
@@ -77,9 +78,29 @@
             const savedTemperature = localStorage.getItem("temperature") || "0.7";
             temperatureInput.value = savedTemperature;
 
-            const fileInput = document.getElementById("fileInput");
-            fileInput.addEventListener("change", handleFileUpload);
             initLollmsClient()
+            // Create an instance of FileLoader
+            const fileLoader = new LollmsFileLoader();
+
+            // Assume you have a file input element with id "fileInput"
+            const fileInput = document.getElementById('fileInput');
+            fileInput.addEventListener('change', async (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    try {
+                    const markdown = await fileLoader.loadFile(file);
+                    const sourceText = document.getElementById("sourceText");
+                    sourceText.value = markdown;
+
+                    // Do something with the markdown, e.g., display it or send it to the server
+                    console.log(markdown);
+                    } catch (error) {
+                    console.error('Error processing file:', error);
+                    }
+                }
+            });
+
+
             
         });
 
@@ -156,6 +177,7 @@
         }
 
         async function translateChunks(chunks, sourceLang, targetLang) {
+            console.log(`Translating chunk from ${sourceLang} to ${targetLang}.`)
             const translatedChunks = [];
             for (let i = 0; i < chunks.length; i++) {
                 const translated = await translateText(chunks[i], sourceLang, targetLang);
@@ -165,11 +187,12 @@
         }
 
         async function translateText(sourceText, sourceLang, targetLang) {
+            console.log(`Translating text from ${sourceLang} to ${targetLang}.`)
             const hostAddress = document.getElementById("host").value;
             const nPredict = document.getElementById("n_predict").value;
             const temperature = document.getElementById("temperature").value;
 
-            const prompt = `<@>system: Translate the following text from ${sourceLang} to ${targetLang}. Provide only the translated text without any additional commentary.\n<@>text to translate:\n${sourceText}\n<@>translation:`;
+            const prompt = `!@>system: Translate the following text from ${sourceLang} to ${targetLang}. Provide only the translated text without any additional commentary.\n!@>text to translate:\n${sourceText}\n!@>translation:`;
             
             const translatedText = await lc.generate(prompt, hostAddress, "-1", nPredict, false, temperature);
             return translatedText.trim();
@@ -210,198 +233,6 @@
                 console.error(error);
                 return "Error occurred while translating text.";
             }
-        }
-
-        async function handleFileUpload(event) {
-            const file = event.target.files[0];
-            console.log("Loading file")
-            if (!file) return;
-
-            const fileExtension = file.name.split('.').pop().toLowerCase();
-            let content = '';
-
-            try {
-                switch (fileExtension) {
-                    case 'txt':
-                    case 'md':
-                    case 'markdown':
-                    case 'rtf':
-                    case 'log':
-                    case 'csv':
-                    case 'json':
-                    case 'xml':
-                    case 'html':
-                    case 'htm':
-                    case 'css':
-                    case 'js':
-                    case 'py':
-                    case 'java':
-                    case 'c':
-                    case 'cpp':
-                        content = await readTextFile(file);
-                        break;
-                    case 'docx':
-                        content = await readDocxFile(file);
-                        break;
-                    case 'pdf':
-                        content = await readPdfFile(file);
-                        break;
-                    case 'pptx':
-                        content = await readPptxFile(file);
-                        break;
-                    default:
-                        throw new Error('Unsupported file type');
-                }
-
-            } catch (error) {
-                console.error('Error processing file:', error);
-                alert('Error processing file: ' + error.message);
-            }
-            const sourceText = document.getElementById("sourceText");
-            sourceText.value = content;
-
-        }
-
-        function readTextFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = (e) => reject(e);
-                reader.readAsText(file);
-            });
-        }
-
-        function readDocxFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    mammoth.extractRawText({arrayBuffer: e.target.result})
-                        .then(result => resolve(result.value))
-                        .catch(reject);
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        function readPdfFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    const pdf = await pdfjsLib.getDocument({data: e.target.result}).promise;
-                    let markdown = '';
-                    
-                    for (let i = 1; i <= pdf.numPages; i++) {
-                        const page = await pdf.getPage(i);
-                        const content = await page.getTextContent();
-                        const items = content.items;
-                        
-                        let currentY = null;
-                        let lineContent = '';
-                        let isList = false;
-                        let tableData = [];
-                        
-                        for (let j = 0; j < items.length; j++) {
-                            const item = items[j];
-                            
-                            // Check for new line
-                            if (currentY !== item.transform[5]) {
-                                if (lineContent) {
-                                    markdown += processLine(lineContent, isList) + '\n';
-                                }
-                                lineContent = '';
-                                currentY = item.transform[5];
-                                isList = false;
-                            }
-                            
-                            // Check for list items
-                            if (item.str.match(/^[\u2022\u25E6\u25AA\u25AB\u25CF\u25CB\u25A0\u25A1]/)) {
-                                isList = true;
-                            }
-                            
-                            // Check for table-like structure
-                            if (j < items.length - 1 && Math.abs(item.transform[5] - items[j+1].transform[5]) < 2) {
-                                tableData.push(item.str);
-                            } else {
-                                if (tableData.length > 0) {
-                                    tableData.push(item.str);
-                                    markdown += processTable(tableData) + '\n';
-                                    tableData = [];
-                                } else {
-                                    lineContent += item.str + ' ';
-                                }
-                            }
-                        }
-                        
-                        // Process any remaining content
-                        if (lineContent) {
-                            markdown += processLine(lineContent, isList) + '\n';
-                        }
-                        
-                        markdown += '\n'; // Add extra newline between pages
-                    }
-                    
-                    resolve(markdown.trim());
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        function processLine(line, isList) {
-            line = line.trim();
-            
-            // Check for headers
-            if (line.match(/^#{1,6}\s/)) {
-                return line; // Already in Markdown header format
-            } else if (line.length > 0 && line === line.toUpperCase()) {
-                return `## ${line}`; // Assume all caps lines are headers
-            } else if (isList) {
-                return `- ${line}`; // Convert to Markdown list item
-            } else {
-                return line; // Regular paragraph
-            }
-        }
-
-        function processTable(tableData) {
-            const numColumns = Math.ceil(Math.sqrt(tableData.length)); // Estimate number of columns
-            let markdown = '| ' + tableData.slice(0, numColumns).join(' | ') + ' |\n';
-            markdown += '| ' + '---'.repeat(numColumns).split('').join(' | ') + ' |\n';
-            
-            for (let i = numColumns; i < tableData.length; i += numColumns) {
-                markdown += '| ' + tableData.slice(i, i + numColumns).join(' | ') + ' |\n';
-            }
-            
-            return markdown;
-        }
-
-        function readPptxFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = async function(e) {
-                    try {
-                        if (typeof PptxTextExtractor === 'undefined') {
-                            throw new Error('PptxTextExtractor is not defined. The library might not be loaded correctly.');
-                        }
-                        const text = await PptxTextExtractor.extractText(e.target.result);
-                        resolve(text.join('\n'));
-                    } catch (error) {
-                        console.error('Error extracting text from PPTX:', error);
-                        reject(new Error('Unable to process PPTX file. ' + error.message));
-                    }
-                };
-                reader.onerror = (e) => reject(e);
-                reader.readAsArrayBuffer(file);
-            });
-        }
-
-        async function translateChunks(chunks) {
-            const translatedChunks = [];
-            for (let i = 0; i < chunks.length; i++) {
-                translated = await translateText(chunks[i]);
-                translatedChunks.push(translated);
-            }
-            return translatedChunks.join("\n\n");
         }
 
         function toggleSettings() {
