@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PillPal - Your Friendly Pill Reminder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        @keyframes pill-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .pill-icon {
+            animation: pill-bounce 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-blue-50 font-sans">
+    <div id="app" class="container mx-auto p-4">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600" data-translate="appTitle">PillPal</h1>
+            <p class="text-xl text-gray-600" data-translate="appSubtitle">Your Friendly Pill Reminder</p>
+        </header>
+
+        <nav class="mb-8">
+            <select v-model="currentLanguage" id="currentLanguage" @change="changeLanguage" class="p-2 rounded-lg border border-gray-300">
+                <option v-for="lang in availableLanguages" :value="lang">{{ lang }}</option>
+            </select>
+        </nav>
+
+        <main>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <section class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4" data-translate="scheduleTitle">Pill Schedule</h2>
+                    <ul>
+                        <li v-for="schedule in pillSchedules" :key="schedule.id" class="mb-4 p-4 bg-blue-100 rounded-lg">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold">{{ schedule.pillName }}</span>
+                                <div>
+                                    <button @click="editSchedule(schedule)" class="text-blue-600 mr-2" data-translate="editButton">Edit</button>
+                                    <button @click="removeSchedule(schedule.id)" class="text-red-600" data-translate="removeButton">Remove</button>
+                                </div>
+                            </div>
+                            <p>{{ schedule.time }} - {{ schedule.dosage }}</p>
+                        </li>
+                    </ul>
+                    <button @click="showAddForm = true" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition" data-translate="addButton">Add New Pill</button>
+                </section>
+
+                <section class="bg-white p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-semibold mb-4" data-translate="upcomingTitle">Upcoming Pills</h2>
+                    <div v-if="nextPill" class="text-center mb-4">
+                        <div class="pill-icon text-6xl mb-4">💊</div>
+                        <p class="text-xl" data-translate="nextPillPrefix">Next pill:</p>
+                        <p class="text-2xl font-bold">{{ nextPill.pillName }}</p>
+                        <p class="text-xl">{{ nextPill.time }} - {{ nextPill.dosage }}</p>
+                    </div>
+                    <div v-for="pill in upcomingPills" :key="pill.id" class="mb-2">
+                        <p class="font-semibold">{{ pill.pillName }}</p>
+                        <p>{{ pill.time }} - {{ pill.dosage }}</p>
+                    </div>
+                    <p v-if="!nextPill && upcomingPills.length === 0" data-translate="noPillsScheduled">No pills scheduled</p>
+                </section>
+            </div>
+
+            <div v-if="showAddForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white p-8 rounded-lg w-full max-w-md">
+                    <h3 class="text-2xl font-semibold mb-4" data-translate="addPillTitle">
+                        {{ newPill.id ? 'Edit Pill' : 'Add New Pill' }}
+                    </h3>
+                    <form @submit.prevent="addSchedule">
+                        <div class="mb-4">
+                            <label class="block mb-2" data-translate="pillNameLabel">Pill Name:</label>
+                            <input v-model="newPill.pillName" type="text" required class="w-full p-2 border rounded">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block mb-2" data-translate="timeLabel">Time:</label>
+                            <input v-model="newPill.time" type="time" required class="w-full p-2 border rounded">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block mb-2" data-translate="dosageLabel">Dosage:</label>
+                            <input v-model="newPill.dosage" type="text" required class="w-full p-2 border rounded">
+                        </div>
+                        <div class="flex justify-end">
+                            <button type="button" @click="showAddForm = false" class="mr-2 px-4 py-2 text-gray-600" data-translate="cancelButton">Cancel</button>
+                            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" data-translate="saveButton">Save</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div v-if="showNotification" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white p-8 rounded-lg w-full max-w-md text-center">
+                    <h3 class="text-2xl font-semibold mb-4" data-translate="pillReminderTitle">Pill Reminder</h3>
+                    <p class="text-xl mb-4" data-translate="pillReminderMessage">It's time to take your medication:</p>
+                    <p class="text-2xl font-bold mb-2">{{ currentReminder.pillName }}</p>
+                    <p class="text-xl mb-4">{{ currentReminder.dosage }}</p>
+                    <button @click="acknowledgeReminder" class="px-6 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition" data-translate="understoodButton">I have taken the pill</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-600">
+            <p data-translate="footerText">PillPal is under Apache 2.0 licence. Built by lollms apps builder using lollms.</p>
+        </footer>
+    </div>
+
+    <audio id="notificationSound" src="https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3" preload="auto"></audio>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "PillPal",
+                    appSubtitle: "Your Friendly Pill Reminder",
+                    scheduleTitle: "Pill Schedule",
+                    upcomingTitle: "Upcoming Pills",
+                    addButton: "Add New Pill",
+                    editButton: "Edit",
+                    removeButton: "Remove",
+                    nextPillPrefix: "Next pill:",
+                    noPillsScheduled: "No pills scheduled",
+                    addPillTitle: "Add New Pill",
+                    pillNameLabel: "Pill Name:",
+                    timeLabel: "Time:",
+                    dosageLabel: "Dosage:",
+                    cancelButton: "Cancel",
+                    saveButton: "Save",
+                    footerText: "© 2023 PillPal. All rights reserved.",
+                    pillReminderTitle: "Pill Reminder",
+                    pillReminderMessage: "It's time to take your medication:",
+                    understoodButton: "I have taken the pill"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "PillPal",
+                    appSubtitle: "Votre rappel de pilules convivial",
+                    scheduleTitle: "Horaire des pilules",
+                    upcomingTitle: "Pilules à venir",
+                    addButton: "Ajouter une nouvelle pilule",
+                    editButton: "Modifier",
+                    removeButton: "Supprimer",
+                    nextPillPrefix: "Prochaine pilule :",
+                    noPillsScheduled: "Aucune pilule programmée",
+                    addPillTitle: "Ajouter une nouvelle pilule",
+                    pillNameLabel: "Nom de la pilule :",
+                    timeLabel: "Heure :",
+                    dosageLabel: "Dosage :",
+                    cancelButton: "Annuler",
+                    saveButton: "Enregistrer",
+                    footerText: "© 2023 PillPal. Tous droits réservés.",
+                    pillReminderTitle: "Rappel de pilule",
+                    pillReminderMessage: "Il est temps de prendre votre médicament :",
+                    understoodButton: "J'ai pris la pilule"
+                }
+            }
+        };
+
+        new Vue({
+            el: '#app',
+            data: {
+                upcomingPills: [],
+                pillSchedules: [],
+                showAddForm: false,
+                newPill: {
+                    pillName: '',
+                    time: '',
+                    dosage: ''
+                },
+                nextPill: null,
+                currentLanguage: 'en',
+                availableLanguages: ['en', 'fr'],
+                localizer: null,
+                showNotification: false,
+                currentReminder: null,
+                notificationSound: null,
+                notificationInterval: null
+            },
+            mounted() {
+                this.loadSchedules();
+                this.updateNextPill();
+                setInterval(this.updateNextPill, 60000); // Update every minute
+                const current_language_selector = document.getElementById("currentLanguage")
+                this.localizer = new WebAppLocalizer(translations, 'pillpal_', current_language_selector);
+                this.localizer.apply();
+                this.notificationSound = document.getElementById('notificationSound');
+                this.requestNotificationPermission();
+                this.startNotificationCheck();
+            },
+            methods: {
+                loadSchedules() {
+                    const savedSchedules = localStorage.getItem('pillSchedules');
+                    if (savedSchedules) {
+                        this.pillSchedules = JSON.parse(savedSchedules);
+                    }
+                },
+                saveSchedules() {
+                    localStorage.setItem('pillSchedules', JSON.stringify(this.pillSchedules));
+                },
+                addSchedule() {
+                    if (this.newPill.id) {
+                        // Editing existing pill
+                        const index = this.pillSchedules.findIndex(s => s.id === this.newPill.id);
+                        if (index !== -1) {
+                            this.pillSchedules.splice(index, 1, { ...this.newPill });
+                        }
+                    } else {
+                        // Adding new pill
+                        this.pillSchedules.push({
+                            id: Date.now(),
+                            ...this.newPill
+                        });
+                    }
+                    this.saveSchedules();
+                    this.showAddForm = false;
+                    this.newPill = { pillName: '', time: '', dosage: '' };
+                    this.updateNextPill();
+                },
+                editSchedule(schedule) {
+                    this.showAddForm = true;
+                    this.newPill = { ...schedule };
+                },
+                removeSchedule(id) {
+                    this.pillSchedules = this.pillSchedules.filter(s => s.id !== id);
+                    this.saveSchedules();
+                    this.updateNextPill();
+                },
+                updateNextPill() {
+                    console.log("Starting updateNextPill");
+                    console.log("Current pillSchedules:", this.pillSchedules);
+
+                    const now = new Date();
+                    console.log("Current time:", now);
+
+                    // Use local date instead of UTC
+                    const today = now.toLocaleDateString('en-CA'); // Returns YYYY-MM-DD
+                    console.log("Today's date:", today);
+
+                    try {
+                        const futureSchedules = this.pillSchedules
+                            .map(s => {
+                                const [hours, minutes] = s.time.split(':');
+                                const dateTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+                                console.log(`Parsing time for ${s.time}: ${dateTime}`);
+                                return { ...s, dateTime };
+                            })
+                            .filter(s => {
+                                const isFuture = s.dateTime > now;
+                                console.log(`Is ${s.time} in the future? ${isFuture}`);
+                                return isFuture;
+                            })
+                            .sort((a, b) => a.dateTime - b.dateTime);
+
+                        console.log("Sorted future schedules:", futureSchedules);
+
+                        this.nextPill = futureSchedules[0] || null;
+                        this.upcomingPills = futureSchedules.slice(1, 3);
+
+                        console.log("Next pill:", this.nextPill);
+                        console.log("Upcoming pills:", this.upcomingPills);
+                    } catch (error) {
+                        console.error("Error in updateNextPill:", error);
+                    }
+                },
+
+
+                changeLanguage() {
+                    this.localizer.setLanguage(this.currentLanguage);
+                    this.localizer.apply();
+                },
+                requestNotificationPermission() {
+                    if ('Notification' in window) {
+                        Notification.requestPermission().then(permission => {
+                            if (permission !== 'granted') {
+                                console.log('Notification permission denied');
+                            }
+                        });
+                    }
+                },
+                startNotificationCheck() {
+                    this.notificationInterval = setInterval(() => {
+                        const now = new Date();
+                        const currentTime = now.toTimeString().slice(0, 5);
+                        const pillToTake = this.pillSchedules.find(pill => pill.time === currentTime);
+                        
+                        if (pillToTake) {
+                            this.showPillNotification(pillToTake);
+                        }
+                    }, 60000); // Check every minute
+                },
+                showPillNotification(pill) {
+                    this.currentReminder = pill;
+                    this.showNotification = true;
+                    this.notificationSound.play();
+                    this.notificationSound.loop = true;
+
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                        new Notification('PillPal Reminder', {
+                            body: `It's time to take ${pill.pillName} - ${pill.dosage}`,
+                            icon: '/path/to/pill-icon.png' // Add a path to your pill icon
+                        });
+                    }
+                },
+                acknowledgeReminder() {
+                    this.showNotification = false;
+                    this.notificationSound.pause();
+                    this.notificationSound.currentTime = 0;
+                    this.currentReminder = null;
+                },
+                exportData() {
+                    const dataStr = JSON.stringify(this.pillSchedules);
+                    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                    const exportFileDefaultName = 'pill_schedules.json';
+                    const linkElement = document.createElement('a');
+                    linkElement.setAttribute('href', dataUri);
+                    linkElement.setAttribute('download', exportFileDefaultName);
+                    linkElement.click();
+                },
+                importData(event) {
+                    const file = event.target.files[0];
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const importedSchedules = JSON.parse(e.target.result);
+                            this.pillSchedules = importedSchedules;
+                            this.saveSchedules();
+                            this.updateNextPill();
+                        } catch (error) {
+                            console.error('Error importing data:', error);
+                            alert('Error importing data. Please check the file format.');
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            },
+            beforeDestroy() {
+                clearInterval(this.notificationInterval);
+            }
+        });
+    </script>
+</body>
+</html>
