@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Vet Companion</title>
+    <script src="/lollms_assets/js/mermaid.min"></script>
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .thinking-animation {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-green-100 to-blue-100 min-h-screen font-sans" style="font-family: 'Poppins', sans-serif;">
+    <div class="flex h-screen">
+        <!-- Left Panel -->
+        <div class="w-1/4 bg-white shadow-lg p-4 overflow-y-auto">
+            <div class="flex justify-between items-center mt-4">
+                <button id="settings-button" class="bg-green-300 hover:bg-green-400 text-green-800 font-bold py-2 px-4 rounded inline-flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Settings
+                </button>
+            </div>        
+            <!-- Language Selector -->
+            <div class="mb-4">
+                <label id="language-select-label" for="language-select" class="text-lg font-semibold text-green-700">Select Language:</label>
+                <select id="language-select" class="border border-green-300 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-300" onchange="changeLanguage()">
+                    <option value="ar">Arabic</option>
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="zh">Chinese</option>
+                    <!-- Add more languages as needed -->
+                </select>
+            </div>
+            <h2 id="previous-consultations" class="text-2xl font-semibold mb-4 text-green-700">Previous Pet Consultations</h2>
+            <ul id="previous-consultations-list" class="mb-4"></ul>
+            <button onclick="showConsultationView()" id="new-consultation" class="w-full bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition duration-300 font-medium mb-2">New Pet Consultation</button>
+            <button onclick="saveConsultation()" id="save-consultation" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition duration-300 font-medium">Save Pet Consultation</button>
+        </div>
+    
+        <!-- Main Content -->
+        <div id="main-content" class="flex-1 p-8 overflow-y-auto" style="display: none;">
+            <h1 class="flex items-center justify-center space-x-4 text-4xl font-bold text-white">
+                <img src="/apps/AI_VET_Companion/icon.png" alt="Vet Icon" class="w-16 h-16 rounded-full border-4 border-white shadow-md">
+                <span class="text-green-600 px-6 py-3 rounded-lg backdrop-blur-sm" id="app-title">
+                    AI Vet Companion
+                </span>
+            </h1>
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700" id="consultation-title">Pet Consultation</h2>
+                <div id="chat-container" class="mb-4 h-96 overflow-y-auto border border-green-300 rounded-lg p-4 bg-green-50"></div>
+                <div class="flex flex-col space-y-2">
+                    <div class="flex">
+                        <input type="text" id="user-input" class="flex-grow border border-green-300 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 transition duration-300" placeholder="Describe your pet's symptoms...">
+                        <button id="mic-button" class="bg-blue-600 text-white px-4 py-2 hover:bg-blue-700 transition duration-300 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                            </svg>
+                        </button>
+                        <button id="send-button" onclick="sendMessage()" class="bg-green-600 text-white px-6 py-2 rounded-r-lg hover:bg-green-700 transition duration-300 font-medium">Send</button>
+                    </div>                    
+                    <div class="flex space-x-2">
+                        <input type="file" id="image-input" accept="image/*" style="display: none;" onchange="handleFileUpload(event, 'image')">
+                        <button onclick="document.getElementById('image-input').click()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition duration-300 font-medium">Upload Pet Image</button>
+                        
+                        <input type="file" id="csv-input" accept=".csv" style="display: none;" onchange="handleFileUpload(event, 'csv')">
+                        <button onclick="document.getElementById('csv-input').click()" class="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition duration-300 font-medium">Upload CSV</button>
+                        
+                        <input type="file" id="pdf-input" accept=".pdf" style="display: none;" onchange="handleFileUpload(event, 'pdf')">
+                        <button onclick="document.getElementById('pdf-input').click()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition duration-300 font-medium">Upload PDF</button>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700" id="diagnosis-title">Veterinary Diagnosis</h2>
+                <div id="diagnosis-container" class="mb-4 p-4 bg-green-50 rounded-lg"></div>
+            </div>
+    
+            <div id="mermaid-container" class="bg-white rounded-lg shadow-lg p-6 mb-8 transition duration-300 hover:shadow-xl" style="display: none;">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700" id="reasoning-title">AI Veterinary Reasoning</h2>
+                <div id="mermaid-diagram" class="mermaid bg-gray-50 p-4 rounded-lg"></div>
+            </div>
+    
+            <div class="flex justify-between">
+                <button id="export-button" onclick="exportData()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Export Pet Data</button>
+                <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                <button id="import-button" onclick="document.getElementById('import-file').click()" class="bg-yellow-600 text-white px-6 py-3 rounded-lg hover:bg-yellow-700 transition duration-300 font-medium shadow-md hover:shadow-lg">Import Pet Data</button>
+            </div>
+    
+            <!-- Disclaimer Popup -->
+            <div id="disclaimer-popup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center" style="display: none;">
+                <div class="bg-white p-8 rounded-lg shadow-xl max-w-md">
+                    <h2 class="text-2xl font-bold mb-4 text-green-700" id="disclaimer-title">Veterinary Disclaimer</h2>
+                    <p class="mb-4 text-gray-700" id="disclaimer-text">
+                        This AI Vet Companion is for informational purposes only and should not be considered a substitute for professional veterinary advice, diagnosis, or treatment. Always seek the advice of your veterinarian or other qualified animal health provider with any questions you may have regarding your pet's medical condition.
+                    </p>
+                    <div class="flex items-center mb-4">
+                        <input type="checkbox" id="dont-show-again" class="mr-2">
+                        <label for="dont-show-again" class="text-sm text-gray-600">Don't show this again</label>
+                    </div>
+                    <button onclick="closeDisclaimer()" id="i-understand" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition duration-300">
+                        I Understand
+                    </button>
+                </div>
+            </div>
+    
+        </div>
+        <!-- Add this just before the "Main Content" div -->
+        <div id="welcome-page" class="flex-1 p-8 flex flex-col items-center justify-center">
+            <img src="/apps/AI_VET_Companion/icon.png" alt="Vet Icon" class="w-[50px] h-[50px] mb-8">
+            <h1 class="text-4xl font-bold text-center mb-8 text-green-800" id="welcome-title">Welcome to AI Vet Companion</h1>
+            <p class="text-xl text-center mb-8 text-gray-700" id="welcome-text">Your virtual veterinary assistant is ready to help your pets. Start a new consultation to begin.</p>
+            <button id="start-new-consultation" onclick="showConsultationView()" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300 font-medium text-xl">Start New Pet Consultation</button>
+        </div>
+    
+    </div>
+    <div id="settings-popup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900">Settings</h3>
+                <div class="mt-2 px-7 py-3">
+                    <label for="voice-select" class="block text-sm font-medium text-gray-700">Select Voice:</label>
+                    <select id="voice-select" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <!-- Voice options will be populated here -->
+                    </select>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="close-settings" class="px-4 py-2 bg-gray-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+        
+
+    <script>
+        let lc;
+        let tl;
+        let consultationHistory = [];
+        let isThinking = false;
+        let allConsultations = [];
+        let currentConsultationIndex = -1;
+        let aiIsThinking = "AI is thinking...";
+        let systemPrompt = "You are an AI doctor. Ask the user questions about their symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the patient. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with blood test results. When they do, analyze the information and incorporate it into your diagnosis.";
+
+        const translations = {
+    en: {
+        appTitle: "AI Vet Companion",
+        send: "Send",
+        exportData: "Export data",
+        importData: "Import data",
+        aiIsThinking: "AI is thinking ...",
+        languageSelection: "Select language",
+        iUnderstand: "I understand",
+        previousConsultations: "Previous consultations",
+        startNewConsultation: "Start New consultation",
+        saveConsultation:"Save consultation",
+        consultationTitle: "Consultation",
+        diagnosisTitle: "Final Diagnosis",
+        reasoningTitle: "AI Reasoning",
+        disclaimerTitle: "Disclaimer",
+        disclaimerText: "This AI Vet Companion is for informational purposes only and should not be considered a substitute for professional veterinary advice, diagnosis, or treatment. Always seek the advice of your veterinarian or other qualified animal health provider with any questions you may have regarding your pet's health condition.",
+        welcomeTitle: "Welcome to AI Vet Companion",
+        welcomeText: "Your virtual veterinary assistant is ready to help you. Start a new consultation to begin.",
+        systemPrompt: "You are an AI veterinarian. Ask the user questions about their pet's symptoms and use their responses to build a diagnosis. Use sensor data when available. Use step-by-step reasoning and share them with the pet owner. Use markdown sessions to enhance the quality of your answer and discussion. If you need more information, ask questions until you feel confident in your judgment. Only provide a final diagnosis when you have enough information. Use the '## Diagnosis' header to specify the final diagnosis. Use markdown formatting in your responses to enhance readability. You can also use mermaid diagrams for a better explanation level, in this case put it inside a mermaid markdown code tag. The user may upload images, CSV files with sensor data, or PDF files with test results. When they do, analyze the information and incorporate it into your diagnosis."
+    },
+    fr: {
+        appTitle: "Assistant Vétérinaire IA",
+        send: "Envoyer",
+        exportData: "Exporter les données",
+        importData: "Importer les données",
+        aiIsThinking: "L'IA réfléchit ...",
+        languageSelection: "Sélectionner la langue",
+        iUnderstand: "Je comprends",
+        previousConsultations: "Consultations précédentes",
+        startNewConsultation: "Démarrer une nouvelle consultation",
+        saveConsultation: "Sauvegarder la consultation",
+        consultationTitle: "Consultation",
+        diagnosisTitle: "Diagnostic final",
+        reasoningTitle: "Raisonnement de l'IA",
+        disclaimerTitle: "Avertissement",
+        disclaimerText: "Cet Assistant Vétérinaire IA est uniquement à titre informatif et ne doit pas être considéré comme un substitut aux conseils, diagnostics ou traitements vétérinaires professionnels. Consultez toujours votre vétérinaire ou un autre professionnel de santé animale qualifié pour toute question concernant l'état de santé de votre animal.",
+        welcomeTitle: "Bienvenue sur l'Assistant Vétérinaire IA",
+        welcomeText: "Votre assistant vétérinaire virtuel est prêt à vous aider. Commencez une nouvelle consultation pour débuter.",
+        systemPrompt: "Vous êtes un vétérinaire IA. Posez des questions à l'utilisateur sur les symptômes de son animal et utilisez ses réponses pour établir un diagnostic. Utilisez les données des capteurs si disponibles. Utilisez un raisonnement étape par étape et partagez-le avec le propriétaire de l'animal. Utilisez des sessions markdown pour améliorer la qualité de votre réponse et de la discussion. Si vous avez besoin de plus d'informations, posez des questions jusqu'à ce que vous soyez confiant dans votre jugement. Ne fournissez un diagnostic final que lorsque vous avez suffisamment d'informations. Utilisez l'en-tête '## Diagnostic' pour spécifier le diagnostic final. Utilisez le formatage markdown dans vos réponses pour améliorer la lisibilité. Vous pouvez également utiliser des diagrammes mermaid pour un meilleur niveau d'explication, dans ce cas, mettez-les dans une balise de code markdown mermaid. L'utilisateur peut télécharger des images, des fichiers CSV avec des données de capteurs ou des fichiers PDF avec des résultats de tests. Lorsqu'ils le font, analysez les informations et intégrez-les dans votre diagnostic."
+    },
+    es: {
+        appTitle: "Asistente Veterinario IA",
+        send: "Enviar",
+        exportData: "Exportar datos",
+        importData: "Importar datos",
+        aiIsThinking: "La IA está pensando ...",
+        languageSelection: "Seleccionar idioma",
+        iUnderstand: "Entiendo",
+        previousConsultations: "Consultas anteriores",
+        startNewConsultation: "Iniciar nueva consulta",
+        saveConsultation: "Guardar consulta",
+        consultationTitle: "Consulta",
+        diagnosisTitle: "Diagnóstico final",
+        reasoningTitle: "Razonamiento de la IA",
+        disclaimerTitle: "Aviso legal",
+        disclaimerText: "Este Asistente Veterinario IA es solo para fines informativos y no debe considerarse un sustituto del asesoramiento, diagnóstico o tratamiento veterinario profesional. Siempre consulte a su veterinario u otro proveedor de salud animal calificado con cualquier pregunta que pueda tener sobre la condición de salud de su mascota.",
+        welcomeTitle: "Bienvenido al Asistente Veterinario IA",
+        welcomeText: "Su asistente veterinario virtual está listo para ayudarlo. Comience una nueva consulta para empezar.",
+        systemPrompt: "Eres un veterinario IA. Haz preguntas al usuario sobre los síntomas de su mascota y usa sus respuestas para construir un diagnóstico. Utiliza datos de sensores cuando estén disponibles. Usa un razonamiento paso a paso y compártelo con el dueño de la mascota. Utiliza sesiones markdown para mejorar la calidad de tu respuesta y discusión. Si necesitas más información, haz preguntas hasta que te sientas seguro en tu juicio. Solo proporciona un diagnóstico final cuando tengas suficiente información. Usa el encabezado '## Diagnóstico' para especificar el diagnóstico final. Usa formato markdown en tus respuestas para mejorar la legibilidad. También puedes usar diagramas mermaid para un mejor nivel de explicación, en este caso ponlos dentro de una etiqueta de código markdown mermaid. El usuario puede cargar imágenes, archivos CSV con datos de sensores o archivos PDF con resultados de pruebas. Cuando lo hagan, analiza la información e incorpórala en tu diagnóstico."
+    },
+    it: {
+        appTitle: "Assistente Veterinario IA",
+        send: "Invia",
+        exportData: "Esporta dati",
+        importData: "Importa dati",
+        aiIsThinking: "L'IA sta pensando ...",
+        languageSelection: "Seleziona lingua",
+        iUnderstand: "Capisco",
+        previousConsultations: "Consultazioni precedenti",
+        startNewConsultation: "Inizia nuova consultazione",
+        saveConsultation: "Salva consultazione",
+        consultationTitle: "Consultazione",
+        diagnosisTitle: "Diagnosi finale",
+        reasoningTitle: "Ragionamento dell'IA",
+        disclaimerTitle: "Disclaimer",
+        disclaimerText: "Questo Assistente Veterinario IA è solo a scopo informativo e non deve essere considerato un sostituto della consulenza, diagnosi o trattamento veterinario professionale. Consulta sempre il tuo veterinario o altro fornitore di assistenza sanitaria animale qualificato per qualsiasi domanda tu possa avere riguardo alla condizione di salute del tuo animale domestico.",
+        welcomeTitle: "Benvenuto nell'Assistente Veterinario IA",
+        welcomeText: "Il tuo assistente veterinario virtuale è pronto ad aiutarti. Inizia una nuova consultazione per cominciare.",
+        systemPrompt: "Sei un veterinario IA. Fai domande all'utente sui sintomi del loro animale domestico e usa le loro risposte per costruire una diagnosi. Usa i dati dei sensori quando disponibili. Usa un ragionamento passo-passo e condividilo con il proprietario dell'animale. Usa sessioni markdown per migliorare la qualità della tua risposta e discussione. Se hai bisogno di più informazioni, fai domande finché non ti senti sicuro nel tuo giudizio. Fornisci una diagnosi finale solo quando hai informazioni sufficienti. Usa l'intestazione '## Diagnosi' per specificare la diagnosi finale. Usa la formattazione markdown nelle tue risposte per migliorare la leggibilità. Puoi anche usare diagrammi mermaid per un migliore livello di spiegazione, in questo caso mettili all'interno di un tag di codice markdown mermaid. L'utente può caricare immagini, file CSV con dati dei sensori o file PDF con risultati dei test. Quando lo fanno, analizza le informazioni e incorporale nella tua diagnosi."
+    },
+    de: {
+        appTitle: "KI-Tierarzt-Assistent",
+        send: "Senden",
+        exportData: "Daten exportieren",
+        importData: "Daten importieren",
+        aiIsThinking: "KI denkt nach ...",
+        languageSelection: "Sprache auswählen",
+        iUnderstand: "Ich verstehe",
+        previousConsultations: "Vorherige Konsultationen",
+        startNewConsultation: "Neue Konsultation starten",
+        saveConsultation: "Konsultation speichern",
+        consultationTitle: "Konsultation",
+        diagnosisTitle: "Endgültige Diagnose",
+        reasoningTitle: "KI-Begründung",
+        disclaimerTitle: "Haftungsausschluss",
+        disclaimerText: "Dieser KI-Tierarzt-Assistent dient nur zu Informationszwecken und sollte nicht als Ersatz für professionelle tierärztliche Beratung, Diagnose oder Behandlung angesehen werden. Wenden Sie sich bei Fragen zum Gesundheitszustand Ihres Haustieres immer an Ihren Tierarzt oder einen anderen qualifizierten Tiergesundheitsanbieter.",
+        welcomeTitle: "Willkommen beim KI-Tierarzt-Assistenten",
+        welcomeText: "Ihr virtueller Tierarzt-Assistent ist bereit, Ihnen zu helfen. Starten Sie eine neue Konsultation, um zu beginnen.",
+        systemPrompt: "Du bist ein KI-Tierarzt. Stelle dem Benutzer Fragen zu den Symptomen seines Haustieres und verwende seine Antworten, um eine Diagnose zu erstellen. Verwende Sensordaten, wenn verfügbar. Verwende eine schrittweise Argumentation und teile sie mit dem Tierbesitzer. Verwende Markdown-Sitzungen, um die Qualität deiner Antwort und Diskussion zu verbessern. Wenn du mehr Informationen benötigst, stelle Fragen, bis du dir in deinem Urteil sicher bist. Gib eine endgültige Diagnose nur ab, wenn du genügend Informationen hast. Verwende die Überschrift '## Diagnose', um die endgültige Diagnose anzugeben. Verwende Markdown-Formatierung in deinen Antworten, um die Lesbarkeit zu verbessern. Du kannst auch Mermaid-Diagramme für eine bessere Erklärungsebene verwenden, in diesem Fall setze sie in ein Mermaid-Markdown-Code-Tag. Der Benutzer kann Bilder, CSV-Dateien mit Sensordaten oder PDF-Dateien mit Testergebnissen hochladen. Wenn sie dies tun, analysiere die Informationen und integriere sie in deine Diagnose."
+    },
+    ar: {
+        appTitle: "مساعد الطبيب البيطري الذكي",
+        send: "إرسال",
+        exportData: "تصدير البيانات",
+        importData: "استيراد البيانات",
+        aiIsThinking: "الذكاء الاصطناعي يفكر ...",
+        languageSelection: "اختر اللغة",
+        iUnderstand: "أفهم",
+        previousConsultations: "الاستشارات السابقة",
+        startNewConsultation: "بدء استشارة جديدة",
+        saveConsultation: "حفظ الاستشارة",
+        consultationTitle: "استشارة",
+        diagnosisTitle: "التشخيص النهائي",
+        reasoningTitle: "تفكير الذكاء الاصطناعي",
+        disclaimerTitle: "إخلاء المسؤولية",
+        disclaimerText: "هذا المساعد البيطري الذكي هو لأغراض إعلامية فقط ولا ينبغي اعتباره بديلاً عن المشورة البيطرية المهنية أو التشخيص أو العلاج. استشر دائمًا طبيبك البيطري أو مقدم الرعاية الصحية الحيوانية المؤهل الآخر بشأن أي أسئلة قد تكون لديك بخصوص الحالة الصحية لحيوانك الأليف.",
+        welcomeTitle: "مرحبًا بك في مساعد الطبيب البيطري الذكي",
+        welcomeText: "مساعدك البيطري الافتراضي جاهز لمساعدتك. ابدأ استشارة جديدة للبدء.",
+        systemPrompt: "أنت طبيب بيطري ذكي. اطرح أسئلة على المستخدم حول أعراض حيوانه الأليف واستخدم إجاباتهم لبناء تشخيص. استخدم بيانات المستشعرات عند توفرها. استخدم التفكير خطوة بخطوة وشاركها مع صاحب الحيوان الأليف. استخدم جلسات markdown لتحسين جودة إجابتك ومناقشتك. إذا كنت بحاجة إلى مزيد من المعلومات، اطرح أسئلة حتى تشعر بالثقة في حكمك. قدم تشخيصًا نهائيًا فقط عندما يكون لديك معلومات كافية. استخدم العنوان '## التشخيص' لتحديد التشخيص النهائي. استخدم تنسيق markdown في ردودك لتحسين القراءة. يمكنك أيضًا استخدام مخططات mermaid لمستوى أفضل من الشرح، في هذه الحالة ضعها داخل علامة كود markdown mermaid. يمكن للمستخدم تحميل صور أو ملفات CSV تحتوي على بيانات المستشعرات أو ملفات PDF تحتوي على نتائج الاختبارات. عندما يفعلون ذلك، قم بتحليل المعلومات ودمجها في تشخيصك."
+    },
+    zh: {
+        appTitle: "AI兽医助手",
+        send: "发送",
+        exportData: "导出数据",
+        importData: "导入数据",
+        aiIsThinking: "AI正在思考...",
+        languageSelection: "选择语言",
+        iUnderstand: "我明白",
+        previousConsultations: "以前的咨询",
+        startNewConsultation: "开始新咨询",
+        saveConsultation: "保存咨询",
+        consultationTitle: "咨询",
+        diagnosisTitle: "最终诊断",
+        reasoningTitle: "AI推理",
+        disclaimerTitle: "免责声明",
+        disclaimerText: "此AI兽医助手仅供参考，不应被视为专业兽医建议、诊断或治疗的替代品。对于您宠物的健康状况有任何疑问，请始终咨询您的兽医或其他合格的动物健康提供者。",
+        welcomeTitle: "欢迎使用AI兽医助手",
+        welcomeText: "您的虚拟兽医助手已准备好为您提供帮助。开始新的咨询以开始。",
+        systemPrompt: "你是一位AI兽医。向用户询问他们宠物的症状，并使用他们的回答来建立诊断。在可用时使用传感器数据。使用逐步推理并与宠物主人分享。使用markdown会话来提高你的回答和讨论质量。如果你需要更多信息，请继续提问直到你对判断有信心。只有在你有足够信息时才提供最终诊断。使用'## 诊断'标题来指定最终诊断。在你的回答中使用markdown格式以提高可读性。你也可以使用mermaid图表来更好地解释，在这种情况下，将其放在mermaid markdown代码标签内。用户可能会上传图片、包含传感器数据的CSV文件或包含测试结果的PDF文件。当他们这样做时，分析信息并将其纳入你的诊断中。"
+    }
+}
+
+
+        let recognition;
+        let isListening = false;
+
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = function(event) {
+                    let finalTranscript = '';
+                    let interimTranscript = '';
+
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+
+                    // Combine final and interim transcripts
+                    const fullTranscript = finalTranscript + interimTranscript;
+                    document.getElementById('user-input').value = fullTranscript;
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Speech recognition error:', event.error);
+                };
+
+                recognition.onend = function() {
+                    isListening = false;
+                    updateMicButtonState();
+                };
+            } else {
+                console.error('Speech recognition not supported');
+                document.getElementById('mic-button').style.display = 'none';
+            }
+        }
+
+        function toggleSpeechRecognition() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (isListening) {
+                recognition.stop();
+            } else {
+                const selectedLanguage = document.getElementById('language-select').value;
+                recognition.lang = selectedLanguage;
+                recognition.start();
+                isListening = true;
+            }
+            updateMicButtonState();
+        }
+
+        function updateMicButtonState() {
+            const micButton = document.getElementById('mic-button');
+            if (isListening) {
+                micButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+                micButton.classList.add('bg-red-600', 'hover:bg-red-700');
+            } else {
+                micButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+                micButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            }
+        }
+
+        // Add event listener to the mic button
+        document.getElementById('mic-button').addEventListener('click', toggleSpeechRecognition);
+
+
+        let selectedVoice = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const settingsButton = document.getElementById('settings-button');
+            const settingsPopup = document.getElementById('settings-popup');
+            const closeSettingsButton = document.getElementById('close-settings');
+            const voiceSelect = document.getElementById('voice-select');
+
+            settingsButton.addEventListener('click', function() {
+                settingsPopup.classList.remove('hidden');
+                populateVoiceList();
+            });
+
+            closeSettingsButton.addEventListener('click', function() {
+                settingsPopup.classList.add('hidden');
+            });
+
+            voiceSelect.addEventListener('change', function() {
+                selectedVoice = voiceSelect.value;
+            });
+
+            function populateVoiceList() {
+                const selectedLanguage = document.getElementById('language-select').value;
+                const voices = speechSynthesis.getVoices();
+                
+                voiceSelect.innerHTML = '';
+                
+                voices.forEach(function(voice) {
+                    if (voice.lang.startsWith(selectedLanguage)) {
+                        const option = document.createElement('option');
+                        option.textContent = voice.name + ' (' + voice.lang + ')';
+                        option.value = voice.name;
+                        voiceSelect.appendChild(option);
+                    }
+                });
+
+                if (selectedVoice) {
+                    voiceSelect.value = selectedVoice;
+                }
+            }
+
+            // Ensure voices are loaded
+            speechSynthesis.onvoiceschanged = populateVoiceList;
+        });
+
+        // Update the readMessage function to use the selected voice
+        function readMessage(button) {
+            const messageText = button.parentElement.textContent.split(':')[1].trim();
+            const selectedLanguage = document.getElementById('language-select').value;
+            
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(messageText);
+                utterance.lang = selectedLanguage;
+
+                if (selectedVoice) {
+                    const voices = speechSynthesis.getVoices();
+                    const voice = voices.find(v => v.name === selectedVoice);
+                    if (voice) {
+                        utterance.voice = voice;
+                    }
+                }
+                
+                speechSynthesis.cancel(); // Stop any ongoing speech
+                speechSynthesis.speak(utterance);
+            } else {
+                console.error('Text-to-speech not supported in this browser.');
+                alert('Text-to-speech is not supported in your browser.');
+            }
+        }
+
+        // Update the changeLanguage function to repopulate the voice list
+        function changeLanguage() {
+            const selectedLanguage = document.getElementById('language-select').value;
+            localStorage.setItem('aiVetSelectedLanguage', selectedLanguage);
+            updateLanguage(selectedLanguage);
+            systemPrompt = translations[selectedLanguage].systemPrompt;
+            
+            // Update speech recognition language
+            if (recognition) {
+                recognition.lang = selectedLanguage;
+            }
+
+            // Repopulate voice list
+            populateVoiceList();
+        }
+
+
+    function updateLanguage(language) {
+        document.getElementById('app-title').innerText = translations[language].appTitle;
+        document.getElementById('start-new-consultation').innerText = translations[language].startNewConsultation;
+        document.getElementById('new-consultation').innerText = translations[language].startNewConsultation;
+        document.getElementById('save-consultation').innerText = translations[language].saveConsultation;
+        document.getElementById('language-select-label').innerText = translations[language].languageSelection;
+        document.getElementById('i-understand').innerText = translations[language].iUnderstand;
+
+
+        document.getElementById('send-button').innerText = translations[language].send;
+        document.getElementById('export-button').innerText = translations[language].exportData;
+        document.getElementById('import-button').innerText = translations[language].importData;
+        document.getElementById('previous-consultations').innerText = translations[language].previousConsultations;        
+        
+        document.getElementById('consultation-title').innerText = translations[language].consultationTitle;
+        document.getElementById('diagnosis-title').innerText = translations[language].diagnosisTitle;
+        document.getElementById('reasoning-title').innerText = translations[language].reasoningTitle;
+        document.getElementById('disclaimer-title').innerText = translations[language].disclaimerTitle;
+        document.getElementById('disclaimer-text').innerText = translations[language].disclaimerText;
+        document.getElementById('welcome-title').innerText = translations[language].welcomeTitle;
+        document.getElementById('welcome-text').innerText = translations[language].welcomeText;
+    }
+    function loadSettings() {
+        const storedLanguage = localStorage.getItem('aiVetSelectedLanguage') || 'en'; // Default to English if no language is stored
+        document.getElementById('language-select').value = storedLanguage; // Set the dropdown to the stored language
+        updateLanguage(storedLanguage); // Update the UI with the stored language
+        systemPrompt = translations[storedLanguage].systemPrompt; // Set the initial system prompt
+    }
+
+        async function initializeLollms() {
+            lc = new LollmsClient(
+                null,
+                null,
+                4096,
+                -1,
+                4096,
+                0.7,
+                50,
+                0.95,
+                1.1,
+                64,
+                null,
+                8,
+                "",
+                ELF_GENERATION_FORMAT.LOLLMS
+            );
+            tl = new TasksLibrary(lc);
+            loadPreviousConsultations();
+        }
+
+        function showWelcomePage() {
+            document.getElementById('welcome-page').style.display = 'flex';
+            document.getElementById('main-content').style.display = 'none';
+        }
+
+        function showConsultationView() {
+            document.getElementById('welcome-page').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            startNewConsultation();
+        }
+
+
+        // Modify the startNewConsultation function
+        async function startNewConsultation() {
+            consultationHistory = [];
+            document.getElementById('chat-container').innerHTML = '';
+            document.getElementById('diagnosis-container').innerHTML = '';
+            document.getElementById('mermaid-container').style.display = 'none';
+            currentConsultationIndex = -1;
+            
+            let prompt = lc.system_message() + systemPrompt + lc.template.separator_template + 
+                        lc.ai_message() + "Welcome! I'm your AI doctor assistant. How can I help you today? Please describe your symptoms or concerns.";
+
+            setThinking(true);
+            const response = await lc.generate(prompt);
+            setThinking(false);
+            updateChatContainer("AI", response);
+            consultationHistory.push({role: "system", content: systemPrompt});
+            consultationHistory.push({role: "assistant", content: response});
+            
+            processMermaidDiagram(response);
+            extractDiagnosis(response);
+        }
+
+        async function sendMessage() {
+            if (isThinking) return;
+
+            const userInput = document.getElementById('user-input').value;
+            if (!userInput) return;
+
+            updateChatContainer("You", userInput);
+            consultationHistory.push({role: "user", content: userInput});
+
+            const prompt = consultationHistory.map(msg => {
+                if (msg.role === "user") return lc.user_message() + msg.content;
+                if (msg.role === "assistant") return lc.ai_message() + msg.content;
+                return "";
+            }).join(lc.template.separator_template) + lc.template.separator_template + lc.ai_message();
+
+            setThinking(true);
+            
+            // Extract images from consultationHistory
+            const images = consultationHistory.filter(msg => msg.role === "image").map(msg => msg.content);
+            
+            let response;
+            try {
+                // Attempt to generate response with images
+                response = images.length > 0 
+                    ? await lc.generate_with_images(prompt, images) 
+                    : await lc.generate(prompt); // Fallback to generate if no images
+            } catch (error) {
+                // If generate_with_images fails, fallback to generate and notify the user
+                console.error("Image input not supported:", error);
+                response = await lc.generate(prompt);
+                updateChatContainer("AI", "The model you are using does not support image inputs. Here is the response without images:");
+            }
+
+            setThinking(false);
+            updateChatContainer("AI", response);
+            consultationHistory.push({role: "assistant", content: response});
+
+            document.getElementById('user-input').value = '';
+
+            processMermaidDiagram(response);
+            extractDiagnosis(response);
+        }
+
+        async function handleFileUpload(event, fileType) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            let fileContent = '';
+            let fileInfo = '';
+            let images = []; // Array to hold base64 images
+
+            if (fileType === 'image') {
+                fileContent = await readFileAsDataURL(file);
+                images.push(fileContent); // Store the base64 image
+                fileInfo = `[An image file named "${file.name}" (${file.type}) has been uploaded.]`;
+                consultationHistory.push({role: "image", content: fileContent}); // Store in consultationHistory
+                updateChatContainer("You", fileContent, true); // Pass true to indicate it's an image
+            } else if (fileType === 'csv') {
+                fileContent = await readFileAsText(file);
+                fileInfo = `[A CSV file named "${file.name}" has been uploaded. Its content is as follows:]\n\n${fileContent}`;
+                consultationHistory.push({role: "document", content: fileContent}); // Store in consultationHistory
+                updateChatContainer("You", fileInfo);
+            } else if (fileType === 'pdf') {
+                fileContent = await readFileAsArrayBuffer(file);
+                const pdfText = await extractTextFromPDF(fileContent);
+                fileInfo = `[A PDF file named "${file.name}" has been uploaded. Its textual content is as follows:]\n\n${pdfText}`;
+                consultationHistory.push({role: "document", content: pdfText}); // Store in consultationHistory
+                updateChatContainer("You", fileInfo);
+            }
+        }
+
+        function updateChatContainer(sender, message, isImage = false, index) {
+            const chatContainer = document.getElementById('chat-container');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `mb-4 p-3 rounded-lg ${sender === 'You' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`;
+            
+            if (isImage) {
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong>
+                    <img src="${message}" alt="Uploaded Image" style="max-width: 100%; height: auto;" />
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                `;
+            } else {
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong> ${marked.parse(message)}
+                    <button onclick="editMessage(this, ${index})" aria-label="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-1.5 1.5-3.708-3.708 1.5-1.5a.5.5 0 0 1 0-.708zM11.207 2.5l-1.5 1.5 3.708 3.708 1.5-1.5-3.708-3.708zM1 13.5V15h1.5l8.5-8.5-1.5-1.5L1 13.5z"/>
+                        </svg>
+                    </button>
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                    <button onclick="readMessage(this)" aria-label="Read">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-volume-up" viewBox="0 0 16 16">
+                            <path d="M11.536 14.01A8.473 8.473 0 0 0 14.026 8a8.473 8.473 0 0 0-2.49-6.01l-.708.707A7.476 7.476 0 0 1 13.025 8c0 2.071-.84 3.946-2.197 5.303l.708.707z"/>
+                            <path d="M10.121 12.596A6.48 6.48 0 0 0 12.025 8a6.48 6.48 0 0 0-1.904-4.596l-.707.707A5.483 5.483 0 0 1 11.025 8a5.483 5.483 0 0 1-1.61 3.89l.706.706z"/>
+                            <path d="M10.025 8a4.486 4.486 0 0 1-1.318 3.182L8 10.475A3.489 3.489 0 0 0 9.025 8c0-.966-.392-1.841-1.025-2.475l.707-.707A4.486 4.486 0 0 1 10.025 8zM7 4a.5.5 0 0 0-.812-.39L3.825 5.5H1.5A.5.5 0 0 0 1 6v4a.5.5 0 0 0 .5.5h2.325l2.363 1.89A.5.5 0 0 0 7 12V4zM4.312 6.39 6 5.04v5.92L4.312 9.61A.5.5 0 0 0 4 9.5H2v-3h2a.5.5 0 0 0 .312-.11z"/>
+                        </svg>
+                    </button>
+                `;
+            }
+
+            chatContainer.appendChild(messageDiv);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+
+
+
+        function loadConsultationData(data) {
+            consultationHistory = data.consultationHistory;
+            document.getElementById('chat-container').innerHTML = '';
+            consultationHistory.forEach((msg, index) => {
+                if (msg.role !== "system") {
+                    updateChatContainer(msg.role === "user" ? "You" : msg.role === "image" ? "image": msg.role === "document"? "document" : "AI", msg.content, msg.role=="image", index);
+                }
+            });
+            document.getElementById('diagnosis-container').innerHTML = data.diagnosis;
+            const lastResponse = consultationHistory[consultationHistory.length - 1].content;
+            processMermaidDiagram(lastResponse);
+        }
+
+
+        function editMessage(button, index) {
+            const messageDiv = button.closest('div');
+            if (!messageDiv) return;
+
+            const currentMessage = messageDiv.innerHTML.split('</strong>')[1].split('<button')[0].trim();
+            const newMessage = prompt("Edit your message:", currentMessage);
+
+            if (newMessage !== null && newMessage !== "") {
+                const sender = messageDiv.querySelector('strong').textContent.replace(':', '');
+                messageDiv.innerHTML = `
+                    <strong>${sender}:</strong> ${marked.parse(newMessage)}
+                    <button onclick="editMessage(this, ${index})" aria-label="Edit">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-1.5 1.5-3.708-3.708 1.5-1.5a.5.5 0 0 1 0-.708zM11.207 2.5l-1.5 1.5 3.708 3.708 1.5-1.5-3.708-3.708zM1 13.5V15h1.5l8.5-8.5-1.5-1.5L1 13.5z"/>
+                        </svg>
+                    </button>
+                    <button onclick="deleteMessage(this, ${index})" aria-label="Delete">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 .5.5v1h-6v-1zm1-3a.5.5 0 0 1 .5-.5h3a.5.5 0 0 1 .5.5v1h4a.5.5 0 0 1 0 1h-1.5l-.5 10a.5.5 0 0 1-.5.5H4a.5.5 0 0 1-.5-.5l-.5-10H1a.5.5 0 0 1 0-1h4V2z"/>
+                        </svg>
+                    </button>
+                `;
+                // Update consultationHistory
+                if (consultationHistory[index]) {
+                    consultationHistory[index].content = newMessage;
+                }
+            }
+        }
+
+        function deleteMessage(button, index) {
+            const messageDiv = button.closest('div');
+            if (!messageDiv) return;
+
+            // Update consultationHistory before removing the element
+            if (index !== -1) {
+                consultationHistory.splice(index, 1);
+            }
+
+            messageDiv.remove();
+
+            // Adjust indices for remaining messages
+            const chatContainer = document.getElementById('chat-container');
+            const remainingMessages = chatContainer.querySelectorAll('div');
+            remainingMessages.forEach((msg, newIndex) => {
+                const editBtn = msg.querySelector('button[aria-label="Edit"]');
+                const deleteBtn = msg.querySelector('button[aria-label="Delete"]');
+                if (editBtn) editBtn.setAttribute('onclick', `editMessage(this, ${newIndex})`);
+                if (deleteBtn) deleteBtn.setAttribute('onclick', `deleteMessage(this, ${newIndex})`);
+            });
+        }
+
+        function extractDiagnosis(response) {
+            const diagnosisMatch = response.match(/## Diagnosis\s*([\s\S]*?)(?=\n#|$)/i);
+            if (diagnosisMatch) {
+                const diagnosis = diagnosisMatch[1].trim();
+                document.getElementById('diagnosis-container').innerHTML = marked.parse(diagnosis);
+            }
+        }
+
+        function processMermaidDiagram(response) {
+            const codes = tl.extractCodeBlocks(response);
+            const mermaidCode = codes.find(code => code.language === 'mermaid');
+            
+            const mermaidContainer = document.getElementById('mermaid-container');
+            if (mermaidCode) {
+                mermaidContainer.style.display = 'block';
+                const mermaidDiagram = document.getElementById('mermaid-diagram');
+                mermaidDiagram.innerHTML = mermaidCode.content;
+                mermaid.init(undefined, mermaidDiagram);
+            } else {
+                mermaidContainer.style.display = 'none';
+            }
+        }
+
+        function exportData() {
+            const data = {
+                consultationHistory: consultationHistory,
+                diagnosis: document.getElementById('diagnosis-container').innerHTML
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "ai_doctor_consultation.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const importedData = JSON.parse(e.target.result);
+                    loadConsultationData(importedData);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function setThinking(thinking) {
+            isThinking = thinking;
+            const buttons = ['send-button', 'export-button', 'import-button'];
+            const userInput = document.getElementById('user-input');
+            
+            buttons.forEach(id => {
+                const button = document.getElementById(id);
+                button.disabled = thinking;
+                button.classList.toggle('opacity-50', thinking);
+                button.classList.toggle('cursor-not-allowed', thinking);
+            });
+            
+            userInput.disabled = thinking;
+            userInput.classList.toggle('bg-gray-100', thinking);
+            
+            if (thinking) {
+                const thinkingDiv = document.createElement('div');
+                thinkingDiv.id = 'thinking-indicator';
+                thinkingDiv.className = 'flex items-center justify-center p-4';
+                thinkingDiv.innerHTML = `<div class="thinking-animation mr-3"></div><span class="text-blue-600 font-medium">${aiIsThinking}</span>`;
+                document.getElementById('chat-container').appendChild(thinkingDiv);
+            } else {
+                const thinkingDiv = document.getElementById('thinking-indicator');
+                if (thinkingDiv) thinkingDiv.remove();
+            }
+        }
+
+        function saveConsultation() {
+            const data = {
+                consultationHistory: consultationHistory,
+                diagnosis: document.getElementById('diagnosis-container').innerHTML
+            };
+            const timestamp = new Date().toISOString();
+            const consultation = { timestamp, data };
+            
+            if (currentConsultationIndex === -1) {
+                allConsultations.push(consultation);
+                currentConsultationIndex = allConsultations.length - 1;
+            } else {
+                allConsultations[currentConsultationIndex] = consultation;
+            }
+            
+            localStorage.setItem('aiVetConsultations', JSON.stringify(allConsultations));
+            updatePreviousConsultationsList();
+        }
+
+        function loadPreviousConsultations() {
+            const savedConsultations = localStorage.getItem('aiVetConsultations');
+            if (savedConsultations) {
+                allConsultations = JSON.parse(savedConsultations);
+                updatePreviousConsultationsList();
+            }
+        }
+
+        function updatePreviousConsultationsList() {
+            const list = document.getElementById('previous-consultations-list');
+            list.innerHTML = '';
+            allConsultations.forEach((consultation, index) => {
+                const li = document.createElement('li');
+                li.className = 'mb-2 p-2 bg-gray-100 rounded cursor-pointer hover:bg-gray-200 transition duration-300 flex justify-between items-center';
+                const dateSpan = document.createElement('span');
+                dateSpan.textContent = new Date(consultation.timestamp).toLocaleString();
+                dateSpan.onclick = () => {
+                    document.getElementById('welcome-page').style.display = 'none';
+                    document.getElementById('main-content').style.display = 'block';
+                    loadConsultation(index);
+                }
+                li.appendChild(dateSpan);
+                
+                const deleteButton = document.createElement('button');
+                deleteButton.innerHTML = '&#x2716;'; // X symbol
+                deleteButton.className = 'text-red-600 hover:text-red-800 font-bold';
+                deleteButton.onclick = (e) => {
+                    e.stopPropagation();
+                    removeConsultation(index);
+                };
+                li.appendChild(deleteButton);
+                
+                list.appendChild(li);
+            });
+        }
+
+        function loadConsultation(index) {
+            currentConsultationIndex = index;
+            const selectedConsultation = allConsultations[index];
+            loadConsultationData(selectedConsultation.data);
+        }
+
+        function removeConsultation(index) {
+            if (confirm('Are you sure you want to delete this consultation?')) {
+                allConsultations.splice(index, 1);
+                localStorage.setItem('aiVetConsultations', JSON.stringify(allConsultations));
+                updatePreviousConsultationsList();
+                if (currentConsultationIndex === index) {
+                    startNewConsultation();
+                } else if (currentConsultationIndex > index) {
+                    currentConsultationIndex--;
+                }
+            }
+        }
+
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+
+        function readFileAsArrayBuffer(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function extractTextFromPDF(arrayBuffer) {
+            const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+            let markdownText = '';
+            
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                
+                // Initialize variables to store text and table data
+                let pageText = '';
+                let tableData = [];
+                let currentRow = [];
+                let lastY = null;
+
+                // Process each item in the content
+                content.items.forEach(item => {
+                    const text = item.str;
+                    const fontSize = item.transform[0]; // Approximate font size from transform matrix
+                    const y = item.transform[5]; // Y position of the text
+
+                    // Detect headers based on font size
+                    if (fontSize > 12) { // Assuming larger font sizes are headers
+                        pageText += `## ${text}\n\n`; // Use ## for sub-headers
+                    } else {
+                        // Check if we are still on the same row
+                        if (lastY === null || Math.abs(lastY - y) < 5) { // Adjust threshold as needed
+                            currentRow.push(text);
+                        } else {
+                            // If we have a complete row, push it to tableData
+                            if (currentRow.length > 0) {
+                                tableData.push(currentRow);
+                                currentRow = [text]; // Start a new row
+                            }
+                        }
+                        lastY = y; // Update lastY to current item's Y position
+                        pageText += `${text} `;
+                    }
+                });
+
+                // Push the last row if it exists
+                if (currentRow.length > 0) {
+                    tableData.push(currentRow);
+                }
+
+                // Format tables in Markdown
+                if (tableData.length > 0) {
+                    markdownText += `| ${tableData[0].join(' | ')} |\n`; // Header row
+                    markdownText += `| ${tableData[0].map(() => '---').join(' | ')} |\n`; // Separator row
+                    tableData.forEach(row => {
+                        markdownText += `| ${row.join(' | ')} |\n`;
+                    });
+                    markdownText += '\n'; // New line after table
+                } else {
+                    markdownText += `# Page ${i}\n\n${pageText}\n\n`;
+                }
+            }
+            
+            return markdownText;
+        }
+
+        function showDisclaimer() {
+            const showDisclaimer = localStorage.getItem('aiVetShowDisclaimer') !== 'false';
+            if (showDisclaimer) {
+                document.getElementById('disclaimer-popup').style.display = 'flex';
+            }
+        }
+
+        function closeDisclaimer() {
+            const dontShowAgain = document.getElementById('dont-show-again').checked;
+            if (dontShowAgain) {
+                localStorage.setItem('aiVetShowDisclaimer', 'false');
+            }
+            document.getElementById('disclaimer-popup').style.display = 'none';
+        }
+
+        // Modify the window.onload function to include showDisclaimer
+        window.onload = function() {
+            loadSettings();
+            initializeLollms();
+            showWelcomePage();
+            showDisclaimer();
+        };
+
+        // Add event listener for Enter key in the input field
+        document.getElementById('user-input').addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
