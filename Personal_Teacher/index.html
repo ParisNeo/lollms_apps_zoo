@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOLLMS Personal Teacher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3.0.3/dist/dexie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+
+    <link rel="stylesheet" type="text/css" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+
+   <!-- Prism CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+   <!-- Prism JS -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+   <!-- If you want additional languages, include them like this -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+
+
+</head>
+<body class="bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto p-4">
+        <nav class="flex justify-between items-center mb-8">
+            <h1 data-translate="appTitle" class="text-3xl font-bold text-indigo-600 dark:text-indigo-400">LOLLMS Personal Teacher</h1>
+            <div>
+                <div class="flex justify-between items-center mt-4 mb-8">
+                    <button id="settings-button"  data-translate="settingsButton" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition font-bold py-3 px-6 rounded-full inline-flex items-center transition-all duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                        </svg>
+                        Settings
+                    </button>
+                    <button id="darkModeToggle" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition font-bold py-3 px-6 rounded-full inline-flex items-center transition-all duration-300">🌙</button>
+                    <button id="exportData" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition font-bold py-3 px-6 rounded-full inline-flex items-center transition-all duration-300">Export Data</button>
+                    <input type="file" id="importData" class="hidden" accept=".json">
+                    <button id="importDataBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition font-bold py-3 px-6 rounded-full inline-flex items-center transition-all duration-300 ml-2">Import Data</button>
+    
+                </div>
+                </div>
+        </nav>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="md:col-span-2">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 dark:text-gray-100">Generate New Course</h2>
+                    <div class="mb-4">
+                        <label for="topic" data-translate="whatWouldYouLikeToLearn" class="block mb-2 font-semibold dark:text-gray-300">What would you like to learn?</label>
+                        <input type="text" id="topic" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Enter a topic or subject">
+                    </div>
+                    <div class="mb-4">
+                        <label for="difficulty" data-translate="difficultyLevel" class="block mb-2 font-semibold dark:text-gray-300">Difficulty Level</label>
+                        <select id="difficulty" class="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
+                            <option value="beginner">Beginner</option>
+                            <option value="intermediate">Intermediate</option>
+                            <option value="advanced">Advanced</option>
+                        </select>
+                    </div>
+                    <button id="generateCourse" data-translate="generateCourse" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded transition">Generate Course</button>
+                </div>
+
+                <div id="courseContent" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 hidden">
+                    <h2 class="text-2xl font-bold mb-4 dark:text-gray-100"  data-translate="courseContent">Course Content</h2>
+                    <div id="markdown-content" class="prose dark:prose-invert max-w-none dark:text-gray-300"></div>
+                </div>
+
+                <div id="demo" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 hidden">
+                    <h2 class="text-2xl font-bold mb-4 dark:text-gray-100">Interactive Demo</h2>
+                    <div id="demo-content" class="dark:text-gray-300"></div>
+                </div>
+
+                <div id="quiz" class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8 hidden">
+                    <h2 class="text-2xl font-bold mb-4 dark:text-gray-100">Quiz</h2>
+                    <div id="quiz-content" class="dark:text-gray-300"></div>
+                </div>
+            </div>
+
+            <div>
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-bold mb-4 dark:text-gray-100">Saved Courses</h2>
+                    <input type="text" id="courseSearch" class="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200" placeholder="Search courses...">
+                    <ul id="courseList" class="space-y-2 dark:text-gray-300"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="settings-popup" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-8 border w-96 shadow-lg rounded-lg neumorphic bg-gray-800">
+            <div class="mt-3 text-center">
+                <h3 class="text-2xl leading-6 font-medium text-yellow-400 mb-6">Settings</h3>
+                <!-- Language Selector -->
+                <div class="mb-8">
+                    <label id="language-select-label" for="language-select" class="text-lg font-semibold text-yellow-400 mb-2 block">Select Language:</label>
+                    <select id="language-select" class="neumorphic bg-gray-700 text-yellow-400 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-300">
+                        <option value="ar">Arabic</option>
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                        <option value="fr">French</option>
+                        <option value="de">German</option>
+                        <option value="zh">Chinese</option>
+                    </select>
+                </div>
+
+                <div class="items-center px-4 py-3 mt-6">
+                    <button id="close-settings" data-translate="closeSettings" class="w-full neumorphic electric-border bg-gray-600 text-yellow-400 px-6 py-3 rounded-full hover:bg-gray-500 transition duration-300 font-medium">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const languageSelect = document.getElementById('language-select');
+        document.getElementById('settings-button').addEventListener('click', function() {
+            document.getElementById('settings-popup').classList.toggle('hidden');
+        });
+
+        document.getElementById('close-settings').addEventListener('click', function() {
+            document.getElementById('settings-popup').classList.add('hidden');
+        });
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "LOLLMS Personal Teacher",
+                    settingsButton: "Settings",
+                    whatWouldYouLikeToLearn: "What would you like to learn?",
+                    difficultyLevel: "Difficulty level",
+                    generateCourse: "Generate course",
+                    courseContent: "Course content",
+                    closeSettings: "Close"
+                },
+                local_translation: {
+                    coursePrompt: `Generate a comprehensive //difficulty// level course on "//topic//" with the following structure:
+            1. Course Objectives
+            2. Estimated Time to Complete
+            3. Key Concepts
+            4. Detailed Content (with subsections)
+            5. Exercises
+            6. Summary
+            
+            Format the content in markdown.
+            You can illustrate using mermaid by writing mermaid code inside a mermaid markdown tag.`
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "LOLLMS Professeur Personnel",
+                    settingsButton: "Paramètres",
+                    whatWouldYouLikeToLearn: "Que voulez-vous apprendre ?",
+                    difficultyLevel: "Niveau de difficulté",
+                    generateCourse: "Générer le cours",
+                    courseContent: "Contenu du cours",
+                    closeSettings: "Fermer"
+                },
+                local_translation: {
+                    coursePrompt: `Générez un cours complet de niveau //difficulty// sur "//topic//" avec la structure suivante :
+1. Objectifs du cours
+2. Temps estimé pour compléter
+3. Concepts clés
+4. Contenu détaillé (avec sous-sections)
+5. Exercices
+6. Résumé
+
+Formatez le contenu en markdown.
+Vous pouvez illustrer en utilisant mermaid en écrivant le code mermaid à l'intérieur d'une balise markdown mermaid.
+`
+                }
+            },
+            it: {
+                name: "Italiano",
+                translations: {
+                    appTitle: "LOLLMS Insegnante Personale",
+                    settingsButton: "Impostazioni",
+                    whatWouldYouLikeToLearn: "Cosa vorresti imparare?",
+                    difficultyLevel: "Livello di difficoltà",
+                    generateCourse: "Genera corso",
+                    courseContent: "Contenuto del corso",
+                    closeSettings: "Chiudi"
+                },
+                local_translation: {
+                    coursePrompt: `Genera un corso completo di livello //difficulty// su "//topic//" con la seguente struttura:
+1. Obiettivi del corso
+2. Tempo stimato per il completamento
+3. Concetti chiave
+4. Contenuto dettagliato (con sottosezioni)
+5. Esercizi
+6. Riepilogo
+
+Formatta il contenuto in markdown.
+Puoi illustrare utilizzando mermaid scrivendo il codice mermaid all'interno di un tag markdown mermaid.`
+                }
+            },
+            de: {
+                name: "Deutsch",
+                translations: {
+                    appTitle: "LOLLMS Persönlicher Lehrer",
+                    settingsButton: "Einstellungen",
+                    whatWouldYouLikeToLearn: "Was möchten Sie lernen?",
+                    difficultyLevel: "Schwierigkeitsgrad",
+                    generateCourse: "Kurs generieren",
+                    courseContent: "Kursinhalt",
+                    closeSettings: "Schließen"
+                },
+                local_translation: {
+                    coursePrompt: `Erstellen Sie einen umfassenden Kurs auf //difficulty// zum Thema "//topic//" mit der folgenden Struktur:
+1. Kursziele
+2. Geschätzte Zeit zum Abschluss
+3. Schlüsselkonzepte
+4. Detaillierter Inhalt (mit Unterabschnitten)
+5. Übungen
+6. Zusammenfassung
+
+Formatieren Sie den Inhalt in Markdown.
+Sie können mit Mermaid illustrieren, indem Sie den Mermaid-Code innerhalb eines Mermaid-Markdown-Tags schreiben.`
+                }
+            },
+            ar: {
+                name: "العربية",
+                translations: {
+                    appTitle: "LOLLMS المعلم الشخصي",
+                    settingsButton: "الإعدادات",
+                    whatWouldYouLikeToLearn: "ماذا تريد أن تتعلم؟",
+                    difficultyLevel: "مستوى الصعوبة",
+                    generateCourse: "إنشاء الدورة",
+                    courseContent: "محتوى الدورة",
+                    closeSettings: "إغلاق"
+                },
+                local_translation: {
+                    coursePrompt: `قم بإنشاء دورة شاملة بمستوى //difficulty// حول "//topic//" بالهيكل التالي:
+1. أهداف الدورة
+2. الوقت المقدر للإكمال
+3. المفاهيم الرئيسية
+4. المحتوى التفصيلي (مع أقسام فرعية)
+5. التمارين
+6. الملخص
+
+قم بتنسيق المحتوى باستخدام markdown.
+يمكنك التوضيح باستخدام mermaid عن طريق كتابة كود mermaid داخل علامة markdown الخاصة بـ mermaid.`
+                }
+            },
+            zh: {
+                name: "中文",
+                translations: {
+                    appTitle: "LOLLMS 个人教师",
+                    settingsButton: "设置",
+                    whatWouldYouLikeToLearn: "你想学什么？",
+                    difficultyLevel: "难度等级",
+                    generateCourse: "生成课程",
+                    courseContent: "课程内容",
+                    closeSettings: "关闭"
+                },
+                local_translation: {
+                    coursePrompt: `生成一个关于"//difficulty//"的综合//topic//级别课程，具有以下结构：
+1. 课程目标
+2. 预计完成时间
+3. 关键概念
+4. 详细内容（包含子部分）
+5. 练习
+6. 总结
+
+使用 markdown 格式化内容。
+您可以通过在 mermaid markdown 标签内编写 mermaid 代码来进行图表说明。
+`
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, 'personalTeacher_', languageSelect);
+
+        const mr = new MarkdownRenderer()
+        mr.initMermaid()
+
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        let db;
+
+        // Initialize IndexedDB
+        function initDB() {
+            db = new Dexie('LOLLMSTeacherDB');
+            db.version(1).stores({
+                courses: '++id, topic, content, difficulty, created, lastAccessed, rating'
+            });
+        }
+
+        initDB();
+
+        // Dark mode toggle
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            darkModeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
+        });
+
+        function createQuiz(quizData) {
+            const quizContainer = document.getElementById('quiz-content');
+            quizContainer.innerHTML = '<h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">Quiz</h1>';
+            
+            const form = document.createElement('form');
+            form.id = 'quiz-form';
+            form.className = 'space-y-6';
+            
+            quizData.questions.forEach((q, index) => {
+                const questionDiv = document.createElement('div');
+                questionDiv.className = 'bg-gray-50 p-4 rounded-lg shadow';
+                
+                const questionText = document.createElement('p');
+                questionText.className = 'font-semibold text-lg mb-3';
+                questionText.textContent = `${index + 1}. ${q.question}`;
+                questionDiv.appendChild(questionText);
+                
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'space-y-2';
+                
+                q.options.forEach((option, optionIndex) => {
+                    const label = document.createElement('label');
+                    label.className = 'flex items-center space-x-2 cursor-pointer';
+                    
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `question${index}`;
+                    radio.value = optionIndex;
+                    radio.className = 'form-radio text-indigo-600';
+                    
+                    const optionText = document.createElement('span');
+                    optionText.textContent = option;
+                    
+                    label.appendChild(radio);
+                    label.appendChild(optionText);
+                    optionsDiv.appendChild(label);
+                });
+                
+                questionDiv.appendChild(optionsDiv);
+                form.appendChild(questionDiv);
+            });
+            
+            const submitButton = document.createElement('button');
+            submitButton.type = 'submit';
+            submitButton.textContent = 'Submit Quiz';
+            submitButton.className = 'w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 mt-6';
+            form.appendChild(submitButton);
+            
+            quizContainer.appendChild(form);
+            
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                calculateScore(quizData);
+            });
+        }
+
+        function calculateScore(quizData) {
+            let score = 0;
+            const totalQuestions = quizData.questions.length;
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'mt-8 p-6 bg-gray-50 rounded-lg shadow';
+            
+            const results = quizData.questions.map((q, index) => {
+                const selectedAnswer = document.querySelector(`input[name="question${index}"]:checked`);
+                const isCorrect = selectedAnswer && parseInt(selectedAnswer.value) === q.correctAnswer;
+                if (isCorrect) score++;
+                return {
+                    question: q.question,
+                    isCorrect,
+                    correctAnswer: q.options[q.correctAnswer],
+                    userAnswer: selectedAnswer ? q.options[parseInt(selectedAnswer.value)] : 'Not answered'
+                };
+            });
+            
+            const scorePercentage = (score / totalQuestions) * 100;
+            let feedbackClass, feedbackMessage;
+            
+            if (scorePercentage >= 80) {
+                feedbackClass = 'text-green-600';
+                feedbackMessage = 'Excellent job!';
+            } else if (scorePercentage >= 60) {
+                feedbackClass = 'text-yellow-600';
+                feedbackMessage = 'Good effort, but there\'s room for improvement.';
+            } else {
+                feedbackClass = 'text-red-600';
+                feedbackMessage = 'You might want to study more and try again.';
+            }
+            
+            resultDiv.innerHTML = `
+                <h2 class="text-2xl font-bold mb-4">Quiz Results</h2>
+                <p class="text-xl mb-2">You scored <span class="${feedbackClass} font-bold">${score} out of ${totalQuestions}</span></p>
+                <p class="mb-4 ${feedbackClass} font-semibold">${feedbackMessage}</p>
+                <div class="space-y-4">
+                    ${results.map((result, index) => `
+                        <div class="border-b pb-2">
+                            <p class="font-semibold">${index + 1}. ${result.question}</p>
+                            <p class="text-sm">Your answer: <span class="${result.isCorrect ? 'text-green-600' : 'text-red-600'}">${result.userAnswer}</span></p>
+                            ${!result.isCorrect ? `<p class="text-sm text-green-600">Correct answer: ${result.correctAnswer}</p>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            
+            document.getElementById('quiz-content').appendChild(resultDiv);
+        }
+        // Course generation
+        document.getElementById('generateCourse').addEventListener('click', async () => {
+            const topic = document.getElementById('topic').value;
+            const difficulty = document.getElementById('difficulty').value;
+            if (!topic) return;
+
+            showSpinner();
+            
+            console.log("languageSelect",languageSelect.value)
+            console.log("translations[languageSelect.value]",translations[languageSelect.value])
+            const coursePrompt = translations[languageSelect.value].local_translation.coursePrompt.replace("//difficulty//", difficulty).replace("//topic//", topic);
+            console.log("coursePrompt",coursePrompt)
+            const courseContent = await lc.generate(coursePrompt);
+            
+            document.getElementById('markdown-content').innerHTML = await mr.renderMarkdown(courseContent);
+            document.getElementById('courseContent').classList.remove('hidden');
+
+            const demoPrompt = `Based on the ${difficulty} level course about "${topic}", create an interactive demo or example to illustrate a key concept. If it's a programming topic, provide runnable code. If it's a theoretical topic, provide a diagram or interactive explanation. Put the demo code inside a html markdown tag like this:
+\`\`\`html
+<!-- your code here --> 
+\`\`\`
+            `;
+            const demoContent = await lc.generate(demoPrompt);
+
+            const code_blocks = tl.extractCodeBlocks(demoContent)
+            const demo = code_blocks.find(code => code.language === 'html');
+            console.log("demo code", demo)
+            if(demo && demo.length>0){
+                document.getElementById('demo-content').innerHTML = demo[0].content;
+                document.getElementById('demo').classList.remove('hidden');
+            }
+
+            const quizPrompt = `Generate a 5-question multiple-choice quiz for the ${difficulty} level course on "${topic}". Format the quiz as a JSON object with the following structure:
+{
+  "questions": [
+    {
+      "question": "Question text here",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "correctAnswer": 0
+    },
+    // ... more questions
+  ]
+}
+Only provide the JSON object without any additional text or comments.`;
+
+            const quizJSON = await lc.generate(quizPrompt);
+            let quizData = {"questions": []}
+
+            try {
+                quizData = JSON.parse(quizJSON);
+                createQuiz(quizData);
+            } catch (error) {
+                console.error('Error parsing quiz JSON:', error);
+                document.getElementById('quiz-content').textContent = 'Error creating quiz. Please try again.';
+            }
+            document.getElementById('quiz').classList.remove('hidden');
+
+            await saveCourse(topic, courseContent, demoContent, quizData, difficulty);
+            hideSpinner();
+        });
+
+        // Save course to IndexedDB
+        async function saveCourse(topic, content, demoContent, quizContent, difficulty) {
+            await db.courses.add({
+                topic,
+                content,
+                demoContent, 
+                quizContent,
+                difficulty,
+                created: new Date(),
+                lastAccessed: new Date(),
+                rating: 0
+            });
+            updateCourseList();
+        }
+
+        // Update course list
+        async function updateCourseList() {
+            const courseList = document.getElementById('courseList');
+            courseList.innerHTML = '';
+            const courses = await db.courses.reverse().toArray();
+            courses.forEach(course => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200">${course.topic}</span>
+                        <div>
+                            <span class="text-sm text-gray-500">${course.difficulty}</span>
+                            <button class="ml-2 text-red-500 hover:text-red-700">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                li.querySelector('span').addEventListener('click', () => loadCourse(course.id));
+                li.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteCourse(course.id);
+                });
+                courseList.appendChild(li);
+            });
+        }
+
+        // Load course
+        async function loadCourse(id) {
+            const course = await db.courses.get(id);
+            console.log(course.content)
+            document.getElementById('markdown-content').innerHTML = await mr.renderMarkdown(course.content);
+            document.getElementById('courseContent').classList.remove('hidden');
+            
+            const code_blocks = tl.extractCodeBlocks(course.demoContent)
+            document.getElementById('demo').classList.add('hidden');
+            if(code_blocks&&code_blocks.length>0){
+                const demo = code_blocks[0];//.find(code => code.language === 'html');
+                console.log("demo code", code_blocks)
+                document.getElementById('demo-content').innerHTML = demo.content;
+                document.getElementById('demo').classList.remove('hidden');
+
+            }
+            createQuiz(course.quizContent);
+            document.getElementById('quiz').classList.remove('hidden');
+            await db.courses.update(id, { lastAccessed: new Date() });
+        }
+
+        // Delete course
+        async function deleteCourse(id) {
+            await db.courses.delete(id);
+            updateCourseList();
+        }
+
+        // Search courses
+        document.getElementById('courseSearch').addEventListener('input', async (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const courses = await db.courses.toArray();
+            const filteredCourses = courses.filter(course => 
+                course.topic.toLowerCase().includes(searchTerm) || 
+                course.content.toLowerCase().includes(searchTerm)
+            );
+            updateCourseListWithSearch(filteredCourses);
+        });
+
+        function updateCourseListWithSearch(courses) {
+            const courseList = document.getElementById('courseList');
+            courseList.innerHTML = '';
+            courses.forEach(course => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200">${course.topic}</span>
+                        <div>
+                            <span class="text-sm text-gray-500">${course.difficulty}</span>
+                            <button class="ml-2 text-red-500 hover:text-red-700">🗑️</button>
+                        </div>
+                    </div>
+                `;
+                li.querySelector('span').addEventListener('click', () => loadCourse(course.id));
+                li.querySelector('button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteCourse(course.id);
+                });
+                courseList.appendChild(li);
+            });
+        }
+
+        // Export data
+        document.getElementById('exportData').addEventListener('click', async () => {
+            const courses = await db.courses.toArray();
+            const dataStr = JSON.stringify(courses);
+            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+            const exportFileDefaultName = 'lollms_courses.json';
+
+            const linkElement = document.createElement('a');
+            linkElement.setAttribute('href', dataUri);
+            linkElement.setAttribute('download', exportFileDefaultName);
+            linkElement.click();
+        });
+
+        // Import data
+        document.getElementById('importDataBtn').addEventListener('click', () => {
+            document.getElementById('importData').click();
+        });
+
+        document.getElementById('importData').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+
+            reader.onload = async (e) => {
+                const courses = JSON.parse(e.target.result);
+                await db.courses.bulkAdd(courses);
+                updateCourseList();
+            };
+
+            reader.readAsText(file);
+        });
+
+        // Helper functions for spinner
+        function showSpinner() {
+            const spinner = document.createElement('div');
+            spinner.id = 'spinner';
+            spinner.innerHTML = `
+                <div class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen z-50 overflow-hidden bg-gray-700 opacity-75 flex flex-col items-center justify-center">
+                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+                    <h2 class="text-center text-white text-xl font-semibold">Loading...</h2>
+                    <p class="w-1/3 text-center text-white">This may take a few seconds, please don't close this page.</p>
+                </div>
+            `;
+            document.body.appendChild(spinner);
+        }
+
+        function hideSpinner() {
+            const spinner = document.getElementById('spinner');
+            if (spinner) {
+                spinner.remove();
+            }
+        }
+
+        // Initialize
+        updateCourseList();
+    </script>
+
+    <style>
+        .loader {
+            border-top-color: #3498db;
+            -webkit-animation: spinner 1.5s linear infinite;
+            animation: spinner 1.5s linear infinite;
+        }
+
+        @-webkit-keyframes spinner {
+            0% { -webkit-transform: rotate(0deg); }
+            100% { -webkit-transform: rotate(360deg); }
+        }
+
+        @keyframes spinner {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Add syntax highlighting styles */
+        .hljs {
+            display: block;
+            overflow-x: auto;
+            padding: 0.5em;
+            background: #f0f0f0;
+            color: #444;
+        }
+
+        .dark .hljs {
+            background: #1e1e1e;
+            color: #dcdcdc;
+        }
+
+        /* Add custom styles for better readability */
+        .prose {
+            max-width: 65ch;
+            font-size: 1.1rem;
+            line-height: 1.75;
+        }
+
+        .prose h1, .prose h2, .prose h3, .prose h4 {
+            margin-top: 2em;
+            margin-bottom: 1em;
+        }
+
+        .prose ul, .prose ol {
+            padding-left: 1.5em;
+        }
+
+        .prose code {
+            background-color: rgba(0, 0, 0, 0.05);
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+
+        .dark .prose code {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</body>
+</html>
