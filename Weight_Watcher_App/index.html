@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Weight Watcher App</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+
+</head>
+<body class="bg-gray-100 font-sans">
+    <nav class="bg-blue-600 text-white p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-2xl font-bold">Advanced Weight Watcher</h1>
+            <div>
+                <button onclick="showPage('dashboard')" class="px-3 py-2 rounded hover:bg-blue-700">Dashboard</button>
+                <button onclick="showPage('weightLog')" class="px-3 py-2 rounded hover:bg-blue-700">Weight Log</button>
+                <button onclick="showPage('mealLog')" class="px-3 py-2 rounded hover:bg-blue-700">Meal Log</button>
+                <button onclick="showPage('exerciseLog')" class="px-3 py-2 rounded hover:bg-blue-700">Exercise Log</button>
+                <button onclick="showPage('settings')" class="px-3 py-2 rounded hover:bg-blue-700">Settings</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto mt-8">
+        <div id="dashboard" class="page">
+            <h2 class="text-3xl font-bold mb-6">Dashboard</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Weight Progress</h3>
+                    <canvas id="weightChart"></canvas>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold mb-4">Goal Progress</h3>
+                    <div id="goalProgress" class="relative pt-1">
+                        <div class="flex mb-2 items-center justify-between">
+                            <div>
+                                <span class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200">
+                                    Progress to Goal
+                                </span>
+                            </div>
+                            <div class="text-right">
+                                <span id="progressPercentage" class="text-xs font-semibold inline-block text-blue-600">
+                                    0%
+                                </span>
+                            </div>
+                        </div>
+                        <div class="overflow-hidden h-2 mb-4 text-xs flex rounded bg-blue-200">
+                            <div id="progressBar" style="width:0%" class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center bg-blue-500"></div>
+                        </div>
+                    </div>
+                    <p id="goalInfo" class="text-center mt-4">Set a weight goal in the Settings page</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="weightLog" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6">Weight Log</h2>
+            <form id="weightForm" class="mb-6">
+                <div class="flex space-x-4">
+                    <div class="flex-1">
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Weight (kg)</label>
+                        <input type="number" id="weight" step="0.1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="flex-1">
+                        <label for="weightDate" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="weightDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="flex-1 flex items-end">
+                        <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Log Weight</button>
+                    </div>
+                </div>
+            </form>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Weight History</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Weight (kg)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weightTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Weight entries will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="mealLog" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6">Meal Log</h2>
+            <form id="mealForm" class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="mealType" class="block text-sm font-medium text-gray-700">Meal Type</label>
+                        <select id="mealType" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Lunch">Lunch</option>
+                            <option value="Dinner">Dinner</option>
+                            <option value="Snack">Snack</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="mealDate" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="mealDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="calories" class="block text-sm font-medium text-gray-700">Calories</label>
+                        <input type="number" id="calories" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="mealDescription" class="block text-sm font-medium text-gray-700">Meal Description</label>
+                    <textarea id="mealDescription" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required></textarea>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="w-full bg-green-500 text-white p-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Log Meal</button>
+                </div>
+            </form>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Meal History</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Calories</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mealTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Meal entries will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="exerciseLog" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6">Exercise Log</h2>
+            <form id="exerciseForm" class="mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="exerciseType" class="block text-sm font-medium text-gray-700">Exercise Type</label>
+                        <input type="text" id="exerciseType" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="exerciseDate" class="block text-sm font-medium text-gray-700">Date</label>
+                        <input type="date" id="exerciseDate" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label for="duration" class="block text-sm font-medium text-gray-700">Duration (minutes)</label>
+                        <input type="number" id="duration" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="exerciseNotes" class="block text-sm font-medium text-gray-700">Notes</label>
+                    <textarea id="exerciseNotes" rows="3" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"></textarea>
+                </div>
+                <div class="mt-4">
+                    <button type="submit" class="w-full bg-yellow-500 text-white p-2 rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">Log Exercise</button>
+                </div>
+            </form>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Exercise History</h3>
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Duration</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Notes</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exerciseTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Exercise entries will be dynamically added here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="settings" class="page hidden">
+            <h2 class="text-3xl font-bold mb-6">Settings</h2>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Weight Goal</h3>
+                <form id="goalForm" class="mb-6">
+                    <div class="flex space-x-4">
+                        <div class="flex-1">
+                            <label for="weightGoal" class="block text-sm font-medium text-gray-700">Weight Goal (kg)</label>
+                            <input type="number" id="weightGoal" step="0.1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" required>
+                        </div>
+                        <div class="flex-1 flex items-end">
+                            <button type="submit" class="w-full bg-purple-500 text-white p-2 rounded-md hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Set Goal</button>
+                        </div>
+                    </div>
+                </form>
+                <h3 class="text-xl font-semibold mb-4">Data Management</h3>
+                <div class="flex space-x-4">
+                    <button onclick="exportData()" class="flex-1 bg-green-500 text-white p-2 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Export Data</button>
+                    <button onclick="importData()" class="flex-1 bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Import Data</button>
+                </div>
+                <input type="file" id="fileInput" accept=".xlsx" class="hidden" onchange="handleFileSelect(event)">
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Data storage
+        let weightData = JSON.parse(localStorage.getItem('weightData')) || [];
+        let mealData = JSON.parse(localStorage.getItem('mealData')) || [];
+        let exerciseData = JSON.parse(localStorage.getItem('exerciseData')) || [];
+        let weightGoal = localStorage.getItem('weightGoal') || null;
+
+        // Chart initialization
+        const ctx = document.getElementById('weightChart').getContext('2d');
+        weightChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Weight Over Time',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 2,
+                        fill: false,
+                        data: []
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Weight (kg)'
+                            }
+                        }
+                    }
+                }
+            });
+        // Page navigation
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(page => page.classList.add('hidden'));
+            document.getElementById(pageId).classList.remove('hidden');
+            if (pageId === 'dashboard') {
+                updateDashboard();
+            }
+        }
+
+        // Weight logging
+        document.getElementById('weightForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const weight = parseFloat(document.getElementById('weight').value);
+            const date = document.getElementById('weightDate').value;
+            weightData.push({ date, weight });
+            weightData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('weightData', JSON.stringify(weightData));
+            updateWeightTable();
+            updateDashboard();
+            this.reset();
+        });
+
+        function updateWeightTable() {
+            const tableBody = document.getElementById('weightTableBody');
+            tableBody.innerHTML = '';
+            weightData.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.weight}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <button onclick="deleteWeight(${index})" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        function deleteWeight(index) {
+            weightData.splice(index, 1);
+            localStorage.setItem('weightData', JSON.stringify(weightData));
+            updateWeightTable();
+            updateDashboard();
+        }
+
+        // Meal logging
+        document.getElementById('mealForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const mealType = document.getElementById('mealType').value;
+            const date = document.getElementById('mealDate').value;
+            const calories = parseInt(document.getElementById('calories').value);
+            const description = document.getElementById('mealDescription').value;
+            mealData.push({ date, mealType, calories, description });
+            mealData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('mealData', JSON.stringify(mealData));
+            updateMealTable();
+            this.reset();
+        });
+
+        function updateMealTable() {
+            const tableBody = document.getElementById('mealTableBody');
+            tableBody.innerHTML = '';
+            mealData.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.mealType}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.calories}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.description}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <button onclick="deleteMeal(${index})" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        function deleteMeal(index) {
+            mealData.splice(index, 1);
+            localStorage.setItem('mealData', JSON.stringify(mealData));
+            updateMealTable();
+        }
+
+        // Exercise logging
+        document.getElementById('exerciseForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const exerciseType = document.getElementById('exerciseType').value;
+            const date = document.getElementById('exerciseDate').value;
+            const duration = parseInt(document.getElementById('duration').value);
+            const notes = document.getElementById('exerciseNotes').value;
+            exerciseData.push({ date, exerciseType, duration, notes });
+            exerciseData.sort((a, b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('exerciseData', JSON.stringify(exerciseData));
+            updateExerciseTable();
+            this.reset();
+        });
+
+        function updateExerciseTable() {
+            const tableBody = document.getElementById('exerciseTableBody');
+            tableBody.innerHTML = '';
+            exerciseData.forEach((entry, index) => {
+                const row = tableBody.insertRow();
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.date}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.exerciseType}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.duration} min</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${entry.notes}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <button onclick="deleteExercise(${index})" class="text-red-600 hover:text-red-900">Delete</button>
+                    </td>
+                `;
+            });
+        }
+
+        function deleteExercise(index) {
+            exerciseData.splice(index, 1);
+            localStorage.setItem('exerciseData', JSON.stringify(exerciseData));
+            updateExerciseTable();
+        }
+
+        // Goal setting
+        document.getElementById('goalForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            weightGoal = parseFloat(document.getElementById('weightGoal').value);
+            localStorage.setItem('weightGoal', weightGoal);
+            updateDashboard();
+            this.reset();
+        });
+
+        // Dashboard updates
+        function updateDashboard() {
+            updateWeightChart();
+            updateGoalProgress();
+        }
+
+        function updateWeightChart() {
+            weightChart.data.labels = weightData.map(entry => entry.date);
+            weightChart.data.datasets[0].data = weightData.map(entry => entry.weight);
+            weightChart.update();
+        }
+
+        function updateGoalProgress() {
+            const goalInfo = document.getElementById('goalInfo');
+            const progressBar = document.getElementById('progressBar');
+            const progressPercentage = document.getElementById('progressPercentage');
+
+            if (weightGoal && weightData.length > 0) {
+                const latestWeight = weightData[weightData.length - 1].weight;
+                const initialWeight = weightData[0].weight;
+                const totalLoss = initialWeight - latestWeight;
+                const goalLoss = initialWeight - weightGoal;
+                const progress = Math.min(100, Math.max(0, (totalLoss / goalLoss) * 100));
+
+                goalInfo.textContent = `Current: ${latestWeight}kg / Goal: ${weightGoal}kg`;
+                progressBar.style.width = `${progress}%`;
+                progressPercentage.textContent = `${progress.toFixed(1)}%`;
+            } else {
+                goalInfo.textContent = 'Set a weight goal in the Settings page';
+                progressBar.style.width = '0%';
+                progressPercentage.textContent = '0%';
+            }
+        }
+
+        // Data export
+        function exportData() {
+            const data = {
+                weightData: weightData,
+                mealData: mealData,
+                exerciseData: exerciseData,
+                weightGoal: weightGoal
+            };
+            const workbook = XLSX.utils.book_new();
+            const worksheet = XLSX.utils.json_to_sheet([data]);
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'WeightWatcherData');
+            XLSX.writeFile(workbook, 'weight_watcher_data.xlsx');
+        }
+
+        // Data import
+        function importData() {
+            document.getElementById('fileInput').click();
+        }
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet)[0];
+
+                weightData = jsonData.weightData || [];
+                mealData = jsonData.mealData || [];
+                exerciseData = jsonData.exerciseData || [];
+                weightGoal = jsonData.weightGoal || null;
+
+                localStorage.setItem('weightData', JSON.stringify(weightData));
+                localStorage.setItem('mealData', JSON.stringify(mealData));
+                localStorage.setItem('exerciseData', JSON.stringify(exerciseData));
+                localStorage.setItem('weightGoal', weightGoal);
+
+                updateWeightTable();
+                updateMealTable();
+                updateExerciseTable();
+                updateDashboard();
+
+                alert('Data imported successfully!');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Initial setup
+        updateWeightTable();
+        updateMealTable();
+        updateExerciseTable();
+        updateDashboard();
+        showPage('dashboard');
+    </script>
+</body>
+</html>
