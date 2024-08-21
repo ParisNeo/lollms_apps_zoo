@@ -29,9 +29,6 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 </button>            
-                <select v-model="currentLanguage" id="currentLanguage" @change="changeLanguage" class="p-2 rounded-lg border border-gray-300">
-                    <option v-for="lang in availableLanguages" :value="lang">{{ lang }}</option>
-                </select>
             </nav>
         </header>
 
@@ -116,6 +113,11 @@
                     <label class="block mb-2" data-translate="updateFrequencyLabel">Update Frequency (seconds):</label>
                     <input v-model.number="settings.updateFrequency" type="number" min="1" required class="w-full p-2 border rounded">
                 </div>
+                <div class="mb-4">
+                    <label class="block mb-2" data-translate="language">UI Language:</label>
+                    <select ref="currentLanguage" class="p-2 rounded-lg border border-gray-300">
+                    </select>
+                </div>
                 <div class="flex justify-end">
                     <button @click="saveSettings" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" data-translate="saveButton">Save</button>
                 </div>
@@ -137,6 +139,7 @@
                     appTitle: "PillPal",
                     appSubtitle: "Your Friendly Pill Reminder",
                     scheduleTitle: "Pill Schedule",
+                    language: "UI Language:",
                     upcomingTitle: "Upcoming Pills",
                     addButton: "Add New Pill",
                     editButton: "Edit",
@@ -161,6 +164,7 @@
                     appTitle: "PillPal",
                     appSubtitle: "Votre rappel de pilules amical",
                     scheduleTitle: "Programme de pilules",
+                    language: "Langue de l'interface :",
                     upcomingTitle: "Pilules à venir",
                     addButton: "Ajouter une nouvelle pilule",
                     editButton: "Modifier",
@@ -186,6 +190,7 @@
                     appSubtitle: "Tu amigable recordatorio de pastillas",
                     scheduleTitle: "Horario de pastillas",
                     upcomingTitle: "Próximas pastillas",
+                    language: "Idioma de la interfaz:",
                     addButton: "Añadir nueva pastilla",
                     editButton: "Editar",
                     removeButton: "Eliminar",
@@ -209,6 +214,7 @@
                     appTitle: "PillPal",
                     appSubtitle: "Ihr freundlicher Pillen-Erinnerer",
                     scheduleTitle: "Pillenplan",
+                    language: "Sprache der Benutzeroberfläche:",
                     upcomingTitle: "Anstehende Pillen",
                     addButton: "Neue Pille hinzufügen",
                     editButton: "Bearbeiten",
@@ -233,6 +239,7 @@
                     appTitle: "PillPal",
                     appSubtitle: "Il tuo promemoria pillole amichevole",
                     scheduleTitle: "Programma pillole",
+                    language: "Lingua dell'interfaccia:",
                     upcomingTitle: "Prossime pillole",
                     addButton: "Aggiungi nuova pillola",
                     editButton: "Modifica",
@@ -257,6 +264,7 @@
                     appTitle: "بيل بال",
                     appSubtitle: "تذكيرك الودود بالأدوية",
                     scheduleTitle: "جدول الأدوية",
+                    language: "لغة واجهة المستخدم:",
                     upcomingTitle: "الأدوية القادمة",
                     addButton: "إضافة دواء جديد",
                     editButton: "تعديل",
@@ -281,6 +289,7 @@
                     appTitle: "PillPal",
                     appSubtitle: "您友好的药丸提醒器",
                     scheduleTitle: "药丸时间表",
+                    language: "界面语言：",
                     upcomingTitle: "即将服用的药丸",
                     addButton: "添加新药丸",
                     editButton: "编辑",
@@ -325,11 +334,22 @@
                     updateFrequency: 60 // Default value in seconds
                 }
             },
+            watch: {
+                showSettings(newValue, oldValue) {
+                this.$nextTick(() => {
+                    console.log(`showSettings changed from ${oldValue} to ${newValue}`)
+                    const current_language_selector = this.$refs.currentLanguage
+                    console.log("current_language_selector",current_language_selector)
+                    this.localizer = new WebAppLocalizer(translations, 'pillpal_', current_language_selector);
+                })
+                }
+            },            
             mounted() {
                 this.loadSchedules();
                 this.updateNextPill();
                 setInterval(this.updateNextPill, this.settings.updateFrequency * 1000); // Update every minute
-                const current_language_selector = document.getElementById("currentLanguage")
+                const current_language_selector = this.$refs.currentLanguage
+                console.log("current_language_selector",current_language_selector)
                 this.localizer = new WebAppLocalizer(translations, 'pillpal_', current_language_selector);
                 this.localizer.apply();
                 this.notificationSound = document.getElementById('notificationSound');
