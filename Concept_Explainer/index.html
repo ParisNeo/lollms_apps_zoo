@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="appTitle">Explain This Concept - Lollms App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <!-- Prism CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+   <!-- Prism JS -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+   <!-- If you want additional languages, include them like this -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        [x-cloak] { display: none !important; }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8 fade-in">
+            <h1 class="text-5xl font-bold text-blue-600 dark:text-blue-400 mb-2 title-animation" data-translate="appTitle">Explain This Concept</h1>
+            <p class="text-gray-600 dark:text-gray-400" data-translate="poweredBy">Powered by Lollms</p>
+        </header>
+
+        <main class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-all duration-300 fade-in">
+            <div class="mb-4 relative">
+                <input type="text" id="conceptInput" data-translate="conceptPlaceholder" placeholder="Enter a concept..." class="w-full p-3 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-300">
+                <svg class="w-6 h-6 text-gray-400 dark:text-gray-500 absolute right-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </div>
+            <div class="mb-4">
+                <select id="difficultySelect" class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-300">
+                    <option value="beginner" data-translate="beginner">Beginner</option>
+                    <option value="intermediate" data-translate="intermediate">Intermediate</option>
+                    <option value="advanced" data-translate="advanced">Advanced</option>
+                </select>
+            </div>
+            <button id="explainBtn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-md hover:shadow-lg transition duration-300 flex items-center justify-center" data-translate="explain">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Explain
+            </button>
+            <div id="explanationOutput" class="mt-6 p-4 bg-gray-100 dark:bg-gray-700 rounded-lg min-h-[200px] hidden transition-all duration-300"></div>
+            <div class="mt-4 flex justify-between">
+                <button id="saveBtn" class="bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-300 hidden" data-translate="save">
+                    <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
+                    Save
+                </button>
+                <button id="shareBtn" class="hidden bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition duration-300" data-translate="share">
+                    <svg class="w-5 h-5 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                    Share
+                </button>
+                
+                <div id="sharePopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+                    <div class="bg-white rounded-lg p-6 w-80">
+                        <h2 class="text-xl font-bold mb-4">Share on Social Media</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button class="share-option flex items-center justify-center p-2 rounded-lg bg-blue-500 text-white" data-network="facebook">
+                                <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"></path></svg>
+                                Facebook
+                            </button>
+                            <button class="share-option flex items-center justify-center p-2 rounded-lg bg-blue-400 text-white" data-network="twitter">
+                                <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z"></path></svg>
+                                Twitter
+                            </button>
+                            <button class="share-option flex items-center justify-center p-2 rounded-lg bg-blue-600 text-white" data-network="linkedin">
+                                <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M16 8a6 6 0 016 6v7h-4v-7a2 2 0 00-2-2 2 2 0 00-2 2v7h-4v-7a6 6 0 016-6zM2 9h4v12H2z"></path></svg>
+                                LinkedIn
+                            </button>
+                            <button class="share-option flex items-center justify-center p-2 rounded-lg bg-green-500 text-white" data-network="whatsapp">
+                                <svg class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"></path></svg>
+                                WhatsApp
+                            </button>
+                        </div>
+                        <button id="cancelShare" class="mt-4 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-lg">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <aside class="mt-8 fade-in">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800 dark:text-gray-200" data-translate="history">History</h2>
+            <ul id="historyList" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 space-y-2 transition-all duration-300"></ul>
+        </aside>
+
+        <div class="mt-4 flex justify-between items-center">
+            <select id="languageSelect" class="p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-300">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+            </select>
+            <button id="themeToggle" class="theme-toggle p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-300">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                </svg>
+            </button>
+        </div>
+    </div>
+    <style>
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        .dark {
+            background-color: #1a202c;
+            color: #e2e8f0;
+        }
+        .dark input::placeholder,
+        .dark select::placeholder {
+            color: #a0aec0;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .card {
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .title-animation {
+            animation: titleBounce 1s infinite;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes titleBounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+    </style>
+<script>
+    // Constants and DOM elements
+    const themeToggle = document.getElementById('themeToggle');
+    const conceptInput = document.getElementById('conceptInput');
+    const difficultySelect = document.getElementById('difficultySelect');
+    const explainBtn = document.getElementById('explainBtn');
+    const explanationOutput = document.getElementById('explanationOutput');
+    const saveBtn = document.getElementById('saveBtn');
+    const shareBtn = document.getElementById('shareBtn');
+    const historyList = document.getElementById('historyList');
+    const languageSelect = document.getElementById('languageSelect');
+    
+
+    // Markdown renderer
+    const mr = new MarkdownRenderer()
+
+    // Translations
+    const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "Explain This Concept",
+                    poweredBy: "Powered by Lollms",
+                    conceptPlaceholder: "Enter a concept...",
+                    beginner: "Beginner",
+                    intermediate: "Intermediate",
+                    advanced: "Advanced",
+                    explain: "Explain",
+                    save: "Save",
+                    share: "Share",
+                    history: "History",
+                    generating: "Generating explanation...",
+                    error: "Error generating explanation. Please try again.",
+                    saved: "Explanation saved!",
+                    delete: "Delete"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "Expliquez Ce Concept",
+                    poweredBy: "Propulsé par Lollms",
+                    conceptPlaceholder: "Entrez un concept...",
+                    beginner: "Débutant",
+                    intermediate: "Intermédiaire",
+                    advanced: "Avancé",
+                    explain: "Expliquer",
+                    save: "Sauvegarder",
+                    share: "Partager",
+                    history: "Historique",
+                    generating: "Génération de l'explication...",
+                    error: "Erreur lors de la génération de l'explication. Veuillez réessayer.",
+                    saved: "Explication sauvegardée !",
+                    delete: "Supprimer"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    appTitle: "Explica Este Concepto",
+                    poweredBy: "Desarrollado por Lollms",
+                    conceptPlaceholder: "Introduce un concepto...",
+                    beginner: "Principiante",
+                    intermediate: "Intermedio",
+                    advanced: "Avanzado",
+                    explain: "Explicar",
+                    save: "Guardar",
+                    share: "Compartir",
+                    history: "Historial",
+                    generating: "Generando explicación...",
+                    error: "Error al generar la explicación. Por favor, inténtalo de nuevo.",
+                    saved: "¡Explicación guardada!",
+                    delete: "Eliminar"
+                }
+            }
+        };
+
+    
+    // Initialize Lollms Client and Localizer
+    const lc = new LollmsClient();
+    const localizer = new WebAppLocalizer(translations, 'explainConcept_', languageSelect);
+    
+    // Theme management
+    let currentTheme = localStorage.getItem('concept_explainer_theme') || 'light';
+    
+    function setTheme(theme) {
+        if (theme === 'dark') {
+            document.body.classList.add('dark');
+        } else {
+            document.body.classList.remove('dark');
+        }
+        currentTheme = theme;
+        localStorage.setItem('concept_explainer_theme', theme);
+    }
+    
+    // Explanation history management
+    let savedExplanations = JSON.parse(localStorage.getItem('explanations')) || [];
+    
+    function saveToLocalStorage() {
+        localStorage.setItem('explanations', JSON.stringify(savedExplanations));
+    }
+    
+    function addToHistory(concept, explanation, difficulty) {
+        const li = document.createElement('li');
+        li.className = 'bg-gray-50 dark:bg-gray-700 p-3 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 flex justify-between items-center';
+        li.innerHTML = `
+            <span class="cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300">${concept}</span>
+            <button class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-300">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+            </button>
+        `;
+        const conceptSpan = li.querySelector('span');
+        const deleteBtn = li.querySelector('button');
+    
+        conceptSpan.addEventListener('click', async() => {
+            conceptInput.value = concept;
+            const rendered = await mr.renderMarkdown(explanation);
+            explanationOutput.innerHTML = `<div class="fade-in">${rendered}</div>`;
+            explanationOutput.dataset.explanation = explanation
+            explanationOutput.classList.remove('hidden');
+            saveBtn.classList.remove('hidden');
+            shareBtn.classList.remove('hidden');
+            difficultySelect.value = difficulty;
+        });
+    
+        deleteBtn.addEventListener('click', () => {
+            li.classList.add('fade-out');
+            setTimeout(() => {
+                historyList.removeChild(li);
+                savedExplanations = savedExplanations.filter(item => item.concept !== concept);
+                saveToLocalStorage();
+            }, 300);
+        });
+    
+        historyList.prepend(li);
+        setTimeout(() => {
+            li.classList.add('fade-in');
+        }, 10);
+        localizer.apply();
+    }
+    
+    function loadSavedExplanations() {
+        savedExplanations.forEach(item => {
+            addToHistory(item.concept, item.explanation, item.difficulty);
+        });
+    }
+    
+    // Event Listeners
+    themeToggle.addEventListener('click', () => {
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        setTheme(newTheme);
+    });
+    
+    explainBtn.addEventListener('click', async () => {
+        const concept = conceptInput.value;
+        const difficulty = difficultySelect.value;
+        if (!concept) return;
+    
+        explanationOutput.innerHTML = `<div class="animate-pulse">${localizer.translate('generating')}</div>`;
+        explanationOutput.classList.remove('hidden');
+    
+        const prompt = `Explain the concept of "${concept}" at a ${difficulty} level. Only answer with the concept description and do not add any comments. You may also use mermaid diagrams if you need to make graphical explanations. In that case put the mermaid code inside a mermaid markdown tag.`;
+        try {
+            const explanation = await lc.generate(lc.system_message() + prompt + lc.template.separator_template + lc.ai_message());
+            const rendered = await mr.renderMarkdown(explanation);
+            explanationOutput.innerHTML = `<div class="fade-in">${rendered}</div>`;
+            explanationOutput.dataset.explanation = explanation
+            saveBtn.classList.remove('hidden');
+            shareBtn.classList.remove('hidden');
+            console.log("explanation",explanation)
+            addToHistory(concept, explanation, difficulty);
+        } catch (error) {
+            console.error(error)
+            explanationOutput.innerHTML = `<div class="text-red-500">${localizer.translate('error')}</div>`;
+        }
+    });
+    
+    saveBtn.addEventListener('click', () => {
+        const concept = conceptInput.value;
+        const explanation = explanationOutput.dataset.explanation;
+        const difficulty = difficultySelect.value;
+        
+        const existingIndex = savedExplanations.findIndex(item => item.concept === concept);
+        if (existingIndex !== -1) {
+            savedExplanations[existingIndex] = { concept, explanation, difficulty };
+        } else {
+            savedExplanations.push({ concept, explanation, difficulty });
+        }
+        
+        saveToLocalStorage();
+        alert(localizer.translate('saved'));
+    });
+        
+    languageSelect.addEventListener('change', (e) => {
+        localizer.setLanguage(e.target.value);
+        localizer.apply();
+    });
+    
+    // Animations
+    function addFadeInAnimation() {
+        document.querySelectorAll('.fade-in').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transition = 'opacity 0.5s ease-in-out';
+            setTimeout(() => {
+                el.style.opacity = '1';
+            }, 100);
+        });
+    }
+    
+    function animateButtons(selector) {
+        document.querySelectorAll(selector).forEach(button => {
+            button.addEventListener('mouseenter', () => {
+                button.style.transform = 'translateY(-2px)';
+                button.style.transition = 'transform 0.2s ease-in-out';
+            });
+            button.addEventListener('mouseleave', () => {
+                button.style.transform = 'translateY(0)';
+            });
+        });
+    }
+    
+    // Initialization
+    document.addEventListener('DOMContentLoaded', () => {
+        setTheme(currentTheme);
+        localizer.apply();
+        loadSavedExplanations();
+        addFadeInAnimation();
+        animateButtons('#explainBtn, #saveBtn, #shareBtn');
+    });
+
+
+    const sharePopup = document.getElementById('sharePopup');
+    const cancelShare = document.getElementById('cancelShare');
+    const shareOptions = document.querySelectorAll('.share-option');
+
+    shareBtn.addEventListener('click', () => {
+        sharePopup.classList.remove('hidden');
+    });
+
+    cancelShare.addEventListener('click', () => {
+        sharePopup.classList.add('hidden');
+    });
+
+    shareOptions.forEach(button => {
+        button.addEventListener('click', (e) => {
+            const network = e.currentTarget.getAttribute('data-network');
+            const content = document.getElementById('explanationOutput').innerHTML;
+            shareContent(network, content);
+            sharePopup.classList.add('hidden');
+        });
+    });
+
+    function shareContent(network, content) {
+        let url = '';
+        const pageTitle = document.title;
+        const pageUrl = window.location.href;
+        const summary = "Check out this interesting content!"; // You can generate a more specific summary if needed
+
+        switch(network) {
+            case 'facebook':
+                url = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(pageUrl)}`;
+                break;
+            case 'twitter':
+                url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(summary)}&url=${encodeURIComponent(pageUrl)}`;
+                break;
+            case 'linkedin':
+                url = `https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(pageUrl)}&title=${encodeURIComponent(pageTitle)}&summary=${encodeURIComponent(summary)}`;
+                break;
+            case 'whatsapp':
+                url = `https://api.whatsapp.com/send?text=${encodeURIComponent(summary + ' ' + pageUrl)}`;
+                break;
+        }
+
+        if (url) {
+            window.open(url, '_blank');
+        }
+    }
+    </script>
+
+</body>
+</html>

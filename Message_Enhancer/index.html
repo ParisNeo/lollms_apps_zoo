@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Enhancer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <!-- Prism CSS -->
+   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+   <!-- Prism JS -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+   <!-- If you want additional languages, include them like this -->
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+
+
+    <style>
+        body {
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <header class="bg-white shadow p-4">
+        <h1 class="text-2xl font-bold text-center">Message Enhancer</h1>
+    </header>
+    <main class="flex-grow p-6">
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Enhance Your Message</h2>
+            <textarea id="userInput" class="w-full h-32 p-2 border border-gray-300 rounded-lg mb-4" placeholder="Type your message here..."></textarea>
+            <div class="mb-4">
+                <label for="styleSelect" class="block text-sm font-medium text-gray-700">Select Style:</label>
+                <select id="styleSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
+                    <option value="formal">Formal</option>
+                    <option value="casual">Casual</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="toneSelect" class="block text-sm font-medium text-gray-700">Select Tone:</label>
+                <select id="toneSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
+                    <option value="persuasive">Persuasive</option>
+                    <option value="informative">Informative</option>
+                </select>
+            </div>
+            <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 mb-4">Enhance Message</button>
+            <h3 class="text-lg font-semibold mt-6">Preview:</h3>
+            <div id="previewArea" class="border border-gray-300 rounded-lg p-4 mt-2 bg-gray-100 mb-4">
+                <div id="spinner-container" class="hidden items-center justify-center">
+                    <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-500 rounded-full animate-spin"></div>
+                </div>    
+            </div>
+            <div class="flex justify-between">
+                <button id="copyButton" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">
+                    <i class="fas fa-copy mr-2"></i>Copy to Clipboard
+                </button>
+                <button id="saveButton" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-600">
+                    <i class="fas fa-save mr-2"></i>Save as Markdown
+                </button>
+            </div>
+        </div>
+    </main>
+    <footer class="bg-white shadow p-4 text-center">
+        <p class="text-sm text-gray-600">© 2023 Message Enhancer. All rights reserved.</p>
+    </footer>
+    <script>
+        const spinnerContainer = document.getElementById('spinner-container');
+        const userInput = document.getElementById('userInput');
+        const styleSelect = document.getElementById('styleSelect');
+        const toneSelect = document.getElementById('toneSelect');
+        const previewArea = document.getElementById('previewArea');
+        const copyButton = document.getElementById('copyButton');
+        const saveButton = document.getElementById('saveButton');
+
+        // Load saved settings
+        userInput.value = localStorage.getItem('userInput') || '';
+        styleSelect.value = localStorage.getItem('style') || 'formal';
+        toneSelect.value = localStorage.getItem('tone') || 'persuasive';
+
+        function showSpinner() {
+            spinnerContainer.classList.remove('hidden');
+            spinnerContainer.classList.add('flex');
+            setTimeout(hideSpinner, 3000); // Hide after 3 seconds
+        }
+
+        function hideSpinner() {
+            spinnerContainer.classList.remove('flex');
+            spinnerContainer.classList.add('hidden');
+        }
+
+        // Markdown renderer
+        const mr = new MarkdownRenderer()
+
+        document.getElementById('submitButton').addEventListener('click', async () => {
+            showSpinner();
+            const style = styleSelect.value;
+            const tone = toneSelect.value;
+
+            // Save settings
+            localStorage.setItem('userInput', userInput.value);
+            localStorage.setItem('style', style);
+            localStorage.setItem('tone', tone);
+
+            const lc = new LollmsClient();
+            const system_prompt = `Rewrite the following text in a ${style} style and ${tone} tone without giving any extra comments:`;
+            const user_prompt = userInput.value;
+
+            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.template.separator_template + lc.ai_message();
+            const generated_text = await lc.generate(prompt);
+            const rendered = await mr.renderMarkdown(generated_text);
+            previewArea.innerHTML = rendered;
+            hideSpinner();
+        });
+
+        copyButton.addEventListener('click', () => {
+            const textToCopy = previewArea.innerText;
+            navigator.clipboard.writeText(textToCopy).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Error in copying text: ', err);
+            });
+        });
+
+        saveButton.addEventListener('click', () => {
+            const textToSave = previewArea.innerText;
+            const blob = new Blob([textToSave], {type: 'text/markdown'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'enhanced_message.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        });
+    </script>
+</body>
+</html>
