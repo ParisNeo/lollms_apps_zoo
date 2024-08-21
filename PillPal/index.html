@@ -22,13 +22,19 @@
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-blue-600" data-translate="appTitle">PillPal</h1>
             <p class="text-xl text-gray-600" data-translate="appSubtitle">Your Friendly Pill Reminder</p>
+            <nav class="absolute right-0 top-0 p-2 ">
+                <button @click="showSettings = true" class="ml-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>            
+                <select v-model="currentLanguage" id="currentLanguage" @change="changeLanguage" class="p-2 rounded-lg border border-gray-300">
+                    <option v-for="lang in availableLanguages" :value="lang">{{ lang }}</option>
+                </select>
+            </nav>
         </header>
 
-        <nav class="mb-8">
-            <select v-model="currentLanguage" id="currentLanguage" @change="changeLanguage" class="p-2 rounded-lg border border-gray-300">
-                <option v-for="lang in availableLanguages" :value="lang">{{ lang }}</option>
-            </select>
-        </nav>
 
         <main>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -101,6 +107,20 @@
                 </div>
             </div>
         </main>
+
+        <!-- Settings Popup -->
+        <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg w-full max-w-md">
+                <h3 class="text-2xl font-semibold mb-4" data-translate="settingsTitle">Settings</h3>
+                <div class="mb-4">
+                    <label class="block mb-2" data-translate="updateFrequencyLabel">Update Frequency (seconds):</label>
+                    <input v-model.number="settings.updateFrequency" type="number" min="1" required class="w-full p-2 border rounded">
+                </div>
+                <div class="flex justify-end">
+                    <button @click="saveSettings" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" data-translate="saveButton">Save</button>
+                </div>
+            </div>
+        </div>        
 
         <footer class="mt-8 text-center text-gray-600">
             <p data-translate="footerText">PillPal is under Apache 2.0 licence. Built by lollms apps builder using lollms.</p>
@@ -284,6 +304,7 @@
         new Vue({
             el: '#app',
             data: {
+                showSettings: false,
                 upcomingPills: [],
                 pillSchedules: [],
                 showAddForm: false,
@@ -299,12 +320,15 @@
                 showNotification: false,
                 currentReminder: null,
                 notificationSound: null,
-                notificationInterval: null
+                notificationInterval: null,
+                settings: {
+                    updateFrequency: 60 // Default value in seconds
+                }
             },
             mounted() {
                 this.loadSchedules();
                 this.updateNextPill();
-                setInterval(this.updateNextPill, 60000); // Update every minute
+                setInterval(this.updateNextPill, this.settings.updateFrequency * 1000); // Update every minute
                 const current_language_selector = document.getElementById("currentLanguage")
                 this.localizer = new WebAppLocalizer(translations, 'pillpal_', current_language_selector);
                 this.localizer.apply();
@@ -313,6 +337,19 @@
                 this.startNotificationCheck();
             },
             methods: {
+                saveSettings(){
+                    localStorage.setItem('pillpalSettings', JSON.stringify(this.settings));
+                    this.showSettings = false;
+                    // Restart the update interval with new frequency
+                    clearInterval(this.updateInterval);
+                    this.startNotificationCheck();
+                },
+                loadSettings() {
+                    const savedSettings = localStorage.getItem('pillpalSettings');
+                    if (savedSettings) {
+                        this.settings = JSON.parse(savedSettings);
+                    }
+                },
                 loadSchedules() {
                     const savedSchedules = localStorage.getItem('pillSchedules');
                     if (savedSchedules) {
@@ -411,7 +448,7 @@
                         if (pillToTake) {
                             this.showPillNotification(pillToTake);
                         }
-                    }, 60000); // Check every minute
+                    }, this.settings.updateFrequency * 1000); // Check every minute
                 },
                 showPillNotification(pill) {
                     this.currentReminder = pill;
@@ -422,7 +459,7 @@
                     if ('Notification' in window && Notification.permission === 'granted') {
                         new Notification('PillPal Reminder', {
                             body: `It's time to take ${pill.pillName} - ${pill.dosage}`,
-                            icon: '/path/to/pill-icon.png' // Add a path to your pill icon
+                            icon: '/apps/PillPal/icon.png'
                         });
                     }
                 },
