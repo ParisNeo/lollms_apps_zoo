@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BinauralBeats Harmony</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        @keyframes pulseLeft {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+        }
+        @keyframes pulseRight {
+            0% { transform: scale(1.2); opacity: 1; }
+            50% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(1.2); opacity: 1; }
+        }
+        .circle {
+            width: 300px;
+            height: 300px;
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            border: 15px solid rgba(99, 102, 241, 0.7);
+            background-color: transparent;
+            transform: translate(-50%, -50%);
+        }
+        .left-circle { 
+            left: 30%; 
+            animation: pulse 4s infinite;
+        }
+        .right-circle { 
+            right: 30%; 
+            animation: pulse 4s infinite;
+        }
+        .icon-button {
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .icon-button:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="bg-black min-h-screen flex items-center justify-center">
+    <div id="disclaimer" class="fixed inset-0 bg-red-600 text-white flex items-center justify-center z-50">
+        <div class="text-center p-8">
+            <h1 class="text-4xl font-bold mb-4" data-translate="warning">WARNING</h1>
+            <p class="text-xl mb-8" data-translate="epilepsyWarning">
+                This application contains flashing lights and patterns that may trigger seizures in people with photosensitive epilepsy.
+            </p>
+            <p class="text-lg mb-8" data-translate="certifyNonEpileptic">
+                By continuing, you certify that you do not have epilepsy or any condition that may be triggered by flashing lights or patterns.
+            </p>
+            <button id="certifyButton" class="bg-white text-red-600 py-2 px-6 rounded-full text-xl font-bold hover:bg-gray-200 transition duration-300" data-translate="certify">
+                I Certify and Wish to Continue
+            </button>
+        </div>
+    </div>
+
+    <div id="mainContent" class="container mx-auto p-8 bg-white rounded-lg shadow-lg max-w-md hidden relative">
+        <h1 class="text-3xl font-bold text-center mb-6" data-translate="title">BinauralBeats Harmony</h1>
+
+        <div class="absolute top-4 right-4 flex space-x-2">
+            <svg class="icon-button" id="helpButton" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M9.09 9C9.3251 8.33167 9.78915 7.76811 10.4 7.40913C11.0108 7.05016 11.7289 6.91894 12.4272 7.03871C13.1255 7.15849 13.7588 7.52152 14.2151 8.06353C14.6713 8.60553 14.9211 9.29152 14.92 10C14.92 12 11.92 13 11.92 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 17H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <svg class="icon-button" id="settingsButton" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.0113 9.77251C4.28059 9.5799 4.48572 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.7719 3.67523 18.0322 3.62343 18.295 3.62343C18.5578 3.62343 18.8181 3.67523 19.0609 3.77588C19.3037 3.87653 19.5243 4.02405 19.71 4.21C19.896 4.39575 20.0435 4.61632 20.1441 4.85912C20.2448 5.10192 20.2966 5.36217 20.2966 5.625C20.2966 5.88783 20.2448 6.14808 20.1441 6.39088C20.0435 6.63368 19.896 6.85425 19.71 7.04L19.65 7.1C19.4195 7.33568 19.2648 7.63502 19.206 7.95941C19.1472 8.28381 19.1869 8.61838 19.32 8.92V9C19.4468 9.29577 19.6572 9.54802 19.9255 9.72569C20.1938 9.90337 20.5082 9.99872 20.83 10H21C21.5304 10 22.0391 10.2107 22.4142 10.5858C22.7893 10.9609 23 11.4696 23 12C23 12.5304 22.7893 13.0391 22.4142 13.4142C22.0391 13.7893 21.5304 14 21 14H20.91C20.5882 14.0013 20.2738 14.0966 20.0055 14.2743C19.7372 14.452 19.5268 14.7042 19.4 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+
+        <div class="mb-6">
+            <label for="frequencyRange" class="block text-sm font-medium text-gray-700 mb-2" data-translate="selectFrequency">Select Frequency Range:</label>
+            <select id="frequencyRange" class="w-full p-2 border rounded-md">
+                <option value="delta" data-translate="delta">Delta (1-4 Hz) - Deep sleep</option>
+                <option value="theta" data-translate="theta">Theta (4-8 Hz) - Meditation</option>
+                <option value="alpha" data-translate="alpha">Alpha (8-13 Hz) - Relaxed alertness</option>
+                <option value="beta" data-translate="beta">Beta (13-30 Hz) - Focus</option>
+                <option value="gamma" data-translate="gamma">Gamma (30-100 Hz) - Higher mental activity</option>
+            </select>
+        </div>
+
+        <button id="startButton" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300" data-translate="start">
+            Start
+        </button>
+    </div>
+
+    <div id="animationContainer" class="fixed inset-0 bg-black hidden">
+        <button iContinuing from where you left off:
+
+        <button id="stopButton" class="fixed top-4 right-4 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 z-10" data-translate="stop">
+            Stop
+        </button>
+        <div id="leftCircle" class="circle left-circle"></div>
+        <div id="rightCircle" class="circle right-circle"></div>
+    </div>
+
+    <div id="helpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" data-translate="helpTitle">About Binaural Beats</h3>
+                <div class="mt-2 px-7 py-3 text-left">
+                    <p class="text-sm text-gray-500 mb-4" data-translate="helpContent1">
+                        Binaural beats are an auditory illusion perceived when two different pure-tone sine waves, both with frequencies lower than 1500 Hz, with less than a 40 Hz difference between them, are presented to a listener dichotically (one through each ear).
+                    </p>
+                    <p class="text-sm text-gray-500 mb-4" data-translate="helpContent2">
+                        First discovered in 1839 by Heinrich Wilhelm Dove, binaural beats have been claimed to alter consciousness and have various effects on the brain, including relaxation, creativity enhancement, and pain reduction.
+                    </p>
+                    <p class="text-sm text-gray-500 mb-4" data-translate="helpContent3">
+                        However, the scientific evidence for many of these claims is limited and controversial. While some studies suggest potential benefits, others have found no significant effects beyond those attributable to relaxation or placebo.
+                    </p>
+                    <p class="text-sm text-gray-500 mb-4" data-translate="helpContent4">
+                        It's important to note that individuals with epilepsy or seizure disorders should avoid using binaural beats, as the flashing lights and rhythmic sounds could potentially trigger seizures in susceptible individuals.
+                    </p>
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="closeHelpButton" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300" data-translate="close">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+            <div class="mt-3 text-center">
+                <h3 class="text-lg leading-6 font-medium text-gray-900" data-translate="settingsTitle">Settings</h3>
+                <div class="mt-2 px-7 py-3">
+                    <label for="languageSelect" class="block text-sm font-medium text-gray-700 mb-2" data-translate="language">Language:</label>
+                    <select id="languageSelect" class="w-full p-2 border rounded-md">
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                        <option value="es">Español</option>
+                        <!-- Add more language options as needed -->
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label for="volumeSlider" class="block text-sm font-medium text-gray-700 mb-2" data-translate="volume">Volume:</label>
+                    <input type="range" id="volumeSlider" min="0" max="100" value="50" class="w-full">
+                </div>
+                <div class="items-center px-4 py-3">
+                    <button id="closeSettingsButton" class="px-4 py-2 bg-indigo-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-300" data-translate="close">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    warning: "WARNING",
+                    epilepsyWarning: "This application contains flashing lights and patterns that may trigger seizures in people with photosensitive epilepsy.",
+                    certifyNonEpileptic: "By continuing, you certify that you do not have epilepsy or any condition that may be triggered by flashing lights or patterns.",
+                    certify: "I Certify and Wish to Continue",
+                    title: "BinauralBeats Harmony",
+                    selectFrequency: "Select Frequency Range:",
+                    delta: "Delta (1-4 Hz) - Deep sleep",
+                    theta: "Theta (4-8 Hz) - Meditation",
+                    alpha: "Alpha (8-13 Hz) - Relaxed alertness",
+                    beta: "Beta (13-30 Hz) - Focus",
+                    gamma: "Gamma (30-100 Hz) - Higher mental activity",
+                    start: "Start",
+                    stop: "Stop",
+                    volume: "Volume:",
+                    helpTitle: "About Binaural Beats",
+                    helpContent1: "Binaural beats are an auditory illusion perceived when two different pure-tone sine waves, both with frequencies lower than 1500 Hz, with less than a 40 Hz difference between them, are presented to a listener dichotically (one through each ear).",
+                    helpContent2: "First discovered in 1839 by Heinrich Wilhelm Dove, binaural beats have been claimed to alter consciousness and have various effects on the brain, including relaxation, creativity enhancement, and pain reduction.",
+                    helpContent3: "However, the scientific evidence for many of these claims is limited and controversial. While some studies suggest potential benefits, others have found no significant effects beyond those attributable to relaxation or placebo.",
+                    helpContent4: "It's important to note that individuals with epilepsy or seizure disorders should avoid using binaural beats, as the flashing lights and rhythmic sounds could potentially trigger seizures in susceptible individuals.",
+                    close: "Close",
+                    settingsTitle: "Settings",
+                    language: "Language:"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    // Add French translations here
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    // Add Spanish translations here
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'binauralBeats_', 'languageSelect');
+        localizer.apply();
+
+        const disclaimer = document.getElementById('disclaimer');
+        const certifyButton = document.getElementById('certifyButton');
+        const mainContent = document.getElementById('mainContent');
+        const startButton = document.getElementById('startButton');
+        const stopButton = document.getElementById('stopButton');
+        const frequencyRange = document.getElementById('frequencyRange');
+        const animationContainer = document.getElementById('animationContainer');
+        const leftCircle = document.getElementById('leftCircle');
+        const rightCircle = document.getElementById('rightCircle');
+        const helpButton = document.getElementById('helpButton');
+        const settingsButton = document.getElementById('settingsButton');
+        const helpModal = document.getElementById('helpModal');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeHelpButton = document.getElementById('closeHelpButton');
+        const closeSettingsButton = document.getElementById('closeSettingsButton');
+        const languageSelect = document.getElementById('languageSelect');
+
+        let audioContext;
+        let oscillator1;
+        let oscillator2;
+        let isPlaying = false;
+
+        certifyButton.addEventListener('click', () => {
+            disclaimer.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        });
+
+        const volumeSlider = document.getElementById('volumeSlider');
+        let gainNode;
+
+        function startBinauralBeat() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            oscillator1 = audioContext.createOscillator();
+            oscillator2 = audioContext.createOscillator();
+            gainNode = audioContext.createGain();
+
+            oscillator1.connect(gainNode);
+            oscillator2.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            const baseFrequency = getBaseFrequency();
+            oscillator1.frequency.setValueAtTime(baseFrequency, audioContext.currentTime);
+            oscillator2.frequency.setValueAtTime(baseFrequency + getBeatFrequency(), audioContext.currentTime);
+
+            updateVolume();
+
+            oscillator1.start();
+            oscillator2.start();
+
+            isPlaying = true;
+            mainContent.classList.add('hidden');
+            animationContainer.classList.remove('hidden');
+            updateAnimation();
+        }
+
+        function updateVolume() {
+            if (gainNode) {
+                const volume = volumeSlider.value / 100;
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+            }
+        }
+
+        volumeSlider.addEventListener('input', updateVolume);
+
+
+        function stopBinauralBeat() {
+            if (oscillator1) {
+                oscillator1.stop();
+                oscillator2.stop();
+            }
+            isPlaying = false;
+            animationContainer.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+        }
+
+        function updateAnimation() {
+            const beatFrequency = getBeatFrequency();
+            const baseFrequency = 200; // Base frequency for both circles
+            const leftFrequency = baseFrequency;
+            const rightFrequency = baseFrequency + beatFrequency;
+            
+            const leftDuration = 1 / leftFrequency;
+            const rightDuration = 1 / rightFrequency;
+
+            // Update left circle animation
+            leftCircle.style.animationDuration = `${leftDuration}s`;
+            leftCircle.style.animationName = 'pulse';
+
+            // Update right circle animation
+            rightCircle.style.animationDuration = `${rightDuration}s`;
+            rightCircle.style.animationName = 'pulse';
+
+            // Adjust colors based on frequency range
+            let color;
+            switch (frequencyRange.value) {
+                case 'delta': color = [0, 0, 255]; break; // Blue
+                case 'theta': color = [0, 255, 255]; break; // Cyan
+                case 'alpha': color = [0, 255, 0]; break; // Green
+                case 'beta': color = [255, 255, 0]; break; // Yellow
+                case 'gamma': color = [255, 0, 0]; break; // Red
+                default: color = [99, 102, 241]; // Default indigo
+            }
+
+            const colorStr = `rgba(${color[0]}, ${color[1]}, ${color[2]}, 0.7)`;
+            leftCircle.style.borderColor = colorStr;
+            rightCircle.style.borderColor = colorStr;
+
+            // Update keyframes for both circles
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes pulse {
+                    0% { transform: scale(0.8); opacity: 0.5; }
+                    50% { transform: scale(1.2); opacity: 1; }
+                    100% { transform: scale(0.8); opacity: 0.5; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        startButton.addEventListener('click', () => {
+            startBinauralBeat();
+            updateVolume();
+        });
+
+        stopButton.addEventListener('click', stopBinauralBeat);
+
+        frequencyRange.addEventListener('change', () => {
+            if (isPlaying) {
+                stopBinauralBeat();
+                startBinauralBeat();
+            }
+        });
+
+        function getBaseFrequency() {
+            switch (frequencyRange.value) {
+                case 'delta': return 100;
+                case 'theta': return 200;
+                case 'alpha': return 300;
+                case 'beta': return 400;
+                case 'gamma': return 500;
+                default: return 200;
+            }
+        }
+
+        function getBeatFrequency() {
+            switch (frequencyRange.value) {
+                case 'delta': return 2;
+                case 'theta': return 6;
+                case 'alpha': return 10;
+                case 'beta': return 20;
+                case 'gamma': return 40;
+                default: return 6;
+            }
+        }
+        helpButton.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+        });
+
+        settingsButton.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
+
+        closeHelpButton.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+        });
+
+        closeSettingsButton.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+        });
+
+        languageSelect.addEventListener('change', (e) => {
+            localizer.setLanguage(e.target.value);
+            localizer.apply();
+        })
+    </script>
+</body>
+</html>
