@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UltraChef Pro - Your AI-Powered Culinary Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        [v-cloak] { display: none; }
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.5s;
+        }
+        .fade-enter, .fade-leave-to {
+            opacity: 0;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-white transition-colors duration-300">
+    <div id="app" v-cloak class="min-h-screen flex flex-col">
+        <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-3xl font-bold">UltraChef Pro</h1>
+                <nav class="flex items-center space-x-4">
+                    <button @click="toggleDarkMode" class="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-colors">
+                        <i :class="['fas', isDarkMode ? 'fa-sun' : 'fa-moon']"></i>
+                    </button>
+                    <select v-model="currentLanguage" @change="changeLanguage" class="bg-transparent border border-white rounded p-2">
+                        <option v-for="(lang, code) in translations" :key="code" :value="code">{{ lang.name }}</option>
+                    </select>
+                </nav>
+            </div>
+        </header>
+
+        <main class="flex-grow container mx-auto p-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- AI Recipe Generator -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <h2 class="text-2xl font-bold mb-4">{{ t('aiRecipeGenerator') }}</h2>
+                    <textarea v-model="recipePrompt" class="w-full p-3 mb-3 border rounded dark:bg-gray-700 focus:ring-2 focus:ring-blue-500" rows="3" :placeholder="t('recipePromptPlaceholder')"></textarea>
+                    <button @click="generateRecipe" class="bg-green-500 text-white p-3 rounded-full hover:bg-green-600 transition-colors w-full font-bold pulse-animation">
+                        {{ t('generateRecipe') }}
+                    </button>
+                </div>
+
+                <!-- Smart Fridge Scan -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <h2 class="text-2xl font-bold mb-4">{{ t('smartFridgeScan') }}</h2>
+                    <input type="file" @change="onFileChange" accept="image/*" class="mb-3 w-full p-2 border rounded dark:bg-gray-700">
+                    <button @click="scanFridge" class="bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition-colors w-full font-bold">
+                        {{ t('scanFridge') }}
+                    </button>
+                </div>
+
+                <!-- Meal Planner -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
+                    <h2 class="text-2xl font-bold mb-4">{{ t('mealPlanner') }}</h2>
+                    <button @click="generateMealPlan" class="bg-purple-500 text-white p-3 rounded-full hover:bg-purple-600 transition-colors w-full font-bold">
+                        {{ t('generateMealPlan') }}
+                    </button>
+                </div>
+            </div>
+
+            <!-- Recipe Display -->
+            <transition name="fade">
+                <div v-if="showRecipeDisplay" class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                    <h2 class="text-2xl font-bold mb-4">{{ t('generatedRecipe') }}</h2>
+                    <div v-html="recipeContent" class="mb-4"></div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex space-x-2">
+                            <button @click="saveRecipe" class="bg-yellow-500 text-white p-2 rounded hover:bg-yellow-600 transition-colors">
+                                {{ t('saveRecipe') }}
+                            </button>
+                            <button @click="shareRecipe" class="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition-colors">
+                                {{ t('shareRecipe') }}
+                            </button>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <span>{{ t('rateRecipe') }}:</span>
+                            <div class="flex text-yellow-500">
+                                <i v-for="n in 5" :key="n" @click="rateRecipe(n)" :class="['fas', 'fa-star', 'cursor-pointer', { 'text-yellow-300': n <= recipeRating }]"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </transition>
+
+            <!-- Recipe Timer -->
+            <div class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">{{ t('recipeTimer') }}</h2>
+                <div class="flex items-center space-x-4">
+                    <input v-model.number="timerMinutes" type="number" min="0" class="w-20 p-2 border rounded dark:bg-gray-700" :placeholder="t('minutes')">
+                    <button @click="startTimer" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-colors">
+                        {{ isTimerRunning ? t('stopTimer') : t('startTimer') }}
+                    </button>
+                    <div v-if="isTimerRunning" class="text-2xl font-bold">{{ formattedTime }}</div>
+                </div>
+            </div>
+
+            <!-- Recipe History -->
+            <div class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">{{ t('recipeHistory') }}</h2>
+                <div class="mb-4">
+                    <label for="sortOption" class="mr-2">{{ t('sortBy') }}:</label>
+                    <select id="sortOption" v-model="sortOption" @change="sortRecipes" class="p-2 border rounded dark:bg-gray-700">
+                        <option value="date">{{ t('date') }}</option>
+                        <option value="rating">{{ t('rating') }}</option>
+                        <option value="title">{{ t('title') }}</option>
+                    </select>
+                </div>
+                <ul class="space-y-2">
+                    <li v-for="(recipe, index) in sortedRecipeHistory" :key="index" class="flex justify-between items-center p-2 bg-gray-100 dark:bg-gray-700 rounded">
+                        <span>{{ recipe.title }}</span>
+                        <div class="flex items-center space-x-2">
+                            <div class="text-yellow-500">
+                                <i v-for="n in 5" :key="n" @click="changeRating(index, n)" :class="['fas', 'fa-star', 'cursor-pointer', { 'text-yellow-300': n <= recipe.rating }]"></i>
+                            </div>
+                            <button @click="viewRecipe(index)" class="bg-blue-500 text-white p-1 rounded hover:bg-blue-600 transition-colors">
+                                {{ t('view') }}
+                            </button>
+                            <button @click="deleteRecipe(index)" class="bg-red-500 text-white p-1 rounded hover:bg-red-600 transition-colors">
+                                {{ t('delete') }}
+                            </button>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+        </main>
+
+        <footer class="bg-gray-200 dark:bg-gray-800 p-4 text-center">
+            <p>&copy; 2024 UltraChef Pro. {{ t('allRightsReserved') }}</p>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize Lollms Client
+        const lc = new LollmsClient(
+            null,
+            null,
+            4096,
+            -1,
+            4096,
+            0.7,
+            50,
+            0.95,
+            1.1,
+            64,
+            null,
+            8,
+            "",
+            ELF_GENERATION_FORMAT.LOLLMS
+        );
+
+        // Translations
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    aiRecipeGenerator: "AI Recipe Generator",
+                    recipePromptPlaceholder: "Enter your recipe requirements...",
+                    generateRecipe: "Generate Recipe",
+                    smartFridgeScan: "Smart Fridge Scan",
+                    scanFridge: "Scan Fridge",
+                    mealPlanner: "Meal Planner",
+                    generateMealPlan: "Generate Meal Plan",
+                    generatedRecipe: "Generated Recipe",
+                    saveRecipe: "Save Recipe",
+                    shareRecipe: "Share Recipe",
+                    rateRecipe: "Rate Recipe",
+                    recipeTimer: "Recipe Timer",
+                    minutes: "Minutes",
+                    startTimer: "Start Timer",
+                    stopTimer: "Stop Timer",
+                    recipeHistory: "Recipe History",
+                    view: "View",
+                    allRightsReserved: "All rights reserved.",
+                    sortBy: "Sort by",
+                    date: "Date",
+                    rating: "Rating",
+                    title: "Title",
+                    delete: "Delete"
+
+                },
+                prompt_translations: {
+                    recipePrompt: "You are a master chef AI. Generate a detailed recipe based on the following requirements:",
+                    fridgePrompt: "You are a master chef AI. Analyze the following image of a fridge interior and suggest a recipe based on the available ingredients:",
+                    mealPlanPrompt: "You are a nutritionist and meal planning AI. Generate a balanced weekly meal plan:"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    aiRecipeGenerator: "Générateur de Recettes IA",
+                    recipePromptPlaceholder: "Entrez vos exigences pour la recette...",
+                    generateRecipe: "Générer une Recette",
+                    smartFridgeScan: "Scan Intelligent du Frigo",
+                    scanFridge: "Scanner le Frigo",
+                    mealPlanner: "Planificateur de Repas",
+                    generateMealPlan: "Générer un Plan de Repas",
+                    generatedRecipe: "Recette Générée",
+                    saveRecipe: "Sauvegarder la Recette",
+                    shareRecipe: "Partager la Recette",
+                    rateRecipe: "Noter la Recette",
+                    recipeTimer: "Minuteur de Recette",
+                    minutes: "Minutes",
+                    startTimer: "Démarrer le Minuteur",
+                    stopTimer: "Arrêter le Minuteur",
+                    recipeHistory: "Historique des Recettes",
+                    view: "Voir",
+                    allRightsReserved: "Tous droits réservés.",
+                    sortBy: "Trier par",
+                    date: "Date",
+                    rating: "Note",
+                    title: "Titre",
+                    delete: "Supprimer"                    
+                },
+                prompt_translations: {
+                    recipePrompt: "Vous êtes une IA chef cuisinier. Générez une recette détaillée basée sur les exigences suivantes :",
+                    fridgePrompt: "Vous êtes une IA chef cuisinier. Analysez l'image suivante de l'intérieur d'un réfrigérateur et suggérez une recette basée sur les ingrédients disponibles :",
+                    mealPlanPrompt: "Vous êtes une IA nutritionniste et planificateur de repas. Générez un plan de repas hebdomadaire équilibré :"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    aiRecipeGenerator: "Generador de Recetas IA",
+                    recipePromptPlaceholder: "Ingrese sus requisitos para la receta...",
+                    generateRecipe: "Generar Receta",
+                    smartFridgeScan: "Escaneo Inteligente del Refrigerador",
+                    scanFridge: "Escanear Refrigerador",
+                    mealPlanner: "Planificador de Comidas",
+                    generateMealPlan: "Generar Plan de Comidas",
+                    generatedRecipe: "Receta Generada",
+                    saveRecipe: "Guardar Receta",
+                    shareRecipe: "Compartir Receta",
+                    rateRecipe: "Calificar Receta",
+                    recipeTimer: "Temporizador de Receta",
+                    minutes: "Minutos",
+                    startTimer: "Iniciar Temporizador",
+                    stopTimer: "Detener Temporizador",
+                    recipeHistory: "Historial de Recetas",
+                    view: "Ver",
+                    allRightsReserved: "Todos los derechos reservados.",
+                    sortBy: "Ordenar por",
+                    date: "Fecha",
+                    rating: "Calificación",
+                    title: "Título",
+                    delete: "Eliminar"
+                },
+                prompt_translations: {
+                    recipePrompt: "Eres una IA chef de cocina. Genera una receta detallada basada en los siguientes requisitos:",
+                    fridgePrompt: "Eres una IA chef de cocina. Analiza la siguiente imagen del interior de un refrigerador y sugiere una receta basada en los ingredientes disponibles:",
+                    mealPlanPrompt: "Eres una IA nutricionista y planificador de comidas. Genera un plan de comidas semanal equilibrado:"
+                }
+            }
+        };
+
+        new Vue({
+            el: '#app',
+            data: {
+                sortOption: 'date',
+                isDarkMode: false,
+                currentLanguage: 'en',
+                translations: translations,
+                recipePrompt: '',
+                recipeContent: '',
+                showRecipeDisplay: false,
+                recipeRating: 0,
+                timerMinutes: 0,
+                timerSeconds: 0,
+                isTimerRunning: false,
+                timerInterval: null,
+                recipeHistory: [],
+                selectedFile: null,
+            },
+            computed: {
+                formattedTime() {
+                    const minutes = Math.floor(this.timerSeconds / 60);
+                    const seconds = this.timerSeconds % 60;
+                    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                },
+                sortedRecipeHistory() {
+                    return [...this.recipeHistory].sort((a, b) => {
+                        if (this.sortOption === 'date') {
+                            return b.date - a.date;
+                        } else if (this.sortOption === 'rating') {
+                            return b.rating - a.rating;
+                        } else if (this.sortOption === 'title') {
+                            return a.title.localeCompare(b.title);
+                        }
+                    });
+                }
+
+            },
+            methods: {
+                t(key) {
+                    return this.translations[this.currentLanguage].translations[key] || key;
+                },
+                toggleDarkMode() {
+                    this.isDarkMode = !this.isDarkMode;
+                    document.documentElement.classList.toggle('dark', this.isDarkMode);
+                    localStorage.setItem('darkMode', this.isDarkMode);
+                },
+                changeLanguage() {
+                    localStorage.setItem('language', this.currentLanguage);
+                },
+                async generateRecipe() {
+                    const systemPrompt = this.translations[this.currentLanguage].prompt_translations.recipePrompt;
+                    const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + this.recipePrompt + lc.template.separator_template + lc.ai_message();
+                    
+                    this.recipeContent = 'Generating recipe...';
+                    this.showRecipeDisplay = true;
+                    
+                    const generatedRecipe = await lc.generate(fullPrompt);
+                    this.recipeContent = generatedRecipe.replace(/\n/g, '<br>');
+                    this.addToHistory(this.recipePrompt, this.recipeContent);
+                },
+                async scanFridge() {
+                    if (this.selectedFile) {
+                        const reader = new FileReader();
+                        reader.onload = async (e) => {
+                            const base64Image = e.target.result.split(',')[1];
+                            const systemPrompt = this.translations[this.currentLanguage].prompt_translations.fridgePrompt;
+                            const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + "Here's the fridge content:" + lc.template.separator_template + lc.ai_message();
+                            
+                            this.recipeContent = 'Analyzing fridge contents...';
+                            this.showRecipeDisplay = true;
+                            
+                            const generatedRecipe = await lc.generate_with_images(fullPrompt, [base64Image]);
+                            this.recipeContent = generatedRecipe.replace(/\n/g, '<br>');
+                            this.addToHistory("Fridge Scan Recipe", this.recipeContent);
+                        };
+                        reader.readAsDataURL(this.selectedFile);
+                    } else {
+                        alert('Please select an image of your fridge interior.');
+                    }
+                },
+                async generateMealPlan() {
+                    const systemPrompt = this.translations[this.currentLanguage].prompt_translations.mealPlanPrompt;
+                    const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.ai_message();
+                    
+                    this.recipeContent = 'Generating meal plan...';
+                    this.showRecipeDisplay = true;
+                    
+                    const generatedMealPlan = await lc.generate(fullPrompt);
+                    this.recipeContent = generatedMealPlan.replace(/\n/g, '<br>');
+                    this.addToHistory("Weekly Meal Plan", this.recipeContent);
+                },
+                saveRecipe() {
+                    const recipe = {
+                        title: this.recipePrompt || "Untitled Recipe",
+                        content: this.recipeContent,
+                        rating: this.recipeRating
+                    };
+                    this.recipeHistory.unshift(recipe);
+                    localStorage.setItem('recipeHistory', JSON.stringify(this.recipeHistory));
+                    alert('Recipe saved successfully!');
+                },
+                shareRecipe() {
+                    const recipe = this.recipeContent.replace(/<br>/g, '\n');
+                    if (navigator.share) {
+                        navigator.share({
+                            title: 'Check out this recipe from UltraChef Pro!',
+                            text: recipe
+                        }).then(() => {
+                            console.log('Recipe shared successfully');
+                        }).catch((error) => {
+                            console.error('Error sharing recipe:', error);
+                        });
+                    } else {
+                        alert('Web Share API not supported in this browser. You can copy the recipe manually.');
+                    }
+                },
+                rateRecipe(rating) {
+                    this.recipeRating = rating;
+                },
+                startTimer() {
+                    if (this.isTimerRunning) {
+                        clearInterval(this.timerInterval);
+                        this.isTimerRunning = false;
+                    } else {
+                        this.timerSeconds = this.timerMinutes * 60;
+                        this.isTimerRunning = true;
+                        this.timerInterval = setInterval(() => {
+                            if (this.timerSeconds > 0) {
+                                this.timerSeconds--;
+                            } else {
+                                clearInterval(this.timerInterval);
+                                this.isTimerRunning = false;
+                                alert('Timer finished!');
+                            }
+                        }, 1000);
+                    }
+                },
+                addToHistory(title, content) {
+                    const recipe = {
+                        title: title,
+                        content: content,
+                        rating: 0,
+                        date: Date.now()
+                    };
+                    this.recipeHistory.unshift(recipe);
+                    if (this.recipeHistory.length > 10) {
+                        this.recipeHistory.pop();
+                    }
+                    this.saveRecipeHistory();
+                },
+                viewRecipe(index) {
+                    const recipe = this.recipeHistory[index];
+                    this.recipeContent = recipe.content;
+                    this.recipeRating = recipe.rating;
+                    this.showRecipeDisplay = true;
+                },
+                onFileChange(e) {
+                    this.selectedFile = e.target.files[0];
+                },
+                changeRating(index, rating) {
+                    this.recipeHistory[index].rating = rating;
+                    this.saveRecipeHistory();
+                },
+                deleteRecipe(index) {
+                    this.recipeHistory.splice(index, 1);
+                    this.saveRecipeHistory();
+                },
+                sortRecipes() {
+                    localStorage.setItem('sortOption', this.sortOption);
+                },
+                saveRecipeHistory() {
+                    localStorage.setItem('recipeHistory', JSON.stringify(this.recipeHistory));
+                },
+
+            },
+            created() {
+                // Load dark mode preference
+                const savedDarkMode = localStorage.getItem('darkMode');
+                if (savedDarkMode !== null) {
+                    this.isDarkMode = JSON.parse(savedDarkMode);
+                    document.documentElement.classList.toggle('dark', this.isDarkMode);
+                }
+
+                // Load language preference
+                const savedLanguage = localStorage.getItem('language');
+                if (savedLanguage && this.translations[savedLanguage]) {
+                    this.currentLanguage = savedLanguage;
+                }
+
+                // Load recipe history
+                const savedHistory = localStorage.getItem('recipeHistory');
+                if (savedHistory) {
+                    this.recipeHistory = JSON.parse(savedHistory);
+                }
+                // Load sort option
+                const savedSortOption = localStorage.getItem('sortOption');
+                if (savedSortOption) {
+                    this.sortOption = savedSortOption;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
