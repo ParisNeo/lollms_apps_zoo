@@ -161,6 +161,9 @@
                         <option value="fr">French</option>
                         <option value="es">Spanish</option>
                         <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="ar">Arabic</option>
+                        <option value="zh">Chinese</option>
                     </select>
                 </div>
                 <div>
@@ -171,6 +174,9 @@
                         <option value="fr">French</option>
                         <option value="es">Spanish</option>
                         <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="ar">Arabic</option>
+                        <option value="zh">Chinese</option>
                     </select>
                 </div>
                 <div>
@@ -181,14 +187,17 @@
                         <option value="fr">French</option>
                         <option value="es">Spanish</option>
                         <option value="de">German</option>
+                        <option value="it">Italian</option>
+                        <option value="ar">Arabic</option>
+                        <option value="zh">Chinese</option>
                     </select>
                 </div>
             </div>
-            <div id="loader" class="hidden mx-auto mt-4"></div>
-            <div id="result" class="prose max-w-none mt-6"></div>
             <button id="searchBtn" class="w-full mb-4 bg-indigo-600 text-white px-6 py-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-500 focus:ring-opacity-50 transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-lg text-lg font-semibold">
                 Get Definition
             </button>
+            <div id="loader" class="hidden mx-auto mt-4"></div>
+            <div id="result" class="prose max-w-none mt-6"></div>
 
             <div class="flex justify-end mb-4">
                 <button id="settingsBtn" class="text-gray-600 hover:text-indigo-600 transition-colors duration-300">
@@ -246,7 +255,30 @@
                 french: "French",
                 spanish: "Spanish",
                 german: "German",
-                noTranslation: "No translation"
+                noTranslation: "No translation",
+                systemPrompt:`You are a highly competent expert in dictionaries and languages. Provide a comprehensive explanation for the given word or phrase in Markdown format. Use appropriate styling, including headers, lists, and tables where applicable. Include the following sections:
+
+# [Word/Phrase]
+
+## Definition
+
+## Etymology (if applicable)
+
+## Usage Examples
+
+{showsynonyms}
+{showantonyms}
+
+## Additional Information (e.g., cultural context, idiomatic expressions, etc.)
+
+{translation}
+Use appropriate Markdown formatting to structure your response, including headers (##, ###), lists (- or 1., 2., etc.), and tables if necessary. Ensure the content is well-organized and easy to read.`,
+        userPrompt: `Word/Phrase: "{word}"
+Source Language: {srcLang}
+Response Language: {respLang}
+{targetLang}
+
+Please provide a detailed explanation and analysis of this word or phrase in the specified response language, following the Markdown format described above. If a target language is specified, include the translation and explanation section in that language.`
             },
             fr: {
                 title: "LinguaLex - Dictionnaire Avancé",
@@ -268,7 +300,30 @@
                 french: "Français",
                 spanish: "Espagnol",
                 german: "Allemand",
-                noTranslation: "Pas de traduction"
+                noTranslation: "Pas de traduction",
+                systemPrompt:`Vous êtes un expert en dictionnaire et en langues très compétent. Fournissez une explication complète pour le mot ou l'expression donnée au format Markdown. Utilisez un style approprié, y compris des en-têtes, des listes et des tableaux le cas échéant. Incluez les sections suivantes :
+
+# [Mot/Expression]
+
+## Définition
+
+## Étymologie (si applicable)
+
+## Exemples d'utilisation
+
+{showsynonyms}
+{showantonyms}
+
+## Informations supplémentaires (par exemple, contexte culturel, expressions idiomatiques, etc.)
+
+{translation}
+Utilisez un formatage Markdown approprié pour structurer votre réponse, y compris des en-têtes (##, ###), des listes (- ou 1., 2., etc.) et des tableaux si nécessaire. Assurez-vous que le contenu est bien organisé et facile à lire.`,
+                userPrompt: `Mot/Expression : "{word}"
+Langue source : {srcLang}
+Langue de réponse : {respLang}
+{targetLang}
+
+Veuillez fournir une explication et une analyse détaillées de ce mot ou de cette expression dans la langue de réponse spécifiée, en suivant le format Markdown décrit ci-dessus. Si une langue cible est spécifiée, incluez la section de traduction et d'explication dans cette langue.`
             },
             es: {
                 title: "LinguaLex - Diccionario Avanzado",
@@ -290,7 +345,30 @@
                 french: "Francés",
                 spanish: "Español",
                 german: "Alemán",
-                noTranslation: "Sin traducción"
+                noTranslation: "Sin traducción",
+                systemPrompt:`Eres un experto altamente competente en diccionarios e idiomas. Proporciona una explicación completa de la palabra o frase dada en formato Markdown. Utiliza un estilo apropiado, incluyendo encabezados, listas y tablas cuando sea aplicable. Incluye las siguientes secciones:
+
+# [Palabra/Frase]
+
+## Definición
+
+## Etimología (si es aplicable)
+
+## Ejemplos de uso
+
+{showsynonyms}
+{showantonyms}
+
+## Información adicional (por ejemplo, contexto cultural, expresiones idiomáticas, etc.)
+
+{translation}
+Utiliza el formato Markdown apropiado para estructurar tu respuesta, incluyendo encabezados (##, ###), listas (- o 1., 2., etc.) y tablas si es necesario. Asegúrate de que el contenido esté bien organizado y sea fácil de leer.`,
+        userPrompt: `Palabra/Frase: "{word}"
+Idioma de origen: {srcLang}
+Idioma de respuesta: {respLang}
+{targetLang}
+
+Por favor, proporciona una explicación y análisis detallados de esta palabra o frase en el idioma de respuesta especificado, siguiendo el formato Markdown descrito anteriormente. Si se especifica un idioma objetivo, incluye la sección de traducción y explicación en ese idioma.`
             },
             de: {
                 title: "LinguaLex - Erweitertes Wörterbuch",
@@ -312,8 +390,167 @@
                 french: "Französisch",
                 spanish: "Spanisch",
                 german: "Deutsch",
-                noTranslation: "Keine Übersetzung"
-            }
+                noTranslation: "Keine Übersetzung",
+                systemPrompt:`Sie sind ein hochkompetenter Experte für Wörterbücher und Sprachen. Geben Sie eine umfassende Erklärung für das gegebene Wort oder die Phrase im Markdown-Format. Verwenden Sie geeignete Formatierung, einschließlich Überschriften, Listen und Tabellen, wo zutreffend. Fügen Sie die folgenden Abschnitte ein:
+
+# [Wort/Phrase]
+
+## Definition
+
+## Etymologie (falls zutreffend)
+
+## Verwendungsbeispiele
+
+{showsynonyms}
+{showantonyms}
+
+## Zusätzliche Informationen (z.B. kultureller Kontext, idiomatische Ausdrücke usw.)
+
+{translation}
+Verwenden Sie geeignete Markdown-Formatierung, um Ihre Antwort zu strukturieren, einschließlich Überschriften (##, ###), Listen (- oder 1., 2., usw.) und Tabellen, falls erforderlich. Stellen Sie sicher, dass der Inhalt gut organisiert und leicht zu lesen ist.`,
+        userPrompt: `Wort/Phrase: "{word}"
+Ausgangssprache: {srcLang}
+Antwortsprache: {respLang}
+{targetLang}
+
+Bitte geben Sie eine detaillierte Erklärung und Analyse dieses Wortes oder dieser Phrase in der angegebenen Antwortsprache, gemäß dem oben beschriebenen Markdown-Format. Wenn eine Zielsprache angegeben ist, fügen Sie den Übersetzungs- und Erklärungsabschnitt in dieser Sprache hinzu.`
+
+            },
+            it: {
+        title: "LinguaLex - Dizionario Avanzato",
+        subtitle: "Dizionario Multilingue Avanzato",
+        settings: "Impostazioni",
+        contextSize: "Dimensione del Contesto",
+        host: "Host",
+        defaultAnswerLang: "Lingua Predefinita per le Risposte",
+        options: "Opzioni",
+        showSynonyms: "Mostra sinonimi",
+        showAntonyms: "Mostra antonimi",
+        showTranslation: "Mostra traduzione",
+        enterWord: "Inserisci una parola o espressione",
+        getDefinition: "Ottieni definizione",
+        copyClipboard: "Copia negli Appunti",
+        saveMarkdown: "Salva come Markdown",
+        sameAsWord: "Stessa lingua della parola",
+        english: "Inglese",
+        french: "Francese",
+        spanish: "Spagnolo",
+        german: "Tedesco",
+        noTranslation: "Nessuna traduzione",
+        systemPrompt: `Sei un esperto altamente competente in dizionari e lingue. Fornisci una spiegazione completa per la parola o frase data in formato Markdown. Usa uno stile appropriato, inclusi titoli, elenchi e tabelle dove applicabile. Includi le seguenti sezioni:
+
+# [Parola/Frase]
+
+## Definizione
+
+## Etimologia (se applicabile)
+
+## Esempi di utilizzo
+
+{showsynonyms}
+{showantonyms}
+
+## Informazioni aggiuntive (es. contesto culturale, espressioni idiomatiche, ecc.)
+
+{translation}
+Usa la formattazione Markdown appropriata per strutturare la tua risposta, inclusi titoli (##, ###), elenchi (- o 1., 2., ecc.) e tabelle se necessario. Assicurati che il contenuto sia ben organizzato e facile da leggere.`,
+        userPrompt: `Parola/Frase: "{word}"
+Lingua di origine: {srcLang}
+Lingua di risposta: {respLang}
+{targetLang}
+
+Per favore, fornisci una spiegazione dettagliata e un'analisi di questa parola o frase nella lingua di risposta specificata, seguendo il formato Markdown descritto sopra. Se è specificata una lingua di destinazione, includi la sezione di traduzione e spiegazione in quella lingua.`
+    },
+    ar: {
+        title: "لينجوالكس - قاموس متقدم",
+        subtitle: "قاموس متعدد اللغات متقدم",
+        settings: "الإعدادات",
+        contextSize: "حجم السياق",
+        host: "المضيف",
+        defaultAnswerLang: "اللغة الافتراضية للإجابة",
+        options: "الخيارات",
+        showSynonyms: "إظهار المرادفات",
+        showAntonyms: "إظهار الأضداد",
+        showTranslation: "إظهار الترجمة",
+        enterWord: "أدخل كلمة أو تعبيرًا",
+        getDefinition: "الحصول على التعريف",
+        copyClipboard: "نسخ إلى الحافظة",
+        saveMarkdown: "حفظ كملف Markdown",
+        sameAsWord: "نفس لغة الكلمة",
+        english: "الإنجليزية",
+        french: "الفرنسية",
+        spanish: "الإسبانية",
+        german: "الألمانية",
+        noTranslation: "لا توجد ترجمة",
+        systemPrompt: `أنت خبير عالي الكفاءة في القواميس واللغات. قدم شرحًا شاملاً للكلمة أو العبارة المعطاة بتنسيق Markdown. استخدم الأسلوب المناسب، بما في ذلك العناوين والقوائم والجداول حيثما كان ذلك مناسبًا. قم بتضمين الأقسام التالية:
+
+# [الكلمة/العبارة]
+
+## التعريف
+
+## الأصل اللغوي (إن وجد)
+
+## أمثلة الاستخدام
+
+{showsynonyms}
+{showantonyms}
+
+## معلومات إضافية (مثل السياق الثقافي، التعبيرات الاصطلاحية، إلخ)
+
+{translation}
+استخدم تنسيق Markdown المناسب لهيكلة ردك، بما في ذلك العناوين (##، ###)، والقوائم (- أو 1.، 2.، إلخ)، والجداول إذا لزم الأمر. تأكد من أن المحتوى منظم بشكل جيد وسهل القراءة.`,
+        userPrompt: `الكلمة/العبارة: "{word}"
+لغة المصدر: {srcLang}
+لغة الرد: {respLang}
+{targetLang}
+
+يرجى تقديم شرح مفصل وتحليل لهذه الكلمة أو العبارة باللغة المحددة للرد، متبعًا تنسيق Markdown الموضح أعلاه. إذا تم تحديد لغة هدف، قم بتضمين قسم الترجمة والشرح بتلك اللغة.`
+    },
+    zh: {
+        title: "LinguaLex - 高级词典",
+        subtitle: "高级多语言词典",
+        settings: "设置",
+        contextSize: "上下文大小",
+        host: "主机",
+        defaultAnswerLang: "默认回答语言",
+        options: "选项",
+        showSynonyms: "显示同义词",
+        showAntonyms: "显示反义词",
+        showTranslation: "显示翻译",
+        enterWord: "输入一个词或短语",
+        getDefinition: "获取定义",
+        copyClipboard: "复制到剪贴板",
+        saveMarkdown: "保存为Markdown",
+        sameAsWord: "与词语相同的语言",
+        english: "英语",
+        french: "法语",
+        spanish: "西班牙语",
+        german: "德语",
+        noTranslation: "无翻译",
+        systemPrompt: `你是一位在词典和语言方面高度胜任的专家。请以Markdown格式为给定的词或短语提供全面的解释。使用适当的样式，包括标题、列表和表格（如适用）。包括以下部分：
+
+# [词/短语]
+
+## 定义
+
+## 词源（如适用）
+
+## 使用示例
+
+{showsynonyms}
+{showantonyms}
+
+## 附加信息（例如，文化背景、习语表达等）
+
+{translation}
+使用适当的Markdown格式来构建你的回答，包括标题（##、###）、列表（- 或 1.、2. 等）和必要时的表格。确保内容组织良好且易于阅读。`,
+        userPrompt: `词/短语："{word}"
+源语言：{srcLang}
+回答语言：{respLang}
+{targetLang}
+
+请按照上述Markdown格式，用指定的回答语言为这个词或短语提供详细的解释和分析。如果指定了目标语言，请包含该语言的翻译和解释部分。`
+    }            
         };
 
         let currentLanguage = 'en'; // Langue par défaut
@@ -482,33 +719,16 @@
 
             if (!word) return;
             document.getElementById('loader').classList.remove("hidden");
+            
+            const systemPrompt = translations[sourceLang].systemPrompt.replace("{showsynonyms}",showSynonyms ? '## Synonymes\n' : '')
+                                                                .replace("{showantonyms}",showAntonyms ? '## Antonymes\n' : '')
+                                                                .replace("{translation}",showTranslation && targetLang ? `## Traduction et Explication en ${translations[currentLanguage][targetLang]}\n` : '');
 
-            const systemPrompt = `Vous êtes un expert en dictionnaire et en langues très compétent. Fournissez une explication complète pour le mot ou l'expression donnée au format Markdown. Utilisez un style approprié, y compris des en-têtes, des listes et des tableaux le cas échéant. Incluez les sections suivantes :
 
-# [Mot/Expression]
-
-## Définition
-
-## Étymologie (si applicable)
-
-## Exemples d'utilisation
-
-${showSynonyms ? '## Synonymes\n' : ''}
-${showAntonyms ? '## Antonymes\n' : ''}
-
-## Informations supplémentaires (par exemple, contexte culturel, expressions idiomatiques, etc.)
-
-${showTranslation && targetLang ? `## Traduction et Explication en ${translations[currentLanguage][targetLang]}\n` : ''}
-
-Utilisez un formatage Markdown approprié pour structurer votre réponse, y compris des en-têtes (##, ###), des listes (- ou 1., 2., etc.) et des tableaux si nécessaire. Assurez-vous que le contenu est bien organisé et facile à lire.`;
-
-            let userPrompt = `Mot/Expression : "${word}"
-
-Langue source : ${translations[currentLanguage][sourceLang]}
-Langue de réponse : ${answerLang === 'same' ? translations[currentLanguage][sourceLang] : translations[currentLanguage][answerLang]}
-${targetLang ? `Langue cible : ${translations[currentLanguage][targetLang]}` : ''}
-
-Veuillez fournir une explication et une analyse détaillées de ce mot ou de cette expression dans la langue de réponse spécifiée, en suivant le format Markdown décrit ci-dessus. Si une langue cible est spécifiée, incluez la section de traduction et d'explication dans cette langue.`;
+            let userPrompt = translations[sourceLang].userPrompt.replace("{word}",word)
+                                                                .replace("{srcLang}",translations[currentLanguage][sourceLang])
+                                                                .replace("{respLang}",answerLang === 'same' ? translations[currentLanguage][sourceLang] : translations[currentLanguage][answerLang])
+                                                                .replace("{targetLang}",targetLang ? `Langue cible : ${translations[currentLanguage][targetLang]}` : '');
 
             let prompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message();
 
