@@ -87,7 +87,16 @@
                     </svg>
                     Modify
                 </button>
+                <button id="addImageBtn" class="flex-grow bg-purple-500 text-white px-4 py-2 rounded-lg hover:bg-purple-600 transition duration-300 ease-in-out flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M4 3a1 1 0 011-1h10a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V3z" />
+                        <path d="M9 7a1 1 0 100 2h2a1 1 0 100-2H9z" />
+                    </svg>
+                    Add Image
+                </button>                
             </div>
+            <ul id="imageList" class="mt-4 space-y-2"></ul>
+
         </aside>
 
         <section id="formPreview" class="w-full md:w-2/3 bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 transition-all duration-300">
@@ -238,6 +247,39 @@
         const loadHtmlBtn = document.getElementById('loadHtmlBtn');
         loadHtmlBtn.addEventListener('click', loadFromHtml);
 
+        const imageList = document.getElementById('imageList');
+        const addImageBtn = document.getElementById('addImageBtn');
+        let images = [];
+
+        addImageBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'image/*';
+            input.onchange = (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const base64Image = e.target.result.split(',')[1];
+                        images.push(base64Image);
+                        const li = document.createElement('li');
+                        li.className = 'flex items-center justify-between bg-gray-200 dark:bg-gray-700 p-2 rounded-lg';
+                        li.innerHTML = `
+                            <span class="truncate">${file.name}</span>
+                            <button class="removeImageBtn bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600 transition duration-300 ease-in-out">Remove</button>
+                        `;
+                        li.querySelector('.removeImageBtn').addEventListener('click', () => {
+                            images = images.filter(img => img !== base64Image);
+                            li.remove();
+                        });
+                        imageList.appendChild(li);
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+            input.click();
+        });
+
         async function generateForm() {
             showLoader();
             const useTailwind = useTailwindToggle.checked;
@@ -248,24 +290,26 @@
             prompt += `Make sure to answer only with the html content inside a html code markdown tag. `;
             
             if (useTailwind) {
-                console.log("Tailwindcss")
                 prompt += `Use modern design with tailwindcss. `;
             } else {
-                console.log("Inline css")
                 prompt += `Use inline CSS for styling. `;
             }
             
             if (!includeSubmit) {
-                console.log("No submit button")
                 prompt += `Do not include a submit button in the form. `;
             }
             
             if (pdfLike) {
-                console.log("Using pdf style")
                 prompt += `Design the form to look like a traditional PDF form with boxed input areas. Make the form raw with no borders nor background to be used in a pdf file.`;
             }
 
-            const response = await lc.generate(prompt);
+            let response;
+            if (images.length > 0) {
+                response = await lc.generate_with_images(prompt, images);
+            } else {
+                response = await lc.generate(prompt);
+            }
+            
             const codes = tl.extractCodeBlocks(response);
 
             if (codes.length > 0) {
@@ -281,7 +325,7 @@
             const includeSubmit = includeSubmitToggle.checked;
             const pdfLike = pdfLikeToggle.checked;
             
-            let prompt = `Current form HTML:\n\`\`\`\n${formContainer.innerHTML}\n\`\`\`\\nRewrite the entire HTML form based on the following request: ${userInput.value}.`;
+            let prompt = `Current form HTML:\n\`\`\`\n${formContainer.innerHTML}\n\`\`\`\nRewrite the entire HTML form based on the following request: ${userInput.value}.`;
             prompt += `Make sure to answer only with the complete html content inside a html code markdown tag. `;
             
             if (useTailwind) {
@@ -298,7 +342,13 @@
                 prompt += `Design the form to look like a traditional PDF form with boxed input areas. `;
             }
 
-            const response = await lc.generate(prompt);
+            let response;
+            if (images.length > 0) {
+                response = await lc.generate_with_images(prompt, images);
+            } else {
+                response = await lc.generate(prompt);
+            }
+            
             const codes = tl.extractCodeBlocks(response);
 
             if (codes.length > 0) {
