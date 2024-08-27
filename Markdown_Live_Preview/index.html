@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Markdown Renderer App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>    
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <header class="bg-blue-600 text-white p-4">
+        <h1 class="text-2xl font-bold">Markdown Renderer App</h1>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 flex flex-col md:flex-row gap-4">
+        <div class="w-full md:w-1/2">
+            <textarea id="markdown-input" class="w-full h-64 p-2 border rounded resize-y" placeholder="Enter your markdown here..."></textarea>
+            <div class="mt-4 flex gap-2">
+                <button id="render-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Render</button>
+                <button id="clear-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Clear</button>
+            </div>
+        </div>
+        <div class="w-full md:w-1/2">
+            <div id="output" class="bg-white p-4 border rounded min-h-[16rem]"></div>
+            <button id="copy-btn" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Copy HTML</button>
+        </div>
+    </main>
+
+    <footer class="bg-gray-200 text-center p-4">
+        <p>&copy; 2023 Markdown Renderer App</p>
+    </footer>
+
+    <script>
+        const markdownInput = document.getElementById('markdown-input');
+        const output = document.getElementById('output');
+        const renderBtn = document.getElementById('render-btn');
+        const clearBtn = document.getElementById('clear-btn');
+        const copyBtn = document.getElementById('copy-btn');
+        const mr = new MarkdownRenderer();
+
+        async function renderMarkdown() {
+            const markdown = markdownInput.value;
+            const renderedHtml = await mr.renderMarkdown(markdown);
+            output.innerHTML = renderedHtml;
+        }
+
+        renderBtn.addEventListener('click', renderMarkdown);
+
+        clearBtn.addEventListener('click', () => {
+            markdownInput.value = '';
+            output.innerHTML = '';
+        });
+
+        copyBtn.addEventListener('click', () => {
+            const tempTextArea = document.createElement('textarea');
+            tempTextArea.value = output.innerHTML;
+            document.body.appendChild(tempTextArea);
+            tempTextArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(tempTextArea);
+            alert('HTML copied to clipboard!');
+        });
+
+        // Optional: Real-time preview
+        markdownInput.addEventListener('input', debounce(renderMarkdown, 300));
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>
