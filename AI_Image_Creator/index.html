@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lollms Image Gallery</title>
+    <script src="/lollms_assets/js/tailwindcss"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {},
+            },
+            variants: {
+                extend: {},
+            },
+            plugins: [],
+        }
+    </script>
+       
+    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .animate-spin {
+            animation: spin 1s linear infinite;
+        }
+        .drawing-canvas {
+            cursor: crosshair;
+        }
+        .tool-btn {
+            @apply p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300;
+        }
+
+        .tool-btn.active {
+            @apply bg-blue-500 text-white;
+        }
+
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 dark:text-white">Lollms Image Gallery</h1>
+            <button id="darkModeToggle" class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-800 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+            </button>
+        </div>
+        
+        <div class="flex-grow flex">
+            <div class="w-3/4 pr-4">
+                <div id="imageViewer" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-4 h-full flex flex-col">
+                    <div class="flex-grow relative">
+                        <canvas id="viewerCanvas" class="w-full h-full object-contain"></canvas>
+                        <canvas id="drawingCanvas" class="absolute top-0 left-0 w-full h-full drawing-canvas"></canvas>
+                    </div>
+                    <div class="flex justify-between mt-4">
+                        <div class="flex justify-between mt-4">
+                            <div class="flex">
+                                <button id="zoomIn" class="tool-btn" title="Zoom In">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        <line x1="11" y1="8" x2="11" y2="14"></line>
+                                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                                    </svg>
+                                </button>
+                                <button id="zoomOut" class="tool-btn" title="Zoom Out">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                                        <circle cx="11" cy="11" r="8"></circle>
+                                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                                        <line x1="8" y1="11" x2="14" y2="11"></line>
+                                    </svg>
+                                </button>
+                                <button id="downloadBtn" class="tool-btn" title="Download Image">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="7 10 12 15 17 10"></polyline>
+                                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap justify-center mt-4">
+                        <button id="penBtn" class="tool-btn active" title="Pen">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>
+                        </button>
+                        <button id="eraserBtn" class="tool-btn" title="Eraser">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M20 20H7L3 16c-1.5-1.5-1.5-3.9 0-5.4L13.4 0.6c1.5-1.5 3.9-1.5 5.4 0L20 1.8c1.5 1.5 1.5 3.9 0 5.4L9.8 17.4"></path></svg>
+                        </button>
+                        <button id="undoBtn" class="tool-btn" title="Undo" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 7v6h6"></path><path d="M21 17a9 9 0 00-9-9 9 9 0 00-6 2.3L3 13"></path></svg>
+                        </button>
+                        <button id="redoBtn" class="tool-btn" title="Redo" disabled>
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M21 7v6h-6"></path><path d="M3 17a9 9 0 019-9 9 9 0 016 2.3L21 13"></path></svg>
+                        </button>
+                        <button id="clearBtn" class="tool-btn" title="Clear">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
+                        </button>
+                        <input type="color" id="colorPicker" class="w-6 h-6 p-0 border-0" value="#000000">
+                        <input type="range" id="brushSize" min="1" max="20" value="2" class="w-24">
+                    </div>                        
+            </div>
+            </div>
+            <div class="w-1/4 pl-4">
+                <div id="gallery" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 h-full overflow-y-auto grid grid-cols-2 gap-4">
+                    <!-- Gallery items will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                <div class="flex items-center mb-4">
+                    <textarea id="promptInput" class="flex-grow p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" rows="2" placeholder="Enter your image prompt here..."></textarea>
+                    <button id="generateBtn" class="ml-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">Generate</button>
+                </div>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <label for="imageCount" class="block mb-2 dark:text-white">Number of Images:</label>
+                        <input type="number" id="imageCount" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="1" min="1" max="10">
+                    </div>
+
+                    <div>
+                        <label for="imageSize" class="block mb-2 dark:text-white">Image Size:</label>
+                        <select id="imageSize" class="w-48 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <option value="custom">Custom</option>
+                            <option value="512x512">512x512 (1:1)</option>
+                            <option value="640x640">640x640 (1:1)</option>
+                            <option value="768x768">768x768 (1:1)</option>
+                            <option value="1024x1024">1024x1024 (1:1)</option>
+                            <option value="640x480">640x480 (4:3)</option>
+                            <option value="800x600">800x600 (4:3)</option>
+                            <option value="1024x768">1024x768 (4:3)</option>
+                            <option value="1280x720">1280x720 (16:9)</option>
+                            <option value="1920x1080">1920x1080 (16:9)</option>
+                            <option value="1080x1920">1080x1920 (9:16)</option>
+                        </select>
+                    </div>
+                    <div id="customSizeInputs" class="flex">
+                        <div class="mr-4">
+                            <label for="imageWidth" class="block mb-2 dark:text-white">Width:</label>
+                            <input type="number" id="imageWidth" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="512" min="64" max="1920" step="64">
+                        </div>
+                        <div>
+                            <label for="imageHeight" class="block mb-2 dark:text-white">Height:</label>
+                            <input type="number" id="imageHeight" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="512" min="64" max="1920" step="64">
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p class="text-xl font-bold dark:text-white">Generating Image...</p>
+        </div>
+    </div>
+
+    <script>
+
+        if (localStorage.getItem('darkMode') === 'true' || 
+                (!('darkMode' in localStorage) && 
+                window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }        
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const imageWidth = document.getElementById('imageWidth');
+        const imageHeight = document.getElementById('imageHeight');
+        const gallery = document.getElementById('gallery');
+        const viewerCanvas = document.getElementById('viewerCanvas');
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const zoomInBtn = document.getElementById('zoomIn');
+        const zoomOutBtn = document.getElementById('zoomOut');
+        const imageSizeSelect = document.getElementById('imageSize');
+        const customSizeInputs = document.getElementById('customSizeInputs');
+
+        imageSizeSelect.addEventListener('change', () => {
+            const selectedSize = imageSizeSelect.value;
+            if (selectedSize === 'custom') {
+                customSizeInputs.style.display = 'flex';
+            } else {
+                customSizeInputs.style.display = 'none';
+                const [width, height] = selectedSize.split('x');
+                imageWidth.value = width;
+                imageHeight.value = height;
+            }
+        });
+
+        // Initialize the custom size inputs visibility
+        customSizeInputs.style.display = imageSizeSelect.value === 'custom' ? 'flex' : 'none';
+
+
+        let images = JSON.parse(localStorage.getItem('generatedImages')) || [];
+        let currentImage = null;
+        let scale = 1;
+        let isDrawing = false;
+        let isErasing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let drawHistory = [];
+        let redoHistory = [];
+        let drawingMode = 'pen';
+        const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'];
+        let currentColor = colors[0];
+        let brushSize = 2;
+
+        const ctx = viewerCanvas.getContext('2d');
+        const drawCtx = drawingCanvas.getContext('2d');
+
+        function updateGallery() {
+            gallery.innerHTML = '';
+            images.forEach((image, index) => {
+                const item = document.createElement('div');
+                item.className = 'mb-4 cursor-pointer';
+                item.innerHTML = `
+                    <img src="${image.src}" alt="${image.title}" class="w-full h-32 object-cover rounded-md mb-2">
+                    <h3 class="text-sm font-semibold mb-1 dark:text-white truncate">${image.title}</h3>
+                    <button class="text-red-500 hover:text-red-600 transition duration-300" onclick="deleteImage(${index})">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                item.querySelector('img').addEventListener('click', () => loadImage(image));
+                gallery.appendChild(item);
+            });
+        }
+
+
+
+        function loadImage(image) {
+            currentImage = new Image();
+            currentImage.onload = () => {
+                scale = 1;
+                drawImage();
+            };
+            currentImage.src = image.src;
+            currentImage.prompt = image.enhancedPrompt;
+
+            // Display the image information
+            const imageInfo = document.createElement('div');
+            imageInfo.className = 'mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-md';
+            imageInfo.innerHTML = `
+                <h3 class="text-lg font-semibold mb-2 dark:text-white">${image.title}</h3>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">Original: ${image.originalPrompt}</p>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Enhanced: ${image.enhancedPrompt}</p>
+                <button id="saveEditedImage" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">Save Edited Image</button>
+            `;
+            const imageViewer = document.getElementById('imageViewer');
+            const existingImageInfo = imageViewer.querySelector('div:last-child');
+            if (existingImageInfo) {
+                existingImageInfo.remove();
+            }
+            imageViewer.appendChild(imageInfo);
+
+            // Add event listener to the save button
+            document.getElementById('saveEditedImage').addEventListener('click', saveEditedImage);
+        }
+
+        function saveEditedImage() {
+            const editedImageData = drawingCanvas.toDataURL('image/png');
+            const editedImage = {
+                src: editedImageData,
+                title: currentImage.title,
+                originalPrompt: currentImage.originalPrompt,
+                enhancedPrompt: currentImage.prompt
+            };
+
+            // Add the edited image to the beginning of the images array
+            images.unshift(editedImage);
+
+            // Update local storage
+            localStorage.setItem('generatedImages', JSON.stringify(images));
+
+            // Update the gallery
+            updateGallery();
+
+            alert('Edited image saved successfully!');
+        }
+
+        function drawImage() {
+            const containerWidth = viewerCanvas.clientWidth;
+            const containerHeight = viewerCanvas.clientHeight;
+            const imageAspectRatio = currentImage.width / currentImage.height;
+            const containerAspectRatio = containerWidth / containerHeight;
+
+            let drawWidth, drawHeight;
+            if (imageAspectRatio > containerAspectRatio) {
+                drawWidth = containerWidth;
+                drawHeight = containerWidth / imageAspectRatio;
+            } else {
+                drawHeight = containerHeight;
+                drawWidth = containerHeight * imageAspectRatio;
+            }
+
+            viewerCanvas.width = containerWidth;
+            viewerCanvas.height = containerHeight;
+            drawingCanvas.width = containerWidth;
+            drawingCanvas.height = containerHeight;
+
+            const centerX = containerWidth / 2 - (drawWidth * scale) / 2;
+            const centerY = containerHeight / 2 - (drawHeight * scale) / 2;
+
+            ctx.clearRect(0, 0, containerWidth, containerHeight);
+            ctx.drawImage(currentImage, centerX, centerY, drawWidth * scale, drawHeight * scale);
+
+            // Redraw the drawing canvas content
+            drawCtx.clearRect(0, 0, containerWidth, containerHeight);
+            drawCtx.drawImage(drawingCanvas, 0, 0);
+        }
+
+
+        function saveImage(src, originalPrompt, title, enhancedPrompt) {
+            images.unshift({ src, originalPrompt, title, enhancedPrompt });
+            localStorage.setItem('generatedImages', JSON.stringify(images));
+            updateGallery();
+        }
+
+
+        function deleteImage(index) {
+            images.splice(index, 1);
+            localStorage.setItem('generatedImages', JSON.stringify(images));
+            updateGallery();
+        }
+
+        async function generateTitle(prompt) {
+            const titlePrompt = `Generate a short, catchy title for an image based on this prompt: "${prompt}". The title should be no more than 5 words. Only answer with the title without any explanations.`;
+            return await lc.generate(lc.system_message() + titlePrompt + lc.ai_message());
+        }
+
+        async function generateImage() {
+            const prompt = promptInput.value;
+            if (!prompt) return;
+
+            const width = parseInt(imageWidth.value);
+            const height = parseInt(imageHeight.value);
+            const count = parseInt(imageCount.value);
+
+            loadingOverlay.classList.remove('hidden');
+            const statusElement = document.createElement('p');
+            statusElement.className = 'text-lg font-semibold mt-4 dark:text-white';
+            loadingOverlay.querySelector('div').appendChild(statusElement);
+
+            try {
+                statusElement.textContent = 'Enhancing prompt...';
+                const enhancedPrompt = await lc.generate(lc.system_message() + `Enhance this image prompt:\n${prompt}\nOnly answer with the prompt with no comments.\nOnly answer with the prompt without any explanations.` + lc.ai_message());
+                
+                for (let i = 0; i < count; i++) {
+                    statusElement.textContent = `Generating image ${i + 1} of ${count}...`;
+                    const base64Image = await ttiClient.generateImage(enhancedPrompt, '', width, height);
+                    
+                    statusElement.textContent = 'Creating title...';
+                    const title = await generateTitle(prompt);
+                    
+                    statusElement.textContent = 'Saving image...';
+                    saveImage(`data:image/jpeg;base64,${base64Image}`, prompt, title, enhancedPrompt);
+                    
+                    if (i === 0) {
+                        loadImage({ src: `data:image/jpeg;base64,${base64Image}`, prompt: enhancedPrompt });
+                    }
+                }
+                
+                statusElement.textContent = `${count} image(s) generated successfully!`;
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                    statusElement.remove();
+                }, 1500);
+            } catch (error) {
+                console.error('Error generating image:', error);
+                statusElement.textContent = 'An error occurred. Please try again.';
+                setTimeout(() => {
+                    loadingOverlay.classList.add('hidden');
+                    statusElement.remove();
+                }, 3000);
+            }
+        }
+
+
+        generateBtn.addEventListener('click', generateImage);
+
+        [imageWidth, imageHeight].forEach(input => {
+            input.addEventListener('change', () => {
+                input.value = Math.max(64, Math.min(1024, Math.round(input.value / 64) * 64));
+            });
+        });
+
+        zoomInBtn.addEventListener('click', () => {
+            scale *= 1.1;
+            drawImage();
+        });
+
+        zoomOutBtn.addEventListener('click', () => {
+            scale *= 0.9;
+            drawImage();
+        });
+
+
+        function startDrawing(e) {
+            isDrawing = true;
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            drawCtx.beginPath();
+            drawCtx.moveTo(lastX, lastY);
+            drawCtx.lineTo(e.offsetX, e.offsetY);
+            drawCtx.strokeStyle = currentColor;
+            drawCtx.lineWidth = brushSize;
+            drawCtx.lineCap = 'round';
+            if (drawingMode === 'eraser') {
+                drawCtx.globalCompositeOperation = 'destination-out';
+            } else {
+                drawCtx.globalCompositeOperation = 'source-over';
+            }
+            drawCtx.stroke();
+            [lastX, lastY] = [e.offsetX, e.offsetY];
+        }
+
+        function stopDrawing() {
+            if (isDrawing) {
+                isDrawing = false;
+                saveDrawingState();
+            }
+        }
+        function saveDrawingState() {
+            drawHistory.push(drawingCanvas.toDataURL());
+            redoHistory = [];
+            updateUndoRedoButtons();
+        }
+
+        function undo() {
+            if (drawHistory.length > 1) {
+                redoHistory.push(drawHistory.pop());
+                loadDrawingState(drawHistory[drawHistory.length - 1]);
+            }
+            updateUndoRedoButtons();
+        }
+
+        function redo() {
+            if (redoHistory.length > 0) {
+                const redoState = redoHistory.pop();
+                drawHistory.push(redoState);
+                loadDrawingState(redoState);
+            }
+            updateUndoRedoButtons();
+        }
+        function loadDrawingState(state) {
+            const img = new Image();
+            img.onload = () => {
+                drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+                drawCtx.drawImage(img, 0, 0);
+            };
+            img.src = state;
+        }
+
+        function updateUndoRedoButtons() {
+            undoBtn.disabled = drawHistory.length <= 1;
+            redoBtn.disabled = redoHistory.length === 0;
+        }
+
+        function clearDrawing() {
+            drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            saveDrawingState();
+        }
+
+        drawingCanvas.addEventListener('mousedown', startDrawing);
+        drawingCanvas.addEventListener('mousemove', draw);
+        drawingCanvas.addEventListener('mouseup', stopDrawing);
+        drawingCanvas.addEventListener('mouseout', stopDrawing);
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const darkModeIcon = darkModeToggle.querySelector('svg');
+
+        function updateDarkModeIcon() {
+            console.log("Updating dark mode icon, dark mode is:", document.documentElement.classList.contains('dark'));
+            if (document.documentElement.classList.contains('dark')) {
+                darkModeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                `;
+            } else {
+                darkModeIcon.innerHTML = `
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                `;
+            }
+        }
+
+        darkModeToggle.addEventListener('click', () => {
+            console.log("Dark mode toggle clicked");
+            console.log("Before toggle:", document.documentElement.classList.contains('dark'));
+            document.documentElement.classList.toggle('dark');
+            console.log("After toggle:", document.documentElement.classList.contains('dark'));
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+            updateDarkModeIcon();
+            console.log("Dark mode in localStorage:", localStorage.getItem('darkMode'));
+        });
+        // Initial icon update
+        updateDarkModeIcon();
+
+
+        updateGallery();
+
+        // Check for saved dark mode preference
+        if (localStorage.getItem('darkMode') === 'true' || 
+            (!('darkMode' in localStorage) && 
+            window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+
+        // Save dark mode preference
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+        });
+
+        const penBtn = document.getElementById('penBtn');
+        const eraserBtn = document.getElementById('eraserBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const colorPicker = document.getElementById('colorPicker');
+        const brushSizeInput = document.getElementById('brushSize');
+
+        penBtn.addEventListener('click', () => setDrawingMode('pen'));
+        eraserBtn.addEventListener('click', () => setDrawingMode('eraser'));
+        undoBtn.addEventListener('click', undo);
+        redoBtn.addEventListener('click', redo);
+        clearBtn.addEventListener('click', clearDrawing);
+        colorPicker.addEventListener('input', (e) => {
+            currentColor = e.target.value;
+            setDrawingMode('pen');
+        });
+        brushSizeInput.addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+        });
+
+        function setDrawingMode(mode) {
+            drawingMode = mode;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            if (mode === 'pen') {
+                penBtn.classList.add('active');
+            } else if (mode === 'eraser') {
+                eraserBtn.classList.add('active');
+            }
+        }
+
+        // Initialize drawing state
+        saveDrawingState();
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        downloadBtn.addEventListener('click', () => {
+            if (currentImage) {
+                const link = document.createElement('a');
+                link.download = 'generated-image.png';
+                link.href = currentImage.src;
+                link.click();
+            } else {
+                alert('No image to download. Please generate or select an image first.');
+            }
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("DOM loaded, checking initial dark mode");
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+            updateDarkModeIcon();
+        });
+    </script>
+</body>
+</html>
