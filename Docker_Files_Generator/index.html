@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Docker Files Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">        
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4">Docker Files Generator</h1>
+        <div class="bg-white shadow-md rounded p-6">
+            <div class="mb-4">
+                <label for="scriptInput" class="block text-sm font-medium text-gray-700">Install Script</label>
+                <textarea id="scriptInput" rows="10" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Paste your install script here..."></textarea>
+            </div>
+            <button id="generateButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Generate Docker Files</button>
+            <div id="errorNotification" class="mt-4 text-red-500 hidden"></div>
+            <div id="outputDisplay" class="mt-4 hidden">
+                <h2 class="text-xl font-semibold">Generated Docker Files</h2>
+                <pre class="bg-gray-100 p-4 rounded mt-2 overflow-auto"></pre>
+                <button id="downloadZipButton" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-2">Download as ZIP</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mr = new MarkdownRenderer();
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc); // lc is a LollmsClient object
+        let dockerfile = '';
+        let dockerCompose = '';
+
+        document.getElementById('generateButton').addEventListener('click', async () => {
+            const scriptInput = document.getElementById('scriptInput').value;
+            const errorNotification = document.getElementById('errorNotification');
+            const outputDisplay = document.getElementById('outputDisplay');
+            const outputPre = outputDisplay.querySelector('pre');
+
+            errorNotification.classList.add('hidden');
+            outputDisplay.classList.add('hidden');
+
+            try {
+                const prompt = lc.system_message() + "Generate a Dockerfile and a Docker Compose file from the following install script:\n" + lc.template.separator_template +"\nAnswer using two markdown environments with the naes dockerfile and docker_compose consequently.\n" + lc.user_message() + scriptInput + lc.template.separator_template + lc.ai_message();
+                const generatedFilesAnswer = await lc.generate(prompt);
+                const codes = tl.extractCodeBlocks(generatedFilesAnswer);
+
+                if (codes.length > 0) {
+                    dockerfile = codes[0].content;
+                    if (codes.length > 1) {
+                        dockerCompose = codes[1].content;
+                    }
+                }
+
+                outputPre.innerHTML = await mr.renderMarkdown(generatedFilesAnswer);
+                outputDisplay.classList.remove('hidden');
+            } catch (error) {
+                errorNotification.textContent = "Error generating Docker files: " + error.message;
+                errorNotification.classList.remove('hidden');
+            }
+        });
+
+        document.getElementById('downloadZipButton').addEventListener('click', () => {
+            const zip = new JSZip();
+            zip.file("Dockerfile", dockerfile);
+            zip.file("docker-compose.yml", dockerCompose); 
+            zip.generateAsync({ type: "blob" })
+                .then(function(content) {
+                    const url = URL.createObjectURL(content);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'docker_files.zip';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+        });
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation Builder</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">    
+    <style>
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3498db;
+            animation: spin 1s ease infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <nav class="bg-blue-600 p-4">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-white text-2xl">Documentation Builder</h1>
+            <div>
+                <a href="#" class="text-white mx-2">Settings</a>
+                <a href="#" class="text-white mx-2">Help</a>
+                <a href="#" class="text-white mx-2">Support</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto mt-10">
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4">Upload Your File or Paste Code</h2>
+            <div class="border-dashed border-4 border-gray-300 p-6 text-center">
+                <input type="file" id="fileInput" class="hidden" />
+                <label for="fileInput" class="cursor-pointer">
+                    <div class="text-gray-500">Drag and drop your file here or click to upload</div>
+                </label>
+                <textarea id="codeInput" class="w-full mt-4 p-2 border border-gray-300 rounded" rows="10" placeholder="Or paste your code here..."></textarea>
+            </div>
+            <button id="generateBtn" class="bg-blue-600 text-white px-4 py-2 rounded mt-4">Generate Documentation</button>
+            <div id="progress" class="mt-4 hidden flex justify-center">
+                <div class="spinner"></div>
+                <p class="ml-2">Generating documentation...</p>
+            </div>
+        </div>
+
+        <div id="documentationViewer" class="bg-white p-6 rounded-lg shadow-lg mt-6 hidden">
+            <h2 class="text-xl font-bold mb-4">Generated Documentation</h2>
+            <div id="docContent" class="overflow-auto main-h-96"></div>
+            <div class="mt-4">
+                <button id="downloadBtn" class="bg-blue-600 text-white px-4 py-2 rounded">Download</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const mr = new MarkdownRenderer();
+        const fileInput = document.getElementById('fileInput');
+        const codeInput = document.getElementById('codeInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const progress = document.getElementById('progress');
+        const documentationViewer = document.getElementById('documentationViewer');
+        const docContent = document.getElementById('docContent');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        let generatedText = '';
+        generateBtn.addEventListener('click', async () => {
+            let codeText = codeInput.value.trim();
+
+            if (!codeText && fileInput.files.length > 0) {
+                const file = fileInput.files[0];
+                const reader = new FileReader();
+                reader.onload = async (event) => {
+                    codeText = event.target.result;
+                    await generateDocumentation(codeText);
+                };
+                reader.readAsText(file);
+            } else if (codeText) {
+                await generateDocumentation(codeText);
+            } else {
+                alert('Please upload a file or paste code to generate documentation.');
+            }
+        });
+
+        async function generateDocumentation(codeText) {
+            progress.classList.remove('hidden');
+            try {
+                const lc = new LollmsClient();
+                generatedText = await lc.generate(lc.system_message()+`Generate a markdown formatted documentaton for the following code:\n\`\`\`\n${codeText}\n\`\`\`\n`+`If you need to describe some concepts graphically you may use a mermaid markdown code tag.\n`+lc.ai_message());
+                docContent.innerHTML = await mr.renderMarkdown(generatedText);
+                documentationViewer.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating documentation:', error);
+            } finally {
+                progress.classList.add('hidden');
+            }
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const blob = new Blob([generatedText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'documentation.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    </script>
+</body>
+</html>
