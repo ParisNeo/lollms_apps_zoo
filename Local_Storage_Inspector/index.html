@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Storage Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">Local Storage Explorer</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Storage Usage</h2>
+            <div id="storage-usage" class="flex items-center justify-between">
+                <div class="text-lg">Used: <span id="used-storage" class="font-bold text-indigo-600">0 KB</span></div>
+                <div class="text-lg">Available: <span id="available-storage" class="font-bold text-green-600">5 MB</span></div>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
+                <div id="storage-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="mb-6 flex flex-wrap items-center">
+            <input type="text" id="search-input" placeholder="Search..." class="flex-grow p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <button id="search-btn" class="bg-indigo-600 text-white px-4 py-2 rounded-r-md hover:bg-indigo-700 transition duration-300">Search</button>
+            <button id="clear-all-btn" class="ml-4 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition duration-300">Clear All Storage</button>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white rounded-lg overflow-hidden">
+                <thead class="bg-indigo-600 text-white">
+                    <tr>
+                        <th class="px-4 py-2">Website</th>
+                        <th class="px-4 py-2">Key</th>
+                        <th class="px-4 py-2">Value</th>
+                        <th class="px-4 py-2">Size</th>
+                        <th class="px-4 py-2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="storage-items">
+                    <!-- Storage items will be dynamically inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Item Details Modal -->
+    <div id="item-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full">
+            <h2 id="modal-title" class="text-2xl font-bold mb-4"></h2>
+            <p id="modal-website" class="mb-2"></p>
+            <p id="modal-key" class="mb-2"></p>
+            <pre id="modal-value" class="bg-gray-100 p-4 rounded-md overflow-x-auto"></pre>
+            <button id="close-modal" class="mt-4 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-300">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const localizer = new WebAppLocalizer({
+            en: {
+                name: "English",
+                translations: {
+                    "title": "Local Storage Explorer",
+                    "storage-usage": "Storage Usage",
+                    "used": "Used",
+                    "available": "Available",
+                    "search-placeholder": "Search...",
+                    "search-btn": "Search",
+                    "clear-all-btn": "Clear All Storage",
+                    "website-col": "Website",
+                    "key-col": "Key",
+                    "value-col": "Value",
+                    "size-col": "Size",
+                    "actions-col": "Actions",
+                    "view-btn": "View",
+                    "delete-btn": "Delete",
+                    "close-btn": "Close"
+                }
+            }
+        }, "local-storage-explorer-");
+
+        document.addEventListener('DOMContentLoaded', () => {
+            localizer.apply();
+            updateStorageUsage();
+            displayStorageItems();
+
+            document.getElementById('search-btn').addEventListener('click', searchItems);
+            document.getElementById('clear-all-btn').addEventListener('click', clearAllStorage);
+            document.getElementById('close-modal').addEventListener('click', closeModal);
+        });
+
+        function updateStorageUsage() {
+            const usedStorage = calculateUsedStorage();
+            const availableStorage = 5 * 1024 * 1024; // 5 MB in bytes
+            const usedPercentage = (usedStorage / availableStorage) * 100;
+
+            document.getElementById('used-storage').textContent = formatBytes(usedStorage);
+            document.getElementById('available-storage').textContent = formatBytes(availableStorage);
+            document.getElementById('storage-bar').style.width = `${usedPercentage}%`;
+        }
+
+        function calculateUsedStorage() {
+            let totalSize = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                totalSize += localStorage.getItem(key).length;
+            }
+            return totalSize;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function displayStorageItems() {
+            const storageItems = document.getElementById('storage-items');
+            storageItems.innerHTML = '';
+
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                const size = value.length;
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td class="border px-4 py-2">${getWebsiteFromKey(key)}</td>
+                    <td class="border px-4 py-2">${key}</td>
+                    <td class="border px-4 py-2">${truncateValue(value)}</td>
+                    <td class="border px-4 py-2">${formatBytes(size)}</td>
+                    <td class="border px-4 py-2">
+                        <button class="view-btn bg-blue-500 text-white px-2 py-1 rounded mr-2 hover:bg-blue-600 transition duration-300">${localizer.translate("view-btn")}</button>
+                        <button class="delete-btn bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600 transition duration-300">${localizer.translate("delete-btn")}</button>
+                    </td>
+                `;
+
+                tr.querySelector('.view-btn').addEventListener('click', () => viewItem(key, value));
+                tr.querySelector('.delete-btn').addEventListener('click', () => deleteItem(key));
+
+                storageItems.appendChild(tr);
+            }
+        }
+
+        function getWebsiteFromKey(key) {
+            // This is a simplified example. In reality, you'd need to implement
+            // a more robust method to associate keys with websites.
+            return 'example.com';
+        }
+
+        function truncateValue(value, maxLength = 50) {
+            return value.length > maxLength ? value.substring(0, maxLength) + '...' : value;
+        }
+
+        function viewItem(key, value) {
+            const modal = document.getElementById('item-modal');
+            document.getElementById('modal-title').textContent = 'Item Details';
+            document.getElementById('modal-website').textContent = `Website: ${getWebsiteFromKey(key)}`;
+            document.getElementById('modal-key').textContent = `Key: ${key}`;
+            document.getElementById('modal-value').textContent = value;
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('item-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function deleteItem(key) {
+            if (confirm('Are you sure you want to delete this item?')) {
+                localStorage.removeItem(key);
+                updateStorageUsage();
+                displayStorageItems();
+            }
+        }
+
+        function searchItems() {
+            const searchTerm = document.getElementById('search-input').value.toLowerCase();
+            const storageItems = document.getElementById('storage-items');
+            const rows = storageItems.getElementsByTagName('tr');
+
+            for (let row of rows) {
+                const text = row.textContent.toLowerCase();
+                row.style.display = text.includes(searchTerm) ? '' : 'none';
+            }
+        }
+
+        function clearAllStorage() {
+            if (confirm('Are you sure you want to clear all local storage? This action cannot be undone.')) {
+                localStorage.clear();
+                updateStorageUsage();
+                displayStorageItems();
+            }
+        }
+    </script>
+</body>
+</html>
