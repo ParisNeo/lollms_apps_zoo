@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Talk to PDF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script><!-- Required for pdf use -->
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto p-4">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-600" data-translate="app_title">Talk to PDF</h1>
+            <select id="languageSelector" class="bg-white border border-gray-300 rounded-md px-3 py-1">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div id="pdfUpload" class="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer">
+                <p class="text-gray-500 mb-2" data-translate="drag_drop">Drag and drop a PDF file here, or click to select</p>
+                <input type="file" id="fileInput" accept=".pdf" class="hidden">
+            </div>
+        </div>
+
+        <div id="chatInterface" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div id="messageHistory" class="h-96 overflow-y-auto mb-4"></div>
+            <div class="flex">
+                <input type="text" id="userInput" class="flex-grow border border-gray-300 rounded-l-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ask a question about the PDF...">
+                <button id="sendButton" class="bg-blue-500 text-white px-6 py-2 rounded-r-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Send</button>
+            </div>
+        </div>
+
+        <div id="pdfPreview" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4" data-translate="pdf_summary">PDF Summary</h2>
+            <div id="summaryContent"></div>
+        </div>
+
+        <button id="settingsButton" class="fixed bottom-4 right-4 bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-8 w-96">
+            <h2 class="text-2xl font-semibold mb-4" data-translate="settings">Settings</h2>
+            <div class="mb-4">
+                <label for="aiPersonality" class="block text-sm font-medium text-gray-700 mb-1" data-translate="ai_personality">AI Personality</label>
+                <select id="aiPersonality" class="w-full bg-white border border-gray-300 rounded-md px-3 py-2">
+                    <option value="humorous" data-translate="humorous">Humorous</option>
+                    <option value="serious" data-translate="serious">Serious</option>
+                    <option value="friendly" data-translate="friendly">Friendly</option>
+                    <option value="professional" data-translate="professional">Professional</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="hostUrl" class="block text-sm font-medium text-gray-700 mb-1" data-translate="host_url">Host URL</label>
+                <input type="text" id="hostUrl" class="w-full border border-gray-300 rounded-md px-3 py-2" placeholder="http://localhost:9600">
+            </div>
+            <div class="mb-4">
+                <label for="contextSize" class="block text-sm font-medium text-gray-700 mb-1" data-translate="context_size">Context Size</label>
+                <input type="number" id="contextSize" class="w-full border border-gray-300 rounded-md px-3 py-2" min="1024" max="8192" step="1024" value="4096">
+            </div>
+            <div class="mb-4">
+                <label for="generationSize" class="block text-sm font-medium text-gray-700 mb-1" data-translate="generation_size">Generation Size</label>
+                <input type="number" id="generationSize" class="w-full border border-gray-300 rounded-md px-3 py-2" min="1024" max="8192" step="1024" value="4096">
+            </div>
+            <div class="flex justify-end">
+                <button id="cancelSettings" class="bg-gray-300 text-gray-800 px-4 py-2 rounded-md mr-2 hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500" data-translate="cancel">Cancel</button>
+                <button id="applySettings" class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500" data-translate="apply">Apply</button>
+            </div>
+        </div>
+    </div>
+    <div id="loader" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-32 w-32"></div>
+    </div>
+    
+    <style>
+        .loader {
+            border-top-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+    
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    app_title: "Talk to PDF",
+                    drag_drop: "Drag and drop a PDF file here, or click to select",
+                    pdf_summary: "PDF Summary",
+                    settings: "Settings",
+                    ai_personality: "AI Personality",
+                    humorous: "Humorous",
+                    serious: "Serious",
+                    friendly: "Friendly",
+                    professional: "Professional",
+                    host_url: "Host URL",
+                    context_size: "Context Size",
+                    generation_size: "Generation Size",
+                    cancel: "Cancel",
+                    apply: "Apply"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    app_title: "Parler au PDF",
+                    drag_drop: "Glissez et déposez un fichier PDF ici, ou cliquez pour sélectionner",
+                    pdf_summary: "Résumé du PDF",
+                    settings: "Paramètres",
+                    ai_personality: "Personnalité de l'IA",
+                    humorous: "Humoristique",
+                    serious: "Sérieux",
+                    friendly: "Amical",
+                    professional: "Professionnel",
+                    host_url: "URL de l'hôte",
+                    context_size: "Taille du contexte",
+                    generation_size: "Taille de génération",
+                    cancel: "Annuler",
+                    apply: "Appliquer"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'talkToPdf_', '#languageSelector');
+        localizer.apply();
+
+        const lollmsClient = new LollmsClient();
+        const lollmsRAG = new LOLLMSRAGClient(lollmsClient)
+        const tasksLibrary = new TasksLibrary(lollmsClient)
+        const markdownRenderer = new MarkdownRenderer();
+        const lollmsFileLoader = new LollmsFileLoader();
+
+        let pdfContent = '';
+        let conversation = [];
+
+        document.getElementById('pdfUpload').addEventListener('click', () => document.getElementById('fileInput').click());
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+        document.getElementById('sendButton').addEventListener('click', sendMessage);
+        document.getElementById('settingsButton').addEventListener('click', openSettings);
+        document.getElementById('cancelSettings').addEventListener('click', closeSettings);
+        document.getElementById('applySettings').addEventListener('click', applySettings);
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                try {
+                    document.getElementById('loader').classList.remove('hidden'); // Show loader
+                    pdfContent = await lollmsFileLoader.loadFile(file);
+                    document.getElementById('pdfUpload').classList.add('hidden');
+                    document.getElementById('chatInterface').classList.remove('hidden');
+                    document.getElementById('pdfPreview').classList.remove('hidden');
+                    await lollmsRAG.addDocument("document title", pdfContent, "path");
+                    await lollmsRAG.indexDatabase();
+                } catch (error) {
+                    console.error('Error processing PDF:', error);
+                    alert('Error processing PDF. Please try again.');
+                } finally {
+                    document.getElementById('loader').classList.add('hidden'); // Hide loader
+                }
+            } else {
+                alert('Please upload a valid PDF file.');
+            }
+        }
+
+
+        async function summarizePDF() {
+            const summary = await lollmsClient.generate(`Summarize the following PDF content:\n\n${pdfContent}\n\nSummary:`);
+            const renderedSummary = await markdownRenderer.renderMarkdown(summary);
+            document.getElementById('summaryContent').innerHTML = renderedSummary;
+        }
+
+        async function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const message = userInput.value.trim();
+            if (message) {
+                conversation.push({ role: 'user', content: message });
+                updateChatInterface();
+                userInput.value = '';
+                const use_summary = await tasksLibrary.yesNo(`Do I need to read the whole document to answer the question?`, `${message}`);
+
+                let aiResponse;
+                if (use_summary) { // This is a global question that requires reading the whole document
+                    aiResponse = await tasksLibrary.summarizeText(pdfContent, 512,`Provide a summary of the following PDF content in order to answer the user question : ${message}\n\n`,);
+                } else {
+                    const extracted_data = await lollmsRAG.search(message)
+                    aiResponse = await lollmsClient.generate(`Based on the following PDF content:\n\n${extracted_data}\n\nUser: ${message}\nAI:`);
+                }
+
+                conversation.push({ role: 'ai', content: aiResponse });
+                updateChatInterface();
+            }
+        }
+
+        async function updateChatInterface() {
+            const messageHistory = document.getElementById('messageHistory');
+            messageHistory.innerHTML = '';
+            for (const message of conversation) {
+                const messageElement = document.createElement('div');
+                messageElement.classList.add('mb-4', 'p-3', 'rounded-lg');
+                if (message.role === 'user') {
+                    messageElement.classList.add('bg-blue-100');
+                    messageElement.textContent = `You: ${message.content}`;
+                } else {
+                    messageElement.classList.add('bg-gray-100');
+                    const renderedContent = await markdownRenderer.renderMarkdown(message.content);
+                    messageElement.innerHTML = `AI: ${renderedContent}`;
+                }
+                messageHistory.appendChild(messageElement);
+            }
+            messageHistory.scrollTop = messageHistory.scrollHeight;
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').classList.remove('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function applySettings() {
+            const personality = document.getElementById('aiPersonality').value;
+            const hostUrl = document.getElementById('hostUrl').value;
+            const contextSize = parseInt(document.getElementById('contextSize').value);
+            const generationSize = parseInt(document.getElementById('generationSize').value);
+
+            localStorage.setItem('talkToPdf_personality', personality);
+            localStorage.setItem('talkToPdf_hostUrl', hostUrl);
+            localStorage.setItem('talkToPdf_contextSize', contextSize);
+            localStorage.setItem('talkToPdf_generationSize', generationSize);
+
+            lollmsClient.updateSettings({
+                host_address: hostUrl,
+                ctx_size: contextSize,
+                n_predict: generationSize,
+                personality: personality
+            });
+
+            closeSettings();
+        }
+
+        // Load saved settings
+        document.getElementById('aiPersonality').value = localStorage.getItem('talkToPdf_personality') || 'friendly';
+        document.getElementById('hostUrl').value = localStorage.getItem('talkToPdf_hostUrl') || 'http://localhost:9600';
+        document.getElementById('contextSize').value = localStorage.getItem('talkToPdf_contextSize') || '4096';
+        document.getElementById('generationSize').value = localStorage.getItem('talkToPdf_generationSize') || '4096';
+
+        // Initialize Lollms client with saved settings
+        lollmsClient.updateSettings({
+            host_address: localStorage.getItem('talkToPdf_hostUrl') || 'http://localhost:9600',
+            ctx_size: parseInt(localStorage.getItem('talkToPdf_contextSize')) || 4096,
+            n_predict: parseInt(localStorage.getItem('talkToPdf_generationSize')) || 4096,
+            personality: localStorage.getItem('talkToPdf_personality') || 'friendly'
+        });
+        lollmsRAG.baseURL = localStorage.getItem('talkToPdf_hostUrl') || 'http://localhost:9600'
+    </script>
+</body>
+</html>
