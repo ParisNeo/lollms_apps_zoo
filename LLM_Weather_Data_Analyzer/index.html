@@ -4,14 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Weather Data Aggregator</title>
-    <script src="/lollms_assets/js/tailwindcss"></script>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">    
 </head>
 <body class="bg-gray-100 text-gray-800">
     <div class="container mx-auto p-4">
@@ -63,6 +76,8 @@
     </div>
 
     <script>
+        // Initialize lollms markdown renderer
+        const mr = new MarkdownRenderer();
         // Initialize Lollms Client
         const lc = new LollmsClient(
             null, null, 4096, -1, 4096, 0.1, 50, 0.95, 0.8, 40, null, 8, "",
@@ -114,11 +129,24 @@
                     },
                     scales: {
                         x: {
-                            type: 'time',
-                            time: {
-                                unit: 'hour'
-                            }
-                        },
+                                type: 'time',
+                                time: {
+                                    unit: 'day',
+                                    displayFormats: {
+                                        day: 'MMM d, yyyy'
+                                    }
+                                },
+                                ticks: {
+                                    source: 'data',
+                                    autoSkip: true,
+                                    maxRotation: 45,
+                                    minRotation: 45
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
                         y: {
                             type: 'linear',
                             display: true,
@@ -227,11 +255,13 @@
         // Analyze weather data using AI
         async function analyzeWeatherData(weatherData) {
             const prompt = lc.system_message() + 
+                "Today's date and time " + new Date().toLocaleString()+"\n"+
+                lc.user_message()+
                 "Analyze the following weather data and provide a brief summary of the weather conditions and any notable patterns or extreme conditions:\n\n" +
-                JSON.stringify(weatherData);
+                JSON.stringify(weatherData) +"\nOnly answer with the analysis in markdown format."+ lc.ai_message();
             
             const analysis = await lc.generate(prompt);
-            document.getElementById('analysis-result').textContent = analysis;
+            document.getElementById('analysis-result').innerHTML = await mr.renderMarkdown(analysis);
         }
 
         // Check for weather alerts
