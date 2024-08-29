@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hallucinator - AI-Powered Imagination Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <style>
+        @keyframes swirl {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        @keyframes wiggle {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        @keyframes melt {
+            0% { transform: scaleY(1); }
+            100% { transform: scaleY(0.8); }
+        }
+        .psychedelic-bg {
+            background: linear-gradient(45deg, #ff00ff, #00ffff, #ffff00);
+            background-size: 400% 400%;
+            animation: swirl 15s linear infinite;
+        }
+        .floating-bubble {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        .wavy-input {
+            transform: skew(-5deg);
+        }
+        .spinning-button {
+            transition: all 0.3s;
+        }
+        .spinning-button:hover {
+            transform: rotate(720deg);
+        }
+        .wiggling-sidebar {
+            animation: wiggle 1s ease-in-out infinite;
+        }
+        .melting-footer {
+            animation: melt 2s ease-in-out infinite alternate;
+        }
+    </style>
+</head>
+<body class="psychedelic-bg min-h-screen flex flex-col">
+    <header class="text-center py-6">
+        <h1 class="text-4xl font-bold text-white mb-2" id="morphing-header">Hallucinator</h1>
+        <p class="text-xl text-white">AI-Powered Imagination Explorer</p>
+    </header>
+
+    <main class="flex-grow flex">
+        <aside class="wiggling-sidebar w-1/4 bg-purple-800 p-4 text-white">
+            <h2 class="text-2xl mb-4">Bizarre Categories</h2>
+            <ul>
+                <li class="mb-2">Absurd Stories</li>
+                <li class="mb-2">Impossible Inventions</li>
+                <li class="mb-2">Dream Landscapes</li>
+                <li class="mb-2">Cosmic Nonsense</li>
+                <li class="mb-2">Surreal Creatures</li>
+            </ul>
+        </aside>
+
+        <div class="w-3/4 p-4">
+            <div class="floating-bubble bg-white bg-opacity-70 rounded-lg p-6 mb-4 max-w-2xl mx-auto">
+                <div id="ai-response" class="text-lg mb-4">
+                    Welcome to the realm of hallucination! Ask me anything, and I'll conjure the most bizarre response imaginable.
+                </div>
+            </div>
+
+            <div class="max-w-2xl mx-auto">
+                <input type="text" id="user-input" class="wavy-input w-full p-3 rounded-lg mb-4 bg-pink-100" placeholder="Enter your wildest prompt...">
+                <button id="hallucinate-btn" class="spinning-button bg-green-400 text-white px-6 py-3 rounded-full font-bold w-full">Hallucinate!</button>
+            </div>
+
+            <div class="mt-4 text-center">
+                <input type="range" id="weirdness-slider" min="1" max="10" value="5" class="w-full max-w-xs">
+                <label for="weirdness-slider" class="text-white">Weirdness Level</label>
+            </div>
+        </div>
+    </main>
+
+    <footer class="melting-footer bg-indigo-900 text-white text-center py-4">
+        <p>Dive into the abyss of imagination...</p>
+    </footer>
+
+    <script>
+        const morphingHeader = document.getElementById('morphing-header');
+        const aiResponse = document.getElementById('ai-response');
+        const userInput = document.getElementById('user-input');
+        const hallucinateBtn = document.getElementById('hallucinate-btn');
+        const weirdnessSlider = document.getElementById('weirdness-slider');
+
+        function getRandomColor() {
+            return `#${Math.floor(Math.random()*16777215).toString(16)}`;
+        }
+
+        function morphText() {
+            anime({
+                targets: '#morphing-header',
+                color: getRandomColor(),
+                duration: 1000,
+                easing: 'easeInOutQuad'
+            });
+        }
+
+        setInterval(morphText, 2000);
+
+        function generateHallucination() {
+            const weirdness = weirdnessSlider.value;
+            const prompts = [
+                "Describe a world where gravity works sideways.",
+                "Invent a fruit that tastes like emotions.",
+                "What if clouds were made of spaghetti?",
+                "Design a vehicle powered by dreams.",
+                "Explain the mating ritual of invisible unicorns."
+            ];
+            const randomPrompt = prompts[Math.floor(Math.random() * prompts.length)];
+            
+            // Simulating AI response
+            setTimeout(() => {
+                const hallucination = `Based on your weirdness level of ${weirdness}, here's a hallucination:
+                
+                ${randomPrompt}
+                
+                In a realm beyond comprehension, ${Math.random() < 0.5 ? 'flying' : 'dancing'} ${Math.random() < 0.5 ? 'elephants' : 'teapots'} ${Math.random() < 0.5 ? 'sing' : 'whisper'} the secrets of the universe to ${Math.random() < 0.5 ? 'sentient' : 'glowing'} ${Math.random() < 0.5 ? 'mushrooms' : 'calculators'}. The sky rains ${Math.random() < 0.5 ? 'laughter' : 'rainbows'}, and the ground is made of ${Math.random() < 0.5 ? 'bubbling' : 'shimmering'} ${Math.random() < 0.5 ? 'dreams' : 'starlight'}. Time flows ${Math.random() < 0.5 ? 'backwards' : 'in spirals'}, and thoughts become ${Math.random() < 0.5 ? 'tangible' : 'edible'} ${Math.random() < 0.5 ? 'sculptures' : 'symphonies'}.`;
+                
+                aiResponse.textContent = hallucination;
+                anime({
+                    targets: '#ai-response',
+                    scale: [0.9, 1],
+                    opacity: [0, 1],
+                    duration: 1000,
+                    easing: 'easeOutElastic(1, .8)'
+                });
+            }, 1000);
+        }
+
+        hallucinateBtn.addEventListener('click', generateHallucination);
+
+        userInput.addEventListener('keyup', (event) => {
+            if (event.key === 'Enter') {
+                generateHallucination();
+            }
+        });
+
+        // Random abstract shapes
+        setInterval(() => {
+            const shape = document.createElement('div');
+            shape.style.position = 'fixed';
+            shape.style.width = `${Math.random() * 50 + 10}px`;
+            shape.style.height = `${Math.random() * 50 + 10}px`;
+            shape.style.borderRadius = `${Math.random() * 50}%`;
+            shape.style.backgroundColor = getRandomColor();
+            shape.style.opacity = '0.5';
+            shape.style.left = `${Math.random() * window.innerWidth}px`;
+            shape.style.top = `${Math.random() * window.innerHeight}px`;
+            document.body.appendChild(shape);
+
+            anime({
+                targets: shape,
+                translateX: anime.random(-100, 100),
+                translateY: anime.random(-100, 100),
+                scale: [0, 1],
+                opacity: 0,
+                duration: 2000,
+                easing: 'easeOutElastic(1, .8)',
+                complete: () => {
+                    document.body.removeChild(shape);
+                }
+            });
+        }, 2000);
+    </script>
+</body>
+</html>
