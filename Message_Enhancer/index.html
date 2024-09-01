@@ -1,134 +1,309 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Message Enhancer</title>
-    <script src="/lollms_assets/js/tailwindcss"></script>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
-    <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
-
-    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
-    <!-- For code highlighting -->
-    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-    <!-- For LaTeX math rendering -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
-
-    <!-- For Mermaid graph rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-
-    <!-- Prism CSS -->
-   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Message Enhancer</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        <script src="/lollms_assets/js/lollms_client_js"></script>
+        <script src="/lollms_assets/js/axios.min.js"></script>
+        <script src="/lollms_assets/js/web.app.localizer.js"></script>
+        <script src="/lollms_assets/js/lollms_markdown_renderer.js"></script>
+        <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min.css">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     
-   <!-- Prism JS -->
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-   
-   <!-- If you want additional languages, include them like this -->
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
-
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-
-
-    <style>
-        body {
-            background: linear-gradient(to right, #6a11cb, #2575fc);
-        }
-    </style>
-</head>
-<body class="flex flex-col min-h-screen bg-gray-100">
-    <header class="bg-white shadow p-4">
-        <h1 class="text-2xl font-bold text-center">Message Enhancer</h1>
-    </header>
-    <main class="flex-grow p-6 overflow-auto">
-        <div class="mx-auto bg-white rounded-lg shadow-lg p-6 w-full">
-            <h2 class="text-xl font-semibold mb-4">Enhance Your Message</h2>
-            <textarea 
-                id="userInput" 
-                class="w-full p-2 border border-gray-300 rounded-lg resize-y" 
-                style="min-height: 300px;"
-                placeholder="Type your message here..."
-            ></textarea>
-            <div class="mb-4">
-                <label for="styleSelect" class="block text-sm font-medium text-gray-700">Select Style:</label>
-                <select id="styleSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                    <option value="formal">Formal</option>
-                    <option value="casual">Casual</option>
-                    <option value="humorous">Humorous</option>
-                    <option value="professional">Professional</option>
-                    <option value="friendly">Friendly</option>
-                    <option value="academic">Academic</option>
-                    <option value="poetic">Poetic</option>
-                    <option value="sarcastic">Sarcastic</option>
-                    <option value="inspirational">Inspirational</option>
-                    <option value="technical">Technical</option>
-                </select>
+        <style>
+            body {
+                background: linear-gradient(to right, #6a11cb, #2575fc);
+                font-family: 'Arial', sans-serif;
+            }
+            .title {
+                color: #fff;
+                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            }
+            .hidden {
+                display: none;
+            }
+            .tab-content {
+                display: none;
+            }
+            .tab-content.active {
+                display: block;
+            }
+            .tab-button {
+                cursor: pointer;
+                padding: 10px 20px;
+                background-color: #f3f4f6;
+                border: 1px solid #e5e7eb;
+                border-bottom: none;
+                margin-right: 5px;
+                font-weight: bold;
+                border-top-left-radius: 3px;
+                border-top-right-radius: 3px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+            .tab-button.active {
+                background-color: #6a11cb;
+                color: #fff;
+                border-bottom: 2px solid #2575fc;
+            }
+    
+            .spinner-container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-direction: column;
+                height: 100%;
+            }
+    
+            .spinner {
+                width: 50px;
+                height: 50px;
+                border: 5px solid rgba(0, 0, 0, 0.1);
+                border-top: 5px solid #3498db;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+    
+            .moving-text {
+                margin-top: 20px;
+                font-size: 16px;
+                color: #3498db;
+                white-space: nowrap;
+                overflow: hidden;
+                width: 200px;
+                text-align: center;
+                position: relative;
+            }
+    
+            .moving-text::before {
+                content: attr(data-text);
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                white-space: nowrap;
+                animation: moveText 5s linear infinite;
+            }
+    
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+    
+            @keyframes moveText {
+                0% { transform: translateX(100%); }
+                100% { transform: translateX(-100%); }
+            }
+    
+            /* Skeuomorphic Toolbox */
+            .toolbox {
+                display: flex;
+                justify-content: space-around;
+                padding: 10px;
+                background-color: #f3f4f6;
+                border-radius: 10px;
+                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
+            }
+    
+            .toolbox-button {
+                background-color: #e0e0e0;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2), -2px -2px 5px rgba(255, 255, 255, 0.7);
+                transition: transform 0.1s ease-in-out;
+            }
+    
+            .toolbox-button:hover {
+                transform: scale(1.1);
+            }
+    
+            .toolbox-button svg {
+                width: 24px;
+                height: 24px;
+                fill: #6a11cb;
+            }
+    
+            .toolbox-button:active {
+                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
+            }
+    
+            .output-container {
+                background-color: #f3f4f6;
+                border-radius: 10px;
+                padding: 20px;
+                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
+            }
+    
+            .output-container h2 {
+                color: #6a11cb;
+                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+            }
+    
+        </style>
+    </head>
+    <body class="flex flex-col min-h-screen bg-gray-100">
+        <main class="flex-grow p-6 overflow-auto">
+            <h1 class="text-2xl font-bold text-center title" data-translate="app_title">Message Enhancer</h1>
+            <div class="tabs">
+                <button id="instructionsTab" class="tab-button active" data-translate="instructions">Instructions</button>
+                <button id="outputTab" class="tab-button" data-translate="output">Output</button>
             </div>
-            <div class="mb-4">
-                <label for="toneSelect" class="block text-sm font-medium text-gray-700">Select Tone:</label>
-                <select id="toneSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                    <option value="persuasive">Persuasive</option>
-                    <option value="informative">Informative</option>
-                    <option value="enthusiastic">Enthusiastic</option>
-                    <option value="empathetic">Empathetic</option>
-                    <option value="authoritative">Authoritative</option>
-                    <option value="neutral">Neutral</option>
-                    <option value="optimistic">Optimistic</option>
-                    <option value="critical">Critical</option>
-                    <option value="urgent">Urgent</option>
-                    <option value="reflective">Reflective</option>
-                    <option value="educational">Educational</option>
-                    <option value="motivational">Motivational</option>
-                </select>
+    
+            <div id="instructionsContent" class="tab-content active bg-white p-4 mb-4">
+                <h2 class="text-xl font-semibold mb-4" data-translate="enhance_your_message">Enhance Your Message</h2>
+                <textarea 
+                    id="userInput" 
+                    class="w-full p-2 border border-gray-300 rounded-lg resize-y" 
+                    style="min-height: 300px;"
+                    placeholder="Type your message here..."
+                ></textarea>
+                <div class="mb-4">
+                    <label for="styleSelect" class="block text-sm font-medium text-gray-700" data-translate="select_style">Select Style:</label>
+                    <select id="styleSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
+                        <option value="formal">Formal</option>
+                        <option value="casual">Casual</option>
+                        <option value="humorous">Humorous</option>
+                        <option value="professional">Professional</option>
+                        <option value="friendly">Friendly</option>
+                        <option value="academic">Academic</option>
+                        <option value="poetic">Poetic</option>
+                        <option value="sarcastic">Sarcastic</option>
+                        <option value="inspirational">Inspirational</option>
+                        <option value="technical">Technical</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="toneSelect" class="block text-sm font-medium text-gray-700" data-translate="select_tone">Select Tone:</label>
+                    <select id="toneSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
+                        <option value="persuasive">Persuasive</option>
+                        <option value="informative">Informative</option>
+                        <option value="enthusiastic">Enthusiastic</option>
+                        <option value="empathetic">Empathetic</option>
+                        <option value="authoritative">Authoritative</option>
+                        <option value="neutral">Neutral</option>
+                        <option value="optimistic">Optimistic</option>
+                        <option value="critical">Critical</option>
+                        <option value="urgent">Urgent</option>
+                        <option value="reflective">Reflective</option>
+                        <option value="educational">Educational</option>
+                        <option value="motivational">Motivational</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="formatSelect" class="block text-sm font-medium text-gray-700" data-translate="select_format">Select Format:</label>
+                    <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
+                        <option value="none">None</option>
+                        <option value="email">Email</option>
+                        <option value="report">Report</option>
+                        <option value="letter">Formal Letter</option>
+                        <option value="memo">Memo</option>
+                        <option value="presentation">Presentation</option>
+                        <option value="blog-post">Blog Post</option>
+                        <option value="social-media">Social Media Post</option>
+                        <option value="press-release">Press Release</option>
+                        <option value="proposal">Proposal</option>
+                        <option value="resume">Resume/CV</option>
+                        <option value="script">Script</option>
+                        <option value="article">Article</option>
+                        <option value="git commmit">Git commit</option>
+                        <option value="git release">Git release</option>
+                        <option value="poem">Poem</option>
+                        <option value="rap">Rap</option>
+                        <option value="song">Song</option>
+                    </select>
+                </div>       
+                <div class="mb-4">
+                    <label for="languageSelector" class="block text-sm font-medium text-gray-700">Select Language:</label>
+                    <select id="languageSelector" class="mt-1 block w-full border border-gray-300 rounded-md">
+                        <option value="en">English</option>
+                        <option value="fr">Français</option>
+                    </select>
+                </div>                 
+                <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 mb-4" data-translate="enhance_message">Enhance Message</button>
             </div>
-            <div class="mb-4">
-                <label for="formatSelect" class="block text-sm font-medium text-gray-700">Select Format:</label>
-                <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                    <option value="none">None</option>
-                    <option value="email">Email</option>
-                    <option value="report">Report</option>
-                    <option value="letter">Formal Letter</option>
-                    <option value="memo">Memo</option>
-                    <option value="presentation">Presentation</option>
-                    <option value="blog-post">Blog Post</option>
-                    <option value="social-media">Social Media Post</option>
-                    <option value="press-release">Press Release</option>
-                    <option value="proposal">Proposal</option>
-                    <option value="resume">Resume/CV</option>
-                    <option value="script">Script</option>
-                    <option value="article">Article</option>
-                </select>
-            </div>            
-            <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 mb-4">Enhance Message</button>
-            <h3 class="text-lg font-semibold mt-6">Preview:</h3>
-            <div id="previewArea" class="border border-gray-300 rounded-lg p-4 mt-2 bg-gray-100 mb-4 max-h-64 overflow-auto">
-                <div id="spinner-container" class="hidden items-center justify-center">
-                    <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-500 rounded-full animate-spin"></div>
-                </div>    
+    
+            <div id="outputContent" class="tab-content">
+                <div class="toolbox mb-4">
+                    <button id="copyButton" class="toolbox-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 2H9c-1.1 0-2 .9-2 2v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h2c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-4 16H7V8h8v10zm4-4h-2V8c0-1.1-.9-2-2-2h-2V4h6v10z"/></svg>
+                    </button>
+                    <button id="saveButton" class="toolbox-button">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H8v-2h4v2zm0-4H8v-2h4v2zm0-4H8V7h4v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
+                    </button>
+                </div>
+                <div id="previewArea" class="output-container">
+                    <div id="spinner-container" class="hidden items-center justify-center flex-col">
+                        <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-500 rounded-full animate-spin"></div>
+                        <div class="moving-text">Enhancing your message...</div>
+                    </div>  
+                </div>
             </div>
-            <div class="flex justify-between">
-                <button id="copyButton" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">
-                    <i class="fas fa-copy mr-2"></i>Copy to Clipboard
-                </button>
-                <button id="saveButton" class="bg-purple-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-600">
-                    <i class="fas fa-save mr-2"></i>Save as Markdown
-                </button>
-            </div>
-        </div>
-    </main>
-    <footer class="bg-white shadow p-4 text-center mt-auto">
-        <p class="text-sm text-gray-600">Message Enhancer. A Lollms powered APP.</p>
-    </footer>
+        </main>
+        <footer class="bg-white shadow p-4 text-center mt-auto">
+            <p class="text-sm text-gray-600" data-translate="footer_text">Message Enhancer. A Lollms powered APP.</p>
+        </footer>
+    
     <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "app_title": "Message Enhancer",
+                    "enhance_your_message": "Enhance Your Message",
+                    "select_style": "Select Style:",
+                    "select_tone": "Select Tone:",
+                    "select_format": "Select Format:",
+                    "enhance_message": "Enhance Message",
+                    "preview": "Preview:",
+                    "footer_text": "Message Enhancer. A Lollms powered APP.",
+                    "instructions": "Instructions",
+                    "output": "Output"
+                },
+                promptTranslations: {
+                    "system_prompt": "Rewrite the following text in a {style} style and {tone} tone{format_prompt}. Answer directly with the content without any introductory phrases or comments. Start immediately with the <div> element."
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "app_title": "Améliorateur de Message",
+                    "enhance_your_message": "Améliorez Votre Message",
+                    "select_style": "Sélectionnez le Style:",
+                    "select_tone": "Sélectionnez le Ton:",
+                    "select_format": "Sélectionnez le Format:",
+                    "enhance_message": "Améliorer le Message",
+                    "preview": "Aperçu:",
+                    "footer_text": "Améliorateur de Message. Une application propulsée par Lollms.",
+                    "instructions": "Instructions",
+                    "output": "Sortie"
+                },
+                promptTranslations: {
+                    "system_prompt": "Réécrivez le texte suivant dans un style {style} et un ton {tone}{format_prompt}. Répondez directement avec le contenu sans aucune phrase introductive ou commentaire. Commencez immédiatement avec l'élément <div>."
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'messageEnhancer_', document.getElementById('languageSelector'));
+        localizer.apply();
+
         const spinnerContainer = document.getElementById('spinner-container');
         const userInput = document.getElementById('userInput');
         const styleSelect = document.getElementById('styleSelect');
@@ -137,6 +312,10 @@
         const previewArea = document.getElementById('previewArea');
         const copyButton = document.getElementById('copyButton');
         const saveButton = document.getElementById('saveButton');
+        const instructionsTab = document.getElementById('instructionsTab');
+        const outputTab = document.getElementById('outputTab');
+        const instructionsContent = document.getElementById('instructionsContent');
+        const outputContent = document.getElementById('outputContent');
 
         // Load saved settings
         userInput.value = localStorage.getItem('userInput') || '';
@@ -155,28 +334,45 @@
         }
 
         // Markdown renderer
-        const mr = new MarkdownRenderer()
+        const mr = new MarkdownRenderer();
 
         document.getElementById('submitButton').addEventListener('click', async () => {
             showSpinner();
+            // Switch to output tab
+            instructionsTab.classList.remove('active');
+            outputTab.classList.add('active');
+            instructionsContent.classList.remove('active');
+            outputContent.classList.add('active');            
             const style = styleSelect.value;
             const tone = toneSelect.value;
-            const format = formatSelect.value
+            const format = formatSelect.value;
 
             // Save settings
             localStorage.setItem('userInput', userInput.value);
             localStorage.setItem('style', style);
             localStorage.setItem('tone', tone);
             localStorage.setItem('format', format);
+
             const lc = new LollmsClient();
             const format_prompt = format !== "none" ? `The output must be a ${format} written in a <div> tag styled with Tailwind CSS. Make sure you respect the language specifics like left to right direction for Arabic. Use a big font size and make the message more aligned with its content and format.` : "";
-            const system_prompt = `Rewrite the following text in a ${style} style and ${tone} tone${format_prompt}. Answer directly with the content without any introductory phrases or comments. Start immediately with the <div> element.`;
+
+            // Get the current language
+            const currentLanguage = localizer.getCurrentLanguage();
+
+            // Get the localized system prompt
+            const system_prompt = localizer.formatPrompt("system_prompt", {
+                style: style,
+                tone: tone,
+                format_prompt: format_prompt
+            });
+
             const user_prompt = userInput.value;
 
-            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.template.separator_template + lc.ai_message();
+            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.user_message("output language")+ localizer.currentLang + lc.template.separator_template + lc.ai_message();
             const generated_text = await lc.generate(prompt);
             previewArea.innerHTML = generated_text;
             hideSpinner();
+
 
         });
 
@@ -198,6 +394,20 @@
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        });
+
+        instructionsTab.addEventListener('click', () => {
+            instructionsTab.classList.add('active');
+            outputTab.classList.remove('active');
+            instructionsContent.classList.add('active');
+            outputContent.classList.remove('active');
+        });
+
+        outputTab.addEventListener('click', () => {
+            outputTab.classList.add('active');
+            instructionsTab.classList.remove('active');
+            outputContent.classList.add('active');
+            instructionsContent.classList.remove('active');
         });
     </script>
 </body>
