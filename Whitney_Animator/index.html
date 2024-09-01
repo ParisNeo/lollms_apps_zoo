@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whitney Art Animator Deluxe</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans">
+    <!-- Header -->
+    <header class="text-center py-8">
+        <h1 class="text-4xl font-bold">Whitney Art Animator Deluxe</h1>
+        <p class="text-lg text-gray-400">A Sophisticated Tribute to John Whitney</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex flex-col items-center justify-center">
+        <!-- Animation Canvas -->
+        <canvas id="animationCanvas" class="border-2 border-gray-700 rounded-lg shadow-lg mb-8" width="800" height="600"></canvas>
+
+        <!-- Control Panel -->
+        <div class="w-full max-w-2xl bg-gray-800 p-6 rounded-lg shadow-lg">
+            <div class="flex justify-between mb-4">
+                <button id="generateParamsBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+                    Generate Animation Parameters
+                </button>
+                <button id="startAnimationBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+                    Start Animation
+                </button>
+                <button id="stopAnimationBtn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+                    Stop Animation
+                </button>
+            </div>
+
+            <!-- Loading Indicator -->
+            <div id="loadingIndicator" class="hidden text-center mb-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500 mx-auto"></div>
+                <p class="mt-2">Generating parameters...</p>
+            </div>
+
+            <!-- Parameter Display Area -->
+            <div id="parameterDisplay" class="bg-gray-700 p-4 rounded-lg mb-4 hidden">
+                <h3 class="text-lg font-semibold mb-2">Generated Parameters:</h3>
+                <pre id="jsonParams" class="text-sm bg-gray-800 p-2 rounded-lg overflow-x-auto"></pre>
+            </div>
+
+            <!-- Customization Sliders -->
+            <div class="space-y-4">
+                <div>
+                    <label for="speedSlider" class="block text-sm font-medium text-gray-300">Speed</label>
+                    <input id="speedSlider" type="range" min="1" max="10" value="5" class="w-full">
+                </div>
+                <div>
+                    <label for="colorSlider" class="block text-sm font-medium text-gray-300">Color Intensity</label>
+                    <input id="colorSlider" type="range" min="1" max="10" value="5" class="w-full">
+                </div>
+                <div>
+                    <label for="complexitySlider" class="block text-sm font-medium text-gray-300">Complexity</label>
+                    <input id="complexitySlider" type="range" min="1" max="10" value="5" class="w-full">
+                </div>
+            </div>
+            <div class="w-full max-w-2xl bg-gray-800 p-6 rounded-lg shadow-lg mt-8">
+                <h3 class="text-lg font-semibold mb-2">Input Your Ideas:</h3>
+                <textarea id="userIdeas" class="w-full h-24 p-2 bg-gray-700 text-white rounded-lg" placeholder="Enter your ideas to influence the animation (e.g., cosmic harmonies, visual music, geometric symphonies)"></textarea>
+            </div>
+        
+            <!-- Add a help button -->
+            <div class="w-full max-w-2xl mt-4 text-center">
+                <button id="helpBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+                    Help
+                </button>
+            </div>
+        
+            <!-- Help Modal -->
+            <div id="helpModal" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center">
+                <div class="bg-gray-800 p-8 rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <h2 class="text-2xl font-bold mb-4">Whitney Art Animator Deluxe Help</h2>
+                    <p class="mb-4">This application generates complex animations inspired by John Whitney's work. Here's how to use it:</p>
+                    <ol class="list-decimal list-inside space-y-2 mb-4">
+                        <li>Enter your ideas in the text area to influence the animation.</li>
+                        <li>Click "Generate Animation Parameters" to create a new set of parameters.</li>
+                        <li>Review the generated parameters in the JSON display.</li>
+                        <li>Click "Start Animation" to begin the animation.</li>
+                        <li>Use the sliders to adjust speed, color intensity, and complexity in real-time.</li>
+                        <li>Click "Stop Animation" to pause the animation.</li>
+                        <li>Use "Reset" to clear everything and start over.</li>
+                    </ol>
+                    <p class="mb-4">Parameter Explanations:</p>
+                    <ul class="list-disc list-inside space-y-2 mb-4">
+                        <li><strong>shapes:</strong> Defines the geometric shapes and lines used in the animation.</li>
+                        <li><strong>colors:</strong> Specifies the color palettes and gradients for the elements.</li>
+                        <li><strong>movementPatterns:</strong> Determines complex movement behaviors of shapes and lines.</li>
+                        <li><strong>complexity:</strong> Influences the overall intricacy and density of the animation.</li>
+                        <li><strong>harmonics:</strong> Defines harmonic relationships between elements.</li>
+                        <li><strong>colorAnimations:</strong> Specifies how colors change over time.</li>
+                    </ul>
+                    <button id="closeHelpBtn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Close</button>
+                </div>
+            </div>
+        
+            <!-- Reset Button -->
+            <div class="mt-4 text-center">
+                <button id="resetBtn" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300 ease-in-out transform hover:scale-105">
+                    Reset
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-4 mt-8 text-gray-500">
+        A sophisticated tribute to the artistry of John Whitney
+    </footer>
+
+    <script>
+        const canvas = document.getElementById('animationCanvas');
+        const ctx = canvas.getContext('2d');
+        const generateParamsBtn = document.getElementById('generateParamsBtn');
+        const startAnimationBtn = document.getElementById('startAnimationBtn');
+        const stopAnimationBtn = document.getElementById('stopAnimationBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const parameterDisplay = document.getElementById('parameterDisplay');
+        const jsonParams = document.getElementById('jsonParams');
+        const speedSlider = document.getElementById('speedSlider');
+        const colorSlider = document.getElementById('colorSlider');
+        const complexitySlider = document.getElementById('complexitySlider');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        let animationParams = {};
+        let animationId;
+
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+
+        const userIdeas = document.getElementById('userIdeas');
+        const helpBtn = document.getElementById('helpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+
+        const simplex = new SimplexNoise();
+
+        generateParamsBtn.addEventListener('click', async () => {
+            loadingIndicator.classList.remove('hidden');
+            generateParamsBtn.disabled = true;
+            const userInput = userIdeas.value.trim();
+            const prompt = `${lc.system_message()}
+Generate JSON parameters for a sophisticated John Whitney style animation. Include parameters for shapes, lines, colors, movement patterns, complexity, harmonics, and color animations. Ensure the JSON is valid and can be parsed. Put the json inside a json markdown tag.
+
+Consider the following user ideas when generating the parameters: ${userInput}
+
+Here's an example of the expected parameter format:
+
+\`\`\`json
+{
+  "shapes": [
+    { "type": "circle", "count": 20, "sizeRange": [5, 30] },
+    { "type": "line", "count": 50, "lengthRange": [20, 100] }
+  ],
+  "colors": [
+    { "palette": [
+      { "r": 255, "g": 0, "b": 0, "a": 0.8 },
+      { "r": 0, "g": 255, "b": 0, "a": 0.8 },
+      { "r": 0, "g": 0, "b": 255, "a": 0.8 }
+    ]},
+    { "gradient": {
+      "start": { "r": 255, "g": 0, "b": 0, "a": 0.8 },
+      "end": { "r": 0, "g": 0, "b": 255, "a": 0.8 }
+    }}
+  ],
+  "movementPatterns": [
+    { "type": "harmonic", "frequency": 0.5, "amplitude": 0.8, "phaseShift": 0.2 },
+    { "type": "spiral", "speed": 0.3, "expansion": 0.05 }
+  ],
+  "complexity": 0.7,
+  "harmonics": [
+    { "ratio": 1.618, "influence": 0.5 },
+    { "ratio": 2.718, "influence": 0.3 }
+  ],
+  "colorAnimations": [
+    { "type": "pulse", "speed": 0.2, "intensity": 0.5 },
+    { "type": "shift", "speed": 0.1, "range": 50 }
+  ]
+}
+\`\`\`
+
+Explanation of parameters:
+- shapes: Array of shape objects with type, count, and size properties
+- colors: Array of color palettes and gradients
+- movementPatterns: Array of objects defining complex movement behaviors
+- complexity: A value between 0 and 1 indicating overall animation complexity
+- harmonics: Array of harmonic relationships between elements
+- colorAnimations: Array of color change behaviors over time
+- use only numbers, do not use names like Math.PI or anything like that
+
+Please generate a similar JSON structure with more varied and complex parameters, incorporating the user's ideas where applicable. Aim for a sophisticated and mesmerizing animation reminiscent of John Whitney's work.`;
+
+            try {
+                const response = await lc.generate(prompt);
+                const code = tl.extractCodeBlocks(response)
+                if(code.length>0)
+                {
+                    animationParams = JSON.parse(code[0].content);
+                    jsonParams.textContent = JSON.stringify(animationParams, null, 2);
+                    parameterDisplay.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error("Error generating parameters:", error);
+                jsonParams.textContent = "Error generating parameters. Please try again.";
+            } finally {
+                loadingIndicator.classList.add('hidden');
+                generateParamsBtn.disabled = false;
+            }
+        });
+
+        startAnimationBtn.addEventListener('click', () => {
+            if (Object.keys(animationParams).length === 0) return;
+            cancelAnimationFrame(animationId);
+            animateWhitneyArt();
+        });
+
+        stopAnimationBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+        });
+
+        resetBtn.addEventListener('click', () => {
+            cancelAnimationFrame(animationId);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            animationParams = {};
+            jsonParams.textContent = '';
+            parameterDisplay.classList.add('hidden');
+            speedSlider.value = 5;
+            colorSlider.value = 5;
+            complexitySlider.value = 5;
+        });
+
+        function animateWhitneyArt() {
+            const time = Date.now() * 0.001;
+            const { shapes, colors, movementPatterns, complexity, harmonics, colorAnimations } = animationParams;
+            const adjustedSpeed = speedSlider.value / 5;
+            const adjustedColor = colorSlider.value / 5;
+            const adjustedComplexity = complexitySlider.value / 5;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply color animations
+            const animatedColors = applyColorAnimations(colors, colorAnimations, time);
+
+            shapes.forEach((shape, index) => {
+                const color = getColor(animatedColors, index, time);
+                const pattern = movementPatterns[index % movementPatterns.length];
+                const harmonic = harmonics[index % harmonics.length];
+
+                ctx.strokeStyle = ctx.fillStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
+                ctx.lineWidth = 2 * adjustedComplexity;
+
+                const count = shape.count * adjustedComplexity;
+                for (let i = 0; i < count; i++) {
+                    ctx.beginPath();
+
+                    const t = time * adjustedSpeed + i * harmonic.ratio;
+                    let x, y;
+
+                    if (pattern.type === 'harmonic') {
+                        x = canvas.width / 2 + Math.cos(t * pattern.frequency + pattern.phaseShift) * pattern.amplitude * canvas.width / 3;
+                        y = canvas.height / 2 + Math.sin(t * pattern.frequency) * pattern.amplitude * canvas.height / 3;
+                    } else if (pattern.type === 'spiral') {
+                        const radius = (i / count) * Math.min(canvas.width, canvas.height) / 2;
+                        x = canvas.width / 2 + Math.cos(t * pattern.speed) * radius;
+                        y = canvas.height / 2 + Math.sin(t * pattern.speed) * radius;
+                    }
+
+                    if (shape.type === 'circle') {
+                        const size = (shape.sizeRange[0] + (shape.sizeRange[1] - shape.sizeRange[0]) * (i / count)) * adjustedComplexity;
+                        ctx.arc(x, y, size, 0, Math.PI * 2);
+                    } else if (shape.type === 'line') {
+                        const length = (shape.lengthRange[0] + (shape.lengthRange[1] - shape.lengthRange[0]) * (i / count)) * adjustedComplexity;
+                        const angle = t * pattern.frequency;
+                        ctx.moveTo(x, y);
+                        ctx.lineTo(x + Math.cos(angle) * length, y + Math.sin(angle) * length);
+                    }
+
+                    if (shape.type === 'circle') {
+                        ctx.fill();
+                    } else {
+                        ctx.stroke();
+                    }
+                }
+            });
+
+            // Draw connecting lines
+            ctx.globalAlpha = 0.2;
+            ctx.beginPath();
+            shapes.forEach((shape, index) => {
+                const pattern = movementPatterns[index % movementPatterns.length];
+                const harmonic = harmonics[index % harmonics.length];
+                const t = time * adjustedSpeed * harmonic.ratio;
+                let x, y;
+
+                if (pattern.type === 'harmonic') {
+                    x = canvas.width / 2 + Math.cos(t * pattern.frequency + pattern.phaseShift) * pattern.amplitude * canvas.width / 3;
+                    y = canvas.height / 2 + Math.sin(t * pattern.frequency) * pattern.amplitude * canvas.height / 3;
+                } else if (pattern.type === 'spiral') {
+                    const radius = Math.min(canvas.width, canvas.height) / 4;
+                    x = canvas.width / 2 + Math.cos(t * pattern.speed) * radius;
+                    y = canvas.height / 2 + Math.sin(t * pattern.speed) * radius;
+                }
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+            ctx.closePath();
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+
+            animationId = requestAnimationFrame(animateWhitneyArt);
+        }
+
+        function getColor(colors, index, time) {
+            if (colors[index % colors.length].palette) {
+                const palette = colors[index % colors.length].palette;
+                const colorIndex = Math.floor(time) % palette.length;
+                return palette[colorIndex];
+            } else if (colors[index % colors.length].gradient) {
+                const gradient = colors[index % colors.length].gradient;
+                const t = (Math.sin(time) + 1) / 2; // Oscillate between 0 and 1
+                return {
+                    r: gradient.start.r + (gradient.end.r - gradient.start.r) * t,
+                    g: gradient.start.g + (gradient.end.g - gradient.start.g) * t,
+                    b: gradient.start.b + (gradient.end.b - gradient.start.b) * t,
+                    a: gradient.start.a + (gradient.end.a - gradient.start.a) * t
+                };
+            }
+        }
+
+        function applyColorAnimations(colors, animations, time) {
+            return colors.map(colorSet => {
+                if (colorSet.palette) {
+                    return {
+                        palette: colorSet.palette.map(color => animateColor(color, animations, time))
+                    };
+                } else if (colorSet.gradient) {
+                    return {
+                        gradient: {
+                            start: animateColor(colorSet.gradient.start, animations, time),
+                            end: animateColor(colorSet.gradient.end, animations, time)
+                        }
+                    };
+                }
+            });
+        }
+
+        function animateColor(color, animations, time) {
+            let r = color.r, g = color.g, b = color.b, a = color.a;
+
+            animations.forEach(anim => {
+                if (anim.type === 'pulse') {
+                    const factor = (Math.sin(time * anim.speed) + 1) / 2 * anim.intensity + (1 - anim.intensity);
+                    r *= factor;
+                    g *= factor;
+                    b *= factor;
+                } else if (anim.type === 'shift') {
+                    const shift = (Math.sin(time * anim.speed) + 1) / 2 * anim.range;
+                    r = (r + shift) % 256;
+                    g = (g + shift) % 256;
+                    b = (b + shift) % 256;
+                }
+            });
+
+            return { r, g, b, a };
+        }
+
+        // Initial canvas size
+        function resizeCanvas() {
+            canvas.width = Math.min(800, window.innerWidth - 40);
+            canvas.height = canvas.width * 0.75;
+        }
+
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+        });
+
+        closeHelpBtn.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+            helpModal.classList.remove('flex');
+        });
+
+        // Close modal when clicking outside
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.add('hidden');
+                helpModal.classList.remove('flex');
+            }
+        });
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>
