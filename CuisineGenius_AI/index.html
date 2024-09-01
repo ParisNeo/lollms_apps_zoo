@@ -3,15 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UltraChef Pro - Your AI-Powered Culinary Companion</title>
-    <script src="/lollms_assets/js/tailwindcss"></script>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <title>CuisineGenius AI - Your AI-Powered Culinary Companion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
     <script src="/lollms_assets/js/web.app.localizer"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+
+    <link rel="stylesheet" type="text/css" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+
+    <!-- For code highlighting -->
+    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+
+    <!-- For LaTeX math rendering -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+
+    <!-- For Mermaid graph rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+
+    <!-- Prism CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
+    
+    <!-- Prism JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+   
+    <!-- If you want additional languages, include them like this -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
+
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
+
     <style>
         [v-cloak] { display: none; }
         .fade-enter-active, .fade-leave-active {
@@ -34,7 +76,7 @@
     <div id="app" v-cloak class="min-h-screen flex flex-col">
         <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 shadow-lg">
             <div class="container mx-auto flex justify-between items-center">
-                <h1 class="text-3xl font-bold">UltraChef Pro</h1>
+                <h1 class="text-3xl font-bold">CuisineGenius AI</h1>
                 <nav class="flex items-center space-x-4">
                     <button @click="toggleDarkMode" class="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-colors">
                         <i :class="['fas', isDarkMode ? 'fa-sun' : 'fa-moon']"></i>
@@ -42,6 +84,9 @@
                     <select v-model="currentLanguage" @change="changeLanguage" class="bg-transparent border border-white rounded p-2">
                         <option v-for="(lang, code) in translations" :key="code" :value="code">{{ lang.name }}</option>
                     </select>
+                    <button @click="openSettings" class="p-2 rounded-full hover:bg-white hover:bg-opacity-20 transition-colors">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </nav>
             </div>
         </header>
@@ -69,10 +114,22 @@
                 <!-- Meal Planner -->
                 <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg transform hover:scale-105 transition-transform duration-300">
                     <h2 class="text-2xl font-bold mb-4">{{ t('mealPlanner') }}</h2>
+                    
+                    <!-- Objective Selection Dropdown -->
+                    <div class="mb-4">
+                      <label for="objective" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{{ t('selectObjective') }}</label>
+                      <select v-model="selectedObjective" id="objective" class="bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-300 p-3 rounded-lg w-full">
+                        <option value="none">{{ t('none') }}</option>
+                        <option value="loseWeight">{{ t('loseWeight') }}</option>
+                        <option value="gainMuscle">{{ t('gainMuscle') }}</option>
+                        <option value="maintainWeight">{{ t('maintainWeight') }}</option>
+                      </select>
+                    </div>
+                
                     <button @click="generateMealPlan" class="bg-purple-500 text-white p-3 rounded-full hover:bg-purple-600 transition-colors w-full font-bold">
-                        {{ t('generateMealPlan') }}
+                      {{ t('generateMealPlan') }}
                     </button>
-                </div>
+                  </div>
             </div>
 
             <!-- Recipe Display -->
@@ -141,13 +198,42 @@
             </div>
 
         </main>
-
+        <transition name="fade">
+            <div v-if="showSettings" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-11/12 md:w-1/2 lg:w-1/3">
+                    <h2 class="text-2xl font-bold mb-4">{{ t('settings') }}</h2>
+                    <div class="mb-4">
+                        <label for="preferences" class="block mb-2">{{ t('personalPreferences') }}:</label>
+                        <textarea id="preferences" v-model="settings.preferences" class="w-full p-3 border rounded dark:bg-gray-700" rows="3"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="allergies" class="block mb-2">{{ t('allergies') }}:</label>
+                        <textarea id="allergies" v-model="settings.allergies" class="w-full p-3 border rounded dark:bg-gray-700" rows="3"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="precautions" class="block mb-2">{{ t('precautions') }}:</label>
+                        <textarea id="precautions" v-model="settings.precautions" class="w-full p-3 border rounded dark:bg-gray-700" rows="3"></textarea>
+                    </div>
+                    <div class="flex justify-end space-x-4">
+                        <button @click="saveSettings" class="bg-green-500 text-white p-2 rounded hover:bg-green-600 transition-colors">
+                            {{ t('save') }}
+                        </button>
+                        <button @click="closeSettings" class="bg-red-500 text-white p-2 rounded hover:bg-red-600 transition-colors">
+                            {{ t('cancel') }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </transition>
         <footer class="bg-gray-200 dark:bg-gray-800 p-4 text-center">
-            <p>&copy; 2024 UltraChef Pro. {{ t('allRightsReserved') }}</p>
+            <p>&copy; 2024 CuisineGenius AI. {{ t('allRightsReserved') }}</p>
         </footer>
     </div>
 
     <script>
+        const mr = new MarkdownRenderer()
+        mr.initMermaid()
+
         // Initialize Lollms Client
         const lc = new LollmsClient(
             null,
@@ -273,6 +359,14 @@
         new Vue({
             el: '#app',
             data: {
+                showSettings: false,
+                selectedObjective: 'none', // Default selected objective
+                settings: {
+                    preferences: localStorage.getItem('preferences') || '',
+                    allergies: localStorage.getItem('allergies') || '',
+                    precautions: localStorage.getItem('precautions') || ''
+                },
+
                 sortOption: 'date',
                 isDarkMode: false,
                 currentLanguage: 'en',
@@ -308,6 +402,19 @@
 
             },
             methods: {
+                openSettings() {
+                    this.showSettings = true;
+                },
+                closeSettings() {
+                    this.showSettings = false;
+                },
+                saveSettings() {
+                    localStorage.setItem('preferences', this.settings.preferences);
+                    localStorage.setItem('allergies', this.settings.allergies);
+                    localStorage.setItem('precautions', this.settings.precautions);
+                    this.closeSettings();
+                },
+
                 t(key) {
                     return this.translations[this.currentLanguage].translations[key] || key;
                 },
@@ -321,13 +428,26 @@
                 },
                 async generateRecipe() {
                     const systemPrompt = this.translations[this.currentLanguage].prompt_translations.recipePrompt;
-                    const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + this.recipePrompt + lc.template.separator_template + lc.ai_message();
+                    
+                    // Integrate user preferences, allergies, and precautions into the prompt
+                    let userPreferences = '';
+                    if (this.settings.preferences) {
+                        userPreferences += `\nPreferences: ${this.settings.preferences}`;
+                    }
+                    if (this.settings.allergies) {
+                        userPreferences += `\nAllergies: ${this.settings.allergies}`;
+                    }
+                    if (this.settings.precautions) {
+                        userPreferences += `\nPrecautions: ${this.settings.precautions}`;
+                    }
+
+                    const fullPrompt = lc.system_message() + systemPrompt + userPreferences + lc.template.separator_template + lc.user_message() + this.recipePrompt + lc.template.separator_template + lc.ai_message();
                     
                     this.recipeContent = 'Generating recipe...';
                     this.showRecipeDisplay = true;
                     
                     const generatedRecipe = await lc.generate(fullPrompt);
-                    this.recipeContent = generatedRecipe.replace(/\n/g, '<br>');
+                    this.recipeContent = await mr.renderMarkdown(generatedRecipe);
                     this.addToHistory(this.recipePrompt, this.recipeContent);
                 },
                 async scanFridge() {
@@ -336,13 +456,26 @@
                         reader.onload = async (e) => {
                             const base64Image = e.target.result.split(',')[1];
                             const systemPrompt = this.translations[this.currentLanguage].prompt_translations.fridgePrompt;
-                            const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + "Here's the fridge content:" + lc.template.separator_template + lc.ai_message();
+                            
+                            // Integrate user preferences, allergies, and precautions into the prompt
+                            let userPreferences = '';
+                            if (this.settings.preferences) {
+                                userPreferences += `\nPreferences: ${this.settings.preferences}`;
+                            }
+                            if (this.settings.allergies) {
+                                userPreferences += `\nAllergies: ${this.settings.allergies}`;
+                            }
+                            if (this.settings.precautions) {
+                                userPreferences += `\nPrecautions: ${this.settings.precautions}`;
+                            }
+
+                            const fullPrompt = lc.system_message() + systemPrompt + userPreferences + lc.template.separator_template + lc.user_message() + "Here's the fridge content:" + lc.template.separator_template + lc.ai_message();
                             
                             this.recipeContent = 'Analyzing fridge contents...';
                             this.showRecipeDisplay = true;
                             
                             const generatedRecipe = await lc.generate_with_images(fullPrompt, [base64Image]);
-                            this.recipeContent = generatedRecipe.replace(/\n/g, '<br>');
+                            this.recipeContent = await mr.renderMarkdown(generatedRecipe);
                             this.addToHistory("Fridge Scan Recipe", this.recipeContent);
                         };
                         reader.readAsDataURL(this.selectedFile);
@@ -352,15 +485,32 @@
                 },
                 async generateMealPlan() {
                     const systemPrompt = this.translations[this.currentLanguage].prompt_translations.mealPlanPrompt;
-                    const fullPrompt = lc.system_message() + systemPrompt + lc.template.separator_template + lc.ai_message();
+                    
+                    // Integrate user preferences, allergies, and precautions into the prompt
+                    let userPreferences = '';
+                    if (this.settings.preferences) {
+                        userPreferences += `\nPreferences: ${this.settings.preferences}`;
+                    }
+                    if (this.settings.allergies) {
+                        userPreferences += `\nAllergies: ${this.settings.allergies}`;
+                    }
+                    if (this.settings.precautions) {
+                        userPreferences += `\nPrecautions: ${this.settings.precautions}`;
+                    }
+                    if (this.selectedObjective!="none") {
+                        userPreferences += `\nObjective: ${this.selectedObjective}`;
+                    }
+
+                    const fullPrompt = lc.system_message() + systemPrompt + userPreferences + lc.template.separator_template + lc.ai_message();
                     
                     this.recipeContent = 'Generating meal plan...';
                     this.showRecipeDisplay = true;
                     
                     const generatedMealPlan = await lc.generate(fullPrompt);
-                    this.recipeContent = generatedMealPlan.replace(/\n/g, '<br>');
+                    this.recipeContent = await mr.renderMarkdown(generatedMealPlan);
                     this.addToHistory("Weekly Meal Plan", this.recipeContent);
                 },
+
                 saveRecipe() {
                     const recipe = {
                         title: this.recipePrompt || "Untitled Recipe",
@@ -375,7 +525,7 @@
                     const recipe = this.recipeContent.replace(/<br>/g, '\n');
                     if (navigator.share) {
                         navigator.share({
-                            title: 'Check out this recipe from UltraChef Pro!',
+                            title: 'Check out this recipe from CuisineGenius AI!',
                             text: recipe
                         }).then(() => {
                             console.log('Recipe shared successfully');
@@ -469,6 +619,7 @@
                 if (savedSortOption) {
                     this.sortOption = savedSortOption;
                 }
+
             }
         });
     </script>
