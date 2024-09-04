@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATLAB Function Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        matlab: {
+                            blue: '#0076A8',
+                            lightgray: '#E8E8E8',
+                            darkgray: '#333333',
+                            orange: '#D95319',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-matlab-lightgray min-h-screen flex flex-col">
+    <header class="bg-matlab-blue text-white p-4">
+        <h1 class="text-2xl font-bold" data-translate="title"></h1>
+        <p class="text-sm" data-translate="subtitle"></p>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 flex flex-col md:flex-row gap-4">
+        <section class="w-full md:w-1/2 bg-white rounded-lg shadow-md p-4 border border-matlab-blue">
+            <h2 class="text-xl font-semibold mb-2 text-matlab-blue" data-translate="requirements"></h2>
+            <textarea id="requirements" rows="10" class="w-full p-2 border border-matlab-blue rounded resize-none focus:outline-none focus:ring-2 focus:ring-matlab-blue" data-translate="placeholder" data-translate-attr="placeholder"></textarea>
+            <button id="generateBtn" class="mt-4 bg-matlab-orange hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="generateBtn"></button>
+        </section>
+
+        <section class="w-full md:w-1/2 bg-white rounded-lg shadow-md p-4 border border-matlab-blue">
+            <h2 class="text-xl font-semibold mb-2 text-matlab-blue" data-translate="generatedFunction"></h2>
+            <pre id="output" class="bg-matlab-lightgray p-4 rounded-lg min-h-[200px] whitespace-pre-wrap border border-matlab-blue"></pre>
+            <div class="mt-4 flex justify-end space-x-2">
+                <button id="copyBtn" class="bg-matlab-blue hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded flex items-center transition duration-300">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                    </svg>
+                    <span data-translate="copyBtn"></span>
+                </button>
+                <button id="saveBtn" class="bg-matlab-orange hover:bg-opacity-80 text-white font-bold py-2 px-4 rounded flex items-center transition duration-300">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span data-translate="saveBtn"></span>
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-matlab-darkgray text-white text-center p-4 mt-8">
+        <p data-translate="footer"></p>
+    </footer>
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "MATLAB Function Generator",
+                    subtitle: "Generate MATLAB functions based on your requirements",
+                    requirements: "Function Requirements",
+                    generateBtn: "Generate Function",
+                    generatedFunction: "Generated Function",
+                    copyBtn: "Copy",
+                    saveBtn: "Save",
+                    footer: "MATLAB Function Generator By ParisNeo | Version 1.0",
+                    placeholder: "Enter your function requirements here...",
+                    generating: "Generating...",
+                    copied: "Function copied to clipboard!",
+                    copyError: "Failed to copy function. Please try again.",
+                    emptyRequirements: "Please enter function requirements.",
+                    generateError: "An error occurred while generating the function. Please try again."
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Générateur de Fonctions MATLAB",
+                    subtitle: "Générez des fonctions MATLAB basées sur vos exigences",
+                    requirements: "Exigences de la Fonction",
+                    generateBtn: "Générer la Fonction",
+                    generatedFunction: "Fonction Générée",
+                    copyBtn: "Copier",
+                    saveBtn: "Enregistrer",
+                    footer: "Générateur de Fonctions MATLAB par ParisNeo | Version 1.0",
+                    placeholder: "Entrez ici vos exigences pour la fonction...",
+                    generating: "Génération en cours...",
+                    copied: "Fonction copiée dans le presse-papiers !",
+                    copyError: "Échec de la copie de la fonction. Veuillez réessayer.",
+                    emptyRequirements: "Veuillez entrer les exigences de la fonction.",
+                    generateError: "Une erreur s'est produite lors de la génération de la fonction. Veuillez réessayer."
+                }
+            }
+            // Add more languages as needed
+        };
+        const lc = new LollmsClient();
+        // Add a language selector (optional)
+        const languageSelector = document.createElement('select');
+        languageSelector.id = 'languageSelector';
+        languageSelector.className = 'absolute top-2 right-2 bg-white border rounded p-1';
+        document.body.appendChild(languageSelector);
+
+        const localizer = new WebAppLocalizer(translations, 'matlab_function_generator_', languageSelector);
+        
+        // Apply initial translations
+        localizer.apply();
+    
+        const generateBtn = document.getElementById('generateBtn');
+        const copyBtn = document.getElementById('copyBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const requirementsInput = document.getElementById('requirements');
+        const outputArea = document.getElementById('output');
+    
+        generateBtn.addEventListener('click', async () => {
+            const requirements = requirementsInput.value.trim();
+            if (!requirements) {
+                alert(localizer.translate('emptyRequirements'));
+                return;
+            }
+    
+            generateBtn.disabled = true;
+            generateBtn.textContent = localizer.translate('generating');
+    
+            try {
+                const prompt = `${lc.system_message()}You are a MATLAB expert. Create a MATLAB function based on the following requirements:\n\n${requirements}\n\nProvide only the MATLAB code without any explanations.${lc.template.separator_template}${lc.ai_message()}`;
+                const generatedFunction = await lc.generate(prompt);
+                outputArea.textContent = generatedFunction.trim();
+            } catch (error) {
+                console.error('Error generating function:', error);
+                alert(localizer.translate('generateError'));
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = localizer.translate('generateBtn');
+            }
+        });
+    
+        copyBtn.addEventListener('click', () => {
+            const functionText = outputArea.textContent;
+            navigator.clipboard.writeText(functionText).then(() => {
+                alert(localizer.translate('copied'));
+            }).catch(err => {
+                console.error('Error copying text: ', err);
+                alert(localizer.translate('copyError'));
+            });
+        });
+    
+        saveBtn.addEventListener('click', () => {
+            const functionText = outputArea.textContent;
+            const blob = new Blob([functionText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'matlab_function.m';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+    
+    </script>
+</body>
+</html>

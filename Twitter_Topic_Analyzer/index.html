@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Topic Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white p-4 text-center">
+        <h1 class="text-3xl font-bold">Twitter Topic Analyzer</h1>
+        <p class="text-lg">Search and analyze Twitter topics with AI-powered insights.</p>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto p-4">
+        <!-- Search Section -->
+        <section class="mb-8">
+            <div class="flex justify-center">
+                <input id="topicInput" type="text" placeholder="Enter a topic or keyword" class="w-full max-w-lg p-2 border border-gray-300 rounded-md">
+                <button id="searchButton" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Search Twitter</button>
+            </div>
+        </section>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden flex justify-center mb-8">
+            <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12"></div>
+        </div>
+
+        <!-- Results Section -->
+        <section id="resultsSection" class="hidden">
+            <!-- Tweet Display Area -->
+            <div id="tweetsContainer" class="mb-8 p-4 bg-white rounded-md shadow-md max-h-96 overflow-y-auto">
+                <h2 class="text-xl font-bold mb-4">Tweets</h2>
+                <ul id="tweetsList" class="space-y-4"></ul>
+            </div>
+
+            <!-- Analysis Summary -->
+            <div id="analysisSummary" class="p-4 bg-white rounded-md shadow-md">
+                <h2 class="text-xl font-bold mb-4">Analysis Summary</h2>
+                <p id="summaryText" class="text-gray-700"></p>
+                <button id="downloadReportButton" class="mt-4 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Download Report</button>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white p-4 text-center">
+        <p>&copy; 2023 Twitter Topic Analyzer. All rights reserved.</p>
+        <p><a href="#" class="text-blue-400 hover:underline">Privacy Policy</a> | <a href="#" class="text-blue-400 hover:underline">Contact</a></p>
+    </footer>
+
+    <script>
+        const searchButton = document.getElementById('searchButton');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const resultsSection = document.getElementById('resultsSection');
+        const tweetsList = document.getElementById('tweetsList');
+        const summaryText = document.getElementById('summaryText');
+        const downloadReportButton = document.getElementById('downloadReportButton');
+
+        const lc = new LollmsClient();
+
+        searchButton.addEventListener('click', async () => {
+            const topic = document.getElementById('topicInput').value;
+            if (!topic) return alert('Please enter a topic.');
+
+            // Show loading indicator
+            loadingIndicator.classList.remove('hidden');
+
+            try {
+                // Fetch tweets from Twitter API (mocked here)
+                const tweets = await fetchTweets(topic);
+
+                // Display tweets
+                tweetsList.innerHTML = '';
+                tweets.forEach(tweet => {
+                    const li = document.createElement('li');
+                    li.textContent = tweet;
+                    tweetsList.appendChild(li);
+                });
+
+                // Analyze tweets using Lollms
+                const analysis = await analyzeTweets(tweets);
+
+                // Display analysis summary
+                summaryText.textContent = analysis;
+
+                // Show results section
+                resultsSection.classList.remove('hidden');
+            } catch (error) {
+                alert('An error occurred while fetching or analyzing tweets.');
+            } finally {
+                // Hide loading indicator
+                loadingIndicator.classList.add('hidden');
+            }
+        });
+
+        downloadReportButton.addEventListener('click', () => {
+            const blob = new Blob([summaryText.textContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'Twitter_Topic_Analysis_Report.txt';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        async function fetchTweets(topic) {
+            // Mocked function to simulate fetching tweets
+            return new Promise((resolve) => {
+                setTimeout(() => {
+                    resolve([
+                        `Tweet 1 about ${topic}`,
+                        `Tweet 2 about ${topic}`,
+                        `Tweet 3 about ${topic}`,
+                    ]);
+                }, 1000);
+            });
+        }
+
+        async function analyzeTweets(tweets) {
+            const prompt = lc.system_message() + "Analyze the following tweets and provide a summary:\n" + tweets.join("\n") + lc.template.separator_template + lc.ai_message();
+            const analysis = await lc.generate(prompt);
+            return analysis;
+        }
+    </script>
+</body>
+</html>

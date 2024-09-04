@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeDocs</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <h1 class="text-3xl font-bold text-gray-900">CodeDocs</h1>
+            <nav class="mt-4">
+                <a href="#" class="text-gray-600 hover:text-gray-900">Home</a>
+                <a href="#" class="ml-6 text-gray-600 hover:text-gray-900">Documentation</a>
+                <a href="#" class="ml-6 text-gray-600 hover:text-gray-900">Settings</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-12 gap-6">
+            <aside class="col-span-3">
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Documented Files</h3>
+                        <ul id="documentedFiles" class="mt-2">
+                            <!-- Dynamically populated list -->
+                        </ul>
+                    </div>
+                    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Version History</h3>
+                        <ul id="versionHistory" class="mt-2">
+                            <!-- Dynamically populated list -->
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            <div class="col-span-9">
+                <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <div class="px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Documentation Viewer</h3>
+                        <div class="mt-2">
+                            <pre id="codeViewer" class="bg-gray-100 p-4 rounded"><code class="language-javascript">// Code snippet with syntax highlighting</code></pre>
+                            <p id="descriptionViewer" class="mt-4 text-gray-600">Description and comments section.</p>
+                        </div>
+                    </div>
+                    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Code Editor</h3>
+                        <textarea id="codeEditor" class="mt-2 w-full h-40 bg-gray-100 p-4 rounded" placeholder="Edit your code here..."></textarea>
+                        <div class="mt-4 flex justify-end">
+                            <button id="saveButton" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700">Save</button>
+                            <button id="loadButton" class="ml-2 bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-700">Load</button>
+                        </div>
+                    </div>
+                    <div class="border-t border-gray-200 px-4 py-5 sm:px-6">
+                        <h3 class="text-lg leading-6 font-medium text-gray-900">Search Bar</h3>
+                        <input id="searchBar" type="text" class="mt-2 w-full bg-gray-100 p-4 rounded" placeholder="Search documentation...">
+                        <div class="mt-4">
+                            <label class="text-gray-600">Filter options:</label>
+                            <select id="filterOptions" class="mt-2 w-full bg-gray-100 p-4 rounded">
+                                <option>All</option>
+                                <option>Code</option>
+                                <option>Comments</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white shadow mt-8">
+        <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between">
+                <div>
+                    <a href="#" class="text-gray-600 hover:text-gray-900">Twitter</a>
+                    <a href="#" class="ml-6 text-gray-600 hover:text-gray-900">LinkedIn</a>
+                    <a href="#" class="ml-6 text-gray-600 hover:text-gray-900">GitHub</a>
+                </div>
+                <div>
+                    <p class="text-gray-600">Contact: support@codedocs.com</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize LollmsClient
+        const lc = new LollmsClient();
+
+        // Initialize TasksLibrary
+        const tl = new TasksLibrary(lc);
+
+        // LocalStorage key for storing documentations
+        const STORAGE_KEY = 'codeDocs_documentations';
+
+        // Function to save documentation
+        function saveDocumentation(fileName, code, description) {
+            let documentations = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            documentations[fileName] = {
+                code: code,
+                description: description,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(documentations));
+            updateDocumentedFilesList();
+        }
+
+        // Function to load documentation
+        function loadDocumentation(fileName) {
+            let documentations = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            if (documentations[fileName]) {
+                document.getElementById('codeViewer').textContent = documentations[fileName].code;
+                document.getElementById('descriptionViewer').textContent = documentations[fileName].description;
+                document.getElementById('codeEditor').value = documentations[fileName].code;
+            }
+        }
+
+        // Function to update the list of documented files
+        function updateDocumentedFilesList() {
+            let documentations = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            let filesList = document.getElementById('documentedFiles');
+            filesList.innerHTML = '';
+            for (let fileName in documentations) {
+                let li = document.createElement('li');
+                li.textContent = fileName;
+                li.className = 'text-gray-600 hover:text-gray-900 cursor-pointer';
+                li.onclick = () => loadDocumentation(fileName);
+                filesList.appendChild(li);
+            }
+        }
+
+        // Function to get code suggestions
+        async function getCodeSuggestion(code) {
+            const prompt = lc.system_message() + "Provide suggestions for the following code:\n" + code + "\n" + lc.ai_message();
+            const response = await lc.generate(prompt);
+            console.log(response);
+            return response;
+        }
+
+        // Event listener for save button
+        document.getElementById('saveButton').addEventListener('click', () => {
+            let fileName = prompt("Enter a name for this documentation:");
+            if (fileName) {
+                let code = document.getElementById('codeEditor').value;
+                let description = document.getElementById('descriptionViewer').textContent;
+                saveDocumentation(fileName, code, description);
+            }
+        });
+
+        // Event listener for load button
+        document.getElementById('loadButton').addEventListener('click', () => {
+            let fileName = prompt("Enter the name of the documentation to load:");
+            if (fileName) {
+                loadDocumentation(fileName);
+            }
+        });
+
+        // Event listener for search bar
+        document.getElementById('searchBar').addEventListener('input', (e) => {
+            let searchTerm = e.target.value.toLowerCase();
+            let documentations = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+            let filesList = document.getElementById('documentedFiles');
+            filesList.innerHTML = '';
+            for (let fileName in documentations) {
+                if (fileName.toLowerCase().includes(searchTerm) || 
+                    documentations[fileName].code.toLowerCase().includes(searchTerm) || 
+                    documentations[fileName].description.toLowerCase().includes(searchTerm)) {
+                    let li = document.createElement('li');
+                    li.textContent = fileName;
+                    li.className = 'text-gray-600 hover:text-gray-900 cursor-pointer';
+                    li.onclick = () => loadDocumentation(fileName);
+                    filesList.appendChild(li);
+                }
+            }
+        });
+
+        // Initialize the documented files list
+        updateDocumentedFilesList();
+
+        // Example usage of code suggestion
+        const codeSnippet = `
+        function add(a, b) {
+            return a + b;
+        }
+        `;
+        getCodeSuggestion(codeSnippet).then(suggestion => {
+            console.log("Code suggestion:", suggestion);
+        });
+    </script>
+</body>
+</html>

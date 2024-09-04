@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Research Summarizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>    
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-center mb-4" data-translate="appTitle">PDF Research Summarizer</h1>
+            <select id="languageSelector" class="block mx-auto bg-white border border-gray-300 rounded-md py-2 px-4">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="de">Deutsch</option>
+                <option value="it">Italiano</option>
+            </select>
+        </header>
+
+        <main>
+            <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4" data-translate="uploadPDF">Upload PDF</h2>
+                <input type="file" id="pdfUpload" accept=".pdf" class="mb-4">
+                <button id="summarizeBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded" data-translate="summarize">Summarize</button>
+            </div>
+
+            <div class="bg-white shadow-md rounded-lg p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4" data-translate="lollmsConfig">Lollms Configuration</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="temperature" class="block mb-2" data-translate="temperature">Temperature:</label>
+                        <input type="number" id="temperature" min="0" max="1" step="0.1" value="0.7" class="w-full border border-gray-300 rounded-md py-2 px-3">
+                    </div>
+                    <div>
+                        <label for="maxTokens" class="block mb-2" data-translate="maxTokens">Max Tokens:</label>
+                        <input type="number" id="maxTokens" min="1" max="4096" value="2048" class="w-full border border-gray-300 rounded-md py-2 px-3">
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label for="useTasksLibrary" class="inline-flex items-center">
+                        <input type="checkbox" id="useTasksLibrary" class="form-checkbox h-5 w-5 text-blue-600">
+                        <span class="ml-2" data-translate="useTasksLibrary">Use Tasks Library for Summary</span>
+                    </label>
+                </div>
+                <button id="saveConfigBtn" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded" data-translate="saveConfig">Save Configuration</button>
+            </div>
+
+            <div class="bg-white shadow-md rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4" data-translate="summary">Summary</h2>
+                <div id="spinner" class="spinner mx-auto hidden mb-4"></div>
+                <div id="summaryOutput" class="space-y-4"></div>
+                <div class="mt-4 flex space-x-2">
+                    <button id="copyBtn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded" data-translate="copy">Copy</button>
+                    <button id="exportMarkdownBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded" data-translate="exportMarkdown">Export to Markdown</button>
+                    <button id="exportHtmlBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded" data-translate="exportHtml">Export to HTML</button>
+                </div>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-600">
+            <p data-translate="footer">PDF Research Summarizer &copy; 2023 | Version 1.0</p>
+        </footer>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "PDF Research Summarizer",
+                    uploadPDF: "Upload PDF",
+                    summarize: "Summarize",
+                    lollmsConfig: "Lollms Configuration",
+                    temperature: "Temperature:",
+                    maxTokens: "Max Tokens:",
+                    useTasksLibrary: "Use Tasks Library for Summary",
+                    saveConfig: "Save Configuration",
+                    summary: "Summary",
+                    contribution: "Contribution Synthesis:",
+                    quantitativeResults: "Quantitative Results:",
+                    footer: "PDF Research Summarizer © 2023 | Version 1.0",
+                    copy: "Copy",
+                    exportMarkdown: "Export to Markdown",
+                    exportHtml: "Export to HTML"
+                },
+                promptTranslations: {
+                    summarizePrompt: "You are a research paper summarizer. Analyze the following PDF content and provide a summary in two parts:\n1. A synthesis of the paper's contribution\n2. The quantitative results of the paper\n\nThe answer must be a html <div> tag with the two sections rendered as html without any comments. You can use tailwindcss for styling.\n\nHere's the PDF content:\n{pdfContent}\n\nPlease provide the summary."
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "Résumé de Recherche PDF",
+                    uploadPDF: "Télécharger PDF",
+                    summarize: "Résumer",
+                    lollmsConfig: "Configuration Lollms",
+                    temperature: "Température :",
+                    maxTokens: "Tokens Max :",
+                    useTasksLibrary: "Utiliser la bibliothèque de tâches pour le résumé",
+                    saveConfig: "Enregistrer la Configuration",
+                    summary: "Résumé",
+                    contribution: "Synthèse de la Contribution :",
+                    quantitativeResults: "Résultats Quantitatifs :",
+                    footer: "Résumé de Recherche PDF © 2023 | Version 1.0",
+                    copy: "Copier",
+                    exportMarkdown: "Exporter en Markdown",
+                    exportHtml: "Exporter en HTML"
+                },
+                promptTranslations: {
+                    summarizePrompt: "Vous êtes un résumeur d'articles de recherche. Analysez le contenu PDF suivant et fournissez un résumé en deux parties :\n1. Une synthèse de la contribution de l'article\n2. Les résultats quantitatifs de l'article\n\nThe answer must be a html <div> tag with the two sections rendered as html. You can use tailwindcss for styling.\n\nVoici le contenu du PDF :\n{pdfContent}\n\nVeuillez fournir le résumé."
+                }
+            },
+
+            de: {
+                name: "Deutsch",
+                translations: {
+                    appTitle: "PDF-Forschungszusammenfassung",
+                    uploadPDF: "PDF hochladen",
+                    summarize: "Zusammenfassen",
+                    lollmsConfig: "Lollms-Konfiguration",
+                    temperature: "Temperatur:",
+                    maxTokens: "Max. Token:",
+                    saveConfig: "Konfiguration speichern",
+                    summary: "Zusammenfassung",
+                    contribution: "Beitragssynthese:",
+                    quantitativeResults: "Quantitative Ergebnisse:",
+                    footer: "PDF-Forschungszusammenfassung © 2023 | Version 1.0",
+                    copy: "Kopieren",
+                    exportMarkdown: "Als Markdown exportieren",
+                    exportHtml: "Als HTML exportieren"
+                },
+                promptTranslations: {
+                    summarizePrompt: "Sie sind ein Zusammenfasser von Forschungsarbeiten. Analysieren Sie den folgenden PDF-Inhalt und erstellen Sie eine Zusammenfassung in zwei Teilen:\n1. Eine Synthese des Beitrags der Arbeit\n2. Die quantitativen Ergebnisse der Arbeit\n\nThe answer must be a html <div> tag with the two sections rendered as html. You can use tailwindcss for styling.\n\nHier ist der PDF-Inhalt:\n{pdfContent}\n\nBitte erstellen Sie die Zusammenfassung."
+                }
+            },
+            it: {
+                name: "Italiano",
+                translations: {
+                    appTitle: "Riassunto Ricerca PDF",
+                    uploadPDF: "Carica PDF",
+                    summarize: "Riassumi",
+                    lollmsConfig: "Configurazione Lollms",
+                    temperature: "Temperatura:",
+                    maxTokens: "Token Massimi:",
+                    saveConfig: "Salva Configurazione",
+                    summary: "Riassunto",
+                    contribution: "Sintesi del Contributo:",
+                    quantitativeResults: "Risultati Quantitativi:",
+                    footer: "Riassunto Ricerca PDF © 2023 | Versione 1.0",
+                    copy: "Copia",
+                    exportMarkdown: "Esporta in Markdown",
+                    exportHtml: "Esporta in HTML"
+                },
+                promptTranslations: {
+                    summarizePrompt: "Sei un riassuntore di articoli di ricerca. Analizza il seguente contenuto PDF e fornisci un riassunto in due parti:\n1. Una sintesi del contributo dell'articolo\n2. I risultati quantitativi dell'articolo\n\nThe answer must be a html <div> tag with the two sections rendered as html. You can use tailwindcss for styling.\n\nEcco il contenuto del PDF:\n{pdfContent}\n\nPer favore, fornisci il riassunto."
+                }
+            }
+
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'pdfSummarizer_', document.getElementById('languageSelector'));
+        const lollmsFileLoader = new LollmsFileLoader();
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        let pdfContent = '';
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            localizer.apply();
+
+            document.getElementById('pdfUpload').addEventListener('change', handleFileUpload);
+            document.getElementById('summarizeBtn').addEventListener('click', summarizePDF);
+            document.getElementById('saveConfigBtn').addEventListener('click', saveConfiguration);
+            document.getElementById('languageSelector').addEventListener('change', () => {
+                localizer.setLanguage(document.getElementById('languageSelector').value);
+                localizer.apply();
+            });
+            document.getElementById('copyBtn').addEventListener('click', copyOutput);
+            document.getElementById('exportMarkdownBtn').addEventListener('click', exportMarkdown);
+            //document.getElementById('exportHtmlBtn').addEventListener('click', exportHtml);
+        });
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                pdfContent = await lollmsFileLoader.loadFile(file);
+            }
+        }
+
+        async function summarizePDF() {
+            if (!pdfContent) {
+                alert('Please upload a PDF file first.');
+                return;
+            }
+
+            const spinner = document.getElementById('spinner');
+            const summaryOutput = document.getElementById('summaryOutput');
+            const useTasksLibrary = document.getElementById('useTasksLibrary').checked;
+            
+            spinner.classList.remove('hidden');
+            summaryOutput.innerHTML = '';
+
+            try {
+                let summary;
+                // Use classic Lollms summary
+                const prompt = localizer.formatPrompt('summarizePrompt', { pdfContent: pdfContent });
+                if (useTasksLibrary) {
+                    // Use Tasks Library for summary
+                    console.log(pdfContent)
+                    summary = await tl.summarizeText(text = pdfContent, summaryInstruction = localizer.formatPrompt('summarizePrompt', { pdfContent: "<in the document>" }), maxSummarySize=1024);
+                    summary = `<div class="prose">
+                        <h3>Summary (Tasks Library)</h3>
+                        ${summary}
+                    </div>`;
+                } else {
+                    summary = await lc.generate(prompt);
+                }
+                summaryOutput.innerHTML = summary;
+            } catch (error) {
+                console.error('Error generating summary:', error);
+                alert('An error occurred while summarizing the PDF. Please try again.');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function saveConfiguration() {
+            const temperature = parseFloat(document.getElementById('temperature').value);
+            const maxTokens = parseInt(document.getElementById('maxTokens').value);
+
+            lc.updateSettings({
+                temperature: temperature,
+                n_predict: maxTokens
+            });
+
+            alert('Configuration saved successfully.');
+        }
+
+        function copyOutput() {
+            const summaryOutput = document.getElementById('summaryOutput');
+            navigator.clipboard.writeText(summaryOutput.innerText)
+                .then(() => alert('Summary copied to clipboard!'))
+                .catch(err => console.error('Error copying text: ', err));
+        }
+
+        function exportMarkdown() {
+            const summaryOutput = document.getElementById('summaryOutput');
+            const markdown = lollmsAnythingToMarkdown(summaryOutput.innerHTML);
+            downloadFile(markdown, 'summary.md', 'text/markdown');
+        }
+
+        function downloadFile(content, fileName, contentType) {
+            const a = document.createElement('a');
+            const file = new Blob([content], { type: contentType });
+            a.href = URL.createObjectURL(file);
+            a.download = fileName;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        }
+    </script>
+</body>
+</html>

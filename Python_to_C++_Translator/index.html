@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Python to C++ Translator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-row items-center justify-center p-4">
+    <div class="container mx-auto bg-white rounded-lg shadow-lg p-6 w-full">
+        <h1 class="text-3xl font-bold text-center mb-6">Python to C++ Translator</h1>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="pythonCode" class="block text-sm font-medium text-gray-700 mb-2">Python Code</label>
+                <textarea id="pythonCode" rows="10" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" placeholder="Enter your Python code here..."></textarea>
+            </div>
+            <div>
+                <label for="cppCode" class="block text-sm font-medium text-gray-700 mb-2">C++ Code</label>
+                <div id="cppCode" rows="10" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50"></div>
+            </div>
+        </div>
+        <div class="mt-4 flex justify-center">
+            <button id="translateBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                Translate
+            </button>
+        </div>
+        <div id="errorMsg" class="mt-4 text-red-500 text-center hidden"></div>
+        <div id="loadingIndicator" class="mt-4 text-center hidden">
+            <div class="inline-block animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
+            <p class="mt-2">Translating...</p>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        const mr = new MarkdownRenderer();
+
+        const pythonCodeTextarea = document.getElementById('pythonCode');
+        const cppCodeTextarea = document.getElementById('cppCode');
+        const translateBtn = document.getElementById('translateBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        translateBtn.addEventListener('click', async () => {
+            const pythonCode = pythonCodeTextarea.value.trim();
+            if (!pythonCode) {
+                showError('Please enter Python code.');
+                return;
+            }
+
+            showLoading(true);
+            hideError();
+
+            try {
+                const prompt = `${lc.system_message()}You are a Python to C++ code translator. Your task is to translate the following Python code to C++:
+
+${lc.user_message()}
+${pythonCode}
+
+${lc.ai_message()}Here's the C++ translation of the provided Python code:
+
+`;
+
+                const cppCode = await lc.generate(prompt);
+                cppCodeTextarea.innerHTML = await mr.renderMarkdown(cppCode.trim());
+            } catch (error) {
+                showError('An error occurred during translation. Please try again.');
+                console.error('Translation error:', error);
+            } finally {
+                showLoading(false);
+            }
+        });
+
+        function showError(message) {
+            errorMsg.textContent = message;
+            errorMsg.classList.remove('hidden');
+        }
+
+        function hideError() {
+            errorMsg.textContent = '';
+            errorMsg.classList.add('hidden');
+        }
+
+        function showLoading(show) {
+            if (show) {
+                loadingIndicator.classList.remove('hidden');
+                translateBtn.disabled = true;
+            } else {
+                loadingIndicator.classList.add('hidden');
+                translateBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
