@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WYSIWYG HTML Content Builder for Lollms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .element-controls {
+            display: none;
+        }
+        .element:hover .element-controls {
+            display: flex;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <header class="flex justify-between items-center mb-4">
+            <h1 class="text-2xl font-bold">WYSIWYG HTML Content Builder</h1>
+            <div class="space-x-2">
+                <button id="exportBtn" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Export
+                </button>
+                <button id="loadBtn" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                    Load
+                </button>
+                <select id="templateSelect" class="bg-white border border-gray-300 rounded px-4 py-2">
+                    <option value="">Select Template</option>
+                    <option value="blank">Blank</option>
+                    <option value="article">Article</option>
+                    <option value="landing">Landing Page</option>
+                </select>
+                <button id="settingsBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                    </svg>
+                    Settings
+                </button>
+            </div>
+        </header>
+        <div class="flex">
+            <div id="toolbox" class="w-1/5 bg-white p-4 rounded shadow-lg mr-4">
+                <h2 class="text-xl font-semibold mb-4">Toolbox</h2>
+                <div class="space-y-2">
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="h1">Heading 1</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="h2">Heading 2</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="p">Paragraph</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="img">Image</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="div">Container</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="ul">Unordered List</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="ol">Ordered List</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="table">Table</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="a">Link</button>
+                    <button class="add-element w-full bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded" data-type="button">Button</button>
+                </div>
+            </div>
+            <div id="editor" class="w-3/5 bg-white p-4 rounded shadow-lg min-h-[600px]"></div>
+            <div id="stylingPanel" class="w-1/5 bg-white p-4 rounded shadow-lg ml-4">
+                <h2 class="text-xl font-semibold mb-4">Styling</h2>
+                <div id="elementStyles"></div>
+                <div id="globalStyles" class="mt-4">
+                    <h3 class="text-lg font-semibold mb-2">Global Styles</h3>
+                    <label class="block mb-2">
+                        Background Color:
+                        <input type="color" id="bgColor" class="w-full">
+                    </label>
+                    <label class="block mb-2">
+                        Text Color:
+                        <input type="color" id="textColor" class="w-full">
+                    </label>
+                    <label class="block mb-2">
+                        Font Size:
+                        <input type="range" id="fontSize" min="8" max="72" value="16" class="w-full">
+                        <span id="fontSizeValue">16px</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg w-1/2">
+            <h2 class="text-2xl font-bold mb-4">Lollms Settings</h2>
+            <div id="lollmsSettings" class="space-y-4">
+                <!-- Lollms settings will be dynamically added here -->
+            </div>
+            <div class="flex justify-end mt-6">
+                <button id="saveSettings" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded mr-2">Save</button>
+                <button id="closeSettings" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+
+    <script>
+        const lc = new LollmsClient();
+        let currentElement = null;
+
+        function createElementControls(element) {
+            const controls = document.createElement('div');
+            controls.className = 'element-controls absolute top-0 right-0 bg-white rounded shadow p-1';
+            
+            const generateBtn = document.createElement('button');
+            generateBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+            `;
+            generateBtn.className = 'text-blue-500 hover:text-blue-600 mr-2';
+            generateBtn.onclick = () => generateContent(element);
+
+            const removeBtn = document.createElement('button');
+            removeBtn.innerHTML = `
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+            `;
+            removeBtn.className = 'text-red-500 hover:text-red-600';
+            removeBtn.onclick = () => element.remove();
+
+            controls.appendChild(generateBtn);
+            controls.appendChild(removeBtn);
+            return controls;
+        }
+
+        function addElement(type) {
+            const element = document.createElement(type);
+            element.className = 'element relative p-2 my-2 border border-gray-300 rounded cursor-move';
+            element.draggable = true;
+            element.addEventListener('dragstart', drag);
+            element.addEventListener('click', (e) => {
+                e.stopPropagation();
+                currentElement = element;
+                showElementStyles(element);
+            });
+
+            if (type === 'div') {
+                element.innerHTML = '<p>Container (Drag elements here)</p>';
+                element.addEventListener('dragover', allowDrop);
+                element.addEventListener('drop', drop);
+            } else if (type === 'img') {
+                element.src = 'https://via.placeholder.com/150';
+                element.alt = 'Placeholder image';
+            } else if (type === 'ul' || type === 'ol') {
+                element.innerHTML = '<li>List item 1</li><li>List item 2</li>';
+            } else if (type === 'table') {
+                element.innerHTML = '<tr><th>Header 1</th><th>Header 2</th></tr><tr><td>Row 1, Cell 1</td><td>Row 1, Cell 2</td></tr>';
+            } else if (type === 'a') {
+                element.href = '#';
+                element.textContent = 'Link';
+            } else if (type === 'button') {
+                element.textContent = 'Button';
+            } else {
+                element.textContent = `${type.toUpperCase()} content`;
+            }
+
+            const controls = createElementControls(element);
+            element.appendChild(controls);
+
+            document.getElementById('editor').appendChild(element);
+        }
+
+        function showElementStyles(element) {
+            const stylingPanel = document.getElementById('elementStyles');
+            stylingPanel.innerHTML = '';
+
+            const styleProps = ['color', 'backgroundColor', 'fontSize', 'fontWeight', 'textAlign', 'padding', 'margin', 'borderRadius'];
+
+            styleProps.forEach(prop => {
+                const label = document.createElement('label');
+                label.className = 'block mb-2';
+                label.textContent = prop.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()) + ':';
+
+                let input;
+                if (prop === 'color' || prop === 'backgroundColor') {
+                    input = document.createElement('input');
+                    input.type = 'color';
+                    input.value = rgb2hex(getComputedStyle(element)[prop]);
+                } else if (prop === 'fontSize') {
+                    input = document.createElement('input');
+                    input.type = 'range';
+                    input.min = '8';
+                    input.max = '72';
+                    input.value = parseInt(getComputedStyle(element)[prop]);
+                } else if (prop === 'fontWeight') {
+                    input = document.createElement('select');
+                    ['normal', 'bold', '100', '200', '300', '400', '500', '600', '700', '800', '900'].forEach(weight => {
+                        const option = document.createElement('option');
+                        option.value = weight;
+                        option.textContent = weight;
+                        input.appendChild(option);
+                    });
+                    input.value = getComputedStyle(element)[prop];
+                } else if (prop === 'textAlign') {
+} else if (prop === 'textAlign') {
+                    input = document.createElement('select');
+                    ['left', 'center', 'right', 'justify'].forEach(align => {
+                        const option = document.createElement('option');
+                        option.value = align;
+                        option.textContent = align;
+                        input.appendChild(option);
+                    });
+                    input.value = getComputedStyle(element)[prop];
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = getComputedStyle(element)[prop];
+                }
+
+                input.className = 'w-full';
+                input.addEventListener('change', () => {
+                    if (prop === 'fontSize') {
+                        element.style[prop] = input.value + 'px';
+                    } else {
+                        element.style[prop] = input.value;
+                    }
+                });
+
+                label.appendChild(input);
+                stylingPanel.appendChild(label);
+            });
+        }
+
+        function rgb2hex(rgb) {
+            if (rgb.startsWith('rgb')) {
+                rgb = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                return "#" + hex(rgb[1]) + hex(rgb[2]) + hex(rgb[3]);
+            }
+            return rgb;
+        }
+
+        function hex(x) {
+            return ("0" + parseInt(x).toString(16)).slice(-2);
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.id);
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            var data = ev.dataTransfer.getData("text");
+            ev.target.appendChild(document.getElementById(data));
+        }
+
+        async function generateContent(element) {
+            const prompt = `Generate content for a ${element.tagName.toLowerCase()} element in HTML format.`;
+            try {
+                const response = await lc.generate(prompt);
+                element.innerHTML = response;
+                const controls = createElementControls(element);
+                element.appendChild(controls);
+            } catch (error) {
+                console.error('Error generating content:', error);
+            }
+        }
+
+        document.querySelectorAll('.add-element').forEach(btn => {
+            btn.addEventListener('click', () => addElement(btn.dataset.type));
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const content = document.getElementById('editor').innerHTML;
+            const blob = new Blob([content], { type: 'text/html' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'exported_content.html';
+            a.click();
+        });
+
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.html';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = event => {
+                    document.getElementById('editor').innerHTML = event.target.result;
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        document.getElementById('templateSelect').addEventListener('change', (e) => {
+            const template = e.target.value;
+            if (template) {
+                fetch(`/templates/${template}.html`)
+                    .then(response => response.text())
+                    .then(content => {
+                        document.getElementById('editor').innerHTML = content;
+                    })
+                    .catch(error => console.error('Error loading template:', error));
+            }
+        });
+
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.remove('hidden');
+            document.getElementById('settingsModal').classList.add('flex');
+            loadLollmsSettings();
+        });
+
+        document.getElementById('closeSettings').addEventListener('click', () => {
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('settingsModal').classList.remove('flex');
+        });
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            saveLollmsSettings();
+            document.getElementById('settingsModal').classList.add('hidden');
+            document.getElementById('settingsModal').classList.remove('flex');
+        });
+
+        function loadLollmsSettings() {
+            const settingsContainer = document.getElementById('lollmsSettings');
+            settingsContainer.innerHTML = '';
+
+            const settings = {
+                host_address: 'http://localhost:9600',
+                model_name: '',
+                ctx_size: 4096,
+                n_predict: 2048,
+                temperature: 0.7,
+                top_k: 50,
+                top_p: 0.95,
+                repeat_penalty: 1.1,
+                repeat_last_n: 64,
+                n_threads: 8
+            };
+
+            for (const [key, value] of Object.entries(settings)) {
+                const label = document.createElement('label');
+                label.className = 'block mb-2';
+                label.textContent = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) + ':';
+
+                const input = document.createElement('input');
+                input.type = typeof value === 'number' ? 'number' : 'text';
+                input.value = localStorage.getItem(key) || value;
+                input.className = 'w-full p-2 border border-gray-300 rounded';
+                input.id = `setting_${key}`;
+
+                label.appendChild(input);
+                settingsContainer.appendChild(label);
+            }
+        }
+
+        function saveLollmsSettings() {
+            const settings = document.querySelectorAll('#lollmsSettings input');
+            settings.forEach(input => {
+                localStorage.setItem(input.id.replace('setting_', ''), input.value);
+            });
+            // Update LollmsClient instance with new settings
+            lc.updateSettings({
+                host_address: localStorage.getItem('host_address'),
+                ctx_size: parseInt(localStorage.getItem('ctx_size')),
+                n_predict: parseInt(localStorage.getItem('n_predict')),
+                temperature: parseFloat(localStorage.getItem('temperature')),
+                top_k: parseInt(localStorage.getItem('top_k')),
+                top_p: parseFloat(localStorage.getItem('top_p')),
+                repeat_penalty: parseFloat(localStorage.getItem('repeat_penalty')),
+                repeat_last_n: parseInt(localStorage.getItem('repeat_last_n')),
+                n_threads: parseInt(localStorage.getItem('n_threads'))
+            });
+        }
+
+        // Initialize global styles
+        document.getElementById('bgColor').addEventListener('change', (e) => {
+            document.body.style.backgroundColor = e.target.value;
+        });
+
+        document.getElementById('textColor').addEventListener('change', (e) => {
+            document.body.style.color = e.target.value;
+        });
+
+        document.getElementById('fontSize').addEventListener('input', (e) => {
+            document.body.style.fontSize = e.target.value + 'px';
+            document.getElementById('fontSizeValue').textContent = e.target.value + 'px';
+        });
+
+        // Initialize LollmsClient with stored settings
+        lc.updateSettings({
+            host_address: localStorage.getItem('host_address') || 'http://localhost:9600',
+            ctx_size: parseInt(localStorage.getItem('ctx_size')) || 4096,
+            n_predict: parseInt(localStorage.getItem('n_predict')) || 2048,
+            temperature: parseFloat(localStorage.getItem('temperature')) || 0.7,
+            top_k: parseInt(localStorage.getItem('top_k')) || 50,
+            top_p: parseFloat(localStorage.getItem('top_p')) || 0.95,
+            repeat_penalty: parseFloat(localStorage.getItem('repeat_penalty')) || 1.1,
+            repeat_last_n: parseInt(localStorage.getItem('repeat_last_n')) || 64,
+            n_threads: parseInt(localStorage.getItem('n_threads')) || 8
+        });
+    </script>
+</body>
+</html>
