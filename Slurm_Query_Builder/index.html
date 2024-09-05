@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="title">SLURM Query Builder</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-4 text-center" data-i18n="title">SLURM Query Builder</h1>
+        <p class="text-center mb-8" data-i18n="description">Configure your SLURM job parameters and generate the corresponding bash command.</p>
+
+        <div class="bg-white p-6 rounded-lg shadow-md grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Job Details Section -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4" data-i18n="job_details">Job Details</h2>
+                <div class="mb-4">
+                    <label for="jobName" class="block text-sm font-medium text-gray-700" data-i18n="job_name">Job Name</label>
+                    <input type="text" id="jobName" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                </div>
+
+                <div class="mb-4">
+                    <label for="partition" class="block text-sm font-medium text-gray-700" data-i18n="partition">Partition</label>
+                    <select id="partition" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="default" data-i18n="default">Default</option>
+                        <option value="short" data-i18n="short">Short</option>
+                        <option value="long" data-i18n="long">Long</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label for="queue" class="block text-sm font-medium text-gray-700" data-i18n="queue">Queue</label>
+                    <input type="text" id="queue" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Queue Name">
+                </div>
+            </div>
+
+            <!-- Resource Allocation Section -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4" data-i18n="resource_allocation">Resource Allocation</h2>
+                <div class="mb-4">
+                    <label for="nodes" class="block text-sm font-medium text-gray-700" data-i18n="nodes">Number of Nodes</label>
+                    <input type="number" id="nodes" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="1">
+                </div>
+
+                <div class="mb-4">
+                    <label for="tasks" class="block text-sm font-medium text-gray-700" data-i18n="tasks">Number of Tasks</label>
+                    <input type="number" id="tasks" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="1">
+                </div>
+
+                <div class="mb-4">
+                    <label for="memory" class="block text-sm font-medium text-gray-700" data-i18n="memory">Memory Allocation</label>
+                    <div class="flex">
+                        <input type="number" id="memory" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="1">
+                        <select id="memoryUnit" class="ml-2 mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="MB" data-i18n="mb">MB</option>
+                            <option value="GB" data-i18n="gb">GB</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="timeLimit" class="block text-sm font-medium text-gray-700" data-i18n="time_limit">Time Limit (HH:MM:SS)</label>
+                    <input type="text" id="timeLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="00:30:00">
+                </div>
+            </div>
+
+            <!-- Output and Error Files Section -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4" data-i18n="output_error_files">Output & Error Files</h2>
+                <div class="mb-4">
+                    <label for="outputFile" class="block text-sm font-medium text-gray-700" data-i18n="output_file">Output File</label>
+                    <input type="text" id="outputFile" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="output.txt">
+                </div>
+
+                <div class="mb-4">
+                    <label for="errorFile" class="block text-sm font-medium text-gray-700" data-i18n="error_file">Error File</label>
+                    <input type="text" id="errorFile" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="error.txt">
+                </div>
+            </div>
+
+            <!-- Notifications and Additional Parameters Section -->
+            <div>
+                <h2 class="text-xl font-semibold mb-4" data-i18n="notifications_additional_params">Notifications & Additional Parameters</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700" data-i18n="email_notifications">Email Notifications</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="emailNotifications" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="emailNotifications" class="ml-2 block text-sm text-gray-900" data-i18n="enable">Enable</label>
+                    </div>
+                    <input type="email" id="email" class="mt-2 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="email@example.com" disabled>
+                </div>
+
+                <div class="mb-4">
+                    <label for="additionalParams" class="block text-sm font-medium text-gray-700" data-i18n="additional_params">Additional Parameters</label>
+                    <input type="text" id="additionalParams" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="--gres=gpu:1">
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-6">
+            <button id="generateQuery" class="bg-indigo-600 text-white px-4 py-2 rounded-md shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" data-i18n="generate_query">Generate Query</button>
+        </div>
+
+        <div class="mt-6">
+            <label for="generatedQuery" class="block text-sm font-medium text-gray-700" data-i18n="generated_slurm_command">Generated SLURM Command</label>
+            <textarea id="generatedQuery" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" rows="4" readonly></textarea>
+            <button id="copyQuery" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-md shadow hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-i18n="copy_to_clipboard">Copy to Clipboard</button>
+        </div>
+
+        <div class="mt-8 bg-blue-100 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2" data-i18n="how_to_use">How to Use This Tool</h2>
+            <p class="mb-2" data-i18n="step_1">1. Fill in the job details, resource allocation, output & error files, and any additional parameters you need for your SLURM job.</p>
+            <p class="mb-2" data-i18n="step_2">2. Click the "Generate Query" button to create the SLURM command based on your inputs.</p>
+            <p class="mb-2" data-i18n="step_3">3. Copy the generated command using the "Copy to Clipboard" button.</p>
+            <p class="mb-2" data-i18n="step_4">4. Paste the command into your terminal or SLURM script file.</p>
+            <p class="mb-2" data-i18n="step_5">5. Submit your job to SLURM using the following command:</p>
+            <pre class="bg-gray-200 p-2 rounded" data-i18n="sbatch_command">sbatch your_script.sh</pre>
+            <p class="mt-2" data-i18n="replace_script">Replace <code>your_script.sh</code> with the name of your SLURM script file.</p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('emailNotifications').addEventListener('change', function() {
+            document.getElementById('email').disabled = !this.checked;
+        });
+
+        document.getElementById('generateQuery').addEventListener('click', function() {
+            const jobName = document.getElementById('jobName').value;
+            const partition = document.getElementById('partition').value;
+            const queue = document.getElementById('queue').value;
+            const nodes = document.getElementById('nodes').value;
+            const tasks = document.getElementById('tasks').value;
+            const memory = document.getElementById('memory').value;
+            const memoryUnit = document.getElementById('memoryUnit').value;
+            const timeLimit = document.getElementById('timeLimit').value;
+            const outputFile = document.getElementById('outputFile').value;
+            const errorFile = document.getElementById('errorFile').value;
+            const emailNotifications = document.getElementById('emailNotifications').checked;
+            const email = document.getElementById('email').value;
+            const additionalParams = document.getElementById('additionalParams').value;
+
+            let slurmCommand = `#!/bin/bash\n`;
+            if (jobName) slurmCommand += `#SBATCH --job-name=${jobName}\n`;
+            if (partition) slurmCommand += `#SBATCH --partition=${partition}\n`;
+            if (queue) slurmCommand += `#SBATCH --qos=${queue}\n`;
+            if (nodes) slurmCommand += `#SBATCH --nodes=${nodes}\n`;
+            if (tasks) slurmCommand += `#SBATCH --ntasks=${tasks}\n`;
+            if (memory) slurmCommand += `#SBATCH --mem=${memory}${memoryUnit}\n`;
+            if (timeLimit) slurmCommand += `#SBATCH --time=${timeLimit}\n`;
+            if (outputFile) slurmCommand += `#SBATCH --output=${outputFile}\n`;
+            if (errorFile) slurmCommand += `#SBATCH --error=${errorFile}\n`;
+            if (emailNotifications && email) slurmCommand += `#SBATCH --mail-user=${email}\n#SBATCH --mail-type=ALL\n`;
+            if (additionalParams) slurmCommand += `#SBATCH ${additionalParams}\n`;
+
+            document.getElementById('generatedQuery').value = slurmCommand;
+        });
+
+        document.getElementById('copyQuery').addEventListener('click', function() {
+            const queryText = document.getElementById('generatedQuery');
+            queryText.select();
+            document.execCommand('copy');
+            alert(i18n.translate('slurm_command_copied')); // Localized alert message
+        });
+
+        // Localization
+        const i18n = new LollmsClient();
+        i18n.localizePage(['fr', 'es', 'it']); // Localize to French, Spanish, and Italian
+    </script>
+</body>
+</html>

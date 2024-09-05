@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Abstractor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown.js"></script>
+    <style>
+        /* Spinner and overlay styles */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2">Article Abstractor</h1>
+            <p class="text-lg text-gray-600">Generate an abstract from your article. Input text manually or upload a file.</p>
+        </header>
+
+        <section class="mb-8">
+            <textarea id="articleText" class="w-full h-64 p-4 border border-gray-300 rounded-lg" placeholder="Paste your article text here..."></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <input type="file" id="fileInput" class="hidden" accept=".txt,.pdf">
+                <button id="uploadButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Upload File</button>
+                <span id="fileStatus" class="text-gray-600"></span>
+                <button id="clearButton" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600">Clear</button>
+            </div>
+        </section>
+
+        <section class="text-center mb-8">
+            <button id="generateButton" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600">Generate Abstract</button>
+        </section>
+
+        <section>
+            <h2 class="text-2xl font-bold mb-4">Generated Abstract</h2>
+            <textarea id="abstractOutput" class="w-full h-48 p-4 border border-gray-300 rounded-lg" readonly></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <button id="saveButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600">Save as .txt</button>
+                <button id="copyButton" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600">Copy to Clipboard</button>
+            </div>
+        </section>
+
+        <footer class="text-center mt-8 text-gray-600">
+            <p>Powered by Lollms</p>
+        </footer>
+    </div>
+
+    <!-- Spinner Overlay -->
+    <div id="spinnerOverlay" class="spinner-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const fileStatus = document.getElementById('fileStatus');
+        const articleText = document.getElementById('articleText');
+        const generateButton = document.getElementById('generateButton');
+        const abstractOutput = document.getElementById('abstractOutput');
+        const saveButton = document.getElementById('saveButton');
+        const copyButton = document.getElementById('copyButton');
+        const clearButton = document.getElementById('clearButton');
+        const spinnerOverlay = document.getElementById('spinnerOverlay');
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const lollmsFileLoader = new LollmsFileLoader();
+                try {
+                    const content = await lollmsFileLoader.loadFile(file);
+                    articleText.value = content;
+                    fileStatus.textContent = "File uploaded successfully";
+                } catch (error) {
+                    fileStatus.textContent = "Error: Unsupported file format";
+                }
+            }
+        });
+
+        generateButton.addEventListener('click', async () => {
+            const text = articleText.value.trim();
+            if (text) {
+                // Show spinner
+                spinnerOverlay.style.display = 'flex';
+
+                const prompt = lc.system_message() + "Build a scientific abstract to the following article:" + lc.template.separator_template + lc.user_message() + text + lc.template.separator_template + lc.ai_message();
+                const abstract = await lc.generate(prompt);
+                abstractOutput.value = abstract;
+
+                // Hide spinner
+                spinnerOverlay.style.display = 'none';
+            }
+        });
+
+        saveButton.addEventListener('click', () => {
+            const text = abstractOutput.value.trim();
+            if (text) {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'abstract.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        copyButton.addEventListener('click', () => {
+            const text = abstractOutput.value.trim();
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Abstract copied to clipboard');
+                });
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            articleText.value = '';
+            abstractOutput.value = '';
+            fileStatus.textContent = '';
+            fileInput.value = '';
+        });
+    </script>
+</body>
+</html>
