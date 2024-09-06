@@ -5,11 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-i18n="title">SLURM Query Builder</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min.js"></script>
 </head>
 <body class="bg-gray-100 text-gray-800">
     <div class="container mx-auto p-6">
+        <div class="flex justify-end mb-4">
+            <select id="languageSelect" class="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select>
+        </div>        
         <h1 class="text-3xl font-bold mb-4 text-center" data-i18n="title">SLURM Query Builder</h1>
         <p class="text-center mb-8" data-i18n="description">Configure your SLURM job parameters and generate the corresponding bash command.</p>
 
@@ -25,7 +29,7 @@
                 <div class="mb-4">
                     <label for="partition" class="block text-sm font-medium text-gray-700" data-i18n="partition">Partition</label>
                     <select id="partition" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-                        <option value="default" data-i18n="default">Default</option>
+                        <option value="" data-i18n="no_partition">No Partition</option>
                         <option value="short" data-i18n="short">Short</option>
                         <option value="long" data-i18n="long">Long</option>
                     </select>
@@ -37,6 +41,22 @@
                 </div>
             </div>
 
+            <div class="mb-4">
+                <h2 class="text-xl font-semibold mb-2" data-i18n="job_command">Job Command</h2>
+                <div class="flex items-center mb-2">
+                    <select id="commonCommands" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="" data-i18n="select_command">Select a common command</option>
+                        <option value="python script.py">python script.py</option>
+                        <option value="R --vanilla < script.R">R --vanilla < script.R</option>
+                        <option value="./executable">./executable</option>
+                        <option value="matlab -nodisplay -nosplash -r 'run script.m'">MATLAB script</option>
+                        <option value="singularity exec container.sif command">Singularity container</option>
+                    </select>
+                    <button id="addCommand" class="ml-2 bg-blue-500 text-white px-4 py-2 rounded-md shadow hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" data-i18n="add">Add</button>
+                </div>
+                <input type="text" id="jobCommand" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="Enter your job command here" data-i18n-placeholder="enter_job_command">
+                <p class="text-sm mt-1" data-i18n="job_command_desc">Specify the command to run in your SLURM job. You can select a common command or enter a custom one.</p>
+            </div>
             <!-- Resource Allocation Section -->
             <div>
                 <h2 class="text-xl font-semibold mb-4" data-i18n="resource_allocation">Resource Allocation</h2>
@@ -56,7 +76,7 @@
                         <input type="number" id="memory" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="1">
                         <select id="memoryUnit" class="ml-2 mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                             <option value="MB" data-i18n="mb">MB</option>
-                            <option value="GB" data-i18n="gb">GB</option>
+                            <option value="GB" data-i18n="gb" selected>GB</option>
                         </select>
                     </div>
                 </div>
@@ -64,6 +84,24 @@
                 <div class="mb-4">
                     <label for="timeLimit" class="block text-sm font-medium text-gray-700" data-i18n="time_limit">Time Limit (HH:MM:SS)</label>
                     <input type="text" id="timeLimit" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="00:30:00">
+                </div>
+
+                <div class="mb-4">
+                    <label for="useGPU" class="block text-sm font-medium text-gray-700" data-i18n="use_gpu">Use GPU</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="useGPU" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="useGPU" class="ml-2 block text-sm text-gray-900" data-i18n="enable">Enable</label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label for="gpuCount" class="block text-sm font-medium text-gray-700" data-i18n="gpu_count">Number of GPUs</label>
+                    <input type="number" id="gpuCount" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="1" disabled>
+                </div>
+
+                <div class="mb-4">
+                    <label for="vram" class="block text-sm font-medium text-gray-700" data-i18n="vram">VRAM per GPU (GB)</label>
+                    <input type="number" id="vram" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" min="1" value="8" disabled>
                 </div>
             </div>
 
@@ -95,8 +133,42 @@
 
                 <div class="mb-4">
                     <label for="additionalParams" class="block text-sm font-medium text-gray-700" data-i18n="additional_params">Additional Parameters</label>
-                    <input type="text" id="additionalParams" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="--gres=gpu:1">
+                    <div class="flex">
+                        <input type="text" id="additionalParams" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="--gres=gpu:1">
+                        <select id="additionalParamsSelect" class="ml-2 mt-1 block px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                            <option value="" data-i18n="select_param">Select Parameter</option>
+                            <option value="--exclusive" data-i18n="exclusive">--exclusive</option>
+                            <option value="--constraint=GPU" data-i18n="constraint_gpu">--constraint=GPU</option>
+                            <option value="--dependency=afterok:12345" data-i18n="dependency">--dependency=afterok:12345</option>
+                            <option value="--mail-type=END" data-i18n="mail_type_end">--mail-type=END</option>
+                            <option value="--mail-type=FAIL" data-i18n="mail_type_fail">--mail-type=FAIL</option>
+                            <option value="--requeue" data-i18n="requeue">--requeue</option>
+                            <option value="--no-requeue" data-i18n="no_requeue">--no-requeue</option>
+                            <option value="--signal=B:USR1@60" data-i18n="signal">--signal=B:USR1@60</option>
+                        </select>
+                        <button id="addParam" class="ml-2 bg-blue-600 text-white px-4 py-2 rounded-md shadow hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500" data-i18n="add_param">Add</button>
+                    </div>
                 </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700" data-i18n="x11_forwarding">X11 Forwarding</label>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="useX11" class="h-4 w-4 text-indigo-600 border-gray-300 rounded">
+                        <label for="useX11" class="ml-2 block text-sm text-gray-900" data-i18n="enable_x11">Enable X11 forwarding</label>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700" data-i18n="execution_mode">Execution Mode</label>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio" name="executionMode" value="sbatch" checked>
+                            <span class="ml-2" data-i18n="sbatch">sbatch</span>
+                        </label>
+                        <label class="inline-flex items-center ml-6">
+                            <input type="radio" class="form-radio" name="executionMode" value="srun">
+                            <span class="ml-2" data-i18n="srun">srun</span>
+                        </label>
+                    </div>
+                </div>                
             </div>
         </div>
 
@@ -106,10 +178,20 @@
 
         <div class="mt-6">
             <label for="generatedQuery" class="block text-sm font-medium text-gray-700" data-i18n="generated_slurm_command">Generated SLURM Command</label>
-            <textarea id="generatedQuery" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" rows="4" readonly></textarea>
-            <button id="copyQuery" class="mt-2 bg-gray-600 text-white px-4 py-2 rounded-md shadow hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500" data-i18n="copy_to_clipboard">Copy to Clipboard</button>
+            <div class="flex items-center">
+                <textarea id="generatedQuery" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" rows="4" readonly></textarea>
+                <div class="flex flex-col">
+                    <button id="copyGeneratedQuery" class="ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-i18n="copy">Copy</button>
+                    <button id="saveQuery" class="m-2 bg-green-600 text-white px-4 py-2 rounded-md shadow hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500" data-i18n="save_to_file">Save to File</button>    
+                </div>
+            </div>
+            <div class="flex items-center mt-2">
+                <pre class="bg-gray-200 p-2 rounded flex-grow">sbatch slurm_script.sh</pre>
+                <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="sbatch slurm_script.sh" data-i18n="copy">Copy</button>
+            </div>
+            <p class="text-sm mt-1" data-i18n="run_script_desc">Copy the generated SLURM command into a file named 'slurm_script.sh', then use this command to submit your job.</p>
         </div>
-
+        
         <div class="mt-8 bg-blue-100 p-4 rounded-lg">
             <h2 class="text-lg font-semibold mb-2" data-i18n="how_to_use">How to Use This Tool</h2>
             <p class="mb-2" data-i18n="step_1">1. Fill in the job details, resource allocation, output & error files, and any additional parameters you need for your SLURM job.</p>
@@ -120,13 +202,222 @@
             <pre class="bg-gray-200 p-2 rounded" data-i18n="sbatch_command">sbatch your_script.sh</pre>
             <p class="mt-2" data-i18n="replace_script">Replace <code>your_script.sh</code> with the name of your SLURM script file.</p>
         </div>
+        <div class="mt-8 bg-yellow-100 p-4 rounded-lg">
+            <h2 class="text-lg font-semibold mb-2" data-i18n="common_slurm_commands">Common SLURM Commands</h2>
+            
+            <div class="mb-4">
+                <h3 class="text-md font-semibold" data-i18n="list_jobs">List Jobs</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">squeue -u $USER</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="squeue -u $USER" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="list_jobs_desc">Lists all jobs for the current user.</p>
+            </div>
+        
+            <div class="mb-4">
+                <h3 class="text-md font-semibold" data-i18n="view_job_details">View Job Details</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">scontrol show job JOBID</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="scontrol show job JOBID" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="view_job_details_desc">Replace JOBID with the actual job ID to view detailed information about a specific job.</p>
+            </div>
+        
+            <div class="mb-4">
+                <h3 class="text-md font-semibold" data-i18n="cancel_job">Cancel (Kill) a Job</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">scancel JOBID</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="scancel JOBID" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="cancel_job_desc">Replace JOBID with the actual job ID to cancel a specific job.</p>
+            </div>
+        
+            <div class="mb-4">
+                <h3 class="text-md font-semibold" data-i18n="view_queue_info">View Queue Information</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">sinfo</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="sinfo" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="view_queue_info_desc">Displays information about the partitions and nodes in the SLURM cluster.</p>
+            </div>
+        
+            <div class="mb-4">
+                <h3 class="text-md font-semibold" data-i18n="view_job_efficiency">View Job Efficiency</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">seff JOBID</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="seff JOBID" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="view_job_efficiency_desc">Replace JOBID with the actual job ID to view the CPU and memory efficiency of a completed job.</p>
+            </div>
+        
+            <div>
+                <h3 class="text-md font-semibold" data-i18n="check_estimated_start">Check Estimated Start Time</h3>
+                <div class="flex items-center">
+                    <pre class="bg-gray-200 p-2 rounded flex-grow">squeue --start -j JOBID</pre>
+                    <button class="copy-btn ml-2 bg-blue-500 text-white px-2 py-1 rounded" data-clipboard-text="squeue --start -j JOBID" data-i18n="copy">Copy</button>
+                </div>
+                <p class="text-sm mt-1" data-i18n="check_estimated_start_desc">Replace JOBID with the actual job ID to see the estimated start time for a job in the queue.</p>
+            </div>
+        </div>
+        
+        
     </div>
 
     <script>
+        // Translations
+        const translations = {
+            en: {
+                "title": "SLURM Query Builder",
+                "description": "Configure your SLURM job parameters and generate the corresponding bash command.",
+                "job_details": "Job Details",
+                "job_name": "Job Name",
+                "partition": "Partition",
+                "no_partition": "No Partition",
+                "short": "Short",
+                "long": "Long",
+                "queue": "Queue",
+                "job_command": "Job Command",
+                "select_command": "Select a common command",
+                "add": "Add",
+                "enter_job_command": "Enter your job command here",
+                "job_command_desc": "Specify the command to run in your SLURM job. You can select a common command or enter a custom one.",
+                // Add more translations here
+                "save_to_file": "Save to File",
+                "generate_query": "Genrate query"
+
+            },
+            fr: {
+                "title": "Générateur de requêtes SLURM",
+                "description": "Configurez les paramètres de votre job SLURM et générez la commande bash correspondante.",
+                "job_details": "Détails du job",
+                "job_name": "Nom du job",
+                "partition": "Partition",
+                "no_partition": "Pas de partition",
+                "short": "Court",
+                "long": "Long",
+                "queue": "File d'attente",
+                "job_command": "Commande du job",
+                "select_command": "Sélectionnez une commande courante",
+                "add": "Ajouter",
+                "enter_job_command": "Entrez votre commande de job ici",
+                "job_command_desc": "Spécifiez la commande à exécuter dans votre job SLURM. Vous pouvez sélectionner une commande courante ou en saisir une personnalisée.",
+                // Add more translations here
+                "save_to_file": "Enregistrer",
+                "generate_query": "Génèrer la requete"
+            }
+        };
+
+        // Function to update language
+        function updateLanguage(lang) {
+            document.querySelectorAll('[data-i18n]').forEach(element => {
+                const key = element.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    if (element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') {
+                        element.placeholder = translations[lang][key];
+                    } else {
+                        element.textContent = translations[lang][key];
+                    }
+                }
+            });
+
+            // Update placeholders
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+                const key = element.getAttribute('data-i18n-placeholder');
+                if (translations[lang] && translations[lang][key]) {
+                    element.placeholder = translations[lang][key];
+                }
+            });
+
+            // Update options
+            document.querySelectorAll('option[data-i18n]').forEach(option => {
+                const key = option.getAttribute('data-i18n');
+                if (translations[lang] && translations[lang][key]) {
+                    option.textContent = translations[lang][key];
+                }
+            });
+        }
+
+        // Load saved language from localStorage
+        const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+        document.getElementById('languageSelect').value = savedLanguage;
+        updateLanguage(savedLanguage);
+
+        // Event listener for language change
+        document.getElementById('languageSelect').addEventListener('change', function() {
+            const selectedLang = this.value;
+            updateLanguage(selectedLang);
+            localStorage.setItem('selectedLanguage', selectedLang);
+        });        
+        // Load saved data from localStorage
+        window.onload = function() {
+            const fields = ['jobName', 'partition', 'queue', 'nodes', 'tasks', 'memory', 'memoryUnit', 'timeLimit', 'outputFile', 'errorFile', 'emailNotifications', 'email', 'additionalParams', 'useGPU', 'gpuCount', 'vram', 'jobCommand', 'useX11'];
+            fields.forEach(field => {
+                const savedValue = localStorage.getItem(field);
+                if (savedValue !== null) {
+                    const element = document.getElementById(field);
+                    if (element.type === 'checkbox') {
+                        element.checked = savedValue === 'true';
+                    } else {
+                        element.value = savedValue;
+                    }
+                }
+            });
+
+            // Disable GPU fields if GPU is not enabled
+            const useGPU = document.getElementById('useGPU');
+            const gpuCount = document.getElementById('gpuCount');
+            const vram = document.getElementById('vram');
+            gpuCount.disabled = !useGPU.checked;
+            vram.disabled = !useGPU.checked;
+
+            // Apply saved language
+            const savedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+            document.getElementById('languageSelect').value = savedLanguage;
+            updateLanguage(savedLanguage);
+        };
+        document.getElementById('jobCommand').addEventListener('input', function() {
+            localStorage.setItem(this.id, this.value);
+        });
+
+        // Save data to localStorage
+        document.querySelectorAll('input, select').forEach(element => {
+            element.addEventListener('input', function() {
+                localStorage.setItem(this.id, this.type === 'checkbox' ? this.checked : this.value);
+            });
+        });
+
         document.getElementById('emailNotifications').addEventListener('change', function() {
             document.getElementById('email').disabled = !this.checked;
         });
 
+        document.getElementById('useGPU').addEventListener('change', function() {
+            const gpuCount = document.getElementById('gpuCount');
+            const vram = document.getElementById('vram');
+            gpuCount.disabled = !this.checked;
+            vram.disabled = !this.checked;
+        });
+
+        document.getElementById('addParam').addEventListener('click', function() {
+            const additionalParams = document.getElementById('additionalParams');
+            const selectedParam = document.getElementById('additionalParamsSelect').value;
+            if (selectedParam) {
+                additionalParams.value += (additionalParams.value ? ' ' : '') + selectedParam;
+            }
+        });
+        document.getElementById('addCommand').addEventListener('click', function() {
+            const commandSelect = document.getElementById('commonCommands');
+            const jobCommandInput = document.getElementById('jobCommand');
+            const selectedCommand = commandSelect.value;
+        
+            if (selectedCommand) {
+                if (jobCommandInput.value) {
+                    jobCommandInput.value += '\n' + selectedCommand;
+                } else {
+                    jobCommandInput.value = selectedCommand;
+                }
+                commandSelect.value = ''; // Reset the select box
+            }
+        });
         document.getElementById('generateQuery').addEventListener('click', function() {
             const jobName = document.getElementById('jobName').value;
             const partition = document.getElementById('partition').value;
@@ -141,33 +432,114 @@
             const emailNotifications = document.getElementById('emailNotifications').checked;
             const email = document.getElementById('email').value;
             const additionalParams = document.getElementById('additionalParams').value;
-
-            let slurmCommand = `#!/bin/bash\n`;
-            if (jobName) slurmCommand += `#SBATCH --job-name=${jobName}\n`;
-            if (partition) slurmCommand += `#SBATCH --partition=${partition}\n`;
-            if (queue) slurmCommand += `#SBATCH --qos=${queue}\n`;
-            if (nodes) slurmCommand += `#SBATCH --nodes=${nodes}\n`;
-            if (tasks) slurmCommand += `#SBATCH --ntasks=${tasks}\n`;
-            if (memory) slurmCommand += `#SBATCH --mem=${memory}${memoryUnit}\n`;
-            if (timeLimit) slurmCommand += `#SBATCH --time=${timeLimit}\n`;
-            if (outputFile) slurmCommand += `#SBATCH --output=${outputFile}\n`;
-            if (errorFile) slurmCommand += `#SBATCH --error=${errorFile}\n`;
-            if (emailNotifications && email) slurmCommand += `#SBATCH --mail-user=${email}\n#SBATCH --mail-type=ALL\n`;
-            if (additionalParams) slurmCommand += `#SBATCH ${additionalParams}\n`;
-
+            const useGPU = document.getElementById('useGPU').checked;
+            const gpuCount = document.getElementById('gpuCount').value;
+            const vram = document.getElementById('vram').value;
+            const jobCommand = document.getElementById('jobCommand').value; // Add this line
+        
+            const executionMode = document.querySelector('input[name="executionMode"]:checked').value;
+            const useX11 = document.getElementById('useX11').checked;
+        
+            let slurmCommand = '';
+            if (executionMode === 'sbatch') {
+                if (jobName) slurmCommand += `#SBATCH --job-name=${jobName}\n`;
+                if (partition) slurmCommand += `#SBATCH --partition=${partition}\n`;
+                if (queue) slurmCommand += `#SBATCH --qos=${queue}\n`;
+                if (nodes) slurmCommand += `#SBATCH --nodes=${nodes}\n`;
+                if (tasks) slurmCommand += `#SBATCH --ntasks=${tasks}\n`;
+                
+                // Handle memory allocation options
+                if (useGPU) {
+                    slurmCommand += `#SBATCH --gres=gpu:${gpuCount}\n`;
+                    slurmCommand += `#SBATCH --mem-per-gpu=${vram}GB\n`;
+                } else {
+                    slurmCommand += `#SBATCH --mem=${memory}${memoryUnit}\n`;
+                }
+            
+                if (timeLimit) slurmCommand += `#SBATCH --time=${timeLimit}\n`;
+                if (outputFile) slurmCommand += `#SBATCH --output=${outputFile}\n`;
+                if (errorFile) slurmCommand += `#SBATCH --error=${errorFile}\n`;
+                if (emailNotifications && email) slurmCommand += `#SBATCH --mail-user=${email}\n#SBATCH --mail-type=ALL\n`;
+                if (additionalParams) slurmCommand += `#SBATCH ${additionalParams}\n`;
+                if (jobCommand) {
+                    slurmCommand += `\n# Job command\n${jobCommand}\n`;
+                }        
+                if (useX11) slurmCommand += `#SBATCH --x11\n`;
+            } else {
+                slurmCommand = `srun `;
+                if (jobName) slurmCommand += `--job-name=${jobName} `;
+                if (partition) slurmCommand += `--partition=${partition} `;
+                if (queue) slurmCommand += `--qos=${queue} `;
+                if (nodes) slurmCommand += `--nodes=${nodes} `;
+                if (tasks) slurmCommand += `--ntasks=${tasks} `;
+                if (useGPU) {
+                    slurmCommand += `--gres=gpu:${gpuCount} `;
+                    slurmCommand += `--mem-per-gpu=${vram}GB `;
+                } else {
+                    slurmCommand += `--mem=${memory}${memoryUnit} `;
+                }
+                if (timeLimit) slurmCommand += `--time=${timeLimit} `;
+                if (outputFile) slurmCommand += `--output=${outputFile} `;
+                if (errorFile) slurmCommand += `--error=${errorFile} `;
+                if (emailNotifications && email) {
+                    slurmCommand += `--mail-user=${email} --mail-type=ALL `;
+                }
+                if (additionalParams) slurmCommand += `${additionalParams} `;
+                if (useX11) slurmCommand += `--x11 `;
+                if (jobCommand) {
+                    slurmCommand += `${jobCommand}`;
+                }
+            }
             document.getElementById('generatedQuery').value = slurmCommand;
         });
-
-        document.getElementById('copyQuery').addEventListener('click', function() {
-            const queryText = document.getElementById('generatedQuery');
-            queryText.select();
+        
+        
+        // Function to copy text to clipboard
+        function copyToClipboard(text) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
             document.execCommand('copy');
-            alert(i18n.translate('slurm_command_copied')); // Localized alert message
+            document.body.removeChild(textArea);
+        }
+
+        // Add click event listeners to all copy buttons
+        document.querySelectorAll('.copy-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const textToCopy = this.getAttribute('data-clipboard-text');
+                copyToClipboard(textToCopy);
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                }, 2000);
+            });
         });
 
-        // Localization
-        const i18n = new LollmsClient();
-        i18n.localizePage(['fr', 'es', 'it']); // Localize to French, Spanish, and Italian
+        // Add click event listener to copy generated query button
+        document.getElementById('copyGeneratedQuery').addEventListener('click', function() {
+            const generatedQuery = document.getElementById('generatedQuery').value;
+            copyToClipboard(generatedQuery);
+            this.textContent = 'Copied!';
+            setTimeout(() => {
+                this.textContent = 'Copy';
+            }, 2000);
+        });
+        document.getElementById('saveQuery').addEventListener('click', function() {
+            const generatedQuery = document.getElementById('generatedQuery').value;
+            const filename = 'slurm_script.sh';
+            const blob = new Blob([generatedQuery], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
     </script>
 </body>
 </html>
