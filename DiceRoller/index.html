@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Strawberry Dice Roller 🍓</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        @keyframes roll {
+            0% { transform: rotateX(0deg) rotateY(0deg); }
+            100% { transform: rotateX(720deg) rotateY(720deg); }
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        .dice {
+            width: 100px;
+            height: 100px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 1s;
+        }
+        .face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid #8B0000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 40px;
+            font-weight: bold;
+        }
+        .front  { transform: translateZ(50px); }
+        .back   { transform: rotateY(180deg) translateZ(50px); }
+        .right  { transform: rotateY(90deg) translateZ(50px); }
+        .left   { transform: rotateY(-90deg) translateZ(50px); }
+        .top    { transform: rotateX(90deg) translateZ(50px); }
+        .bottom { transform: rotateX(-90deg) translateZ(50px); }
+        .dark-mode .face { background: #8B0000; color: white; }
+        .light-mode .face { background: #FFB6C1; color: #8B0000; }
+        .header-dice {
+            display: inline-block;
+            font-size: 2rem;
+            margin: 0 10px;
+            animation: float 2s ease-in-out infinite;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+    </style>
+</head>
+<body class="bg-pink-100 min-h-screen flex flex-col light-mode" id="body">
+    <header class="bg-gradient-to-r from-red-400 to-pink-500 text-white p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold flex items-center" data-translate="title">
+                <span class="header-dice">🍓</span>
+                Strawberry Dice Roller
+                <span class="header-dice">🎲</span>
+            </h1>
+            <div class="flex items-center">
+                <select id="languageSelector" class="bg-white text-pink-800 p-2 rounded mr-4">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                </select>
+                <button id="darkModeToggle" class="bg-pink-800 text-white px-3 py-1 rounded transition-all duration-300 hover:bg-pink-700">
+                    <span id="darkModeIcon">🌙</span>
+                </button>
+                <button id="settingsToggle" class="bg-pink-800 text-white px-3 py-1 rounded transition-all duration-300 hover:bg-pink-700 ml-2">⚙️</button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
+        <div id="diceContainer" class="flex justify-center mb-8"></div>
+        <button id="rollButton" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded" data-translate="rollDice">
+            Roll Strawberry Dice 🍓
+        </button>
+        <p id="result" class="mt-4 text-2xl font-bold text-pink-800" data-translate="result">Result: -</p>
+        <div id="history" class="mt-4 text-lg text-pink-800">Last rolls: </div>
+    </main>
+
+    <div id="settingsMenu" class="fixed top-0 right-0 h-full w-64 bg-pink-200 p-4 transform translate-x-full transition-transform duration-300 ease-in-out">
+        <h2 class="text-2xl font-bold mb-4">Settings</h2>
+        <div class="mb-4">
+            <label for="diceCount" class="block text-sm font-medium text-gray-700">Number of Dice:</label>
+            <select id="diceCount" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500">
+                <option value="1">1</option>
+                <option value="2">2</option>
+            </select>
+        </div>
+        <button id="closeSettings" class="mt-4 bg-pink-500 text-white px-4 py-2 rounded">Close</button>
+    </div>
+
+    <footer class="bg-gradient-to-r from-red-400 to-pink-500 text-white p-4 mt-8">
+        <div class="container mx-auto text-center">
+            <p data-translate="footer">Written with Lollms By ParisNeo 2024 🍓</p>
+        </div>
+    </footer>
+
+    <audio id="rollSound" src="https://www.soundjay.com/misc/sounds/dice-roll-1.mp3"></audio>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Strawberry Dice Roller",
+                    rollDice: "Roll Strawberry Dice 🍓",
+                    result: "Result: {number} 🍓",
+                    footer: "Written with Lollms By ParisNeo 2024 🍓"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Lanceur de Dé Fraise",
+                    rollDice: "Lancer le Dé Fraise 🍓",
+                    result: "Résultat: {number} 🍓",
+                    footer: "Écrit avec Lollms Par ParisNeo 2024 🍓"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    title: "Lanzador de Dados Fresa",
+                    rollDice: "Lanzar Dado Fresa 🍓",
+                    result: "Resultado: {number} 🍓",
+                    footer: "Escrito con Lollms Por ParisNeo 2024 🍓"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'strawberryDiceRoller_', document.getElementById('languageSelector'));
+        
+        const diceContainer = document.getElementById('diceContainer');
+        const rollButton = document.getElementById('rollButton');
+        const resultElement = document.getElementById('result');
+        const rollSound = document.getElementById('rollSound');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const body = document.getElementById('body');
+        const darkModeIcon = document.getElementById('darkModeIcon');
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsMenu = document.getElementById('settingsMenu');
+        const closeSettings = document.getElementById('closeSettings');
+        const diceCountSelect = document.getElementById('diceCount');
+        const historyElement = document.getElementById('history');
+
+        let diceCount = parseInt(localStorage.getItem('strawberryDiceRoller_diceCount')) || 1;
+        let darkMode = localStorage.getItem('strawberryDiceRoller_darkMode') === 'true';
+        let rollHistory = JSON.parse(localStorage.getItem('strawberryDiceRoller_rollHistory')) || [];
+
+        function createDice() {
+            return `
+                <div class="dice mr-4">
+                    <div class="face front">1</div>
+                    <div class="face back">6</div>
+                    <div class="face right">4</div>
+                    <div class="face left">3</div>
+                    <div class="face top">5</div>
+                    <div class="face bottom">2</div>
+                </div>
+            `;
+        }
+
+        function updateDiceDisplay() {
+            diceContainer.innerHTML = '';
+            for (let i = 0; i < diceCount; i++) {
+                diceContainer.innerHTML += createDice();
+            }
+        }
+
+        function rollDice() {
+            rollButton.disabled = true;
+            const diceElements = document.querySelectorAll('.dice');
+            diceElements.forEach(dice => {
+                dice.style.animation = 'roll 1s';
+            });
+            rollSound.play();
+            
+            setTimeout(() => {
+                let totalResult = 0;
+                const results = [];
+                diceElements.forEach(dice => {
+                    const result = Math.floor(Math.random() * 6) + 1;
+                    results.push(result);
+                    console.log("Rolled:", result);
+                    totalResult += result;
+                    dice.style.animation = 'none';
+                    gsap.to(dice.style, { duration: 0.5, transform: getDiceTransform(result) });
+                    dice.querySelector('.front').textContent = result;
+                });
+                setTimeout(() => {
+                    resultElement.textContent = localizer.translate('result').replace('{number}', totalResult);
+                    rollButton.disabled = false;
+                    updateRollHistory(totalResult);
+                }, 500);
+            }, 1000);
+        }
+
+        function getDiceTransform(number) {
+            switch(number) {
+                case 1: return 'rotateX(0deg) rotateY(0deg)';
+                case 2: return 'rotateX(90deg) rotateY(0deg)';
+                case 3: return 'rotateY(90deg)';
+                case 4: return 'rotateY(-90deg)';
+                case 5: return 'rotateX(-90deg) rotateY(0deg)';
+                case 6: return 'rotateY(180deg)';
+                default: console.error("Invalid dice number:", number);
+            }
+        }
+
+        function toggleDarkMode() {
+            darkMode = !darkMode;
+            body.classList.toggle('dark-mode');
+            body.classList.toggle('light-mode');
+            if (darkMode) {
+                body.style.backgroundColor = '#4A0E0E';
+                body.style.color = 'white';
+                darkModeIcon.textContent = '☀️';
+            } else {
+                body.style.backgroundColor = '#FFF0F5';
+                body.style.color = '#8B0000';
+                darkModeIcon.textContent = '🌙';
+            }
+            localStorage.setItem('strawberryDiceRoller_darkMode', darkMode);
+        }
+
+        function updateRollHistory(result) {
+            rollHistory.unshift(result);
+            if (rollHistory.length > 5) rollHistory.pop();
+            localStorage.setItem('strawberryDiceRoller_rollHistory', JSON.stringify(rollHistory));
+            displayRollHistory();
+        }
+
+        function displayRollHistory() {
+            historyElement.textContent = 'Last rolls: ' + rollHistory.join(', ');
+        }
+
+        rollButton.addEventListener('click', rollDice);
+        darkModeToggle.addEventListener('click', toggleDarkMode);
+        settingsToggle.addEventListener('click', () => settingsMenu.classList.toggle('translate-x-full'));
+        closeSettings.addEventListener('click', () => settingsMenu.classList.add('translate-x-full'));
+
+        diceCountSelect.addEventListener('change', (e) => {
+            diceCount = parseInt(e.target.value);
+            localStorage.setItem('strawberryDiceRoller_diceCount', diceCount);
+            updateDiceDisplay();
+        });
+
+        document.getElementById('languageSelector').addEventListener('change', (e) => {
+            localizer.setLanguage(e.target.value);
+            localizer.apply();
+            resultElement.textContent = localizer.translate('result').replace('{number}', '-');
+        });
+
+        diceCountSelect.value = diceCount;
+        updateDiceDisplay();
+        if (darkMode) toggleDarkMode();
+        displayRollHistory();
+        localizer.apply();
+    </script>
+</body>
+</html>
