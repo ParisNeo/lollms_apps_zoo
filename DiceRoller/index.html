@@ -3,69 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Strawberry Dice Roller 🍓</title>
+    <title>Strawberry RPG Adventure 🍓</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
     <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
     <style>
-        @keyframes roll {
-            0% { transform: rotateX(0deg) rotateY(0deg); }
-            100% { transform: rotateX(720deg) rotateY(720deg); }
+        html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
         }
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
-        .dice {
-            width: 100px;
-            height: 100px;
-            position: relative;
-            transform-style: preserve-3d;
-            transition: transform 1s;
-        }
-        .face {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 2px solid #8B0000;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 40px;
-            font-weight: bold;
-        }
-        .front  { transform: translateZ(50px); }
-        .back   { transform: rotateY(180deg) translateZ(50px); }
-        .right  { transform: rotateY(90deg) translateZ(50px); }
-        .left   { transform: rotateY(-90deg) translateZ(50px); }
-        .top    { transform: rotateX(90deg) translateZ(50px); }
-        .bottom { transform: rotateX(-90deg) translateZ(50px); }
-        .dark-mode .face { background: #8B0000; color: white; border-color: #333; }
-        .light-mode .face { background: #FFB6C1; color: #8B0000; border-color: #333; }
-        .header-dice {
+        .header-icon {
             display: inline-block;
             font-size: 2rem;
             margin: 0 10px;
             animation: float 2s ease-in-out infinite;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
         }
-        .dark-mode select {
+        .dark-mode select, .dark-mode input, .dark-mode textarea {
             background-color: #333;
             color: white;
         }
-        .light-mode select {
+        .light-mode select, .light-mode input, .light-mode textarea {
             background-color: white;
             color: #333;
         }
+        #gameContainer {
+            flex: 1;
+            overflow-y: auto;
+        }
+        .cyberpunk-theme #gameArea { background-color: #0a0a0a; color: #00ff00; }
+        .steampunk-theme #gameArea { background-color: #2b2b2b; color: #ffd700; }
+        .postapocalyptic-theme #gameArea { background-color: #5a3a22; color: #d3d3d3; }
+        .fantasy-theme #gameArea { background-color: #FFF0F5; color: #8B0000; }
     </style>
 </head>
 <body class="bg-pink-100 min-h-screen flex flex-col light-mode" id="body">
     <header class="bg-gradient-to-r from-red-400 to-pink-500 text-white p-6 shadow-lg">
         <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-3xl font-bold flex items-center" data-translate="title">
-                <span class="header-dice">🍓</span>
-                Strawberry Dice Roller
-                <span class="header-dice">🎲</span>
+                <span class="header-icon">🍓</span>
+                Strawberry RPG Adventure
+                <span class="header-icon">🗡️</span>
             </h1>
             <div class="flex items-center">
                 <select id="languageSelector" class="bg-white text-pink-800 p-2 rounded mr-4">
@@ -73,201 +60,839 @@
                     <option value="fr">Français</option>
                     <option value="es">Español</option>
                 </select>
+                <button id="settingsButton" class="bg-pink-800 text-white px-3 py-1 rounded transition-all duration-300 hover:bg-pink-700 mr-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
                 <button id="darkModeToggle" class="bg-pink-800 text-white px-3 py-1 rounded transition-all duration-300 hover:bg-pink-700">
                     <span id="darkModeIcon">🌙</span>
                 </button>
-                <button id="settingsToggle" class="bg-pink-800 text-white px-3 py-1 rounded transition-all duration-300 hover:bg-pink-700 ml-2">⚙️</button>
             </div>
         </div>
     </header>
-
-    <main class="flex-grow container mx-auto p-4 flex flex-col items-center justify-center">
-        <div id="diceContainer" class="flex justify-center mb-8"></div>
-        <button id="rollButton" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded" data-translate="rollDice">
-            Roll Strawberry Dice 🍓
-        </button>
-        <p id="result" class="mt-4 text-2xl font-bold text-pink-800" data-translate="result">Result: -</p>
-        <div id="history" class="mt-4 text-lg text-pink-800">Last rolls: </div>
-    </main>
-
-    <div id="settingsMenu" class="fixed top-0 right-0 h-full w-64 bg-pink-200 p-4 transform translate-x-full transition-transform duration-300 ease-in-out">
-        <h2 class="text-2xl font-bold mb-4">Settings</h2>
-        <div class="mb-4">
-            <label for="diceCount" class="block text-sm font-medium text-gray-700">Number of Dice:</label>
-            <select id="diceCount" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-pink-500 focus:border-pink-500">
-                <option value="1">1</option>
-                <option value="2">2</option>
-            </select>
+    <div id="gameContainer" class="container mx-auto p-4 flex-grow overflow-y-auto">
+        <main class="flex">
+            <div id="leftPanel" class="w-1/4 bg-white p-4 rounded shadow-md mr-4">
+                <h2 class="text-2xl font-bold mb-4" data-translate="playerStatus">Player Status</h2>
+                <div id="playerStatusList"></div>
+            </div>
+            <div class="w-3/4">
+                <div id="startMenu" class="mb-8">
+                    <h2 class="text-2xl font-bold mb-4" data-translate="savedGames">Saved Games</h2>
+                    <ul id="savedGamesList" class="list-disc pl-5"></ul>
+                    <select id="universeSelector" class="w-full p-2 mb-2 rounded border">
+                        <option value="fantasy" data-translate="fantasy">Fantasy</option>
+                        <option value="cyberpunk" data-translate="cyberpunk">Cyberpunk</option>
+                        <option value="steampunk" data-translate="steampunk">Steampunk</option>
+                        <option value="postapocalyptic" data-translate="postapocalyptic">Post-Apocalyptic</option>
+                    </select>
+                    <button id="newGame" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mt-4" data-translate="newGame">
+                        New Game
+                    </button>
+                </div>
+                <div id="characterCreation" class="w-full max-w-md hidden">
+                    <h2 class="text-2xl font-bold mb-4" data-translate="createCharacter">Create Your Character</h2>
+                    <input type="text" id="characterName" placeholder="Character Name" class="w-full p-2 mb-2 rounded border">
+                    <select id="characterRace" class="w-full p-2 mb-2 rounded border">
+                        <option value="human" data-translate="human">Human</option>
+                        <option value="elf" data-translate="elf">Elf</option>
+                        <option value="dwarf" data-translate="dwarf">Dwarf</option>
+                        <option value="orc" data-translate="orc">Orc</option>
+                    </select>
+                    <select id="characterClass" class="w-full p-2 mb-2 rounded border">
+                        <option value="warrior" data-translate="warrior">Warrior</option>
+                        <option value="mage" data-translate="mage">Mage</option>
+                        <option value="rogue" data-translate="rogue">Rogue</option>
+                        <option value="cleric" data-translate="cleric">Cleric</option>
+                    </select>
+                    <input type="number" id="characterAge" placeholder="Age" min="18" max="100" class="w-full p-2 mb-2 rounded border">
+                    <textarea id="characterDescription" placeholder="Character Description" class="w-full p-2 mb-2 rounded border" rows="4"></textarea>
+                    <button id="saveCharacter" class="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded w-full" data-translate="saveCharacter">
+                        Save Character
+                    </button>
+                </div>
+                <div id="savedCharacters" class="mt-8 w-full max-w-md hidden">
+                    <h2 class="text-2xl font-bold mb-4" data-translate="savedCharacters">Saved Characters</h2>
+                    <ul id="savedCharactersList" class="list-disc pl-5"></ul>
+                </div>
+                <div id="characterList" class="mt-8 w-full max-w-md hidden">
+                    <h2 class="text-2xl font-bold mb-4" data-translate="yourParty">Your Party</h2>
+                    <ul id="partyList" class="list-disc pl-5"></ul>
+                </div>
+                <button id="startGame" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mt-8 hidden" data-translate="startAdventure">
+                    Start Adventure
+                </button>
+                <div id="gameArea" class="mt-8 w-full max-w-2xl hidden">
+                    <div id="storyContent"></div>
+                    <div id="choices" class="flex flex-col mt-4"></div>
+                    <button id="saveGame" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mt-4" data-translate="saveGame">
+                        Save Game
+                    </button>
+                    <button id="mainMenu" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mt-4" data-translate="mainMenu">
+                        Main Menu
+                    </button>
+                </div>
+            </div>
+        </main>
+        <div id="loadingOverlay" class="overlay fixed top-0 left-0 w-full h-full bg-white bg-opacity-80 hidden">
+            <div class="loading text-center text-pink-500">
+                <div class="strawberry text-6xl animate-spin">🍓</div>
+                <div class="mt-4" data-translate="loading">Interrogating LOLLMS strawberry...</div>
+            </div>
         </div>
-        <button id="closeSettings" class="mt-4 bg-pink-500 text-white px-4 py-2 rounded">Close</button>
+
+    </div>    
+ 
+    
+    <div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-bold mb-4">Settings</h3>
+            <div class="mb-4">
+                <label class="block mb-2">Image Generation</label>
+                <input type="checkbox" id="imageGenerationToggle" class="mr-2">
+                <label for="imageGenerationToggle">Enable Image Generation</label>
+            </div>
+            <div class="mb-4">
+                <label for="lollmsHost" class="block mb-2">LOLLMS Host Path</label>
+                <input type="text" id="lollmsHost" class="w-full p-2 border rounded" placeholder="http://localhost:9600">
+            </div>
+            <div class="mb-4">
+                <label for="contextSize" class="block mb-2">Context Size</label>
+                <input type="number" id="contextSize" class="w-full p-2 border rounded" min="1" max="4096" value="2048">
+            </div>
+            <button id="saveSettings" class="bg-pink-500 text-white px-4 py-2 rounded">Save Settings</button>
+        </div>
     </div>
 
-    <footer class="bg-gradient-to-r from-red-400 to-pink-500 text-white p-4 mt-8">
+    <footer class="bg-gradient-to-r from-red-400 to-pink-500 text-white p-4">
         <div class="container mx-auto text-center">
             <p data-translate="footer">Written with Lollms By ParisNeo 2024 🍓</p>
         </div>
     </footer>
-
-    <audio id="rollSound" src="https://www.soundjay.com/misc/sounds/dice-roll-1.mp3"></audio>
-
     <script>
+        let db;
+        const dbName = 'StrawberryRPGDatabase';
+        const gameStoreName = 'savedGames';
+        const characterStoreName = 'savedCharacters';
+
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 2); // Increment version number
+                request.onerror = function(event) {
+                    console.error("IndexedDB error:", event.target.error);
+                    reject("Error opening database");
+                };
+                request.onsuccess = function(event) {
+                    db = event.target.result;
+                    console.log("IndexedDB opened successfully");
+                    resolve(db);
+                };
+                request.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(gameStoreName)) {
+                        db.createObjectStore(gameStoreName, { keyPath: "id", autoIncrement: true });
+                        console.log("Game store created");
+                    }
+                    if (!db.objectStoreNames.contains(characterStoreName)) {
+                        db.createObjectStore(characterStoreName, { keyPath: "id", autoIncrement: true });
+                        console.log("Character store created");
+                    }
+                    console.log("Database schema updated");
+                };
+            });
+        }
+  
         const translations = {
             en: {
                 name: "English",
                 translations: {
-                    title: "Strawberry Dice Roller",
-                    rollDice: "Roll Strawberry Dice 🍓",
-                    result: "Result: {number} 🍓",
-                    footer: "Written with Lollms By ParisNeo 2024 🍓"
+                    title: "Strawberry RPG Adventure",
+                    createCharacter: "Create Your Character",
+                    warrior: "Warrior",
+                    mage: "Mage",
+                    rogue: "Rogue",
+                    cleric: "Cleric",
+                    human: "Human",
+                    elf: "Elf",
+                    dwarf: "Dwarf",
+                    orc: "Orc",
+                    saveCharacter: "Save Character",
+                    savedCharacters: "Saved Characters",
+                    yourParty: "Your Party",
+                    startAdventure: "Start Adventure",
+                    loading: "Interrogating LOLLMS strawberry...",
+                    footer: "Written with Lollms By ParisNeo 2024 🍓",
+                    storyboard: "Storyboard",
+                    playerStatus: "Player Status",
+                    pendingGames: "Pending Games",
+                    newGame: "New Game",
+                    savedGames: "Saved Games",
+                    saveGame: "Save Game",
+                    mainMenu: "Main Menu",
+                    generateImage: "Generate Image",
+                    fantasy: "Fantasy",
+                    cyberpunk: "Cyberpunk",
+                    steampunk: "Steampunk",
+                    postapocalyptic: "Post-Apocalyptic",
+                    selectUniverse: "Select Universe"
+                },
+                promptTranslations: {
+                    storyPrompt: "Continue the {universe} RPG story. Current game state: {gameState}. A d20 was rolled and the result is {diceRoll}. Use this for any random events or challenges. Provide the next part of the story and 2-3 choices for the player in JSON format.",
+                    choicePrompt: "Player chose: {choice}",
+                    imagePrompt: "A brief description for generating an image related to this part of the story"
                 }
             },
             fr: {
                 name: "Français",
                 translations: {
-                    title: "Lanceur de Dé Fraise",
-                    rollDice: "Lancer le Dé Fraise 🍓",
-                    result: "Résultat: {number} 🍓",
-                    footer: "Écrit avec Lollms Par ParisNeo 2024 🍓"
+                    title: "Aventure RPG Fraise",
+                    createCharacter: "Créez Votre Personnage",
+                    warrior: "Guerrier",
+                    mage: "Mage",
+                    rogue: "Voleur",
+                    cleric: "Clerc",
+                    human: "Humain",
+                    elf: "Elfe",
+                    dwarf: "Nain",
+                    orc: "Orc",
+                    saveCharacter: "Sauvegarder le Personnage",
+                    savedCharacters: "Personnages Sauvegardés",
+                    yourParty: "Votre Groupe",
+                    startAdventure: "Commencer l'Aventure",
+                    loading: "Interrogation de LOLLMS fraise...",
+                    footer: "Écrit avec Lollms Par ParisNeo 2024 🍓",
+                    storyboard: "Scénario",
+                    playerStatus: "Statut du Joueur",
+                    pendingGames: "Parties en Attente",
+                    newGame: "Nouvelle Partie",
+                    savedGames: "Parties Sauvegardées",
+                    saveGame: "Sauvegarder la Partie",
+                    mainMenu: "Menu Principal",
+                    generateImage: "Générer une Image"
+                },
+                promptTranslations: {
+                    storyPrompt: "Continuez l'histoire RPG. État actuel du jeu : {gameState}. Un d20 a été lancé et le résultat est {diceRoll}. Utilisez cela pour tout événement aléatoire ou défi. Fournissez la prochaine partie de l'histoire et 2-3 choix pour le joueur au format JSON.",
+                    choicePrompt: "Le joueur a choisi : {choice}",
+                    imagePrompt: "Une brève description pour générer une image liée à cette partie de l'histoire"
                 }
             },
             es: {
                 name: "Español",
                 translations: {
-                    title: "Lanzador de Dados Fresa",
-                    rollDice: "Lanzar Dado Fresa 🍓",
-                    result: "Resultado: {number} 🍓",
-                    footer: "Escrito con Lollms Por ParisNeo 2024 🍓"
+                    title: "Aventura RPG de Fresa",
+                    createCharacter: "Crea Tu Personaje",
+                    warrior: "Guerrero",
+                    mage: "Mago",
+                    rogue: "Pícaro",
+                    addCharacter: "Añadir Personaje",
+                    yourParty: "Tu Grupo",
+                    startAdventure: "Comenzar Aventura",
+                    loading: "Interrogando a LOLLMS fresa...",
+                    footer: "Escrito con Lollms Por ParisNeo 2024 🍓",
+                    storyboard: "Guión Gráfico",
+                    playerStatus: "Estado del Jugador",
+                    pendingGames: "Juegos Pendientes",
+                    newGame: "Nuevo Juego",
+                    savedGames: "Juegos Guardados",
+                    saveGame: "Guardar Juego",
+                    mainMenu: "Menú Principal",
+                    generateImage: "Generar Imagen"
+                },
+                promptTranslations: {
+                    storyPrompt: "Continúa la historia de RPG. Estado actual del juego: {gameState}. Se lanzó un d20 y el resultado es {diceRoll}. Usa esto para cualquier evento o desafío aleatorio. Proporcione la siguiente parte de la historia y 2-3 opciones para el jugador en formato JSON.",
+                    choicePrompt: "El jugador eligió: {choice}",
+                    imagePrompt: "Una breve descripción para generar una imagen relacionada con esta parte de la historia"
                 }
             }
         };
 
-        const localizer = new WebAppLocalizer(translations, 'strawberryDiceRoller_', document.getElementById('languageSelector'));
-        
-        const diceContainer = document.getElementById('diceContainer');
-        const rollButton = document.getElementById('rollButton');
-        const resultElement = document.getElementById('result');
-        const rollSound = document.getElementById('rollSound');
+        const localizer = new WebAppLocalizer(translations, 'strawberryRPG_', document.getElementById('languageSelector'));
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
         const darkModeToggle = document.getElementById('darkModeToggle');
         const body = document.getElementById('body');
         const darkModeIcon = document.getElementById('darkModeIcon');
-        const settingsToggle = document.getElementById('settingsToggle');
-        const settingsMenu = document.getElementById('settingsMenu');
-        const closeSettings = document.getElementById('closeSettings');
-        const diceCountSelect = document.getElementById('diceCount');
-        const historyElement = document.getElementById('history');
-
-        let diceCount = parseInt(localStorage.getItem('strawberryDiceRoller_diceCount')) || 1;
-        let darkMode = localStorage.getItem('strawberryDiceRoller_darkMode') === 'true';
-        let rollHistory = JSON.parse(localStorage.getItem('strawberryDiceRoller_rollHistory')) || [];
-
-        function createDice() {
-            return `
-                <div class="dice mr-4">
-                    <div class="face front">1</div>
-                    <div class="face back">6</div>
-                    <div class="face right">4</div>
-                    <div class="face left">3</div>
-                    <div class="face top">5</div>
-                    <div class="face bottom">2</div>
-                </div>
-            `;
-        }
-
-        function updateDiceDisplay() {
-            diceContainer.innerHTML = '';
-            for (let i = 0; i < diceCount; i++) {
-                diceContainer.innerHTML += createDice();
-            }
-        }
-
-        function rollDice() {
-            rollButton.disabled = true;
-            const diceElements = document.querySelectorAll('.dice');
-            diceElements.forEach(dice => {
-                dice.style.animation = 'roll 1s';
-            });
-            rollSound.play();
-            
-            setTimeout(() => {
-                let totalResult = 0;
-                const results = [];
-                diceElements.forEach(dice => {
-                    const result = Math.floor(Math.random() * 6) + 1;
-                    results.push(result);
-                    totalResult += result;
-                    dice.style.animation = 'none';
-                    gsap.to(dice.style, { duration: 0.5, transform: getDiceTransform(result) });
-                    dice.querySelector('.front').textContent = result;
-                });
-                setTimeout(() => {
-                    resultElement.textContent = localizer.translate('result').replace('{number}', totalResult);
-                    rollButton.disabled = false;
-                    updateRollHistory(totalResult);
-                }, 500);
-            }, 1000);
-        }
-
-        function getDiceTransform(number) {
-            switch(number) {
-                case 1: return 'rotateX(0deg) rotateY(0deg)';
-                case 2: return 'rotateX(90deg) rotateY(0deg)';
-                case 3: return 'rotateY(90deg)';
-                case 4: return 'rotateY(-90deg)';
-                case 5: return 'rotateX(-90deg) rotateY(0deg)';
-                case 6: return 'rotateY(180deg)';
-                default: return '';
-            }
-        }
+        const saveCharacterBtn = document.getElementById('saveCharacter');
+        const startGameBtn = document.getElementById('startGame');
+        const characterList = document.getElementById('partyList');
+        const gameArea = document.getElementById('gameArea');
+        const storyText = document.getElementById('storyText');
+        const choicesArea = document.getElementById('choices');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsModal = document.getElementById('settingsModal');
+        const saveSettingsButton = document.getElementById('saveSettings');
+        const newGameBtn = document.getElementById('newGame');
+        const startMenu = document.getElementById('startMenu');
+        const characterCreation = document.getElementById('characterCreation');
+        const savedCharacters = document.getElementById('savedCharacters');
+        const savedCharactersList = document.getElementById('savedCharactersList');
+        const playerStatusList = document.getElementById('playerStatusList');
+        const saveGameBtn = document.getElementById('saveGame');
+        const mainMenuBtn = document.getElementById('mainMenu');
+        let darkMode = localStorage.getItem('strawberryRPG_darkMode') === 'true';
+        let characters = [];
+        let gameState = {
+            stage: 0,
+            storyElements: [],
+            characters: [],
+            storyboard: []
+        };
+        let settings = {
+            imageGeneration: localStorage.getItem('strawberryRPG_imageGeneration') === 'true',
+            lollmsHost: localStorage.getItem('strawberryRPG_lollmsHost') || 'http://localhost:9600',
+            contextSize: parseInt(localStorage.getItem('strawberryRPG_contextSize')) || 2048
+        };
 
         function toggleDarkMode() {
             darkMode = !darkMode;
             body.classList.toggle('dark-mode');
             body.classList.toggle('light-mode');
-            if (darkMode) {
-                body.style.backgroundColor = '#4A0E0E';
-                body.style.color = 'white';
-                darkModeIcon.textContent = '☀️';
-            } else {
-                body.style.backgroundColor = '#FFF0F5';
-                body.style.color = '#8B0000';
-                darkModeIcon.textContent = '🌙';
+            darkModeIcon.textContent = darkMode ? '☀️' : '🌙';
+            body.style.backgroundColor = darkMode ? '#4A0E0E' : '#FFF0F5';
+            body.style.color = darkMode ? 'white' : '#8B0000';
+            localStorage.setItem('strawberryRPG_darkMode', darkMode);
+        }
+
+        function saveCharacter() {
+            if (!db) {
+                console.error("Database is not initialized");
+                return;
             }
-            localStorage.setItem('strawberryDiceRoller_darkMode', darkMode);
+
+            const name = document.getElementById('characterName').value;
+            const race = document.getElementById('characterRace').value;
+            const characterClass = document.getElementById('characterClass').value;
+            const age = document.getElementById('characterAge').value;
+            const description = document.getElementById('characterDescription').value;
+            
+            if (name && race && characterClass && age && description) {
+                const character = { name, race, class: characterClass, age, description, level: 1, health: 100 };
+                
+                if (!db.objectStoreNames.contains(characterStoreName)) {
+                    console.error("Character store not found in the database");
+                    return;
+                }
+
+                const transaction = db.transaction([characterStoreName], "readwrite");
+                const objectStore = transaction.objectStore(characterStoreName);
+                const request = objectStore.add(character);
+                
+                request.onsuccess = function(event) {
+                    console.log("Character saved successfully");
+                    loadSavedCharacters();
+                    clearCharacterForm();
+                };
+                
+                request.onerror = function(event) {
+                    console.error("Error saving character:", event.target.error);
+                };
+            }
         }
 
-        function updateRollHistory(result) {
-            rollHistory.unshift(result);
-            if (rollHistory.length > 5) rollHistory.pop();
-            localStorage.setItem('strawberryDiceRoller_rollHistory', JSON.stringify(rollHistory));
-            displayRollHistory();
+        function clearCharacterForm() {
+            document.getElementById('characterName').value = '';
+            document.getElementById('characterRace').value = 'human';
+            document.getElementById('characterClass').value = 'warrior';
+            document.getElementById('characterAge').value = '';
+            document.getElementById('characterDescription').value = '';
         }
 
-        function displayRollHistory() {
-            historyElement.textContent = 'Last rolls: ' + rollHistory.join(', ');
+
+        function loadSavedCharacters() {
+            if (!db) {
+                console.log("Database not ready, opening...");
+                openDatabase().then(() => {
+                    fetchSavedCharacters();
+                }).catch(error => {
+                    console.error("Failed to open database:", error);
+                });
+            } else {
+                fetchSavedCharacters();
+            }
         }
 
-        rollButton.addEventListener('click', rollDice);
+        function fetchSavedCharacters() {
+            if (!db) {
+                console.error("Database is not initialized");
+                return;
+            }
+            
+            if (!db.objectStoreNames.contains(characterStoreName)) {
+                console.error("Character store not found in the database");
+                return;
+            }
+
+            const transaction = db.transaction([characterStoreName], "readonly");
+            const objectStore = transaction.objectStore(characterStoreName);
+            const request = objectStore.getAll();
+            
+            request.onsuccess = function(event) {
+                const savedChars = event.target.result;
+                updateSavedCharactersList(savedChars);
+            };
+            
+            request.onerror = function(event) {
+                console.error("Error loading saved characters:", event.target.error);
+            };
+        }
+
+        function updateSavedCharactersList(savedChars) {
+            const savedCharactersList = document.getElementById('savedCharactersList');
+            if (savedCharactersList) {
+                savedCharactersList.innerHTML = savedChars.map(char => 
+                    `<li class="mb-2 p-2 bg-gray-100 rounded">
+                        <div class="font-bold">${char.name}</div>
+                        <div>${char.race} ${char.class}, Age: ${char.age}</div>
+                        <div class="text-sm text-gray-600">${char.description.substring(0, 50)}...</div>
+                        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded mr-2 mt-2" 
+                            onclick="addToParty(${char.id})">
+                            Add to Party
+                        </button>
+                        <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded mt-2" 
+                            onclick="deleteCharacter(${char.id})">
+                            Delete
+                        </button>
+                    </li>`
+                ).join('');
+            } else {
+                console.error('savedCharactersList element not found');
+            }
+        }
+        function addToParty(charId) {
+            const transaction = db.transaction([characterStoreName], "readonly");
+            const objectStore = transaction.objectStore(characterStoreName);
+            const request = objectStore.get(charId);
+            
+            request.onsuccess = function(event) {
+                const character = event.target.result;
+                if (character) {
+                    characters.push(character);
+                    updateCharacterList();
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error("Error adding character to party:", event.target.error);
+            };
+        }
+
+        function deleteCharacter(charId) {
+            const transaction = db.transaction([characterStoreName], "readwrite");
+            const objectStore = transaction.objectStore(characterStoreName);
+            const request = objectStore.delete(charId);
+            
+            request.onsuccess = function(event) {
+                console.log("Character deleted successfully");
+                loadSavedCharacters();
+            };
+            
+            request.onerror = function(event) {
+                console.error("Error deleting character:", event.target.error);
+            };
+        }
+
+        function updateCharacterList() {
+            characterList.innerHTML = characters.map(char => 
+                `<li>${char.name} - ${char.race} ${char.class} (Level ${char.level}, HP: ${char.health})</li>`
+            ).join('');
+            startGameBtn.style.display = characters.length > 0 ? 'block' : 'none';
+            updatePlayerStatus();
+        }
+
+        function updatePlayerStatus() {
+            playerStatusList.innerHTML = characters.map(char => 
+                `<div class="mb-2">
+                    <strong>${char.name}</strong> - ${char.race} ${char.class}
+                    <br>Level: ${char.level}, HP: ${char.health}
+                </div>`
+            ).join('');
+        }
+
+        function rollDice(sides = 20) {
+            return Math.floor(Math.random() * sides) + 1;
+        }
+
+        async function startGame() {
+            gameArea.classList.remove('hidden');
+            characterCreation.classList.add('hidden');
+            savedCharacters.classList.add('hidden');
+            startMenu.classList.add('hidden');
+            startGameBtn.classList.add('hidden');
+            gameState = {
+                stage: 0,
+                storyElements: [],
+                characters: characters.map(char => ({...char})),
+                gameName: "Untitled Adventure"
+            };
+            await continueStory();
+        }
+
+        async function continueStory() {
+            showLoader();
+            const diceRoll = rollDice();
+            
+            const prompt = localizer.formatPrompt('storyPrompt', {
+                gameState: JSON.stringify(gameState),
+                diceRoll: diceRoll,
+                universe: gameState.universe
+            });
+
+            try {
+                console.log("Generating code using prompt");
+                console.log(prompt)
+                const response = await lc.generateCode(prompt);
+                const data = JSON.parse(response);
+                await updateGameState(data, diceRoll);
+            } catch (error) {
+                console.error('Error generating story:', error);
+                storyText.textContent = 'An error occurred while generating the story.';
+            } finally {
+                hideLoader();
+            }
+        }
+
+
+        async function updateGameState(data, diceRoll) {
+            gameState.stage++;
+            if (!gameState.storyElements) {
+                gameState.storyElements = [];
+            }
+            
+            gameState.storyElements.push({
+                type: 'text',
+                content: data.story
+            });
+
+            gameState.storyElements.push({
+                type: 'image',
+                prompt: data.imagePrompt,
+                base64Image: null
+            });
+
+            const storyContent = document.getElementById('storyContent');
+            storyContent.innerHTML = '';
+
+            for (let element of gameState.storyElements) {
+                if (element.type === 'text') {
+                    const newStoryDiv = document.createElement('div');
+                    newStoryDiv.textContent = element.content;
+                    newStoryDiv.className = 'mb-4';
+                    storyContent.appendChild(newStoryDiv);
+                } else if (element.type === 'image') {
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'mb-4';
+                    storyContent.appendChild(imageContainer);
+
+                    await renderStoryImage(element, imageContainer);
+                }
+            }
+
+            choicesArea.innerHTML = '';
+            data.choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.textContent = choice.text;
+                button.className = 'bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded mt-2';
+                button.onclick = () => makeChoice(index, choice.consequence);
+                choicesArea.appendChild(button);
+            });
+
+            updatePlayerStatus();
+        }
+
+        async function renderStoryImage(element, container) {
+            if (element.base64Image) {
+                const img = document.createElement('img');
+                img.src = element.base64Image;
+                img.alt = 'Story image';
+                img.className = 'w-full h-auto';
+                container.appendChild(img);
+            } else if (settings.imageGeneration) {
+                try {
+                    const imagePrompt = `Generate an image for a ${gameState.universe} RPG scene: ${element.content}`;
+                    const base64Image = await ttiClient.generateImage(imagePrompt, '', 512, 512);
+                    element.base64Image = `data:image/png;base64,${base64Image}`;
+
+                    const img = document.createElement('img');
+                    img.src = element.base64Image;
+                    img.alt = 'Story image';
+                    img.className = 'w-full h-auto';
+                    container.appendChild(img);
+                } catch (error) {
+                    console.error('Error generating image:', error);
+                    container.textContent = 'Failed to generate image';
+                }
+            } else {
+                container.textContent = '';
+            }
+        }
+
+
+        function makeChoice(choiceIndex, consequence) {
+            const choiceText = localizer.formatPrompt('choicePrompt', {
+                choice: consequence
+            });
+
+            gameState.storyElements.push({
+                type: 'text',
+                content: choiceText
+            });
+            continueStory();
+        }
+
+        function showLoader() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function openSettings() {
+            document.getElementById('imageGenerationToggle').checked = settings.imageGeneration;
+            document.getElementById('lollmsHost').value = settings.lollmsHost;
+            document.getElementById('contextSize').value = settings.contextSize;
+            settingsModal.classList.remove('hidden');
+        }
+
+        function saveSettings() {
+            settings.imageGeneration = document.getElementById('imageGenerationToggle').checked;
+            settings.lollmsHost = document.getElementById('lollmsHost').value;
+            settings.contextSize = parseInt(document.getElementById('contextSize').value);
+            localStorage.setItem('strawberryRPG_imageGeneration', settings.imageGeneration);
+            localStorage.setItem('strawberryRPG_lollmsHost', settings.lollmsHost);
+            localStorage.setItem('strawberryRPG_contextSize', settings.contextSize);
+            settingsModal.classList.add('hidden');
+        }
+
+        function saveGame() {
+            const savedGame = {
+                gameName: gameState.gameName || "Untitled Adventure",
+                characters: characters,
+                gameState: gameState,
+                universe: gameState.universe,
+                timestamp: new Date().getTime()
+            };
+
+            const transaction = db.transaction([gameStoreName], "readwrite");
+            const objectStore = transaction.objectStore(gameStoreName);
+            const request = objectStore.add(savedGame);
+            request.onsuccess = function(event) {
+                console.log("Game saved successfully");
+                loadSavedGames();
+            };
+            request.onerror = function(event) {
+                console.error("Error saving game:", event.target.error);
+            };
+        }
+
+        function loadSavedGames() {
+            if (!db) {
+                console.log("Database not ready, opening...");
+                openDatabase().then(() => {
+                    fetchSavedGames();
+                }).catch(error => {
+                    console.error("Failed to open database:", error);
+                });
+            } else {
+                fetchSavedGames();
+            }
+        }
+
+        function fetchSavedGames() {
+            const transaction = db.transaction([gameStoreName], "readonly");
+            const objectStore = transaction.objectStore(gameStoreName);
+            const request = objectStore.getAll();
+            request.onsuccess = function(event) {
+                const savedGames = event.target.result;
+                updateSavedGamesList(savedGames);
+            };
+            request.onerror = function(event) {
+                console.error("Error loading saved games:", event.target.error);
+            };
+        }        
+
+        function updateSavedGamesList(savedGames) {
+            const savedGamesList = document.getElementById('savedGamesList');
+            if (savedGamesList) {
+                savedGamesList.innerHTML = savedGames.map(game => 
+                    `<li class="mb-2 p-2 bg-gray-100 rounded">
+                        <div class="font-bold">${game.gameName}</div>
+                        <div class="text-sm text-gray-600">${new Date(game.timestamp).toLocaleString()}</div>
+                        <div class="mt-2">
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded mr-2" 
+                                onclick="loadGame(${game.id})">
+                                Load
+                            </button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded mr-2" 
+                                onclick="deleteGame(${game.id})">
+                                Delete
+                            </button>
+                        </div>
+                    </li>`
+                ).join('');
+            } else {
+                console.error('savedGamesList element not found');
+            }
+        }
+
+        function loadGame(id) {
+            const transaction = db.transaction([gameStoreName], "readonly");
+            const objectStore = transaction.objectStore(gameStoreName);
+            const request = objectStore.get(id);
+            
+            request.onsuccess = function(event) {
+                const savedGame = event.target.result;
+                if (savedGame) {
+                    characters = savedGame.characters;
+                    gameState = savedGame.gameState;
+                    changeTheme(gameState.universe);
+                    updateCharacterList();
+                    updatePlayerStatus();
+                    gameArea.classList.remove('hidden');
+                    characterCreation.classList.add('hidden');
+                    savedCharacters.classList.add('hidden');
+                    startMenu.classList.add('hidden');
+                    startGameBtn.classList.add('hidden');
+
+                    const storyContent = document.getElementById('storyContent');
+                    storyContent.innerHTML = '';
+
+                    gameState.storyElements.forEach((element) => {
+                        if (element.type === 'text') {
+                            const newStoryDiv = document.createElement('div');
+                            newStoryDiv.textContent = element.content;
+                            newStoryDiv.className = 'mb-4';
+                            storyContent.appendChild(newStoryDiv);
+                        } else if (element.type === 'image') {
+                            const imageContainer = document.createElement('div');
+                            imageContainer.className = 'mb-4';
+                            storyContent.appendChild(imageContainer);
+
+                            if (element.base64Image) {
+                                const img = document.createElement('img');
+                                img.src = element.base64Image;
+                                img.alt = 'Story image';
+                                img.className = 'w-full h-auto';
+                                imageContainer.appendChild(img);
+                            } else {
+                                imageContainer.textContent = 'Image not available';
+                            }
+                        }
+                    });
+
+                    const lastStoryElement = gameState.storyElements[gameState.storyElements.length - 1];
+                    if (lastStoryElement && lastStoryElement.choices) {
+                        choicesArea.innerHTML = '';
+                        lastStoryElement.choices.forEach((choice, index) => {
+                            const button = document.createElement('button');
+                            button.textContent = choice.text;
+                            button.className = 'bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded mt-2';
+                            button.onclick = () => makeChoice(index, choice.consequence);
+                            choicesArea.appendChild(button);
+                        });
+                    }
+                } else {
+                    console.error("Game not found");
+                }
+            };
+            
+            request.onerror = function(event) {
+                console.error("Error loading game:", event.target.error);
+            };
+        }
+
+        function deleteGame(id) {
+            const transaction = db.transaction([gameStoreName], "readwrite");
+            const objectStore = transaction.objectStore(gameStoreName);
+            const request = objectStore.delete(id);
+            
+            request.onsuccess = function(event) {
+                console.log("Game deleted successfully");
+                loadSavedGames();
+            };
+            
+            request.onerror = function(event) {
+                console.error("Error deleting game:", event.target.error);
+            };
+        }
+
+        function goToMainMenu() {
+            gameArea.classList.add('hidden');
+            startMenu.classList.remove('hidden');
+            characterCreation.classList.add('hidden');
+            savedCharacters.classList.add('hidden');
+            loadSavedGames();
+            loadSavedCharacters();
+        }
+        function startNewGame() {
+            const universe = document.getElementById('universeSelector').value;
+            characters = [];
+            gameState = {
+                stage: 0,
+                storyElements: [],
+                characters: [],
+                gameName: "",
+                universe: universe
+            };
+            characterCreation.classList.remove('hidden');
+            savedCharacters.classList.remove('hidden');
+            startMenu.classList.add('hidden');
+            updateCharacterList();
+            changeTheme(universe);
+        }
+        function changeTheme(universe) {
+            const body = document.body;
+            body.className = ''; // Reset classes
+            body.classList.add(universe + '-theme');
+
+            switch(universe) {
+                case 'cyberpunk':
+                    body.style.backgroundColor = '#0a0a0a';
+                    body.style.color = '#00ff00';
+                    break;
+                case 'steampunk':
+                    body.style.backgroundColor = '#2b2b2b';
+                    body.style.color = '#ffd700';
+                    break;
+                case 'postapocalyptic':
+                    body.style.backgroundColor = '#5a3a22';
+                    body.style.color = '#d3d3d3';
+                    break;
+                default: // fantasy
+                    body.style.backgroundColor = darkMode ? '#4A0E0E' : '#FFF0F5';
+                    body.style.color = darkMode ? 'white' : '#8B0000';
+            }
+        }
+
         darkModeToggle.addEventListener('click', toggleDarkMode);
-        settingsToggle.addEventListener('click', () => settingsMenu.classList.toggle('translate-x-full'));
-        closeSettings.addEventListener('click', () => settingsMenu.classList.add('translate-x-full'));
-
-        diceCountSelect.addEventListener('change', (e) => {
-            diceCount = parseInt(e.target.value);
-            localStorage.setItem('strawberryDiceRoller_diceCount', diceCount);
-            updateDiceDisplay();
-        });
+        saveCharacterBtn.addEventListener('click', saveCharacter);
+        startGameBtn.addEventListener('click', startGame);
+        settingsButton.addEventListener('click', openSettings);
+        saveSettingsButton.addEventListener('click', saveSettings);
+        newGameBtn.addEventListener('click', startNewGame);
+        saveGameBtn.addEventListener('click', saveGame);
+        mainMenuBtn.addEventListener('click', goToMainMenu);
 
         document.getElementById('languageSelector').addEventListener('change', (e) => {
             localizer.setLanguage(e.target.value);
             localizer.apply();
-            resultElement.textContent = localizer.translate('result').replace('{number}', '-');
         });
 
-        diceCountSelect.value = diceCount;
-        updateDiceDisplay();
         if (darkMode) toggleDarkMode();
-        displayRollHistory();
         localizer.apply();
+
+        // Initialize the database when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            openDatabase().then(() => {
+                loadSavedGames();
+                loadSavedCharacters();
+            }).catch(error => {
+                console.error("Failed to open database:", error);
+            });
+        });
     </script>
 </body>
 </html>
