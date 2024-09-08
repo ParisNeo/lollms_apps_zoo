@@ -40,14 +40,22 @@
         .left   { transform: rotateY(-90deg) translateZ(50px); }
         .top    { transform: rotateX(90deg) translateZ(50px); }
         .bottom { transform: rotateX(-90deg) translateZ(50px); }
-        .dark-mode .face { background: #8B0000; color: white; }
-        .light-mode .face { background: #FFB6C1; color: #8B0000; }
+        .dark-mode .face { background: #8B0000; color: white; border-color: #333; }
+        .light-mode .face { background: #FFB6C1; color: #8B0000; border-color: #333; }
         .header-dice {
             display: inline-block;
             font-size: 2rem;
             margin: 0 10px;
             animation: float 2s ease-in-out infinite;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .dark-mode select {
+            background-color: #333;
+            color: white;
+        }
+        .light-mode select {
+            background-color: white;
+            color: #333;
         }
     </style>
 </head>
@@ -186,7 +194,6 @@
                 diceElements.forEach(dice => {
                     const result = Math.floor(Math.random() * 6) + 1;
                     results.push(result);
-                    console.log("Rolled:", result);
                     totalResult += result;
                     dice.style.animation = 'none';
                     gsap.to(dice.style, { duration: 0.5, transform: getDiceTransform(result) });
@@ -208,7 +215,7 @@
                 case 4: return 'rotateY(-90deg)';
                 case 5: return 'rotateX(-90deg) rotateY(0deg)';
                 case 6: return 'rotateY(180deg)';
-                default: console.error("Invalid dice number:", number);
+                default: return '';
             }
         }
 
