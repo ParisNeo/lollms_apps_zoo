@@ -1,311 +1,266 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Message Enhancer</title>
-        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-        <script src="/lollms_assets/js/lollms_client_js"></script>
-        <script src="/lollms_assets/js/axios.min.js"></script>
-        <script src="/lollms_assets/js/web.app.localizer.js"></script>
-        <script src="/lollms_assets/js/lollms_markdown_renderer.js"></script>
-        <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min.css">
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-       <!-- Render math -->
-       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-       <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-    
-        <style>
-            body {
-                background: linear-gradient(to right, #6a11cb, #2575fc);
-                font-family: 'Arial', sans-serif;
-            }
-            .title {
-                color: #fff;
-                text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-            }
-            .hidden {
-                display: none;
-            }
-            .tab-content {
-                display: none;
-            }
-            .tab-content.active {
-                display: block;
-            }
-            .tab-button {
-                cursor: pointer;
-                padding: 10px 20px;
-                background-color: #f3f4f6;
-                border: 1px solid #e5e7eb;
-                border-bottom: none;
-                margin-right: 5px;
-                font-weight: bold;
-                border-top-left-radius: 3px;
-                border-top-right-radius: 3px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            }
-            .tab-button.active {
-                background-color: #6a11cb;
-                color: #fff;
-                border-bottom: 2px solid #2575fc;
-            }
-    
-            .spinner-container {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-direction: column;
-                height: 100%;
-            }
-    
-            .spinner {
-                width: 50px;
-                height: 50px;
-                border: 5px solid rgba(0, 0, 0, 0.1);
-                border-top: 5px solid #3498db;
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            }
-    
-            .moving-text {
-                margin-top: 20px;
-                font-size: 16px;
-                color: #3498db;
-                white-space: nowrap;
-                overflow: hidden;
-                width: 200px;
-                text-align: center;
-                position: relative;
-            }
-    
-            .moving-text::before {
-                content: attr(data-text);
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-                white-space: nowrap;
-                animation: moveText 5s linear infinite;
-            }
-    
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-    
-            @keyframes moveText {
-                0% { transform: translateX(100%); }
-                100% { transform: translateX(-100%); }
-            }
-    
-            /* Skeuomorphic Toolbox */
-            .toolbox {
-                display: flex;
-                justify-content: space-around;
-                padding: 10px;
-                background-color: #f3f4f6;
-                border-radius: 10px;
-                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
-            }
-    
-            .toolbox-button {
-                background-color: #e0e0e0;
-                border-radius: 50%;
-                width: 50px;
-                height: 50px;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2), -2px -2px 5px rgba(255, 255, 255, 0.7);
-                transition: transform 0.1s ease-in-out;
-            }
-    
-            .toolbox-button:hover {
-                transform: scale(1.1);
-            }
-    
-            .toolbox-button svg {
-                width: 24px;
-                height: 24px;
-                fill: #6a11cb;
-            }
-    
-            .toolbox-button:active {
-                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
-            }
-    
-            .output-container {
-                background-color: #f3f4f6;
-                border-radius: 10px;
-                padding: 20px;
-                box-shadow: inset 2px 2px 5px rgba(0, 0, 0, 0.2), inset -2px -2px 5px rgba(255, 255, 255, 0.7);
-            }
-    
-            .output-container h2 {
-                color: #6a11cb;
-                text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-            }
-    
-        </style>
-    </head>
-    <body class="flex flex-col min-h-screen bg-gray-100">
-        <main class="flex-grow p-6 overflow-auto">
-            <h1 class="text-2xl font-bold text-center title" data-translate="app_title">Message Enhancer</h1>
-            <div class="tabs">
-                <button id="instructionsTab" class="tab-button active" data-translate="instructions">Instructions</button>
-                <button id="outputTab" class="tab-button" data-translate="output">Output</button>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Message Enhancer 🍓</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        body { background-color: var(--bg-color, #f0f4f8); color: var(--text-color, #4a5568); font-family: 'Arial', sans-serif; transition: background-color 0.3s, color 0.3s; }
+        .title { color: var(--text-color, #4a5568); text-shadow: 1px 1px 2px rgba(0,0,0,0.1); }
+        .hidden { display: none; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .tab-button { cursor: pointer; padding: 10px 20px; background-color: #e2e8f0; border: 1px solid #cbd5e0; border-bottom: none; margin-right: 5px; font-weight: bold; border-top-left-radius: 3px; border-top-right-radius: 3px; }
+        .tab-button.active { background-color: #fff; color: #2d3748; border-bottom: 2px solid #2d3748; }
+        .spinner-container { display: flex; justify-content: center; align-items: center; flex-direction: column; height: 100%; }
+        .spinner { width: 50px; height: 50px; border: 5px solid rgba(45, 55, 72, 0.3); border-top: 5px solid #2d3748; border-radius: 50%; animation: spin 1s linear infinite; }
+        .moving-text { margin-top: 20px; font-size: 16px; color: #2d3748; white-space: nowrap; overflow: hidden; width: 200px; text-align: center; position: relative; }
+        .moving-text::before { content: attr(data-text); position: absolute; width: 100%; height: 100%; overflow: hidden; white-space: nowrap; animation: moveText 5s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes moveText { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .toolbox {
+            top: 10px;
+            left: 10px;
+            display: flex;
+            gap: 5px;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 4px;
+            padding: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .toolbox-button {
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s ease;
+        }
+        .toolbox-button:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+        .toolbox-button svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-color, #4a5568);
+        }
+        .output-container { background-color: var(--bg-color, #fff); border-radius: 10px; padding: 20px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .output-container h2 { color: var(--text-color, #2d3748); }
+        .header-strawberry { display: inline-block; font-size: 2rem; margin: 0 10px; animation: float 2s ease-in-out infinite; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+        .dark { background-color: #2d3748; color: #e2e8f0; }
+        .dark .output-container { background-color: #4a5568; }
+        .dark .toolbox-button svg { fill: #e2e8f0; }
+        .dark .tab-button { background-color: #030202; color: #c6dbff; border-bottom: 2px solid #2d3748; }
+        .dark .tab-button.active { background-color: #030202; color: #871cce; border-bottom: 2px solid #2d3748; }
+        .dark textarea { background-color: #4a5568; color: #e2e8f0; }
+        .dark select { background-color: #4a5568; color: #e2e8f0; }   
+        .dark input { background-color: #4a5568; color: #e2e8f0;}
+        .dark .tab-content { background-color: #4a5568; color: #e2e8f0; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen">
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 shadow-lg">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-3xl font-bold flex items-center" data-translate="app_title">
+                <span class="header-strawberry">🍓</span>
+                Message Enhancer
+                <span class="header-strawberry">🍓</span>
+            </h1>
+            <div class="flex items-center">
+                <select id="languageSelector" class="bg-white text-gray-800 p-2 rounded mr-4">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+                <button id="darkModeToggle" class="bg-blue-500 text-white px-4 py-2 rounded">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button id="settingsButton" class="bg-blue-500 text-white px-4 py-2 rounded ml-2">
+                    <i class="fas fa-cog"></i>
+                </button>
             </div>
-    
-            <div id="instructionsContent" class="tab-content active bg-white p-4 mb-4">
-                <h2 class="text-xl font-semibold mb-4" data-translate="enhance_your_message">Enhance Your Message</h2>
-                <textarea 
-                    id="userInput" 
-                    class="w-full p-2 border border-gray-300 rounded-lg resize-y" 
-                    style="min-height: 300px;"
-                    placeholder="Type your message here..."
-                ></textarea>
-                <div class="mb-4">
-                    <label for="styleSelect" class="block text-sm font-medium text-gray-700" data-translate="select_style">Select Style:</label>
-                    <select id="styleSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                        <option value="formal">Formal</option>
-                        <option value="casual">Casual</option>
-                        <option value="humorous">Humorous</option>
-                        <option value="professional">Professional</option>
-                        <option value="friendly">Friendly</option>
-                        <option value="academic">Academic</option>
-                        <option value="poetic">Poetic</option>
-                        <option value="sarcastic">Sarcastic</option>
-                        <option value="inspirational">Inspirational</option>
-                        <option value="technical">Technical</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="toneSelect" class="block text-sm font-medium text-gray-700" data-translate="select_tone">Select Tone:</label>
-                    <select id="toneSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                        <option value="persuasive">Persuasive</option>
-                        <option value="informative">Informative</option>
-                        <option value="enthusiastic">Enthusiastic</option>
-                        <option value="empathetic">Empathetic</option>
-                        <option value="authoritative">Authoritative</option>
-                        <option value="neutral">Neutral</option>
-                        <option value="optimistic">Optimistic</option>
-                        <option value="critical">Critical</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="reflective">Reflective</option>
-                        <option value="educational">Educational</option>
-                        <option value="motivational">Motivational</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="formatSelect" class="block text-sm font-medium text-gray-700" data-translate="select_format">Select Format:</label>
-                    <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md">
-                        <option value="none">None</option>
-                        <option value="email">Email</option>
-                        <option value="report">Report</option>
-                        <option value="letter">Formal Letter</option>
-                        <option value="memo">Memo</option>
-                        <option value="presentation">Presentation</option>
-                        <option value="blog-post">Blog Post</option>
-                        <option value="social-media">Social Media Post</option>
-                        <option value="press-release">Press Release</option>
-                        <option value="proposal">Proposal</option>
-                        <option value="resume">Resume/CV</option>
-                        <option value="script">Script</option>
-                        <option value="article">Article</option>
-                        <option value="git commmit">Git commit</option>
-                        <option value="git release">Git release</option>
-                        <option value="poem">Poem</option>
-                        <option value="rap">Rap</option>
-                        <option value="song">Song</option>
-                    </select>
-                </div>       
-                <div class="mb-4">
-                    <label for="languageSelector" class="block text-sm font-medium text-gray-700">Select Language:</label>
-                    <select id="languageSelector" class="mt-1 block w-full border border-gray-300 rounded-md">
-                        <option value="en">English</option>
-                        <option value="fr">Français</option>
-                    </select>
-                </div>                 
-                <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-700 mb-4" data-translate="enhance_message">Enhance Message</button>
+        </div>
+    </header>
+    <main class="flex-grow p-6 overflow-auto">
+        <div class="tabs">
+            <button id="instructionsTab" class="tab-button active" data-translate="instructions">Instructions</button>
+            <button id="outputTab" class="tab-button" data-translate="output">Output</button>
+        </div>
+        <div id="instructionsContent" class="tab-content active bg-white p-4 mb-4 rounded-lg shadow">
+            <h2 class="text-xl font-semibold mb-4" data-translate="enhance_your_message">Enhance Your Message</h2>
+            <textarea id="userInput" class="w-full p-2 border border-gray-300 rounded-lg resize-y" style="min-height: 300px;" placeholder="Type your message here..."></textarea>
+            <div class="mb-4">
+                <label for="styleSelect" class="block text-sm font-medium text-gray-700" data-translate="select_style">Select Style:</label>
+                <select id="styleSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                    <option value="formal">Formal</option>
+                    <option value="casual">Casual</option>
+                    <option value="humorous">Humorous</option>
+                    <option value="professional">Professional</option>
+                    <option value="friendly">Friendly</option>
+                    <option value="academic">Academic</option>
+                    <option value="poetic">Poetic</option>
+                    <option value="sarcastic">Sarcastic</option>
+                    <option value="inspirational">Inspirational</option>
+                    <option value="technical">Technical</option>
+                </select>
             </div>
-    
-            <div id="outputContent" class="tab-content">
-                <div class="toolbox mb-4">
-                    <button id="copyButton" class="toolbox-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 2H9c-1.1 0-2 .9-2 2v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h2c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-4 16H7V8h8v10zm4-4h-2V8c0-1.1-.9-2-2-2h-2V4h6v10z"/></svg>
-                    </button>
-                    <button id="saveButton" class="toolbox-button">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H8v-2h4v2zm0-4H8v-2h4v2zm0-4H8V7h4v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
-                    </button>
+            <div class="mb-4">
+                <label for="toneSelect" class="block text-sm font-medium text-gray-700" data-translate="select_tone">Select Tone:</label>
+                <select id="toneSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                    <option value="persuasive">Persuasive</option>
+                    <option value="informative">Informative</option>
+                    <option value="enthusiastic">Enthusiastic</option>
+                    <option value="empathetic">Empathetic</option>
+                    <option value="authoritative">Authoritative</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="optimistic">Optimistic</option>
+                    <option value="critical">Critical</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="reflective">Reflective</option>
+                    <option value="educational">Educational</option>
+                    <option value="motivational">Motivational</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="formatSelect" class="block text-sm font-medium text-gray-700" data-translate="select_format">Select Format:</label>
+                <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                    <option value="none">None</option>
+                    <option value="email">Email</option>
+                    <option value="tweet">Tweet</option>
+                    <option value="report">Report</option>
+                    <option value="letter">Formal Letter</option>
+                    <option value="memo">Memo</option>
+                    <option value="presentation">Presentation</option>
+                    <option value="blog-post">Blog Post</option>
+                    <option value="social-media">Social Media Post</option>
+                    <option value="press-release">Press Release</option>
+                    <option value="proposal">Proposal</option>
+                    <option value="resume">Resume/CV</option>
+                    <option value="script">Script</option>
+                    <option value="article">Article</option>
+                    <option value="git commmit">Git commit</option>
+                    <option value="git release">Git release</option>
+                    <option value="poem">Poem</option>
+                    <option value="rap">Rap</option>
+                    <option value="song">Song</option>
+                </select>
+            </div>       
+            <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-500 mb-4" data-translate="enhance_message">Enhance Strawberry Message</button>
+        </div>
+        <div id="outputContent" class="tab-content">
+            <div class="toolbox mb-4">
+                <button id="copyButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 2H9c-1.1 0-2 .9-2 2v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2v-2h2c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-4 16H7V8h8v10zm4-4h-2V8c0-1.1-.9-2-2-2h-2V4h6v10z"/></svg>
+                </button>
+                <button id="saveButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17 3H7c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H8v-2h4v2zm0-4H8v-2h4v2zm0-4H8V7h4v2zm5 8h-3v-2h3v2zm0-4h-3v-2h3v2zm0-4h-3V7h3v2z"/></svg>
+                </button>
+                <button id="emailButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                </button>
+                <button id="twitterButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z"/></svg>
+                </button>
+                <button id="facebookButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M22 12c0-5.52-4.48-10-10-10S2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95z"/></svg>
+                </button>
+                <button id="instagramButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+                </button>
+                <button id="redditButton" class="toolbox-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M24 11.779c0-1.459-1.192-2.645-2.657-2.645-.715 0-1.363.286-1.84.746-1.81-1.191-4.259-1.949-6.971-2.046l1.483-4.669 4.016.941-.006.058c0 1.193.975 2.163 2.174 2.163 1.198 0 2.172-.97 2.172-2.163s-.975-2.164-2.172-2.164c-.92 0-1.704.574-2.021 1.379l-4.329-1.015c-.189-.046-.381.063-.44.249l-1.654 5.207c-2.838.034-5.409.798-7.3 2.025-.474-.438-1.103-.712-1.799-.712-1.465 0-2.656 1.187-2.656 2.646 0 .97.533 1.811 1.317 2.271-.052.282-.086.567-.086.857 0 3.911 4.808 7.093 10.719 7.093s10.72-3.182 10.72-7.093c0-.274-.029-.544-.075-.81.832-.447 1.405-1.312 1.405-2.318zm-17.224 1.816c0-.868.71-1.575 1.582-1.575.872 0 1.581.707 1.581 1.575s-.709 1.574-1.581 1.574-1.582-.706-1.582-1.574zm9.061 4.669c-.797.793-2.048 1.179-3.824 1.179l-.013-.003-.013.003c-1.777 0-3.028-.386-3.824-1.179-.145-.144-.145-.379 0-.523.145-.145.381-.145.526 0 .65.647 1.729.961 3.298.961l.013.003.013-.003c1.569 0 2.648-.315 3.298-.962.145-.145.381-.144.526 0 .145.145.145.379 0 .524zm-.189-3.095c-.872 0-1.581-.706-1.581-1.574 0-.868.709-1.575 1.581-1.575s1.581.707 1.581 1.575-.709 1.574-1.581 1.574z"/></svg>
+                </button>
+            </div>
+            <div id="preview-content" class="">
+                <div id="previewArea" class="output-container relative">
                 </div>
-                <div id="previewArea" class="output-container">
-                    <div id="spinner-container" class="hidden items-center justify-center flex-col">
-                        <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-500 rounded-full animate-spin"></div>
-                        <div class="moving-text">Enhancing your message...</div>
-                    </div>  
+                <div id="spinner-container" class="hidden absolute inset-0 bg-white bg-opacity-80 z-10 flex items-center justify-center flex-col">
+                    <div class="w-16 h-16 border-4 border-blue-400 border-t-blue-500 rounded-full animate-spin"></div>
+                    <div class="moving-text mt-4">Enhancing your strawberry message...</div>
                 </div>
             </div>
-        </main>
-        <footer class="bg-white shadow p-4 text-center mt-auto">
-            <p class="text-sm text-gray-600" data-translate="footer_text">Message Enhancer. A Lollms powered APP.</p>
-        </footer>
-    
+            
+        </div>
+    </main>
+    <footer class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 mt-auto">
+        <div class="container mx-auto text-center">
+            <p data-translate="footer_text">Strawberry Message Enhancer. A L🍓llms powered APP.</p>
+        </div>
+    </footer>
+    <div id="settingsPopup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+        <div class="bg-white p-6 rounded-lg">
+            <h2 class="text-xl font-bold mb-4">Settings</h2>
+            <div class="mb-4">
+                <label for="emailClientSelect" class="block text-sm font-medium text-gray-700">Select Email Client:</label>
+                <select id="emailClientSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                    <option value="Gmail">Gmail</option>
+                    <option value="Outlook">Outlook</option>
+                    <option value="Hotmail">Hotmail</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="lollmsHost" class="block text-sm font-medium text-gray-700">Lollms Host:</label>
+                <input type="text" id="lollmsHost" class="mt-1 block w-full border border-gray-300 rounded-md bg-white" placeholder="Enter Lollms host">
+            </div>
+            <button id="saveSettings" class="bg-blue-500 text-white px-4 py-2 rounded">Save</button>
+            <button id="closeSettings" class="bg-gray-300 text-black px-4 py-2 rounded ml-2">Close</button>
+        </div>
+    </div>
     <script>
         const translations = {
             en: {
                 name: "English",
                 translations: {
-                    "app_title": "Message Enhancer",
-                    "enhance_your_message": "Enhance Your Message",
+                    "app_title": "Strawberry Message Enhancer",
+                    "enhance_your_message": "Enhance Your Strawberry Message",
                     "select_style": "Select Style:",
                     "select_tone": "Select Tone:",
                     "select_format": "Select Format:",
-                    "enhance_message": "Enhance Message",
+                    "enhance_message": "Enhance Strawberry Message",
                     "preview": "Preview:",
-                    "footer_text": "Message Enhancer. A Lollms powered APP.",
+                    "footer_text": "Strawberry Message Enhancer. A L🍓llms powered APP.",
                     "instructions": "Instructions",
                     "output": "Output"
                 },
                 promptTranslations: {
-                    "system_prompt": "Rewrite the following text in a {style} style and {tone} tone{format_prompt}. Answer directly with the content without any introductory phrases or comments. Start immediately with the <div> element."
+                    "system_prompt": "Rewrite the following text in a {style} style and {tone} tone{format_prompt}. Answer directly with the content without any introductory phrases or comments. Start immediately with the <div> element.",
+                    "user_prompt": "Text to enhance",
+                    "output_language": "Output language"
                 }
             },
             fr: {
                 name: "Français",
                 translations: {
-                    "app_title": "Améliorateur de Message",
-                    "enhance_your_message": "Améliorez Votre Message",
+                    "app_title": "Améliorateur de Message Fraise",
+                    "enhance_your_message": "Améliorez Votre Message Fraise",
                     "select_style": "Sélectionnez le Style:",
                     "select_tone": "Sélectionnez le Ton:",
                     "select_format": "Sélectionnez le Format:",
-                    "enhance_message": "Améliorer le Message",
+                    "enhance_message": "Améliorer le Message Fraise",
                     "preview": "Aperçu:",
-                    "footer_text": "Améliorateur de Message. Une application propulsée par Lollms.",
+                    "footer_text": "Améliorateur de Message Fraise. Une application propulsée par L🍓llms.",
                     "instructions": "Instructions",
                     "output": "Sortie"
                 },
                 promptTranslations: {
-                    "system_prompt": "Réécrivez le texte suivant dans un style {style} et un ton {tone}{format_prompt}. Répondez directement avec le contenu sans aucune phrase introductive ou commentaire. Commencez immédiatement avec l'élément <div>."
+                    "system_prompt": "Réécrivez le texte suivant dans un style {style} et un ton {tone}{format_prompt}. Répondez directement avec le contenu sans aucune phrase introductive ou commentaire. Commencez immédiatement avec l'élément <div>.",
+                    "user_prompt": "Texte à améliorer",
+                    "output_language": "Langue de sortie"
                 }
             }
         };
 
-        const localizer = new WebAppLocalizer(translations, 'messageEnhancer_', document.getElementById('languageSelector'));
+        const localizer = new WebAppLocalizer(translations, 'strawberryMessageEnhancer_', document.getElementById('languageSelector'));
         localizer.apply();
 
         const spinnerContainer = document.getElementById('spinner-container');
@@ -316,16 +271,29 @@
         const previewArea = document.getElementById('previewArea');
         const copyButton = document.getElementById('copyButton');
         const saveButton = document.getElementById('saveButton');
+        const emailButton = document.getElementById('emailButton');
+        const twitterButton = document.getElementById('twitterButton');
+        const facebookButton = document.getElementById('facebookButton');
+        const instagramButton = document.getElementById('instagramButton');
+        const redditButton = document.getElementById('redditButton');
         const instructionsTab = document.getElementById('instructionsTab');
         const outputTab = document.getElementById('outputTab');
         const instructionsContent = document.getElementById('instructionsContent');
         const outputContent = document.getElementById('outputContent');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const emailClientSelect = document.getElementById('emailClientSelect');
+        const lollmsHostInput = document.getElementById('lollmsHost');
+        const saveSettingsButton = document.getElementById('saveSettings');
+        const closeSettingsButton = document.getElementById('closeSettings');
 
-        // Load saved settings
         userInput.value = localStorage.getItem('userInput') || '';
         styleSelect.value = localStorage.getItem('style') || 'formal';
         toneSelect.value = localStorage.getItem('tone') || 'persuasive';
         formatSelect.value = localStorage.getItem('format') || 'none';
+        emailClientSelect.value = localStorage.getItem('emailClient') || 'Gmail';
+        lollmsHostInput.value = localStorage.getItem('lollmsHost') || '';
 
         function showSpinner() {
             spinnerContainer.classList.remove('hidden');
@@ -337,12 +305,8 @@
             spinnerContainer.classList.add('hidden');
         }
 
-        // Markdown renderer
-        const mr = new MarkdownRenderer();
-
         document.getElementById('submitButton').addEventListener('click', async () => {
             showSpinner();
-            // Switch to output tab
             instructionsTab.classList.remove('active');
             outputTab.classList.add('active');
             instructionsContent.classList.remove('active');
@@ -351,7 +315,6 @@
             const tone = toneSelect.value;
             const format = formatSelect.value;
 
-            // Save settings
             localStorage.setItem('userInput', userInput.value);
             localStorage.setItem('style', style);
             localStorage.setItem('tone', tone);
@@ -360,24 +323,19 @@
             const lc = new LollmsClient();
             const format_prompt = format !== "none" ? `The output must be a ${format} written in a <div> tag styled with Tailwind CSS. Make sure you respect the language specifics like left to right direction for Arabic. Use a big font size and make the message more aligned with its content and format.` : "";
 
-            // Get the current language
-            const currentLanguage = localizer.getCurrentLanguage();
-
-            // Get the localized system prompt
             const system_prompt = localizer.formatPrompt("system_prompt", {
                 style: style,
                 tone: tone,
                 format_prompt: format_prompt
             });
 
-            const user_prompt = userInput.value;
+            const user_prompt = localizer.translate("user_prompt");
+            const output_language = localizer.translate("output_language");
 
-            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.user_message("output language")+ localizer.currentLang + lc.template.separator_template + lc.ai_message();
+            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + userInput.value + lc.user_message(output_language) + localizer.getCurrentLanguage() + lc.template.separator_template + lc.ai_message();
             const generated_text = await lc.generate(prompt);
             previewArea.innerHTML = generated_text;
             hideSpinner();
-
-
         });
 
         copyButton.addEventListener('click', () => {
@@ -394,10 +352,52 @@
             const blob = new Blob([textToSave], {type: 'text/markdown'});
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'enhanced_message.md';
+            a.download = 'enhanced_strawberry_message.md';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+        });
+
+emailButton.addEventListener('click', () => {
+            const enhancedEmail = previewArea.innerHTML;
+            const subject = "Enhanced Strawberry Message";
+            const body = enhancedEmail.replace(/<[^>]*>/g, ''); // Remove HTML tags
+            const emailClient = localStorage.getItem('emailClient') || 'Gmail';
+            
+            let emailUrl;
+            switch (emailClient) {
+                case 'Outlook':
+                case 'Hotmail':
+                    emailUrl = `https://outlook.live.com/owa/?path=/mail/action/compose&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    break;
+                case 'Gmail':
+                default:
+                    emailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                    break;
+            }
+            window.open(emailUrl, '_blank');
+        });
+
+        twitterButton.addEventListener('click', () => {
+            const text = previewArea.innerText.substring(0, 280); // Twitter's character limit
+            const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+            window.open(twitterUrl, '_blank');
+        });
+
+        facebookButton.addEventListener('click', () => {
+            const text = previewArea.innerText;
+            const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}&quote=${encodeURIComponent(text)}`;
+            window.open(facebookUrl, '_blank');
+        });
+
+        instagramButton.addEventListener('click', () => {
+            alert('Instagram sharing is not directly supported. You can copy the text and share it manually on Instagram.');
+        });
+
+        redditButton.addEventListener('click', () => {
+            const text = previewArea.innerText;
+            const redditUrl = `https://www.reddit.com/submit?url=${encodeURIComponent(window.location.href)}&title=${encodeURIComponent(text)}`;
+            window.open(redditUrl, '_blank');
         });
 
         instructionsTab.addEventListener('click', () => {
@@ -413,6 +413,37 @@
             outputContent.classList.add('active');
             instructionsContent.classList.remove('active');
         });
+
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            if (document.body.classList.contains('dark')) {
+                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i>';
+                document.documentElement.style.setProperty('--bg-color', '#2d3748');
+                document.documentElement.style.setProperty('--text-color', '#e2e8f0');
+            } else {
+                darkModeToggle.innerHTML = '<i class="fas fa-moon"></i>';
+                document.documentElement.style.setProperty('--bg-color', '#f0f4f8');
+                document.documentElement.style.setProperty('--text-color', '#4a5568');
+            }
+        });
+
+        settingsButton.addEventListener('click', () => {
+            settingsPopup.classList.remove('hidden');
+        });
+
+        closeSettingsButton.addEventListener('click', () => {
+            settingsPopup.classList.add('hidden');
+        });
+
+        saveSettingsButton.addEventListener('click', () => {
+            localStorage.setItem('emailClient', emailClientSelect.value);
+            localStorage.setItem('lollmsHost', lollmsHostInput.value);
+            settingsPopup.classList.add('hidden');
+        });
+
+        // Initialize LollmsClient with the stored host
+        const lollmsHost = localStorage.getItem('lollmsHost') || '';
+        const lc = new LollmsClient(lollmsHost);
     </script>
 </body>
 </html>
