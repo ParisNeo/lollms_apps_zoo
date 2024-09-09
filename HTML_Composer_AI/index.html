@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="title">WYSIWYG HTML Builder with Lollms</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        [contenteditable]:focus {
+            outline: 2px solid #4299e1;
+        }
+        .element-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+        }
+        .element-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        .element-icon {
+            width: 50px;
+            height: 50px;
+        }
+        .movable {
+            cursor: move;
+        }
+        .drag-handle {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: white;
+            padding: 2px 5px;
+            cursor: move;
+        }
+        .movable:hover .drag-handle {
+            display: block;
+        }
+        .drop-target {
+            border: 2px dashed #4299e1;
+        }
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-blue-600" data-translate="heading">WYSIWYG HTML Builder with Lollms</h1>
+            <select id="languageSelector" class="bg-white border border-gray-300 rounded px-3 py-2">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+            </select>
+        </div>
+        
+        <div class="flex space-x-4">
+            <div class="w-1/4 bg-white p-4 rounded-lg shadow-md">
+                <h2 class="text-xl font-semibold mb-2" data-translate="elements">Elements</h2>
+                <div class="element-grid">
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="h1">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6H20M4 12H20M4 18H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>H1</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="h2">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6H20M4 10H20M4 14H20M4 18H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>H2</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="p">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 6H20M4 10H20M4 14H20M4 18H20" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>P</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="img">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/>
+                            <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span>IMG</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="button">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M7 9H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M7 13H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>BTN</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="div">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+                            <path d="M7 7L17 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M7 17L17 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>DIV</span>
+                    </div>
+                    <div class="element-item" draggable="true" ondragstart="drag(event)" data-element="input">
+                        <svg class="element-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+                            <path d="M12 8V16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        <span>INPUT</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="canvas" class="w-1/2 bg-white p-4 rounded-lg shadow-md min-h-[500px]" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <p class="text-gray-400" data-translate="dragdropHint">Drag and drop elements here</p>
+            </div>
+            
+            <div class="w-1/4 space-y-4">
+                <div id="properties" class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="properties">Properties</h2>
+                    <div id="elementProperties"></div>
+                </div>
+                
+                <div id="fontProperties" class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="fontProperties">Font Properties</h2>
+                    <div class="space-y-2">
+                        <label for="fontSize" data-translate="fontSize">Font Size:</label>
+                        <input type="number" id="fontSize" class="w-full p-2 border rounded" min="1" max="100" value="16" onchange="updateFontSize(this.value)">
+                        
+                        <label for="fontColor" data-translate="fontColor">Font Color:</label>
+                        <input type="color" id="fontColor" class="w-full p-2 border rounded" onchange="updateFontColor(this.value)">
+                        
+                        <label for="fontFamily" data-translate="fontFamily">Font Family:</label>
+                        <select id="fontFamily" class="w-full p-2 border rounded" onchange="updateFontFamily(this.value)">
+                            <option value="Arial, sans-serif">Arial</option>
+                            <option value="Helvetica, sans-serif">Helvetica</option>
+                            <option value="Times New Roman, serif">Times New Roman</option>
+                            <option value="Courier New, monospace">Courier New</option>
+                            <option value="Verdana, sans-serif">Verdana</option>
+                            <option value="Georgia, serif">Georgia</option>
+                            <option value="Palatino, serif">Palatino</option>
+                            <option value="Garamond, serif">Garamond</option>
+                            <option value="Bookman, serif">Bookman</option>
+                            <option value="Comic Sans MS, cursive">Comic Sans MS</option>
+                            <option value="Trebuchet MS, sans-serif">Trebuchet MS</option>
+                            <option value="Arial Black, sans-serif">Arial Black</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="lollmsPanel" class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="textGeneration">Lollms Text Generation</h2>
+                    <textarea id="lollmsPrompt" class="w-full p-2 border rounded" rows="3" data-translate="promptPlaceholder" placeholder="Enter prompt for text generation"></textarea>
+                    <div class="flex items-center mt-2">
+                        <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" onclick="generateLollmsText()" data-translate="generateText">Generate Text</button>
+                        <div id="spinner" class="spinner"></div>
+                    </div>
+                </div>
+
+                <div id="tailwindPanel" class="bg-white p-4 rounded-lg shadow-md">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="tailwindClasses">Tailwind CSS Classes</h2>
+                    <div class="space-y-2">
+                        <button class="w-full bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="addTailwindClass('text-lg font-bold')" data-translate="largeBoldText">Large Bold Text</button>
+                        <button class="w-full bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="addTailwindClass('bg-red-500 text-white p-2 rounded')" data-translate="redButton">Red Button</button>
+                        <button class="w-full bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="addTailwindClass('border-2 border-gray-300 p-4 rounded-lg')" data-translate="borderedContainer">Bordered Container</button>
+                        <button class="w-full bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="addTailwindClass('shadow-md hover:shadow-lg transition-shadow')" data-translate="hoverShadow">Hover Shadow</button>
+                        <button class="w-full bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600" onclick="addTailwindClass('grid grid-cols-2 gap-4')" data-translate="twoColumnGrid">2-Column Grid</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-4 flex justify-between">
+            <button class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600" onclick="togglePreview()" data-translate="togglePreview">Toggle Preview</button>
+            <button class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" onclick="exportHTML()" data-translate="exportHTML">Export HTML</button>
+            <button class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" onclick="saveProject()" data-translate="saveProject">Save Project</button>
+            <button class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600" onclick="loadProject()" data-translate="loadProject">Load Project</button>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        let selectedElement = null;
+        let previewMode = false;
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "WYSIWYG HTML Builder with Lollms",
+                    heading: "WYSIWYG HTML Builder with Lollms",
+                    elements: "Elements",
+                    dragdropHint: "Drag and drop elements here",
+                    properties: "Properties",
+                    fontProperties: "Font Properties",
+                    fontSize: "Font Size",
+                    fontColor: "Font Color",
+                    fontFamily: "Font Family",
+                    textGeneration: "Lollms Text Generation",
+                    promptPlaceholder: "Enter prompt for text generation",
+                    generateText: "Generate Text",
+                    tailwindClasses: "Tailwind CSS Classes",
+                    largeBoldText: "Large Bold Text",
+                    redButton: "Red Button",
+                    borderedContainer: "Bordered Container",
+                    hoverShadow: "Hover Shadow",
+                    twoColumnGrid: "2-Column Grid",
+                    togglePreview: "Toggle Preview",
+                    exportHTML: "Export HTML",
+                    saveProject: "Save Project",
+                    loadProject: "Load Project"
+                }
+            },
+            fr: {
+                name: "Français",
+translations: {
+                    title: "Constructeur HTML WYSIWYG avec Lollms",
+                    heading: "Constructeur HTML WYSIWYG avec Lollms",
+                    elements: "Éléments",
+                    dragdropHint: "Glissez et déposez les éléments ici",
+                    properties: "Propriétés",
+                    fontProperties: "Propriétés de la police",
+                    fontSize: "Taille de la police",
+                    fontColor: "Couleur de la police",
+                    fontFamily: "Famille de police",
+                    textGeneration: "Génération de texte Lollms",
+                    promptPlaceholder: "Entrez une invite pour la génération de texte",
+                    generateText: "Générer du texte",
+                    tailwindClasses: "Classes Tailwind CSS",
+                    largeBoldText: "Texte large et gras",
+                    redButton: "Bouton rouge",
+                    borderedContainer: "Conteneur bordé",
+                    hoverShadow: "Ombre au survol",
+                    twoColumnGrid: "Grille à 2 colonnes",
+                    togglePreview: "Basculer l'aperçu",
+                    exportHTML: "Exporter HTML",
+                    saveProject: "Enregistrer le projet",
+                    loadProject: "Charger le projet"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'wysiwyg_builder_');
+        localizer.apply();
+
+        document.getElementById('languageSelector').addEventListener('change', function() {
+            localizer.setLanguage(this.value);
+            localizer.apply();
+        });
+
+        function addElement(type, target = null) {
+            const element = document.createElement(type);
+            element.textContent = localizer.translate('new' + type.toUpperCase() + 'Element');
+            element.classList.add('movable', 'relative');
+            element.setAttribute('draggable', 'true');
+            element.setAttribute('ondragstart', 'drag(event)');
+            element.setAttribute('onclick', 'selectElement(this, event)');
+            element.setAttribute('contenteditable', 'true');
+            
+            const dragHandle = document.createElement('span');
+            dragHandle.className = 'drag-handle';
+            dragHandle.textContent = '⋮';
+            element.appendChild(dragHandle);
+            
+            if (type === 'img') {
+                element.src = 'https://via.placeholder.com/150';
+                element.alt = localizer.translate('placeholderImage');
+                element.setAttribute('contenteditable', 'false');
+            } else if (type === 'input') {
+                element.type = 'text';
+                element.placeholder = localizer.translate('enterText');
+                element.setAttribute('contenteditable', 'false');
+            } else if (type === 'button') {
+                element.classList.add('bg-blue-500', 'text-white', 'px-4', 'py-2', 'rounded', 'hover:bg-blue-600');
+            }
+            
+            if (target && target !== document.getElementById('canvas')) {
+                target.appendChild(element);
+            } else {
+                document.getElementById('canvas').appendChild(element);
+            }
+        }
+
+        function drag(ev) {
+            ev.dataTransfer.setData("text", ev.target.getAttribute('data-element'));
+        }
+
+        function allowDrop(ev) {
+            ev.preventDefault();
+            const dropTarget = getDropTarget(ev.target);
+            if (dropTarget) {
+                dropTarget.classList.add('drop-target');
+            }
+        }
+
+        function drop(ev) {
+            ev.preventDefault();
+            const dropTarget = getDropTarget(ev.target);
+            if (dropTarget) {
+                dropTarget.classList.remove('drop-target');
+            }
+            const elementType = ev.dataTransfer.getData("text");
+            addElement(elementType, dropTarget);
+        }
+
+        function getDropTarget(element) {
+            if (element.id === 'canvas') return element;
+            if (element.classList.contains('movable')) return element;
+            return element.closest('.movable') || document.getElementById('canvas');
+        }
+
+        function selectElement(el, event) {
+            event.stopPropagation();
+            if (selectedElement) {
+                selectedElement.classList.remove('border-2', 'border-blue-500');
+            }
+            selectedElement = el;
+            selectedElement.classList.add('border-2', 'border-blue-500');
+            showProperties(el);
+        }
+
+        function showProperties(el) {
+            const propertiesDiv = document.getElementById('elementProperties');
+            propertiesDiv.innerHTML = '';
+            
+            const tagName = document.createElement('p');
+            tagName.textContent = `${localizer.translate('element')}: ${el.tagName.toLowerCase()}`;
+            propertiesDiv.appendChild(tagName);
+            
+            const classInput = document.createElement('input');
+            classInput.type = 'text';
+            classInput.value = el.className;
+            classInput.placeholder = localizer.translate('cssClasses');
+            classInput.className = 'w-full p-2 border rounded mt-2';
+            classInput.onchange = (e) => el.className = e.target.value;
+            propertiesDiv.appendChild(classInput);
+            
+            if (el.tagName === 'IMG') {
+                const srcInput = document.createElement('input');
+                srcInput.type = 'text';
+                srcInput.value = el.src;
+                srcInput.placeholder = localizer.translate('imageURL');
+                srcInput.className = 'w-full p-2 border rounded mt-2';
+                srcInput.onchange = (e) => el.src = e.target.value;
+                propertiesDiv.appendChild(srcInput);
+            }
+            
+            const alignmentSelect = document.createElement('select');
+            alignmentSelect.className = 'w-full p-2 border rounded mt-2';
+            alignmentSelect.innerHTML = `
+                <option value="">${localizer.translate('selectAlignment')}</option>
+                <option value="text-left">${localizer.translate('left')}</option>
+                <option value="text-center">${localizer.translate('center')}</option>
+                <option value="text-right">${localizer.translate('right')}</option>
+            `;
+            alignmentSelect.onchange = (e) => {
+                el.classList.remove('text-left', 'text-center', 'text-right');
+                if (e.target.value) {
+                    el.classList.add(e.target.value);
+                }
+            };
+            propertiesDiv.appendChild(alignmentSelect);
+            
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = localizer.translate('deleteElement');
+            deleteButton.className = 'mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600';
+            deleteButton.onclick = () => {
+                el.remove();
+                propertiesDiv.innerHTML = '';
+                selectedElement = null;
+            };
+            propertiesDiv.appendChild(deleteButton);
+        }
+
+        function updateFontSize(size) {
+            if (selectedElement) {
+                selectedElement.style.fontSize = `${size}px`;
+            }
+        }
+
+        function updateFontColor(color) {
+            if (selectedElement) {
+                selectedElement.style.color = color;
+            }
+        }
+
+        function updateFontFamily(fontFamily) {
+            if (selectedElement) {
+                selectedElement.style.fontFamily = fontFamily;
+            }
+        }
+
+        async function generateLollmsText() {
+            if (!selectedElement) {
+                alert(localizer.translate('selectElementFirst'));
+                return;
+            }
+            
+            const prompt = document.getElementById('lollmsPrompt').value;
+            const spinner = document.getElementById('spinner');
+            spinner.style.display = 'inline-block';
+            
+            try {
+                const generatedText = await lc.generate(prompt);
+                
+                if (selectedElement.tagName === 'IMG') {
+                    selectedElement.alt = generatedText;
+                } else {
+                    selectedElement.textContent = generatedText;
+                }
+            } catch (error) {
+                console.error('Error generating text:', error);
+                alert('An error occurred while generating text.');
+            } finally {
+                spinner.style.display = 'none';
+            }
+        }
+
+        function togglePreview() {
+            previewMode = !previewMode;
+            const canvas = document.getElementById('canvas');
+            
+            if (previewMode) {
+                canvas.querySelectorAll('[contenteditable]').forEach(el => {
+                    el.setAttribute('contenteditable', 'false');
+                    el.classList.remove('border-2', 'border-blue-500');
+                });
+                canvas.querySelectorAll('.movable').forEach(el => {
+                    el.classList.remove('movable');
+                    el.removeAttribute('draggable');
+                    el.removeAttribute('ondragstart');
+                    el.removeAttribute('onclick');
+                    el.querySelector('.drag-handle').style.display = 'none';
+                });
+                canvas.setAttribute('ondrop', '');
+                canvas.setAttribute('ondragover', '');
+            } else {
+                canvas.querySelectorAll('[contenteditable]').forEach(el => {
+                    el.setAttribute('contenteditable', 'true');
+                });
+                canvas.querySelectorAll('*').forEach(el => {
+                    el.classList.add('movable');
+                    el.setAttribute('draggable', 'true');
+                    el.setAttribute('ondragstart', 'drag(event)');
+                    el.setAttribute('onclick', 'selectElement(this, event)');
+                    if (!el.querySelector('.drag-handle')) {
+                        const dragHandle = document.createElement('span');
+                        dragHandle.className = 'drag-handle';
+                        dragHandle.textContent = '⋮';
+                        el.appendChild(dragHandle);
+                    } else {
+                        el.querySelector('.drag-handle').style.display = '';
+                    }
+                });
+                canvas.setAttribute('ondrop', 'drop(event)');
+                canvas.setAttribute('ondragover', 'allowDrop(event)');
+            }
+        }
+
+        function exportHTML() {
+            const canvas = document.getElementById('canvas');
+            const clonedCanvas = canvas.cloneNode(true);
+            
+            clonedCanvas.querySelectorAll('[contenteditable], [draggable], [ondragstart], [onclick], .drag-handle').forEach(el => {
+                el.removeAttribute('contenteditable');
+                el.removeAttribute('draggable');
+                el.removeAttribute('ondragstart');
+                el.removeAttribute('onclick');
+                if (el.classList.contains('drag-handle')) {
+                    el.remove();
+                }
+            });
+            
+            const htmlContent = clonedCanvas.innerHTML;
+            const blob = new Blob([htmlContent], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'exported_content.html';
+            a.click();
+            
+            URL.revokeObjectURL(url);
+        }
+
+        function addTailwindClass(classes) {
+            if (!selectedElement) {
+                alert(localizer.translate('selectElementFirst'));
+                return;
+            }
+            
+            const currentClasses = selectedElement.className.split(' ');
+            const newClasses = classes.split(' ');
+            
+            const updatedClasses = [...new Set([...currentClasses, ...newClasses])];
+            selectedElement.className = updatedClasses.join(' ');
+            
+            showProperties(selectedElement);
+        }
+
+        function saveProject() {
+            const canvas = document.getElementById('canvas');
+            const projectData = canvas.innerHTML;
+            localStorage.setItem('wysiwyg_project', projectData);
+            alert(localizer.translate('projectSaved'));
+        }
+
+        function loadProject() {
+            const projectData = localStorage.getItem('wysiwyg_project');
+            if (projectData) {
+                const canvas = document.getElementById('canvas');
+                canvas.innerHTML = projectData;
+                alert(localizer.translate('projectLoaded'));
+            } else {
+                alert(localizer.translate('noSavedProject'));
+            }
+        }
+    </script>
+</body>
+</html>
