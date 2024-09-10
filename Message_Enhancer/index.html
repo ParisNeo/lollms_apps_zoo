@@ -24,6 +24,8 @@
     <!-- needed for math rendering in markdown -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://manuels.github.io/texlive.js/promisejs/promise.js"></script>
+    <script src="https://manuels.github.io/texlive.js/pdftex.js"></script>
 
     <!-- MarkdownRenderer -->
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
@@ -241,6 +243,7 @@
                     <div class="moving-text mt-4">Enhancing your message...</div>
                 </div>
             </div>
+            <button id="to_pdf" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-500 mb-4" data-translate="to_pdf">To PDF</button>
             
         </div>
     </main>
@@ -340,6 +343,10 @@
         const lollmsHostInput = document.getElementById('lollmsHost');
         const saveSettingsButton = document.getElementById('saveSettings');
         const closeSettingsButton = document.getElementById('closeSettings');
+        const to_pdf = document.getElementById('to_pdf');
+
+        let generated_code = "";
+        
 
         userInput.value = localStorage.getItem('userInput') || '';
         styleSelect.value = localStorage.getItem('style') || 'formal';
@@ -370,6 +377,13 @@
             const type = typeSelect.value;
             const format = formatSelect.value;
 
+            if(format!="latex"){
+                to_pdf.classList.add("hidden")
+            }
+            else{
+                to_pdf.classList.remove("hidden")
+            }
+
             localStorage.setItem('userInput', userInput.value);
             localStorage.setItem('style', style);
             localStorage.setItem('tone', tone);
@@ -390,6 +404,13 @@
 
             let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + userInput.value + lc.user_message(output_language) + localizer.getCurrentLanguage() + lc.template.separator_template + lc.ai_message();
             const generated_text = await lc.generate(prompt);
+            const codes = lc.extractCodeBlocks(generated_text)
+            if (codes.length>0){
+                generated_code = codes[0].content
+            }
+            else{
+                generated_code = generated_text
+            }
             previewArea.innerHTML = await mr.renderMarkdown(generated_text);
             hideSpinner();
         });
@@ -504,6 +525,41 @@
             localStorage.setItem('lollmsHost', lollmsHostInput.value);
             settingsPopup.classList.add('hidden');
         });
+        
+        var pdf_dataurl = undefined;
+        var compile = function(source_code) {
+            showSpinner();
+
+            var pdftex = new PDFTeX();
+            pdftex.set_TOTAL_MEMORY(80*1024*1024).then(function() {
+                // Uncomment the following line if you have additional files to include
+                // pdftex.FS_createLazyFile('/', 'snowden.jpg', 'snowden.jpg', true, true);
+
+                pdftex.on_stdout = appendOutput;
+                pdftex.on_stderr = appendOutput;
+
+                var start_time = new Date().getTime();
+
+                pdftex.compile(source_code).then(function(result_pdf_dataurl) {
+                    var end_time = new Date().getTime();
+                    console.info("Execution time: " + (end_time-start_time)/1000+' sec');
+
+                    if(result_pdf_dataurl === false) {
+                        appendOutput(localizer.translate("compilationError"));
+                        return;
+                    }
+                    
+                    pdf_dataurl = result_pdf_dataurl;
+                    hideSpinner();
+                });
+            });
+        }
+
+        to_pdf.addEventListener('click', async() => {
+            console.log("converting to pdf")
+            compile(generated_code);
+        });
+
 
         // Initialize LollmsClient with the stored host
         const lollmsHost = localStorage.getItem('lollmsHost') || '';
