@@ -10,7 +10,26 @@
     <script src="/lollms_assets/js/axios.min.js"></script>
     <script src="/lollms_assets/js/web.app.localizer.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <!-- needed for math rendering in markdown -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://manuels.github.io/texlive.js/promisejs/promise.js"></script>
+    <script src="https://manuels.github.io/texlive.js/pdftex.js"></script>
 
+    <!-- MarkdownRenderer -->
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
     <style>
         @keyframes float {
             0%, 100% { transform: translateY(0); }
@@ -159,8 +178,8 @@
                 </select>
             </div>
             <div class="mb-4">
-                <label for="formatSelect" class="block text-sm font-medium" data-translate="select_format">Select Format:</label>
-                <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                <label for="typeSelect" class="block text-sm font-medium" data-translate="select_format">Select production Type:</label>
+                <select id="typeSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
                     <option value="none">None</option>
                     <option value="email">Email</option>
                     <option value="tweet">Tweet</option>
@@ -182,6 +201,14 @@
                     <option value="song">Song</option>
                 </select>
             </div>       
+            <div class="mb-4">
+                <label for="formatSelect" class="block text-sm font-medium" data-translate="select_format">Select Format:</label>
+                <select id="formatSelect" class="mt-1 block w-full border border-gray-300 rounded-md bg-white">
+                    <option value="none">None</option>
+                    <option value="markdown" selected>Markdown</option>
+                    <option value="latex">Latex</option>
+                </select>
+            </div>                   
             <button id="submitButton" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-500 mb-4" data-translate="enhance_message">Enhance Message</button>
         </div>
         <div id="outputContent" class="tab-content">
@@ -216,12 +243,13 @@
                     <div class="moving-text mt-4">Enhancing your message...</div>
                 </div>
             </div>
+            <button id="to_pdf" class="w-full bg-blue-600 text-white font-bold py-2 rounded-lg hover:bg-blue-500 mb-4" data-translate="to_pdf">To PDF</button>
             
         </div>
     </main>
     <footer class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-4 mt-auto">
         <div class="container mx-auto text-center">
-            <p data-translate="footer_text">Strawberry Message Enhancer. A L🍓llms powered APP.</p>
+            <p data-translate="footer_text">Message Enhancer. A L🍓llms powered APP.</p>
         </div>
     </footer>
     <div id="settingsPopup" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
@@ -248,19 +276,19 @@
             en: {
                 name: "English",
                 translations: {
-                    "app_title": "Strawberry Message Enhancer",
-                    "enhance_your_message": "Enhance Your Strawberry Message",
+                    "app_title": "Message Enhancer",
+                    "enhance_your_message": "Enhance Your Message",
                     "select_style": "Select Style:",
                     "select_tone": "Select Tone:",
                     "select_format": "Select Format:",
-                    "enhance_message": "Enhance Strawberry Message",
+                    "enhance_message": "Enhance Message",
                     "preview": "Preview:",
-                    "footer_text": "Strawberry Message Enhancer. A L🍓llms powered APP.",
+                    "footer_text": "Message Enhancer. A L🍓llms powered APP.",
                     "instructions": "Instructions",
                     "output": "Output"
                 },
                 promptTranslations: {
-                    "system_prompt": "Rewrite the following text in a {style} style and {tone} tone{format_prompt}. Answer directly with the content without any introductory phrases or comments. Start immediately with the <div> element.",
+                    "system_prompt": "Rewrite the following text in a {style} style and {tone} tone {format_prompt}. Answer directly with the content without any introductory phrases or comments.",
                     "user_prompt": "Text to enhance",
                     "output_language": "Output language"
                 }
@@ -269,24 +297,24 @@
                 name: "Français",
                 translations: {
                     "app_title": "Améliorateur de Message Fraise",
-                    "enhance_your_message": "Améliorez Votre Message Fraise",
+                    "enhance_your_message": "Améliorez Votre Message",
                     "select_style": "Sélectionnez le Style:",
                     "select_tone": "Sélectionnez le Ton:",
                     "select_format": "Sélectionnez le Format:",
-                    "enhance_message": "Améliorer le Message Fraise",
+                    "enhance_message": "Améliorer le Message",
                     "preview": "Aperçu:",
-                    "footer_text": "Améliorateur de Message Fraise. Une application propulsée par L🍓llms.",
+                    "footer_text": "Améliorateur de Message. Une application propulsée par L🍓llms.",
                     "instructions": "Instructions",
                     "output": "Sortie"
                 },
                 promptTranslations: {
-                    "system_prompt": "Réécrivez le texte suivant dans un style {style} et un ton {tone}{format_prompt}. Répondez directement avec le contenu sans aucune phrase introductive ou commentaire. Commencez immédiatement avec l'élément <div>.",
+                    "system_prompt": "Réécrivez le texte suivant dans un style {style} et un ton {tone}{format_prompt}. Répondez directement avec le contenu sans aucune phrase introductive ou commentaire.",
                     "user_prompt": "Texte à améliorer",
                     "output_language": "Langue de sortie"
                 }
             }
         };
-
+        const mr = new MarkdownRenderer()
         const localizer = new WebAppLocalizer(translations, 'strawberryMessageEnhancer_', document.getElementById('languageSelector'));
         localizer.apply();
 
@@ -294,6 +322,7 @@
         const userInput = document.getElementById('userInput');
         const styleSelect = document.getElementById('styleSelect');
         const toneSelect = document.getElementById('toneSelect');
+        const typeSelect = document.getElementById('typeSelect');
         const formatSelect = document.getElementById('formatSelect');
         const previewArea = document.getElementById('previewArea');
         const copyButton = document.getElementById('copyButton');
@@ -314,10 +343,15 @@
         const lollmsHostInput = document.getElementById('lollmsHost');
         const saveSettingsButton = document.getElementById('saveSettings');
         const closeSettingsButton = document.getElementById('closeSettings');
+        const to_pdf = document.getElementById('to_pdf');
+
+        let generated_code = "";
+        
 
         userInput.value = localStorage.getItem('userInput') || '';
         styleSelect.value = localStorage.getItem('style') || 'formal';
         toneSelect.value = localStorage.getItem('tone') || 'persuasive';
+        typeSelect.value = localStorage.getItem('type') || 'none';
         formatSelect.value = localStorage.getItem('format') || 'none';
         emailClientSelect.value = localStorage.getItem('emailClient') || 'Gmail';
         lollmsHostInput.value = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
@@ -340,15 +374,24 @@
             outputContent.classList.add('active');            
             const style = styleSelect.value;
             const tone = toneSelect.value;
+            const type = typeSelect.value;
             const format = formatSelect.value;
+
+            if(format!="latex"){
+                to_pdf.classList.add("hidden")
+            }
+            else{
+                to_pdf.classList.remove("hidden")
+            }
 
             localStorage.setItem('userInput', userInput.value);
             localStorage.setItem('style', style);
             localStorage.setItem('tone', tone);
+            localStorage.setItem('type', type);
             localStorage.setItem('format', format);
 
             const lc = new LollmsClient();
-            const format_prompt = format !== "none" ? `The output must be a ${format} written in a <div> tag styled with Tailwind CSS. Make sure you respect the language specifics like left to right direction for Arabic. Use a big font size and make the message more aligned with its content and format.` : "";
+            const format_prompt = format === "markdown" ? `The output must be a ${format} written in ${type} format. Do not put the content inside a markdown code tag.` :format === "latex" ? `The output must be a ${format} written in ${type} format. Put the output inside a latex code tag.`: "";
 
             const system_prompt = localizer.formatPrompt("system_prompt", {
                 style: style,
@@ -361,7 +404,14 @@
 
             let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + userInput.value + lc.user_message(output_language) + localizer.getCurrentLanguage() + lc.template.separator_template + lc.ai_message();
             const generated_text = await lc.generate(prompt);
-            previewArea.innerHTML = generated_text;
+            const codes = lc.extractCodeBlocks(generated_text)
+            if (codes.length>0){
+                generated_code = codes[0].content
+            }
+            else{
+                generated_code = generated_text
+            }
+            previewArea.innerHTML = await mr.renderMarkdown(generated_text);
             hideSpinner();
         });
 
@@ -391,18 +441,26 @@
             const body = enhancedEmail.replace(/<[^>]*>/g, ''); // Remove HTML tags
             const emailClient = localStorage.getItem('emailClient') || 'Gmail';
             
-            let emailUrl;
-            switch (emailClient) {
-                case 'Outlook':
-                case 'Hotmail':
-                    emailUrl = `https://outlook.live.com/owa/?path=/mail/action/compose&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                    break;
-                case 'Gmail':
-                default:
-                    emailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-                    break;
+            // Create a mailto link
+            const mailtoLink = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+            if (emailClient === 'Outlook') {
+                // Try to launch Outlook using the mailto protocol
+                window.location.href = mailtoLink;
+            } else {
+                // For other clients, use the web-based approach
+                let emailUrl;
+                switch (emailClient) {
+                    case 'Hotmail':
+                        emailUrl = `https://outlook.live.com/owa/?path=/mail/action/compose&subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                        break;
+                    case 'Gmail':
+                    default:
+                        emailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+                        break;
+                }
+                window.open(emailUrl, '_blank');
             }
-            window.open(emailUrl, '_blank');
         });
 
         twitterButton.addEventListener('click', () => {
@@ -467,6 +525,41 @@
             localStorage.setItem('lollmsHost', lollmsHostInput.value);
             settingsPopup.classList.add('hidden');
         });
+        
+        var pdf_dataurl = undefined;
+        var compile = function(source_code) {
+            showSpinner();
+
+            var pdftex = new PDFTeX();
+            pdftex.set_TOTAL_MEMORY(80*1024*1024).then(function() {
+                // Uncomment the following line if you have additional files to include
+                // pdftex.FS_createLazyFile('/', 'snowden.jpg', 'snowden.jpg', true, true);
+
+                pdftex.on_stdout = appendOutput;
+                pdftex.on_stderr = appendOutput;
+
+                var start_time = new Date().getTime();
+
+                pdftex.compile(source_code).then(function(result_pdf_dataurl) {
+                    var end_time = new Date().getTime();
+                    console.info("Execution time: " + (end_time-start_time)/1000+' sec');
+
+                    if(result_pdf_dataurl === false) {
+                        appendOutput(localizer.translate("compilationError"));
+                        return;
+                    }
+                    
+                    pdf_dataurl = result_pdf_dataurl;
+                    hideSpinner();
+                });
+            });
+        }
+
+        to_pdf.addEventListener('click', async() => {
+            console.log("converting to pdf")
+            compile(generated_code);
+        });
+
 
         // Initialize LollmsClient with the stored host
         const lollmsHost = localStorage.getItem('lollmsHost') || '';
