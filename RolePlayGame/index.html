@@ -100,12 +100,47 @@
                         <option value="elf" data-translate="elf">Elf</option>
                         <option value="dwarf" data-translate="dwarf">Dwarf</option>
                         <option value="orc" data-translate="orc">Orc</option>
+                        <option value="halfling" data-translate="halfling">Halfling</option>
+                        <option value="gnome" data-translate="gnome">Gnome</option>
+                        <option value="dragonborn" data-translate="dragonborn">Dragonborn</option>
+                        <option value="tiefling" data-translate="tiefling">Tiefling</option>
+                        <option value="half-elf" data-translate="half-elf">Half-Elf</option>
+                        <option value="half-orc" data-translate="half-orc">Half-Orc</option>
+                        <option value="aasimar" data-translate="aasimar">Aasimar</option>
+                        <option value="goliath" data-translate="goliath">Goliath</option>
+                        <option value="centaur" data-translate="centaur">Centaur</option>
+                        <option value="minotaur" data-translate="minotaur">Minotaur</option>
+                        <option value="tabaxi" data-translate="tabaxi">Tabaxi</option>
+                        <option value="servamp" data-translate="servamp">Servamp</option>
+                        <option value="firbolg" data-translate="firbolg">Firbolg</option>
                     </select>
                     <select id="characterClass" class="w-full p-2 mb-2 rounded border">
+                        <option value="servant" data-translate="servant">Servant</option>
                         <option value="warrior" data-translate="warrior">Warrior</option>
                         <option value="mage" data-translate="mage">Mage</option>
                         <option value="rogue" data-translate="rogue">Rogue</option>
                         <option value="cleric" data-translate="cleric">Cleric</option>
+                        <option value="wizard" data-translate="wizard">Wizard</option>
+                        <option value="paladin" data-translate="paladin">Paladin</option>
+                        <option value="druid" data-translate="druid">Druid</option>
+                        <option value="ranger" data-translate="ranger">Ranger</option>
+                        <option value="necromancer" data-translate="necromancer">Necromancer</option>
+                        <option value="bard" data-translate="bard">Bard</option>
+                        <option value="monk" data-translate="monk">Monk</option>
+                        <option value="warlock" data-translate="warlock">Warlock</option>
+                        <option value="jedi" data-translate="jedi">Jedi</option>
+                        <option value="sith" data-translate="sith">Sith</option>
+                        <option value="cyborg" data-translate="cyborg">Cyborg</option>
+                        <option value="android" data-translate="android">Android</option>
+                        <option value="witcher" data-translate="witcher">Witcher</option>
+                        <option value="alchemist" data-translate="alchemist">Alchemist</option>
+                        <option value="shapeshifter" data-translate="shapeshifter">Shapeshifter</option>
+                        <option value="timelord" data-translate="timelord">Time Lord</option>
+                        <option value="superhero" data-translate="superhero">Superhero</option>
+                        <option value="mutant" data-translate="mutant">Mutant</option>
+                        <option value="psion" data-translate="psion">Psion</option>
+                        <option value="artificer" data-translate="artificer">Artificer</option>
+                        <option value="bounty-hunter" data-translate="bounty-hunter">Bounty Hunter</option>
                     </select>
                     <input type="number" id="characterAge" placeholder="Age" min="18" max="100" class="w-full p-2 mb-2 rounded border">
                     <textarea id="characterDescription" placeholder="Character Description" class="w-full p-2 mb-2 rounded border" rows="4"></textarea>
@@ -136,6 +171,13 @@
                 </div>
             </div>
         </main>
+        <div id="loadingOverlay" class="overlay fixed top-0 left-0 w-full h-full bg-white bg-opacity-80 hidden flex items-center justify-center">
+            <div class="loading text-center text-pink-500">
+                <div class="strawberry text-6xl animate-spin">🍓</div>
+                <div class="mt-4 font-bold" data-translate="loading">Interrogating LOLLMS strawberry...</div>
+            </div>
+        </div>
+
     </div>    
  
     
@@ -204,13 +246,48 @@
                     title: "Strawberry RPG Adventure",
                     createCharacter: "Create Your Character",
                     warrior: "Warrior",
+                    servant: "Servant",
                     mage: "Mage",
                     rogue: "Rogue",
                     cleric: "Cleric",
+                    servamp: "Servamp",
+                    wizard: "Wizard",
                     human: "Human",
                     elf: "Elf",
                     dwarf: "Dwarf",
                     orc: "Orc",
+                    halfling: "Halfling",
+                    gnome: "Gnome",
+                    dragonborn: "Dragonborn",
+                    tiefling: "Tiefling",
+                    halfElf: "Half-Elf",
+                    halfOrc: "Half-Orc",
+                    aasimar: "Aasimar",
+                    goliath: "Goliath",
+                    centaur: "Centaur",
+                    minotaur: "Minotaur",
+                    tabaxi: "Tabaxi",
+                    firbolg: "Firbolg",
+                    paladin: "Paladin",
+                    druid: "Druid",
+                    ranger: "Ranger",
+                    necromancer: "Necromancer",
+                    bard: "Bard",
+                    monk: "Monk",
+                    warlock: "Warlock",
+                    jedi: "Jedi",
+                    sith: "Sith",
+                    cyborg: "Cyborg",
+                    android: "Android",
+                    witcher: "Witcher",
+                    alchemist: "Alchemist",
+                    shapeshifter: "Shapeshifter",
+                    timelord: "Time Lord",
+                    superhero: "Superhero",
+                    mutant: "Mutant",
+                    psion: "Psion",
+                    artificer: "Artificer",
+                    bountyHunter: "Bounty Hunter",             
                     saveCharacter: "Save Character",
                     savedCharacters: "Saved Characters",
                     yourParty: "Your Party",
@@ -232,7 +309,20 @@
                     selectUniverse: "Select Universe"
                 },
                 promptTranslations: {
-                    storyPrompt: "Continue the {universe} RPG story. Current game state: {gameState}. A d20 was rolled and the result is {diceRoll}. Use this for any random events or challenges. Provide the next part of the story and 2-3 choices for the player in JSON format.",
+                    storyPrompt: `Continue the {universe} RPG story. Current game state: {gameState}. A d20 was rolled and the result is {diceRoll}. Use this for any random events or challenges. Provide the next part of the story and 2-3 choices for the player in JSON format. The format is
+\`\`\`json
+{
+    "story": "The store stage",
+    "choices": [
+    // A list of choices, for example
+    {"id":1,"text":"content of choice 1"}
+    {"id":2"text":"content of choice 2"}
+    ...
+    ],
+}
+
+\`\`\`
+                    `,
                     choicePrompt: "Player chose: {choice}",
                     imagePrompt: "A brief description for generating an image related to this part of the story"
                 }
@@ -243,13 +333,48 @@
                     title: "Aventure RPG Fraise",
                     createCharacter: "Créez Votre Personnage",
                     warrior: "Guerrier",
+                    servant: "Servant",
                     mage: "Mage",
                     rogue: "Voleur",
                     cleric: "Clerc",
+                    servamp: "Servamp",
+                    wizard: "Sorcier",
                     human: "Humain",
                     elf: "Elfe",
                     dwarf: "Nain",
-                    orc: "Orc",
+                    orc: "Orque",
+                    halfling: "Halfelin",
+                    gnome: "Gnome",
+                    dragonborn: "Né-dragon",
+                    tiefling: "Tieffelin",
+                    halfElf: "Demi-elfe",
+                    halfOrc: "Demi-orque",
+                    aasimar: "Aasimar",
+                    goliath: "Goliath",
+                    centaur: "Centaure",
+                    minotaur: "Minotaure",
+                    tabaxi: "Tabaxi",
+                    firbolg: "Firbolg",
+                    paladin: "Paladin",
+                    druid: "Druide",
+                    ranger: "Rôdeur",
+                    necromancer: "Nécromancien",
+                    bard: "Barde",
+                    monk: "Moine",
+                    warlock: "Démoniste",
+                    jedi: "Jedi",
+                    sith: "Sith",
+                    cyborg: "Cyborg",
+                    android: "Androïde",
+                    witcher: "Sorceleur",
+                    alchemist: "Alchimiste",
+                    shapeshifter: "Métamorphe",
+                    timelord: "Seigneur du Temps",
+                    superhero: "Super-héros",
+                    mutant: "Mutant",
+                    psion: "Psion",
+                    artificer: "Artificier",
+                    bountyHunter: "Chasseur de primes",
                     saveCharacter: "Sauvegarder le Personnage",
                     savedCharacters: "Personnages Sauvegardés",
                     yourParty: "Votre Groupe",
@@ -266,7 +391,19 @@
                     generateImage: "Générer une Image"
                 },
                 promptTranslations: {
-                    storyPrompt: "Continuez l'histoire RPG. État actuel du jeu : {gameState}. Un d20 a été lancé et le résultat est {diceRoll}. Utilisez cela pour tout événement aléatoire ou défi. Fournissez la prochaine partie de l'histoire et 2-3 choix pour le joueur au format JSON.",
+                    storyPrompt: `Continuez l'histoire RPG. État actuel du jeu : {gameState}. Un d20 a été lancé et le résultat est {diceRoll}. Utilisez cela pour tout événement aléatoire ou défi. Fournissez la prochaine partie de l'histoire et 2-3 choix pour le joueur au format JSON.The format is
+\`\`\`json
+{
+    "story": "The store stage",
+    "choices": [
+    // A list of choices, for example
+    {"id":1,"text":"content of choice 1"}
+    {"id":2"text":"content of choice 2"}
+    ...
+    ],
+}
+
+\`\`\``,
                     choicePrompt: "Le joueur a choisi : {choice}",
                     imagePrompt: "Une brève description pour générer une image liée à cette partie de l'histoire"
                 }
@@ -277,8 +414,48 @@
                     title: "Aventura RPG de Fresa",
                     createCharacter: "Crea Tu Personaje",
                     warrior: "Guerrero",
+                    servant: "Sirviente",
                     mage: "Mago",
                     rogue: "Pícaro",
+                    cleric: "Clérigo",
+                    servamp: "Servamp",
+                    wizard: "Hechicero",
+                    human: "Humano",
+                    elf: "Elfo",
+                    dwarf: "Enano",
+                    orc: "Orco",
+                    halfling: "Mediano",
+                    gnome: "Gnomo",
+                    dragonborn: "Dracónido",
+                    tiefling: "Tiefling",
+                    halfElf: "Semielfo",
+                    halfOrc: "Semiorco",
+                    aasimar: "Aasimar",
+                    goliath: "Goliat",
+                    centaur: "Centauro",
+                    minotaur: "Minotauro",
+                    tabaxi: "Tabaxi",
+                    firbolg: "Firbolgo",
+                    paladin: "Paladín",
+                    druid: "Druida",
+                    ranger: "Montaraz",
+                    necromancer: "Nigromante",
+                    bard: "Bardo",
+                    monk: "Monje",
+                    warlock: "Brujo",
+                    jedi: "Jedi",
+                    sith: "Sith",
+                    cyborg: "Cíborg",
+                    android: "Androide",
+                    witcher: "Brujo",
+                    alchemist: "Alquimista",
+                    shapeshifter: "Cambiante",
+                    timelord: "Señor del Tiempo",
+                    superhero: "Superhéroe",
+                    mutant: "Mutante",
+                    psion: "Psiónico",
+                    artificer: "Artífice",
+                    bountyHunter: "Cazarrecompensas",
                     addCharacter: "Añadir Personaje",
                     yourParty: "Tu Grupo",
                     startAdventure: "Comenzar Aventura",
@@ -294,7 +471,20 @@
                     generateImage: "Generar Imagen"
                 },
                 promptTranslations: {
-                    storyPrompt: "Continúa la historia de RPG. Estado actual del juego: {gameState}. Se lanzó un d20 y el resultado es {diceRoll}. Usa esto para cualquier evento o desafío aleatorio. Proporcione la siguiente parte de la historia y 2-3 opciones para el jugador en formato JSON.",
+                    storyPrompt: `Continúa la historia de RPG. Estado actual del juego: {gameState}. Se lanzó un d20 y el resultado es {diceRoll}. Usa esto para cualquier evento o desafío aleatorio. Proporcione la siguiente parte de la historia y 2-3 opciones para el jugador en formato JSON.
+                    The format is
+\`\`\`json
+{
+    "story": "The store stage",
+    "choices": [
+    // A list of choices, for example
+    {"id":1,"text":"content of choice 1"}
+    {"id":2"text":"content of choice 2"}
+    ...
+    ],
+}
+
+\`\`\``,
                     choicePrompt: "El jugador eligió: {choice}",
                     imagePrompt: "Una breve descripción para generar una imagen relacionada con esta parte de la historia"
                 }
@@ -509,11 +699,11 @@
         }
 
         async function startGame() {
+            startGameBtn.classList.add('hidden');
             gameArea.classList.remove('hidden');
             characterCreation.classList.add('hidden');
             savedCharacters.classList.add('hidden');
             startMenu.classList.add('hidden');
-            startGameBtn.classList.add('hidden');
             gameState = {
                 stage: 0,
                 storyElements: [],
@@ -537,6 +727,7 @@
                 console.log("Generating code using prompt");
                 console.log(prompt)
                 const response = await lc.generateCode(prompt);
+                console.log(response)
                 const data = JSON.parse(response);
                 await updateGameState(data, diceRoll);
             } catch (error) {
@@ -549,26 +740,38 @@
 
 
         async function updateGameState(data, diceRoll) {
+            console.log("data")
+            console.log(data)
             gameState.stage++;
             if (!gameState.storyElements) {
                 gameState.storyElements = [];
             }
-            
-            gameState.storyElements.push({
-                type: 'text',
-                content: data.story
-            });
+            if(data.story!==undefined){
+                gameState.storyElements.push({
+                    type: 'text',
+                    content: data.story,
+                });
+            }
+            if(data.imagePrompt!==undefined){
+                gameState.storyElements.push({
+                    type: 'image',
+                    prompt: data.imagePrompt,
+                    base64Image: null
+                });
+            }
+            if(data.choices!==undefined){
+                gameState.storyElements.push({
+                    type: 'choices',
+                    content: data.choices,
+                });
+            }
 
-            gameState.storyElements.push({
-                type: 'image',
-                prompt: data.imagePrompt,
-                base64Image: null
-            });
-
+            console.log(gameState)
             const storyContent = document.getElementById('storyContent');
             storyContent.innerHTML = '';
 
-            for (let element of gameState.storyElements) {
+            for (let i = 0; i < gameState.storyElements.length; i++) {
+                let element = gameState.storyElements[i];
                 if (element.type === 'text') {
                     const newStoryDiv = document.createElement('div');
                     newStoryDiv.textContent = element.content;
@@ -578,22 +781,24 @@
                     const imageContainer = document.createElement('div');
                     imageContainer.className = 'mb-4';
                     storyContent.appendChild(imageContainer);
-
                     await renderStoryImage(element, imageContainer);
+                } else if (element.type === 'choices' && i === gameState.storyElements.length - 1) {
+                    console.log("Adding buttons")
+                    console.log(element)
+                    choicesArea.innerHTML = '';
+                    element.content.forEach((choice, index) => {
+                        const button = document.createElement('button');
+                        button.textContent = typeof choice === 'object' ? choice.text : choice;
+                        button.className = 'bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded mt-2';
+                        button.onclick = () => makeChoice(index, choice.consequence);
+                        choicesArea.appendChild(button);
+                    });
                 }
             }
 
-            choicesArea.innerHTML = '';
-            data.choices.forEach((choice, index) => {
-                const button = document.createElement('button');
-                button.textContent = choice.text;
-                button.className = 'bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded mt-2';
-                button.onclick = () => makeChoice(index, choice.consequence);
-                choicesArea.appendChild(button);
-            });
-
             updatePlayerStatus();
         }
+
 
         async function renderStoryImage(element, container) {
             if (element.base64Image) {
@@ -624,14 +829,17 @@
 
 
         function makeChoice(choiceIndex, consequence) {
-            const choiceText = localizer.formatPrompt(translations[localizer.currentLang].promptTranslations.choicePrompt, {
-                choice: consequence
-            });
+            if (consequence){
+                const choiceText = localizer.formatPrompt('choicePrompt', {
+                    'choice': consequence
+                });
 
-            gameState.storyElements.push({
-                type: 'text',
-                content: choiceText
-            });
+                gameState.storyElements.push({
+                    type: 'text',
+                    content: choiceText
+                });
+
+            }
             continueStory();
         }
 
@@ -752,7 +960,7 @@
 
                     const storyContent = document.getElementById('storyContent');
                     storyContent.innerHTML = '';
-
+                    let i = 0;
                     gameState.storyElements.forEach((element) => {
                         if (element.type === 'text') {
                             const newStoryDiv = document.createElement('div');
@@ -770,10 +978,20 @@
                                 img.alt = 'Story image';
                                 img.className = 'w-full h-auto';
                                 imageContainer.appendChild(img);
-                            } else {
-                                imageContainer.textContent = 'Image not available';
                             }
+                        } else if (element.type === 'choices' && i === gameState.storyElements.length - 1) {
+                            console.log("Adding buttons")
+                            console.log(element)
+                            choicesArea.innerHTML = '';
+                            element.content.forEach((choice, index) => {
+                                const button = document.createElement('button');
+                                button.textContent = typeof choice === 'object' ? choice.text : choice;
+                                button.className = 'bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded mt-2';
+                                button.onclick = () => makeChoice(index, choice.consequence);
+                                choicesArea.appendChild(button);
+                            });
                         }
+                        i += 1;
                     });
 
                     const lastStoryElement = gameState.storyElements[gameState.storyElements.length - 1];
