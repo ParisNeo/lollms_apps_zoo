@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VoiceScribe - Speech Transcription</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-600">VoiceScribe</h1>
+            <p class="text-xl text-gray-600">Effortless Speech Transcription</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <div class="flex justify-center space-x-4 mb-6">
+                <button id="microphoneBtn" class="bg-indigo-500 text-white px-4 py-2 rounded-full hover:bg-indigo-600 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Start Recording
+                </button>
+                <label for="audioFileInput" class="bg-gray-500 text-white px-4 py-2 rounded-full hover:bg-gray-600 transition duration-300 cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    Upload Audio
+                </label>
+                <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+            </div>
+
+            <div id="statusIndicator" class="text-center mb-4 text-gray-600 hidden">
+                <span id="statusText">Processing...</span>
+                <span class="inline-block w-3 h-3 bg-yellow-500 rounded-full ml-2 animate-pulse"></span>
+            </div>
+
+            <div id="transcriptionContainer" class="bg-gray-100 rounded p-4 h-64 overflow-y-auto mb-4">
+                <p id="transcriptionText" class="text-gray-800"></p>
+            </div>
+
+            <div class="flex justify-center space-x-4">
+                <button id="clearBtn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition duration-300">Clear</button>
+                <button id="saveBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition duration-300">Save Transcription</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const localizer = new WebAppLocalizer({
+            en: {
+                name: "English",
+                translations: {
+                    startRecording: "Start Recording",
+                    stopRecording: "Stop Recording",
+                    uploadAudio: "Upload Audio",
+                    processing: "Processing...",
+                    clear: "Clear",
+                    saveTranscription: "Save Transcription"
+                }
+            }
+        }, "voiceScribe_", null);
+
+        localizer.apply();
+
+        const microphoneBtn = document.getElementById('microphoneBtn');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const clearBtn = document.getElementById('clearBtn');
+        const saveBtn = document.getElementById('saveBtn');
+
+        let isRecording = false;
+        let mediaRecorder;
+        let audioChunks = [];
+
+        microphoneBtn.addEventListener('click', toggleRecording);
+        audioFileInput.addEventListener('change', handleFileUpload);
+        clearBtn.addEventListener('click', clearTranscription);
+        saveBtn.addEventListener('click', saveTranscription);
+
+        function toggleRecording() {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = sendAudioToServer;
+                mediaRecorder.start();
+                isRecording = true;
+                microphoneBtn.textContent = localizer.translate('stopRecording');
+                microphoneBtn.classList.remove('bg-indigo-500', 'hover:bg-indigo-600');
+                microphoneBtn.classList.add('bg-red-500', 'hover:bg-red-600');
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+            }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+            microphoneBtn.textContent = localizer.translate('startRecording');
+            microphoneBtn.classList.remove('bg-red-500', 'hover:bg-red-600');
+            microphoneBtn.classList.add('bg-indigo-500', 'hover:bg-indigo-600');
+        }
+
+        async function sendAudioToServer() {
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            audioChunks = [];
+            await transcribeAudio(audioBlob);
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                await transcribeAudio(file);
+            }
+        }
+
+        async function transcribeAudio(audioData) {
+            const formData = new FormData();
+            formData.append('file', audioData);
+
+            showStatus(localizer.translate('processing'));
+
+            try {
+                const response = await fetch('/transcribe', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                updateTranscription(data.transcription);
+            } catch (error) {
+                console.error('Error transcribing audio:', error);
+                updateTranscription('Error transcribing audio. Please try again.');
+            } finally {
+                hideStatus();
+            }
+        }
+
+        function updateTranscription(text) {
+            transcriptionText.textContent += (transcriptionText.textContent ? '\n' : '') + text;
+        }
+
+        function clearTranscription() {
+            transcriptionText.textContent = '';
+        }
+
+        function saveTranscription() {
+            const blob = new Blob([transcriptionText.textContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'transcription.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function showStatus(message) {
+            statusText.textContent = message;
+            statusIndicator.classList.remove('hidden');
+        }
+
+        function hideStatus() {
+            statusIndicator.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
