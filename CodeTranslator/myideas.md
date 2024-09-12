@@ -1,0 +1,1 @@
+When generating code for C or C# please split the code into .h and .c or .cpp use generateCodes to generate two codes. Instruct the AI to do that in the prompt and show two vscode like ui and maka a copy and save buttons for each

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LollmsSpeech - Text-to-Speech</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto p-8 bg-white rounded-lg shadow-lg max-w-2xl">
+        <h1 class="text-3xl font-bold mb-6 text-center text-blue-600">LollmsSpeech</h1>
+        <div class="mb-4">
+            <textarea id="textInput" rows="4" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400" placeholder="Enter text to convert to speech..."></textarea>
+        </div>
+        <div class="mb-4">
+            <select id="voiceSelect" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <option value="">Select a voice</option>
+            </select>
+        </div>
+        <div class="flex mb-4 space-x-2">
+            <button id="generateBtn" class="flex-1 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 transition duration-300">Generate Speech</button>
+            <button id="saveBtn" class="flex-1 bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 transition duration-300" disabled>Save WAV</button>
+        </div>
+        <div id="audioPlayerContainer" class="mb-4 hidden">
+            <audio id="audioPlayer" controls class="w-full"></audio>
+        </div>
+        <div id="statusMessage" class="text-center text-gray-600"></div>
+    </div>
+
+    <script>
+        const textInput = document.getElementById('textInput');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const generateBtn = document.getElementById('generateBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audioPlayerContainer = document.getElementById('audioPlayerContainer');
+        const statusMessage = document.getElementById('statusMessage');
+
+        let audioBlob = null;
+
+        async function getAvailableVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                const voices = response.data.voices;
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    voiceSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching voices:', error);
+                updateStatus('errorFetchingVoices', 'text-red-500');
+            }
+        }
+
+        getAvailableVoices();
+
+        generateBtn.addEventListener('click', async () => {
+            const text = textInput.value.trim();
+            const selectedVoice = voiceSelect.value;
+            if (!text) {
+                updateStatus('emptyTextError', 'text-red-500');
+                return;
+            }
+            if (!selectedVoice) {
+                updateStatus('noVoiceSelected', 'text-red-500');
+                return;
+            }
+
+            updateStatus('generating', 'text-blue-500');
+            generateBtn.disabled = true;
+
+            try {
+                const response = await axios.post('/tts/file', {
+                    text,
+                    speaker: selectedVoice,
+                    language: 'en'
+                }, {
+                    responseType: 'blob'
+                });
+
+                audioBlob = response.data;
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayer.src = audioUrl;
+                audioPlayerContainer.classList.remove('hidden');
+                saveBtn.disabled = false;
+                updateStatus('generateSuccess', 'text-green-500');
+            } catch (error) {
+                updateStatus('generateError', 'text-red-500');
+                console.error('Error:', error);
+            } finally {
+                generateBtn.disabled = false;
+            }
+        });
+
+        saveBtn.addEventListener('click', () => {
+            if (audioBlob) {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(audioBlob);
+                a.download = 'generated_speech.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                updateStatus('savedWav', 'text-green-500');
+            }
+        });
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "LollmsSpeech",
+                    inputPlaceholder: "Enter text to convert to speech...",
+                    selectVoicePlaceholder: "Select a voice",
+                    generateBtn: "Generate Speech",
+                    saveBtn: "Save WAV",
+                    emptyTextError: "Please enter some text.",
+                    noVoiceSelected: "Please select a voice.",
+                    generating: "Generating speech...",
+                    generateSuccess: "Speech generated successfully!",
+                    generateError: "Error generating speech. Please try again.",
+                    savedWav: "WAV file saved!",
+                    errorFetchingVoices: "Error fetching available voices."
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'lollmsSpeech_', null);
+        localizer.apply();
+
+        document.querySelector('h1').textContent = localizer.translate('title');
+        textInput.placeholder = localizer.translate('inputPlaceholder');
+        voiceSelect.firstElementChild.textContent = localizer.translate('selectVoicePlaceholder');
+        generateBtn.textContent = localizer.translate('generateBtn');
+        saveBtn.textContent = localizer.translate('saveBtn');
+
+        function updateStatus(key, className) {
+            statusMessage.textContent = localizer.translate(key);
+            statusMessage.className = `text-center ${className}`;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LingaVox Translator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gray-100 min-h-screen dark:bg-gray-800 dark:text-white">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold text-center mb-8">VoiceTranslate/h1>
+        
+        <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label for="sourceVoice" class="block mb-2">Source Voice:</label>
+                    <select id="sourceVoice" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
+                    </select>
+                </div>
+                <div>
+                    <label for="targetLanguage" class="block mb-2">Target Language:</label>
+                    <select id="targetLanguage" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
+                    </select>
+                </div>
+                <div class="mt-4">
+                    <input type="checkbox" id="fullPipelineCheckbox" class="mr-2">
+                    <label for="fullPipelineCheckbox">Execute full pipeline when recording is done</label>
+                </div>
+            </div>
+            <div class="mb-4">
+                <audio id="recordedAudioPlayer" controls class="w-full"></audio>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Recorded Audio</p>
+            </div>            
+            <div class="text-center">
+                <button id="recordButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Start Recording
+                </button>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Transcription</h2>
+                <div id="transcription" class="border p-4 h-40 overflow-y-auto dark:bg-gray-600 dark:border-gray-500" contenteditable="true"></div>
+                <div class="mt-4 flex justify-between">
+                    <button id="translateButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Translate</button>
+                    <button id="copyTranscriptionButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Copy</button>
+                    <button id="saveTranscriptionButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Save</button>
+                </div>
+            </div>
+            
+            <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Translation</h2>
+                <div id="translation" class="border p-4 h-40 overflow-y-auto dark:bg-gray-600 dark:border-gray-500" contenteditable="true"></div>
+                <div class="mt-4 flex justify-between">
+                    <button id="synthesizeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Synthesize</button>
+                    <button id="copyTranslationButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Copy</button>
+                    <button id="saveTranslationButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Save</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Translated Audio</h2>
+            <div class="mb-4">
+                <audio id="audioPlayer" controls class="w-full"></audio>
+                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Translated Audio</p>
+            </div>
+            <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                Save Audio
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
+        <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p id="processingStep" class="text-gray-700 dark:text-gray-300">Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        let mediaRecorder;
+        let audioChunks = [];
+        let isRecording = false;
+
+        const recordButton = document.getElementById('recordButton');
+        const transcriptionDiv = document.getElementById('transcription');
+        const translationDiv = document.getElementById('translation');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const recordedAudioPlayer = document.getElementById('recordedAudioPlayer');
+        const saveButton = document.getElementById('saveButton');
+        const sourceVoiceSelect = document.getElementById('sourceVoice');
+        const targetLanguageSelect = document.getElementById('targetLanguage');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const translateButton = document.getElementById('translateButton');
+        const synthesizeButton = document.getElementById('synthesizeButton');
+        const copyTranscriptionButton = document.getElementById('copyTranscriptionButton');
+        const copyTranslationButton = document.getElementById('copyTranslationButton');
+        const saveTranscriptionButton = document.getElementById('saveTranscriptionButton');
+        const saveTranslationButton = document.getElementById('saveTranslationButton');
+        const fullPipelineCheckbox = document.getElementById('fullPipelineCheckbox');
+        const processingStep = document.getElementById('processingStep');
+
+        const translations = {
+            en: {
+                name: "en",
+                translations: {
+                    startRecording: "Start Recording",
+                    stopRecording: "Stop Recording",
+                    saveAudio: "Save Audio",
+                    processing: "Processing..."
+                }
+            },
+        };
+        const localizer = new WebAppLocalizer(translations, 'lingavox_', document.documentElement.lang);
+
+        async function initializeApp() {
+            await populateVoices();
+            await populateLanguages();
+            localizer.apply();
+            loadSettings();
+        }
+
+        async function populateVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                const voices = response.data.voices;
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    sourceVoiceSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching voices:', error);
+            }
+        }
+
+        async function populateLanguages() {
+            const languages = [
+                { code: 'en', name: 'English' },
+                { code: 'es', name: 'Spanish' },
+                { code: 'fr', name: 'French' },
+                { code: 'de', name: 'German' },
+                { code: 'zh', name: 'Chinese' }
+            ];
+            
+            languages.forEach(lang => {
+                const option = document.createElement('option');
+                option.value = lang.code;
+                option.textContent = lang.name;
+                targetLanguageSelect.appendChild(option);
+            });
+        }
+
+        function saveSettings() {
+            localStorage.setItem('sourceVoice', sourceVoiceSelect.value);
+            localStorage.setItem('targetLanguage', targetLanguageSelect.value);
+            localStorage.setItem('fullPipeline', fullPipelineCheckbox.checked);
+            localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
+        }
+
+        function loadSettings() {
+            const savedSourceVoice = localStorage.getItem('sourceVoice');
+            const savedTargetLanguage = localStorage.getItem('targetLanguage');
+            const savedFullPipeline = localStorage.getItem('fullPipeline');
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedSourceVoice) sourceVoiceSelect.value = savedSourceVoice;
+            if (savedTargetLanguage) targetLanguageSelect.value = savedTargetLanguage;
+            if (savedFullPipeline !== null) fullPipelineCheckbox.checked = JSON.parse(savedFullPipeline);
+            if (savedDarkMode !== null) {
+                if (JSON.parse(savedDarkMode)) {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            }
+        }
+
+        recordButton.addEventListener('click', toggleRecording);
+        translateButton.addEventListener('click', translateText);
+        synthesizeButton.addEventListener('click', synthesizeAudio);
+        copyTranscriptionButton.addEventListener('click', () => copyText(transcriptionDiv.textContent));
+        copyTranslationButton.addEventListener('click', () => copyText(translationDiv.textContent));
+        saveTranscriptionButton.addEventListener('click', () => saveText(transcriptionDiv.textContent, 'transcription.txt'));
+        saveTranslationButton.addEventListener('click', () => saveText(translationDiv.textContent, 'translation.txt'));
+
+        async function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = processAudio;
+                mediaRecorder.start();
+                isRecording = true;
+                recordButton.textContent = localizer.translate('stopRecording');
+                recordButton.classList.replace('bg-blue-500', 'bg-red-500');
+                recordButton.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
+            } catch (error) {
+                console.error('Error starting recording:', error);
+            }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            isRecording = false;
+            recordButton.textContent = localizer.translate('startRecording');
+            recordButton.classList.replace('bg-red-500', 'bg-blue-500');
+            recordButton.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
+        }
+
+        async function processAudio() {
+            showLoading('Processing audio...');
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            audioChunks = [];
+
+            const formData = new FormData();
+            formData.append('file', audioBlob);
+            try {
+                const transcriptionResponse = await axios.post('/transcribe', formData);
+                const transcribedText = transcriptionResponse.data.transcription;
+                transcriptionDiv.textContent = transcribedText;
+
+                recordedAudioPlayer.src = URL.createObjectURL(audioBlob);
+
+                if (fullPipelineCheckbox.checked) {
+                    await translateText();
+                    await synthesizeAudio();
+                }
+            } catch (error) {
+                console.error('Error processing audio:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function translateText() {
+            showLoading('Translating text...');
+            try {
+                const transcribedText = transcriptionDiv.textContent;
+                const translationResponse = await lc.generate(`${lc.system_message()}Translate the following text to ${targetLanguageSelect.value}: "${transcribedText}".\nMake sure you only answer with the translation without any extra comments.${lc.ai_message()}`);
+                translationDiv.textContent = translationResponse;
+            } catch (error) {
+                console.error('Error translating text:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function synthesizeAudio() {
+            showLoading('Synthesizing audio...');
+            try {
+                const translatedText = translationDiv.textContent;
+                const ttsResponse = await axios.post('/tts/file', {
+                    text: translatedText,
+                    speaker: sourceVoiceSelect.value,
+                    language: targetLanguageSelect.value
+                }, { responseType: 'blob' });
+
+                const audioUrl = URL.createObjectURL(ttsResponse.data);
+                audioPlayer.src = audioUrl;
+            } catch (error) {
+                console.error('Error synthesizing audio:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Copied to clipboard!');
+            }).catch(err => {
+                console.error('Error copying text: ', err);
+            });
+        }
+
+        function saveText(text, filename) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        saveButton.addEventListener('click', () => {
+            if (audioPlayer.src) {
+                const a = document.createElement('a');
+                a.href = audioPlayer.src;
+                a.download = 'translated_audio.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+
+        function showLoading(step) {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+            processingStep.textContent = step;
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+            loadingOverlay.classList.remove('flex');
+        }
+
+        sourceVoiceSelect.addEventListener('change', saveSettings);
+        targetLanguageSelect.addEventListener('change', saveSettings);
+        fullPipelineCheckbox.addEventListener('change', saveSettings);
+
+        initializeApp();
+    </script>
+</body>
+</html>

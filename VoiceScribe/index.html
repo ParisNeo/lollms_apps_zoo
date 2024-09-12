@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LollmsSpeech - Text-to-Speech</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto p-8 bg-white rounded-lg shadow-lg">
+        <h1 class="text-3xl font-bold mb-6 text-center text-purple-600">LollmsSpeech</h1>
+        <div class="mb-4">
+            <textarea id="textInput" rows="4" class="w-full p-2 border rounded" placeholder="Enter text to convert to speech"></textarea>
+        </div>
+        <div class="flex mb-4 space-x-4">
+            <select id="languageSelect" class="flex-1 p-2 border rounded">
+                <option value="en">English</option>
+                <option value="fr">French</option>
+                <option value="es">Spanish</option>
+                <option value="de">German</option>
+            </select>
+            <select id="voiceSelect" class="flex-1 p-2 border rounded">
+                <option value="default">Default Voice</option>
+            </select>
+        </div>
+        <button id="generateBtn" class="w-full bg-purple-600 text-white p-2 rounded hover:bg-purple-700 transition duration-300">Generate Speech</button>
+        <div id="audioPlayer" class="mt-4 hidden">
+            <audio id="audio" controls class="w-full"></audio>
+        </div>
+        <button id="saveBtn" class="w-full mt-4 bg-green-500 text-white p-2 rounded hover:bg-green-600 transition duration-300 hidden">Save Audio</button>
+    </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="text-white text-xl">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
+            <p class="mt-4">Generating speech...</p>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const textInput = document.getElementById('textInput');
+        const languageSelect = document.getElementById('languageSelect');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const generateBtn = document.getElementById('generateBtn');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const audio = document.getElementById('audio');
+        const saveBtn = document.getElementById('saveBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        generateBtn.addEventListener('click', async () => {
+            const text = textInput.value;
+            const language = languageSelect.value;
+            const voice = voiceSelect.value;
+            if (text) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+                try {
+                    const response = await lc.generate(`Generate speech for the following text in ${language} language using ${voice} voice: "${text}"`);
+                    const audioBlob = await fetch(response.audio_url).then(r => r.blob());
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audio.src = audioUrl;
+                    audioPlayer.classList.remove('hidden');
+                    saveBtn.classList.remove('hidden');
+                    saveBtn.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = audioUrl;
+                        a.download = 'generated_speech.wav';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                    };
+                } catch (error) {
+                    console.error('Error generating speech:', error);
+                    alert('An error occurred while generating speech. Please try again.');
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                }
+            } else {
+                alert('Please enter some text to convert to speech.');
+            }
+        });
+        async function fetchVoices() {
+            try {
+                const voices = await lc.generate('List available voices for text-to-speech');
+                const voiceList = JSON.parse(voices);
+                voiceSelect.innerHTML = voiceList.map(voice => `<option value="${voice.id}">${voice.name}</option>`).join('');
+            } catch (error) {
+                console.error('Error fetching voices:', error);
+            }
+        }
+        fetchVoices();
+    </script>
+</body>
+</html>
