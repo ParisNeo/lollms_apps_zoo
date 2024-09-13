@@ -25,11 +25,7 @@
         <div class="mb-6">
             <h2 class="text-2xl font-semibold mb-4" data-translate="participants"></h2>
             <div id="participants-list" class="space-y-4"></div>
-            <div class="mt-4">
-                <input type="text" id="participant-name" data-translate="name" class="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:border-gray-600">
-                <textarea id="participant-description" data-translate="description" class="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:border-gray-600" rows="3"></textarea>
-                <button id="add-participant" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700" data-translate="addParticipant"></button>
-            </div>
+            <button id="open-add-participant" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 mt-4" data-translate="addParticipant"></button>
         </div>
 
         <div class="mb-6">
@@ -44,6 +40,7 @@
         <div class="flex space-x-4">
             <button id="export-markdown" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700" data-translate="exportMarkdown"></button>
             <button id="export-html" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 dark:bg-purple-600 dark:hover:bg-purple-700" data-translate="exportHtml"></button>
+            <button id="build-audio" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700" data-translate="buildAudio"></button>
         </div>
     </div>
 
@@ -54,9 +51,23 @@
         </div>
     </div>
 
+    <div id="addParticipantModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl">
+            <h3 class="text-xl font-semibold mb-4" data-translate="addParticipant"></h3>
+            <input type="text" id="participant-name" data-translate="name" class="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:border-gray-600" placeholder="Name">
+            <textarea id="participant-description" data-translate="description" class="w-full p-2 border rounded mb-2 dark:bg-gray-700 dark:border-gray-600" rows="3" placeholder="Description"></textarea>
+            <select id="participant-voice" class="w-full p-2 border rounded mb-4 dark:bg-gray-700 dark:border-gray-600"></select>
+            <div class="flex justify-end space-x-2">
+                <button id="cancel-add-participant" class="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400" data-translate="cancel"></button>
+                <button id="confirm-add-participant" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600" data-translate="add"></button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const lc = new LollmsClient();
         let participants = JSON.parse(localStorage.getItem('aiDebateArenaParticipants')) || [];
+        let availableVoices = [];
 
         const localizer = new WebAppLocalizer({
             en: {
@@ -71,9 +82,13 @@
                     startDebate: "Start Debate",
                     exportMarkdown: "Export to Markdown",
                     exportHtml: "Export to HTML",
+                    buildAudio: "Build Audio",
                     generatingDebate: "Generating debate...",
                     edit: "Edit",
-                    delete: "Delete"
+                    delete: "Delete",
+                    voice: "Voice",
+                    cancel: "Cancel",
+                    add: "Add"
                 }
             },
             fr: {
@@ -88,9 +103,13 @@
                     startDebate: "Commencer le débat",
                     exportMarkdown: "Exporter en Markdown",
                     exportHtml: "Exporter en HTML",
+                    buildAudio: "Générer l'audio",
                     generatingDebate: "Génération du débat...",
                     edit: "Modifier",
-                    delete: "Supprimer"
+                    delete: "Supprimer",
+                    voice: "Voix",
+                    cancel: "Annuler",
+                    add: "Ajouter"
                 }
             },
             es: {
@@ -105,9 +124,13 @@
                     startDebate: "Iniciar debate",
                     exportMarkdown: "Exportar a Markdown",
                     exportHtml: "Exportar a HTML",
+                    buildAudio: "Generar audio",
                     generatingDebate: "Generando debate...",
                     edit: "Editar",
-                    delete: "Eliminar"
+                    delete: "Eliminar",
+                    voice: "Voz",
+                    cancel: "Cancelar",
+                    add: "Añadir"
                 }
             }
         }, "aiDebateArena", "#language");
@@ -119,22 +142,54 @@
                 localizer.apply();
             });
 
-            document.querySelector('#add-participant').addEventListener('click', addParticipant);
+            document.querySelector('#open-add-participant').addEventListener('click', () => {
+                document.querySelector('#addParticipantModal').classList.remove('hidden');
+                document.querySelector('#addParticipantModal').classList.add('flex');
+            });
+
+            document.querySelector('#cancel-add-participant').addEventListener('click', () => {
+                document.querySelector('#addParticipantModal').classList.add('hidden');
+                document.querySelector('#addParticipantModal').classList.remove('flex');
+            });
+
+            document.querySelector('#confirm-add-participant').addEventListener('click', addParticipant);
             document.querySelector('#start-debate').addEventListener('click', startDebate);
             document.querySelector('#export-markdown').addEventListener('click', () => exportDebate('markdown'));
             document.querySelector('#export-html').addEventListener('click', () => exportDebate('html'));
+            document.querySelector('#build-audio').addEventListener('click', buildAudio);
             updateParticipantsList();
+            getAvailableVoices();
         });
+
+        async function getAvailableVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                availableVoices = response.data.voices;
+                const voiceSelect = document.querySelector('#participant-voice');
+                availableVoices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    voiceSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching voices:', error);
+            }
+        }
 
         function addParticipant() {
             const name = document.querySelector('#participant-name').value;
             const description = document.querySelector('#participant-description').value;
-            if (name && description) {
-                participants.push({ name, description });
+            const voice = document.querySelector('#participant-voice').value;
+            if (name && description && voice) {
+                participants.push({ name, description, voice });
                 updateParticipantsList();
                 document.querySelector('#participant-name').value = '';
                 document.querySelector('#participant-description').value = '';
+                document.querySelector('#participant-voice').selectedIndex = 0;
                 localStorage.setItem('aiDebateArenaParticipants', JSON.stringify(participants));
+                document.querySelector('#addParticipantModal').classList.add('hidden');
+                document.querySelector('#addParticipantModal').classList.remove('flex');
             }
         }
 
@@ -147,6 +202,7 @@
                 div.innerHTML = `
                     <h3 class="font-semibold">${participant.name}</h3>
                     <p class="text-sm text-gray-600 dark:text-gray-300">${participant.description}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">${localizer.translate('voice')}: ${participant.voice}</p>
                     <div class="mt-2">
                         <button class="text-blue-500 dark:text-blue-400 mr-2" onclick="editParticipant(${index})">${localizer.translate('edit')}</button>
                         <button class="text-red-500 dark:text-red-400" onclick="deleteParticipant(${index})">${localizer.translate('delete')}</button>
@@ -160,9 +216,12 @@
             const participant = participants[index];
             document.querySelector('#participant-name').value = participant.name;
             document.querySelector('#participant-description').value = participant.description;
+            document.querySelector('#participant-voice').value = participant.voice;
             participants.splice(index, 1);
             updateParticipantsList();
             localStorage.setItem('aiDebateArenaParticipants', JSON.stringify(participants));
+            document.querySelector('#addParticipantModal').classList.remove('hidden');
+            document.querySelector('#addParticipantModal').classList.add('flex');
         }
 
         function deleteParticipant(index) {
@@ -249,6 +308,49 @@
                 .replace(/<em>(.*?)<\/em>/g, '*$1*')
                 .replace(/<br>/g, '\n')
                 .replace(/<.*?>/g, '');
+        }
+
+        async function buildAudio() {
+            const debateContent = document.querySelector('#debate-content').innerHTML;
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(debateContent, 'text/html');
+            const speechParts = [];
+
+            doc.body.childNodes.forEach(node => {
+                if (node.nodeType === Node.ELEMENT_NODE) {
+                    const speaker = node.querySelector('strong');
+                    const text = node.textContent.replace(speaker.textContent, '').trim();
+                    const participant = participants.find(p => p.name === speaker.textContent.trim());
+                    
+                    if (participant) {
+                        speechParts.push({ text, voice: participant.voice });
+                    } else {
+                        speechParts.push({ text, voice: '' });
+                    }
+                }
+            });
+
+            for (const part of speechParts) {
+                try {
+                    const response = await axios.post('/tts/file', {
+                        text: part.text,
+                        speaker: part.voice,
+                        language: 'en'
+                    }, {
+                        responseType: 'blob'
+                    });
+
+                    const url = URL.createObjectURL(response.data);
+                    const audio = new Audio(url);
+                    await new Promise(resolve => {
+                        audio.onended = resolve;
+                        audio.play();
+                    });
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Error generating audio:', error);
+                }
+            }
         }
     </script>
 </body>
