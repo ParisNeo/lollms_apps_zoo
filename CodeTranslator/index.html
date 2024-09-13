@@ -12,7 +12,10 @@
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto p-4">
         <h1 class="text-3xl font-bold mb-6 text-center">Code Translator</h1>
-        
+        <div class="mt-4">
+            <h2 class="text-xl font-semibold mb-2">Additional Instructions</h2>
+            <textarea id="additionalInstructions" class="w-full h-24 p-2 border rounded" placeholder="Enter additional instructions for the AI (e.g., specific libraries to use, optimization requests, etc.)"></textarea>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <h2 class="text-xl font-semibold mb-2">Input</h2>
@@ -57,11 +60,13 @@
                     <option value="elixir">Elixir</option>
                     <option value="clojure">Clojure</option>
                     <option value="f#">F#</option>
-                    <option value="english">English</option>
+                    <option value="mermaid diagram">Mermaid</option>
+                    <option value="graphviz diagram">Graphviz</option>
+                    <option value="english description of the code to be translated">English</option>
+                    <option value="french description of the code to be translated">French</option>
                 </select>
                 <div id="inputEditor" class="w-full h-96 border rounded"></div>
             </div>
-            
             <div>
                 <h2 class="text-xl font-semibold mb-2">Output</h2>
                 <select id="outputLang" class="w-full p-2 mb-2 border rounded">
@@ -105,38 +110,32 @@
                     <option value="elixir">Elixir</option>
                     <option value="clojure">Clojure</option>
                     <option value="f#">F#</option>
-                    <option value="english">English</option>
+                    <option value="mermaid diagram">Mermaid</option>
+                    <option value="graphviz diagram">Graphviz</option>
+                    <option value="english description of the code in plaintext format put inside a plaintext markdown tag">English</option>
+                    <option value="french description of the code in plaintext format put inside a plaintext markdown tag">French</option>
                 </select>
                 <div id="outputEditor" class="w-full h-96 border rounded"></div>
+                <div id="sideOutputEditor" class="w-full h-96 border rounded hidden"></div>
             </div>
         </div>
-        
         <div class="flex justify-center mt-4">
             <button id="translateBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Translate</button>
         </div>
-        
         <div class="flex justify-end mt-4 space-x-2">
             <button id="saveBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save</button>
             <button id="copyBtn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Copy</button>
         </div>
-        
-        <div class="mt-4">
-            <h2 class="text-xl font-semibold mb-2">Additional Instructions</h2>
-            <textarea id="additionalInstructions" class="w-full h-24 p-2 border rounded" placeholder="Enter additional instructions for the AI (e.g., specific libraries to use, optimization requests, etc.)"></textarea>
-        </div>
     </div>
-
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
         <div class="bg-white p-4 rounded-lg shadow-lg text-center">
             <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
             <p class="mt-2">Translating...</p>
         </div>
     </div>
-
     <script>
-        let inputEditor, outputEditor;
+        let inputEditor, outputEditor, sideOutputEditor, sideOutputEditorContainer;
         const lc = new LollmsClient();
-
         require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' } });
         require(['vs/editor/editor.main'], function() {
             inputEditor = monaco.editor.create(document.getElementById('inputEditor'), {
@@ -144,45 +143,55 @@
                 language: 'python',
                 theme: 'vs-dark'
             });
-
             outputEditor = monaco.editor.create(document.getElementById('outputEditor'), {
                 value: '# Translated code will appear here',
                 language: 'python',
                 theme: 'vs-dark',
                 readOnly: true
             });
-
+            sideOutputEditor = monaco.editor.create(document.getElementById('sideOutputEditor'), {
+                value: '# Translated code will appear here',
+                language: 'python',
+                theme: 'vs-dark',
+                readOnly: true
+            });
+            sideOutputEditorContainer = document.getElementById('sideOutputEditor');
             document.getElementById('inputLang').addEventListener('change', (e) => {
                 monaco.editor.setModelLanguage(inputEditor.getModel(), e.target.value);
             });
-
             document.getElementById('outputLang').addEventListener('change', (e) => {
                 monaco.editor.setModelLanguage(outputEditor.getModel(), e.target.value);
             });
-
             loadSavedData();
         });
-
         document.getElementById('translateBtn').addEventListener('click', async () => {
             const inputCode = inputEditor.getValue();
             const inputLang = document.getElementById('inputLang').value;
             const outputLang = document.getElementById('outputLang').value;
             const additionalInstructions = document.getElementById('additionalInstructions').value;
-
             document.getElementById('loadingOverlay').classList.remove('hidden');
-
             try {
-                const prompt = `Translate the following ${inputLang} code to ${outputLang}:
-
-${inputCode}
-
-Additional instructions:
-${additionalInstructions}
-
-Translated ${outputLang} code:`;
-                const translatedCode = await lc.generateCode(prompt);
-                outputEditor.setValue(translatedCode);
-                saveData();
+                if (outputLang === 'c' || outputLang === 'cpp'){
+                    extra = "Important: Make sure you return two separate codes one for the header and one for the code in this order. First the header code, then the source code.\n\n"
+                }else{
+                    extra=""
+                }
+                const prompt = `Translate the following ${inputLang} code to ${outputLang}:\n\n${inputCode}\n\n${extra}Additional instructions:\n${additionalInstructions}\n\nTranslated ${outputLang} code:`;
+                const codes = await lc.generateCodes(prompt);
+                if (codes.length > 0) {
+                    if (outputLang === 'c' || outputLang === 'cpp') {
+                        const headerCode = codes[0].content;
+                        const sourceCode = codes[1].content;
+                        outputEditor.setValue(`${headerCode}`);
+                        sideOutputEditor.setValue(`${sourceCode}`);
+                        sideOutputEditorContainer.classList.remove("hidden")
+                        sideOutputEditor.layout();
+                    } else {
+                        sideOutputEditorContainer.classList.add("hidden")
+                        outputEditor.setValue(codes[0].content);
+                    }
+                    saveData();
+                }
             } catch (error) {
                 console.error('Translation error:', error);
                 alert('An error occurred during translation. Please try again.');
@@ -190,19 +199,37 @@ Translated ${outputLang} code:`;
                 document.getElementById('loadingOverlay').classList.add('hidden');
             }
         });
-
         document.getElementById('saveBtn').addEventListener('click', () => {
             const outputCode = outputEditor.getValue();
             const outputLang = document.getElementById('outputLang').value;
-            const blob = new Blob([outputCode], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `translated_code.${outputLang}`;
-            a.click();
-            URL.revokeObjectURL(url);
+            if (outputLang === 'c' || outputLang === 'cpp') {
+                const sideOutputCode = sideOutputEditor.getValue();
+                const headerCode = outputCode
+                const sourceCode = sideOutputCode;
+                const headerBlob = new Blob([headerCode], { type: 'text/plain' });
+                const sourceBlob = new Blob([sourceCode], { type: 'text/plain' });
+                const headerUrl = URL.createObjectURL(headerBlob);
+                const sourceUrl = URL.createObjectURL(sourceBlob);
+                const headerLink = document.createElement('a');
+                const sourceLink = document.createElement('a');
+                headerLink.href = headerUrl;
+                sourceLink.href = sourceUrl;
+                headerLink.download = `translated_code.h`;
+                sourceLink.download = `translated_code.${outputLang}`;
+                headerLink.click();
+                sourceLink.click();
+                URL.revokeObjectURL(headerUrl);
+                URL.revokeObjectURL(sourceUrl);
+            } else {
+                const blob = new Blob([outputCode], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `translated_code.${outputLang}`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
         });
-
         document.getElementById('copyBtn').addEventListener('click', () => {
             const outputCode = outputEditor.getValue();
             navigator.clipboard.writeText(outputCode).then(() => {
@@ -212,18 +239,17 @@ Translated ${outputLang} code:`;
                 alert('Failed to copy code. Please try again.');
             });
         });
-
         function saveData() {
             const data = {
                 inputCode: inputEditor.getValue(),
                 inputLang: document.getElementById('inputLang').value,
                 outputCode: outputEditor.getValue(),
+                sideOutputCode: sideOutputEditor.getValue(),
                 outputLang: document.getElementById('outputLang').value,
                 additionalInstructions: document.getElementById('additionalInstructions').value
             };
             localStorage.setItem('codeTranslatorData', JSON.stringify(data));
         }
-
         function loadSavedData() {
             const savedData = localStorage.getItem('codeTranslatorData');
             if (savedData) {
@@ -231,6 +257,11 @@ Translated ${outputLang} code:`;
                 inputEditor.setValue(data.inputCode);
                 document.getElementById('inputLang').value = data.inputLang;
                 outputEditor.setValue(data.outputCode);
+                if (data && data.hasOwnProperty('sideOutputCode') && data.sideOutputCode !== null && (outputLang === 'c' || outputLang === 'cpp')) {
+                    sideOutputEditor.setValue(data.sideOutputCode);
+                    sideOutputEditorContainer.classList.remove("hidden")
+                    sideOutputEditor.layout();
+                }
                 document.getElementById('outputLang').value = data.outputLang;
                 document.getElementById('additionalInstructions').value = data.additionalInstructions;
                 monaco.editor.setModelLanguage(inputEditor.getModel(), data.inputLang);
