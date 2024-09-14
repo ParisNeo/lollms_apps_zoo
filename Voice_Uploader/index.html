@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XTTS Voice Uploader</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-2xl">
+        <h1 class="text-4xl font-bold mb-8 text-center text-blue-600" data-translate="title">XTTS Voice Uploader</h1>
+        
+        <div class="mb-6">
+            <select id="languageSelector" class="w-full p-3 border rounded text-lg">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+                <option value="de">Deutsch</option>
+            </select>
+        </div>
+
+        <div id="recordingSection" class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6" data-translate="recordVoice">Record Your Voice</h2>
+            <input type="text" id="voiceName" data-translate="voiceName" placeholder="Enter voice name" class="w-full mb-6 p-3 border rounded text-lg">
+            <div class="flex justify-between mb-6">
+                <button id="recordBtn" class="bg-red-500 text-white px-6 py-3 rounded-full hover:bg-red-600 transition text-lg flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span data-translate="record">Record</span>
+                </button>
+                <button id="stopBtn" class="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-gray-600 transition text-lg flex items-center hidden" disabled>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    <span data-translate="stop">Stop</span>
+                </button>
+            </div>
+            <canvas id="visualizer" class="h-32 w-full bg-gray-200 rounded"></canvas>
+            <div id="recordingAnimation" class="hidden mt-6 text-center">
+                <div class="animate-pulse text-red-500 text-3xl">●</div>
+            </div>
+            <div id="timer" class="mt-4 text-center text-gray-600 text-2xl">00:00</div>
+            <audio id="audioPlayback" class="w-full mt-6" controls></audio>
+        </div>
+        
+        <div id="fileUploadSection" class="mb-10">
+            <h2 class="text-2xl font-semibold mb-6" data-translate="uploadWav">Upload WAV File</h2>
+            <button id="importBtn" class="bg-blue-500 text-white px-6 py-3 rounded-full hover:bg-blue-600 transition w-full text-lg flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span data-translate="import">Import WAV</span>
+            </button>
+            <input type="file" id="fileInput" accept=".wav" class="hidden">
+            <button id="uploadBtn" class="bg-green-500 text-white px-6 py-3 rounded-full hover:bg-green-600 transition w-full text-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                <span data-translate="upload">Upload</span>
+            </button>
+        </div>
+        
+        <div id="statusDisplay" class="text-center text-gray-700 text-xl mb-8"></div>
+
+        <div id="textToRead" class="mt-10 p-6 bg-gray-100 rounded">
+            <h3 class="text-2xl font-semibold mb-4" data-translate="textToRead">Text to Read</h3>
+            <p id="textContent" class="text-gray-700 text-lg leading-relaxed"></p>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Voice Recorder",
+                    recordVoice: "Record Your Voice",
+                    voiceName: "Enter voice name",
+                    record: "Record",
+                    stop: "Stop",
+                    play: "Play",
+                    uploadWav: "Upload WAV File",
+                    import: "Import WAV",
+                    upload: "Upload",
+                    textToRead: "Text to Read",
+                    recording: "Recording...",
+                    recordingStopped: "Recording stopped. You can play or upload now.",
+                    uploadSuccessful: "Upload successful!",
+                    uploadFailed: "Upload failed. Please try again.",
+                    selectFile: "Please record audio or select a WAV file to upload."
+                },
+                textToRead: [
+                    "The quick brown fox jumps over the lazy dog. This sentence contains every letter of the alphabet and is often used for font and typing practice.",
+                    "Once upon a time, in a land far, far away, there lived a brave little mouse. Despite its small size, it dreamed of grand adventures and heroic deeds.",
+                    "Climate change is one of the most pressing issues of our time, requiring global cooperation. It affects ecosystems, weather patterns, and human societies worldwide.",
+                    "In the bustling city, skyscrapers reached towards the clouds, their glass facades reflecting the vibrant life below. Street vendors, office workers, and tourists mingled in a colorful tapestry of urban life.",
+                    "The old library stood silent, its shelves lined with countless books holding the wisdom of ages. Each tome told a story, not just within its pages, but of the many hands that had held it over the years."
+                ]
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'voiceRecorder_', 'languageSelector');
+        localizer.apply();
+
+        document.getElementById('languageSelector').addEventListener('change', function() {
+            localizer.setLanguage(this.value);
+            updateTextToRead();
+        });
+
+        function updateTextToRead() {
+            const currentLang = localizer.getCurrentLanguage();
+            const texts = translations[currentLang].textToRead;
+            const randomText = texts[Math.floor(Math.random() * texts.length)];
+            document.getElementById('textContent').textContent = randomText;
+        }
+
+        updateTextToRead();
+
+        let mediaRecorder;
+        let audioChunks = [];
+        let audioBlob;
+        let startTime;
+        let timerInterval;
+
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const fileInput = document.getElementById('fileInput');
+        const importBtn = document.getElementById('importBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusDisplay = document.getElementById('statusDisplay');
+        const audioPlayback = document.getElementById('audioPlayback');
+        const visualizerCanvas = document.getElementById('visualizer');
+        const voiceNameInput = document.getElementById('voiceName');
+        const recordingAnimation = document.getElementById('recordingAnimation');
+        const timerDisplay = document.getElementById('timer');
+
+        recordBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        importBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        uploadBtn.addEventListener('click', uploadAudio);
+
+        function updateTimer() {
+            const currentTime = new Date().getTime();
+            const elapsedTime = new Date(currentTime - startTime);
+            const minutes = elapsedTime.getMinutes().toString().padStart(2, '0');
+            const seconds = elapsedTime.getSeconds().toString().padStart(2, '0');
+            timerDisplay.textContent = `${minutes}:${seconds}`;
+        }
+
+        async function startRecording() {
+            audioChunks = [];
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                stopBtn.classList.add("hidden")
+                recordBtn.classList.remove("hidden")
+                audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const arrayBuffer = await audioBlob.arrayBuffer();
+                const wavBuffer = await convertToWav(arrayBuffer);
+                audioBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPlayback.src = audioUrl;
+            };
+
+            mediaRecorder.start();
+            stopBtn.classList.remove("hidden")
+            recordBtn.classList.add("hidden")
+            recordBtn.disabled = true;
+            stopBtn.disabled = false;
+            statusDisplay.textContent = localizer.translate('recording');
+            recordingAnimation.classList.remove('hidden');
+
+            startTime = new Date().getTime();
+            timerInterval = setInterval(updateTimer, 1000);
+
+            visualizeAudio(stream);
+        }
+
+        async function convertToWav(webmBuffer) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(webmBuffer);
+            
+            const wavBuffer = audioBufferToWav(audioBuffer);
+            return wavBuffer;
+        }
+
+        function audioBufferToWav(buffer, opt) {
+            opt = opt || {};
+
+            var numChannels = buffer.numberOfChannels;
+            var sampleRate = buffer.sampleRate;
+            var format = opt.float32 ? 3 : 1;
+            var bitDepth = format === 3 ? 32 : 16;
+
+            var result;
+            if (numChannels === 2) {
+                result = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+            } else {
+                result = buffer.getChannelData(0);
+            }
+
+            return encodeWAV(result, format, sampleRate, numChannels, bitDepth);
+        }
+
+        function encodeWAV(samples, format, sampleRate, numChannels, bitDepth) {
+            var bytesPerSample = bitDepth / 8;
+            var blockAlign = numChannels * bytesPerSample;
+
+            var buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+            var view = new DataView(buffer);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, format, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitDepth, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * bytesPerSample, true);
+            if (format === 1) {
+                floatTo16BitPCM(view, 44, samples);
+            } else {
+                writeFloat32(view, 44, samples);
+            }
+
+            return buffer;
+        }
+
+        function interleave(inputL, inputR) {
+            var length = inputL.length + inputR.length;
+            var result = new Float32Array(length);
+
+            var index = 0;
+            var inputIndex = 0;
+
+            while (index < length) {
+                result[index++] = inputL[inputIndex];
+                result[index++] = inputR[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+
+        function writeFloat32(output, offset, input) {
+            for (var i = 0; i < input.length; i++, offset += 4) {
+                output.setFloat32(offset, input[i], true);
+            }
+        }
+
+        function floatTo16BitPCM(output, offset, input) {
+            for (var i = 0; i < input.length; i++, offset += 2) {
+                var s = Math.max(-1, Math.min(1, input[i]));
+                output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+        }
+
+        function writeString(view, offset, string) {
+            for (var i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+            statusDisplay.textContent = localizer.translate('recordingStopped');
+            recordingAnimation.classList.add('hidden');
+            clearInterval(timerInterval);
+        }
+        
+
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    audioBlob = new Blob([e.target.result], { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+                    audioPlayback.src = audioUrl;
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        function uploadAudio() {
+            let fileToUpload;
+            const voiceName = voiceNameInput.value.trim() || 'unnamed';
+            if (audioBlob) {
+                fileToUpload = new File([audioBlob], `${voiceName}.wav`, { type: 'audio/x-wav' });
+            } else if (fileInput.files.length > 0) {
+                const originalFile = fileInput.files[0];
+                fileToUpload = new File([originalFile], `${voiceName}.wav`, { type: 'audio/x-wav' });
+            } else {
+                statusDisplay.textContent = localizer.translate('selectFile');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileToUpload);
+
+            fetch('/upload_voice/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                statusDisplay.textContent = localizer.translate('uploadSuccessful');
+            })
+            .catch(error => {
+                statusDisplay.textContent = localizer.translate('uploadFailed');
+                console.error('Error:', error);
+            });
+        }
+
+        function visualizeAudio(stream) {
+            const visualizerCanvas = document.getElementById('visualizer');
+            if (!visualizerCanvas || !(visualizerCanvas instanceof HTMLCanvasElement)) {
+                console.error('Visualizer canvas not found or is not a canvas element');
+                return;
+            }
+
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const ctx = visualizerCanvas.getContext('2d');
+            const WIDTH = visualizerCanvas.width;
+            const HEIGHT = visualizerCanvas.height;
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                ctx.fillStyle = 'rgb(200, 200, 200)';
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                const barWidth = (WIDTH / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i] / 2;
+                    ctx.fillStyle = `rgb(50, ${barHeight + 100}, 50)`;
+                    ctx.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            draw();
+        }
+    </script>
+</body>
+</html>

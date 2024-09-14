@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colab to FastAPI Converter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-600 mb-2">Colab to FastAPI Converter</h1>
+            <p class="text-xl text-gray-600">Convert your Colab notebook into a FastAPI server with ease</p>
+        </header>
+
+        <main class="bg-white rounded-lg shadow-md p-6">
+            <section id="fileUpload" class="mb-6">
+                <h2 class="text-2xl font-semibold mb-4">Upload Colab Notebook</h2>
+                <div class="border-dashed border-2 border-gray-300 rounded-lg p-6 text-center">
+                    <input type="file" id="colabFile" accept=".ipynb" class="hidden" />
+                    <label for="colabFile" class="cursor-pointer text-indigo-600 hover:text-indigo-800">
+                        Drag and drop your Colab notebook here or click to upload
+                    </label>
+                </div>
+            </section>
+
+            <section id="conversionOptions" class="mb-6">
+                <h2 class="text-2xl font-semibold mb-4">Conversion Options</h2>
+                <div class="flex items-center mb-4">
+                    <input type="checkbox" id="additionalDeps" class="mr-2" />
+                    <label for="additionalDeps">Include additional dependencies</label>
+                </div>
+                <div>
+                    <label for="endpointName" class="block mb-2">Custom Endpoint Name:</label>
+                    <input type="text" id="endpointName" placeholder="Enter custom endpoint name" class="w-full p-2 border rounded" />
+                </div>
+            </section>
+
+            <button id="convertBtn" class="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition-colors">
+                Convert
+            </button>
+
+            <section id="results" class="mt-8 hidden">
+                <h2 class="text-2xl font-semibold mb-4">Conversion Results</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">requirements.txt</h3>
+                        <pre id="requirementsOutput" class="bg-gray-100 p-4 rounded overflow-auto max-h-60"></pre>
+                        <button id="downloadRequirements" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors">
+                            Download requirements.txt
+                        </button>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-2">server.py</h3>
+                        <pre id="serverOutput" class="bg-gray-100 p-4 rounded overflow-auto max-h-60"></pre>
+                        <button id="downloadServer" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors">
+                            Download server.py
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-600">
+            <p>&copy; 2023 Colab to FastAPI Converter. Powered by Lollms.</p>
+        </footer>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4 text-indigo-600">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient(
+            null, null, 4096, -1, 4096, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS
+        );
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        document.getElementById('convertBtn').addEventListener('click', async () => {
+            const fileInput = document.getElementById('colabFile');
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please upload a Colab notebook file.');
+                return;
+            }
+
+            const additionalDeps = document.getElementById('additionalDeps').checked;
+            const endpointName = document.getElementById('endpointName').value.trim() || 'main';
+
+            showLoader();
+
+            try {
+                const fileContent = await readFileAsText(file);
+                const prompt = `
+                    ${lc.system_message()}You are a Colab to FastAPI converter. Convert the following Colab notebook content into a requirements.txt file and a server.py file with a FastAPI endpoint.
+                    Additional dependencies: ${additionalDeps ? 'Yes' : 'No'}
+                    Endpoint name: ${endpointName}
+                    Colab notebook content:
+                    ${fileContent}
+                    ${lc.template.separator_template}${lc.ai_message()}
+                `;
+
+                const response = await lc.generateCodes(prompt);
+                if (response.length >= 2) {
+                    const requirementsContent = response[0].content;
+                    const serverContent = response[1].content;
+
+                    document.getElementById('requirementsOutput').textContent = requirementsContent;
+                    document.getElementById('serverOutput').textContent = serverContent;
+                    document.getElementById('results').classList.remove('hidden');
+
+                    setupDownloadButton('downloadRequirements', requirementsContent, 'requirements.txt');
+                    setupDownloadButton('downloadServer', serverContent, 'server.py');
+                } else {
+                    throw new Error('Incomplete response from the AI.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during conversion. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = event => resolve(event.target.result);
+                reader.onerror = error => reject(error);
+                reader.readAsText(file);
+            });
+        }
+
+        function setupDownloadButton(buttonId, content, filename) {
+            document.getElementById(buttonId).addEventListener('click', () => {
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+    </script>
+</body>
+</html>

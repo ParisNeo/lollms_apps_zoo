@@ -14,12 +14,8 @@
         <h1 class="text-3xl font-bold text-center mb-8">VoiceTranslate</h1>
         
         <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4">Recording</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                <div>
-                    <label for="targetLanguage" class="block mb-2">Target Language:</label>
-                    <select id="targetLanguage" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                    </select>
-                </div>
                 <div class="mt-4">
                     <input type="checkbox" id="fullPipelineCheckbox" class="mr-2">
                     <label for="fullPipelineCheckbox">Execute full pipeline when recording is done</label>
@@ -28,53 +24,107 @@
             <div class="mb-4">
                 <audio id="recordedAudioPlayer" controls class="w-full"></audio>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Recorded Audio</p>
-            </div>            
-            <div class="text-center">
-                <button id="recordButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
-                    Start Recording
+            </div>         
+            <canvas id="visualizer" class="h-32 w-full bg-gray-200 rounded"></canvas>
+            <div id="timer" class="mt-4 text-center text-gray-600 text-2xl">00:00</div>
+            <div class="flex flex-row justify-center space-x-4 mt-4"> <!-- Added classes here -->
+                <button id="recordBtn" class="bg-red-500 text-white px-6 py-3 rounded-full hover:bg-red-600 transition text-lg flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span data-translate="record">Record</span>
+                </button>
+                <button id="stopBtn" class="bg-gray-500 text-white px-6 py-3 rounded-full hover:bg-gray-600 transition text-lg flex items-center hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    <span data-translate="stop">Stop</span>
                 </button>
             </div>
         </div>
+        
+        <div id="statusDisplay" class="text-center text-gray-700 text-xl mb-8"></div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
                 <h2 class="text-xl font-semibold mb-4">Transcription</h2>
                 <div id="transcription" class="border p-4 h-40 overflow-y-auto dark:bg-gray-600 dark:border-gray-500" contenteditable="true"></div>
-                <div class="mt-4 flex justify-between">
-                    <button id="translateButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Translate</button>
-                    <button id="copyTranscriptionButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Copy</button>
-                    <button id="saveTranscriptionButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Save</button>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button id="translateButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129"></path>
+                        </svg>
+                        Translate
+                    </button>
+                    <button id="copyTranscriptionButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        Copy
+                    </button>
+                    <button id="saveTranscriptionButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                        </svg>
+                        Save
+                    </button>
+                </div>
+            </div>
+                        
+            <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
+                <h2 class="text-xl font-semibold mb-4">Translation</h2>
+                <div class="mb-4">
+                    <label for="targetLanguage" class="block mb-2">Target Language:</label>
+                    <select id="targetLanguage" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
+                    </select>
+                </div>
+                <div id="translation" class="border p-4 h-40 overflow-y-auto dark:bg-gray-600 dark:border-gray-500 mb-4" contenteditable="true"></div>
+                <div class="flex justify-end space-x-2 mb-4">
+                    <button id="synthesizeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"></path>
+                        </svg>
+                        Synthesize
+                    </button>
+                    <button id="copyTranslationButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                        </svg>
+                        Copy
+                    </button>
+                    <button id="saveTranslationButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path>
+                        </svg>
+                        Save
+                    </button>
                 </div>
             </div>
             
-            <div class="bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Translation</h2>
-                <div id="translation" class="border p-4 h-40 overflow-y-auto dark:bg-gray-600 dark:border-gray-500" contenteditable="true"></div>
-                <div class="mt-4 flex justify-between">
-                    <button id="synthesizeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Synthesize</button>
-                    <button id="copyTranslationButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Copy</button>
-                    <button id="saveTranslationButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Save</button>
-                </div>
-                <div>
-                    <label for="sourceVoice" class="block mb-2">Output Voice:</label>
-                    <select id="sourceVoice" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
-                    </select>
-                </div>
-
-            </div>
         </div>
         
         <div class="mt-8 bg-white dark:bg-gray-700 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Translated Audio</h2>
             <div class="mb-4">
+                <label for="sourceVoice" class="block mb-2">Output Voice:</label>
+                <select id="sourceVoice" class="w-full p-2 border rounded dark:bg-gray-600 dark:border-gray-500">
+                </select>
+            </div>
+            <div class="mb-4">
                 <audio id="audioPlayer" controls class="w-full"></audio>
                 <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">Translated Audio</p>
             </div>
-            <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
-                Save Audio
-            </button>
+            <div class="flex justify-end">
+                <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"></path>
+                    </svg>
+                    Save Audio
+                </button>
+            </div>
         </div>
-    </div>
+        
 
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
         <div class="bg-white dark:bg-gray-700 p-6 rounded-lg shadow-xl text-center">
@@ -88,12 +138,15 @@
         let mediaRecorder;
         let audioChunks = [];
         let isRecording = false;
+        let audioBlob;
 
-        const recordButton = document.getElementById('recordButton');
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
         const transcriptionDiv = document.getElementById('transcription');
         const translationDiv = document.getElementById('translation');
         const audioPlayer = document.getElementById('audioPlayer');
         const recordedAudioPlayer = document.getElementById('recordedAudioPlayer');
+        const visualizerCanvas = document.getElementById('visualizer');
         const saveButton = document.getElementById('saveButton');
         const sourceVoiceSelect = document.getElementById('sourceVoice');
         const targetLanguageSelect = document.getElementById('targetLanguage');
@@ -106,7 +159,9 @@
         const saveTranslationButton = document.getElementById('saveTranslationButton');
         const fullPipelineCheckbox = document.getElementById('fullPipelineCheckbox');
         const processingStep = document.getElementById('processingStep');
-
+        const timerDisplay = document.getElementById('timer');
+        const recordingLanguage = document.getElementById('recordingLanguage');
+        
         const translations = {
             en: {
                 name: "en",
@@ -183,7 +238,9 @@
             }
         }
 
-        recordButton.addEventListener('click', toggleRecording);
+        recordBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        const statusDisplay = document.getElementById('statusDisplay');
         translateButton.addEventListener('click', translateText);
         synthesizeButton.addEventListener('click', synthesizeAudio);
         copyTranscriptionButton.addEventListener('click', () => copyText(transcriptionDiv.textContent));
@@ -199,56 +256,205 @@
             }
         }
 
+        function updateTimer() {
+            const currentTime = new Date().getTime();
+            const elapsedTime = new Date(currentTime - startTime);
+            const minutes = elapsedTime.getMinutes().toString().padStart(2, '0');
+            const seconds = elapsedTime.getSeconds().toString().padStart(2, '0');
+            timerDisplay.textContent = `${minutes}:${seconds}`;
+        }
+
         async function startRecording() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                mediaRecorder = new MediaRecorder(stream);
-                mediaRecorder.ondataavailable = event => {
-                    audioChunks.push(event.data);
-                };
-                mediaRecorder.onstop = processAudio;
-                mediaRecorder.start();
-                isRecording = true;
-                recordButton.textContent = localizer.translate('stopRecording');
-                recordButton.classList.replace('bg-blue-500', 'bg-red-500');
-                recordButton.classList.replace('hover:bg-blue-600', 'hover:bg-red-600');
-            } catch (error) {
-                console.error('Error starting recording:', error);
+            audioChunks = [];
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+
+            mediaRecorder.ondataavailable = (event) => {
+                audioChunks.push(event.data);
+            };
+
+            mediaRecorder.onstop = async () => {
+                recordBtn.classList.remove("hidden")
+                stopBtn.classList.add("hidden")
+
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');            
+
+                audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const arrayBuffer = await audioBlob.arrayBuffer();
+                const wavBuffer = await convertToWav(arrayBuffer);
+                audioBlob = new Blob([wavBuffer], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                recordedAudioPlayer.src = audioUrl;
+                const formData = new FormData();
+                formData.append('file', audioBlob);
+                try {
+                    const transcriptionResponse = await axios.post('/transcribe', formData);
+                    const transcribedText = transcriptionResponse.data.transcription;
+                    transcriptionDiv.textContent = transcribedText;
+
+                    recordedAudioPlayer.src = URL.createObjectURL(audioBlob);
+
+                    if (fullPipelineCheckbox.checked) {
+                        await translateText();
+                        await synthesizeAudio();
+                        audioPlayer.play()
+                    }
+                } catch (error) {
+                    console.error('Error processing audio:', error);
+                } finally {
+                    hideLoading();
+                }
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');                
+
+            };
+
+            mediaRecorder.start();
+            recordBtn.classList.add("hidden")
+            stopBtn.classList.remove("hidden")
+            statusDisplay.textContent = localizer.translate('recording');
+
+            startTime = new Date().getTime();
+            timerInterval = setInterval(updateTimer, 1000);
+
+            visualizeAudio(stream);
+        }
+
+        async function convertToWav(webmBuffer) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioContext.decodeAudioData(webmBuffer);
+            
+            const wavBuffer = audioBufferToWav(audioBuffer);
+            return wavBuffer;
+        }
+
+        function audioBufferToWav(buffer, opt) {
+            opt = opt || {};
+
+            var numChannels = buffer.numberOfChannels;
+            var sampleRate = buffer.sampleRate;
+            var format = opt.float32 ? 3 : 1;
+            var bitDepth = format === 3 ? 32 : 16;
+
+            var result;
+            if (numChannels === 2) {
+                result = interleave(buffer.getChannelData(0), buffer.getChannelData(1));
+            } else {
+                result = buffer.getChannelData(0);
+            }
+
+            return encodeWAV(result, format, sampleRate, numChannels, bitDepth);
+        }
+
+        function encodeWAV(samples, format, sampleRate, numChannels, bitDepth) {
+            var bytesPerSample = bitDepth / 8;
+            var blockAlign = numChannels * bytesPerSample;
+
+            var buffer = new ArrayBuffer(44 + samples.length * bytesPerSample);
+            var view = new DataView(buffer);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + samples.length * bytesPerSample, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, format, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * blockAlign, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitDepth, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, samples.length * bytesPerSample, true);
+            if (format === 1) {
+                floatTo16BitPCM(view, 44, samples);
+            } else {
+                writeFloat32(view, 44, samples);
+            }
+
+            return buffer;
+        }
+
+        function interleave(inputL, inputR) {
+            var length = inputL.length + inputR.length;
+            var result = new Float32Array(length);
+
+            var index = 0;
+            var inputIndex = 0;
+
+            while (index < length) {
+                result[index++] = inputL[inputIndex];
+                result[index++] = inputR[inputIndex];
+                inputIndex++;
+            }
+            return result;
+        }
+
+        function writeFloat32(output, offset, input) {
+            for (var i = 0; i < input.length; i++, offset += 4) {
+                output.setFloat32(offset, input[i], true);
+            }
+        }
+
+        function floatTo16BitPCM(output, offset, input) {
+            for (var i = 0; i < input.length; i++, offset += 2) {
+                var s = Math.max(-1, Math.min(1, input[i]));
+                output.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+            }
+        }
+
+        function writeString(view, offset, string) {
+            for (var i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
             }
         }
 
         function stopRecording() {
             mediaRecorder.stop();
-            isRecording = false;
-            recordButton.textContent = localizer.translate('startRecording');
-            recordButton.classList.replace('bg-red-500', 'bg-blue-500');
-            recordButton.classList.replace('hover:bg-red-600', 'hover:bg-blue-600');
+            statusDisplay.textContent = localizer.translate('recordingStopped');
+            clearInterval(timerInterval);
         }
 
-        async function processAudio() {
-            showLoading('Processing audio...');
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            audioChunks = [];
 
-            const formData = new FormData();
-            formData.append('file', audioBlob);
-            try {
-                const transcriptionResponse = await axios.post('/transcribe', formData);
-                const transcribedText = transcriptionResponse.data.transcription;
-                transcriptionDiv.textContent = transcribedText;
 
-                recordedAudioPlayer.src = URL.createObjectURL(audioBlob);
-
-                if (fullPipelineCheckbox.checked) {
-                    await translateText();
-                    await synthesizeAudio();
-                }
-            } catch (error) {
-                console.error('Error processing audio:', error);
-            } finally {
-                hideLoading();
+        function visualizeAudio(stream) {
+            const visualizerCanvas = document.getElementById('visualizer');
+            if (!visualizerCanvas || !(visualizerCanvas instanceof HTMLCanvasElement)) {
+                console.error('Visualizer canvas not found or is not a canvas element');
+                return;
             }
-        }
+
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const source = audioContext.createMediaStreamSource(stream);
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            source.connect(analyser);
+
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const ctx = visualizerCanvas.getContext('2d');
+            const WIDTH = visualizerCanvas.width;
+            const HEIGHT = visualizerCanvas.height;
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                ctx.fillStyle = 'rgb(200, 200, 200)';
+                ctx.fillRect(0, 0, WIDTH, HEIGHT);
+                const barWidth = (WIDTH / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i] / 2;
+                    ctx.fillStyle = `rgb(50, ${barHeight + 100}, 50)`;
+                    ctx.fillRect(x, HEIGHT - barHeight / 2, barWidth, barHeight);
+                    x += barWidth + 1;
+                }
+            }
+            draw();
+        }        
 
         async function translateText() {
             showLoading('Translating text...');

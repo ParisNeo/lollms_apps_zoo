@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Graphviz Code Generator and Visualizer</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+    <div class="container mx-auto p-4 flex-grow">
+        <h1 class="text-3xl font-bold mb-4 text-center">Graphviz Code Generator and Visualizer</h1>
+        <div class="mb-4">
+            <label for="prompt" class="block mb-2 font-bold">Enter your graph description:</label>
+            <textarea id="prompt" rows="4" class="w-full p-2 border rounded" placeholder="Describe your graph here..."></textarea>
+        </div>
+        <button id="generateBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Generate Graph</button>
+        <div id="spinner" class="spinner hidden mb-4"></div>
+        <div id="errorMessage" class="text-red-500 mb-4 hidden"></div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <h2 class="text-xl font-bold mb-2">Generated Graphviz Code:</h2>
+                <textarea id="graphvizCode" rows="10" class="w-full p-2 border rounded"></textarea>
+            </div>
+            <div>
+                <h2 class="text-xl font-bold mb-2">Visualization:</h2>
+                <div class="border p-2 bg-white">
+                    <div id="graphContainer" class="relative overflow-hidden" style="max-width: 100%; max-height: 500px;">
+                        <div id="graph"></div>
+                        <div class="absolute top-2 right-2 flex space-x-2">
+                            <button id="zoomInBtn" class="bg-gray-200 p-1 rounded">🔍+</button>
+                            <button id="zoomOutBtn" class="bg-gray-200 p-1 rounded">🔍-</button>
+                            <button id="exportSvgBtn" class="bg-gray-200 p-1 rounded">SVG</button>
+                            <button id="exportPngBtn" class="bg-gray-200 p-1 rounded">PNG</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button id="updateBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4">Update Graph</button>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const generateBtn = document.getElementById('generateBtn');
+        const updateBtn = document.getElementById('updateBtn');
+        const promptInput = document.getElementById('prompt');
+        const graphvizCodeArea = document.getElementById('graphvizCode');
+        const graphContainer = document.getElementById('graph');
+        const spinner = document.getElementById('spinner');
+        const errorMessage = document.getElementById('errorMessage');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+        const exportSvgBtn = document.getElementById('exportSvgBtn');
+        const exportPngBtn = document.getElementById('exportPngBtn');
+        let currentScale = 1;
+        let panOffset = { x: 0, y: 0 };
+        let isDragging = false;
+        let startPanPosition = { x: 0, y: 0 };
+        generateBtn.addEventListener('click', generateGraph);
+        updateBtn.addEventListener('click', updateGraph);
+        zoomInBtn.addEventListener('click', () => zoom(1.1));
+        zoomOutBtn.addEventListener('click', () => zoom(0.9));
+        exportSvgBtn.addEventListener('click', exportSvg);
+        exportPngBtn.addEventListener('click', exportPng);
+        graphContainer.addEventListener('mousedown', startPan);
+        graphContainer.addEventListener('mousemove', pan);
+        graphContainer.addEventListener('mouseup', endPan);
+        graphContainer.addEventListener('mouseleave', endPan);
+        async function generateGraph() {
+            const prompt = promptInput.value.trim();
+            if (!prompt) {
+                showError('Please enter a graph description.');
+                return;
+            }
+            showSpinner();
+            hideError();
+            try {
+                const graphvizCode = await generateGraphvizCode(prompt);
+                graphvizCodeArea.value = graphvizCode;
+                renderGraph(graphvizCode);
+            } catch (error) {
+                showError('An error occurred while generating the graph. Please try again.');
+                console.error(error);
+            } finally {
+                hideSpinner();
+            }
+        }
+        async function generateGraphvizCode(prompt) {
+            const fullPrompt = `Generate Graphviz code for the following graph description: ${prompt}\nPlease provide only the Graphviz code without any additional explanations or markdown formatting.`;
+            const code = await lc.generateCode(fullPrompt);
+            return code;
+        }
+        function renderGraph(graphvizCode) {
+            const viz = new Viz();
+            viz.renderSVGElement(graphvizCode)
+                .then(element => {
+                    graphContainer.innerHTML = '';
+                    graphContainer.appendChild(element);
+                    resetZoom();
+                })
+                .catch(error => {
+                    showError('An error occurred while rendering the graph. Please check the Graphviz code.');
+                    console.error(error);
+                });
+        }
+        function showSpinner() {
+            spinner.classList.remove('hidden');
+            generateBtn.disabled = true;
+            updateBtn.disabled = true;
+        }
+        function hideSpinner() {
+            spinner.classList.add('hidden');
+            generateBtn.disabled = false;
+            updateBtn.disabled = false;
+        }
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.classList.remove('hidden');
+        }
+        function hideError() {
+            errorMessage.textContent = '';
+            errorMessage.classList.add('hidden');
+        }
+        function updateGraph() {
+            const graphvizCode = graphvizCodeArea.value.trim();
+            if (!graphvizCode) {
+                showError('Please generate or enter Graphviz code first.');
+                return;
+            }
+            hideError();
+            renderGraph(graphvizCode);
+        }
+        function zoom(factor) {
+            currentScale *= factor;
+            applyTransform();
+        }
+        function resetZoom() {
+            currentScale = 1;
+            panOffset = { x: 0, y: 0 };
+            applyTransform();
+        }
+        function applyTransform() {
+            const svg = graphContainer.querySelector('svg');
+            if (svg) {
+                svg.style.transform = `scale(${currentScale}) translate(${panOffset.x}px, ${panOffset.y}px)`;
+            }
+        }
+        function startPan(e) {
+            isDragging = true;
+            startPanPosition = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+        }
+        function pan(e) {
+            if (!isDragging) return;
+            panOffset = {
+                x: (e.clientX - startPanPosition.x) / currentScale,
+                y: (e.clientY - startPanPosition.y) / currentScale
+            };
+            applyTransform();
+        }
+        function endPan() {
+            isDragging = false;
+        }
+        function exportSvg() {
+            const svg = graphContainer.querySelector('svg');
+            if (svg) {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const blob = new Blob([svgData], {type: 'image/svg+xml;charset=utf-8'});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'graph.svg';
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+        function exportPng() {
+            const svg = graphContainer.querySelector('svg');
+            if (svg) {
+                const svgData = new XMLSerializer().serializeToString(svg);
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const img = new Image();
+                img.onload = function() {
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+                    const pngUrl = canvas.toDataURL('image/png');
+                    const link = document.createElement('a');
+                    link.href = pngUrl;
+                    link.download = 'graph.png';
+                    link.click();
+                };
+                img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+            }
+        }
+    </script>
+</body>
+</html>
