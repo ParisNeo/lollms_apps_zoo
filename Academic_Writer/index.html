@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Writer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-600">Academic Writer</h1>
+            <p class="text-xl text-gray-600">Your AI assistant for university-level essay writing</p>
+        </header>
+
+        <div class="flex flex-wrap -mx-4">
+            <div class="w-full lg:w-3/4 px-4 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="mb-6">
+                        <label for="essay-topic" class="block text-sm font-medium text-gray-700 mb-2">Essay Topic</label>
+                        <input type="text" id="essay-topic" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="word-count" class="block text-sm font-medium text-gray-700 mb-2">Word Count Requirement</label>
+                        <input type="number" id="word-count" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="mb-6">
+                        <label for="subject" class="block text-sm font-medium text-gray-700 mb-2">Subject/Discipline</label>
+                        <select id="subject" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select a subject</option>
+                            <option value="literature">Literature</option>
+                            <option value="history">History</option>
+                            <option value="science">Science</option>
+                            <option value="philosophy">Philosophy</option>
+                            <option value="sociology">Sociology</option>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label for="essay-type" class="block text-sm font-medium text-gray-700 mb-2">Essay Type</label>
+                        <select id="essay-type" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="argumentative">Argumentative</option>
+                            <option value="expository">Expository</option>
+                            <option value="analytical">Analytical</option>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label for="style" class="block text-sm font-medium text-gray-700 mb-2">Style</label>
+                        <select id="style" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="formal">Formal</option>
+                            <option value="semi-formal">Semi-formal</option>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="citation-placeholders" class="form-checkbox h-5 w-5 text-indigo-600">
+                            <span class="ml-2 text-sm text-gray-700">Include citation placeholders</span>
+                        </label>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button id="generate-essay" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Generate Essay</button>
+                        <button id="expand-paragraph" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Expand Paragraph</button>
+                        <button id="clear" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Clear</button>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full lg:w-1/4 px-4 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold mb-4">Writing Tips</h2>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>Start with a clear thesis statement</li>
+                        <li>Use topic sentences to introduce each paragraph</li>
+                        <li>Support your arguments with evidence</li>
+                        <li>Maintain a logical flow throughout the essay</li>
+                        <li>Conclude by restating your main points</li>
+                    </ul>
+                    <h3 class="text-lg font-semibold mt-6 mb-2">Citation Styles</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-700">
+                        <li>APA</li>
+                        <li>MLA</li>
+                        <li>Chicago</li>
+                        <li>Harvard</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Generated Essay</h2>
+            <div class="mb-4">
+                <span class="text-sm font-medium text-gray-700">Word Count: </span>
+                <span id="word-count-display" class="text-sm text-gray-900">0</span>
+            </div>
+            <textarea id="essay-output" class="w-full h-96 px-3 py-2 text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500"></div>
+            <div class="mt-4 text-white text-xl font-semibold">Generating essay...</div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+
+        const generateEssayBtn = document.getElementById('generate-essay');
+        const expandParagraphBtn = document.getElementById('expand-paragraph');
+        const clearBtn = document.getElementById('clear');
+        const essayOutput = document.getElementById('essay-output');
+        const wordCountDisplay = document.getElementById('word-count-display');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        function showLoader() {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+        }
+
+        function hideLoader() {
+            loadingOverlay.classList.remove('flex');
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function updateWordCount() {
+            const wordCount = essayOutput.value.trim().split(/\s+/).length;
+            wordCountDisplay.textContent = wordCount;
+        }
+
+        generateEssayBtn.addEventListener('click', async () => {
+            const topic = document.getElementById('essay-topic').value;
+            const wordCount = document.getElementById('word-count').value;
+            const subject = document.getElementById('subject').value;
+            const essayType = document.getElementById('essay-type').value;
+            const style = document.getElementById('style').value;
+            const includeCitations = document.getElementById('citation-placeholders').checked;
+
+            const prompt = `${lc.system_message()}You are an expert academic writer. Write a ${wordCount}-word ${style} ${essayType} essay on the topic "${topic}" in the field of ${subject}. ${includeCitations ? 'Include citation placeholders where appropriate.' : ''} Ensure the essay is well-structured, coherent, and meets university-level standards.${lc.template.separator_template}${lc.ai_message()}Certainly! I'll write a ${wordCount}-word ${style} ${essayType} essay on the topic "${topic}" in the field of ${subject}. Here's the essay:
+
+`;
+
+            showLoader();
+            try {
+                const essay = await lc.generate(prompt);
+                essayOutput.value = essay;
+                updateWordCount();
+            } catch (error) {
+                console.error('Error generating essay:', error);
+                alert('An error occurred while generating the essay. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        expandParagraphBtn.addEventListener('click', async () => {
+            const selectedText = essayOutput.value.substring(essayOutput.selectionStart, essayOutput.selectionEnd);
+            if (!selectedText) {
+                alert('Please select a paragraph to expand.');
+                return;
+            }
+
+            const prompt = `${lc.system_message()}You are an expert academic writer. Expand and elaborate on the following paragraph, making it longer and more detailed while maintaining its core message and academic tone:
+
+${selectedText}
+
+Please provide an expanded version of this paragraph.${lc.template.separator_template}${lc.ai_message()}Certainly! I'll expand and elaborate on the given paragraph while maintaining its core message and academic tone. Here's the expanded version:
+
+`;
+
+            showLoader();
+            try {
+                const expandedParagraph = await lc.generate(prompt);
+                const newEssay = essayOutput.value.replace(selectedText, expandedParagraph);
+                essayOutput.value = newEssay;
+                updateWordCount();
+            } catch (error) {
+                console.error('Error expanding paragraph:', error);
+                alert('An error occurred while expanding the paragraph. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            essayOutput.value = '';
+            updateWordCount();
+        });
+
+        essayOutput.addEventListener('input', updateWordCount);
+    </script>
+</body>
+</html>
