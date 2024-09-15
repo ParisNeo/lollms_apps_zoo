@@ -27,7 +27,7 @@
 <body class="text-white min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-2 text-red-600">LoLLMS: Your Personal AI Assistant</h1>
+            <h1 class="text-4xl font-bold mb-2 text-red-600" data-translate="title">LoLLMS: Your Personal AI Assistant</h1>
             <img src="/apps/LoLLMS/icon.png" alt="Iron Man Logo" class="mx-auto rounded-full border-4 border-yellow-500 w-20 h-20">
         </header>
         <main class="flex flex-col items-center">
@@ -36,9 +36,9 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
-                    Start Recording
+                    <span data-translate="startRecording">Start Recording</span>
                 </button>
-                <div id="status" class="text-center mb-4 text-yellow-500">Status: Idle</div>
+                <div id="status" class="text-center mb-4 text-yellow-500" data-translate="status">Status: Idle</div>
                 <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5" class="w-full mb-4 accent-red-600">
                 <div id="conversation" class="bg-gray-800 rounded p-4 h-64 overflow-y-auto mb-4 border border-yellow-500"></div>
             </div>
@@ -46,41 +46,66 @@
                 <button id="heartButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
                     ❤️
                 </button>
-                <button id="discussionModeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="discussionModeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="discussionMode">
                     Discussion Mode
                 </button>
-                <button id="haltButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="haltButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="haltDiscussion">
                     Halt Discussion
                 </button>
-                <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveDiscussion">
                     Save Discussion
                 </button>
-                <button id="loadButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="loadButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="loadDiscussion">
                     Load Discussion
                 </button>
-                <button id="settingsButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="settingsButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="settings">
                     Settings
                 </button>
             </div>
         </main>
         <footer class="text-center mt-8 text-red-400">
-            <p>LoLLMS AI Assistant v1.0 | Powered by Lollms</p>
+            <p data-translate="footer">LoLLMS AI Assistant v1.0 | Powered by Lollms</p>
         </footer>
     </div>
-    <div id="loadingOverlay" class="hidden">
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
         <div class="text-center">
             <div class="text-6xl animate-spin text-red-600">🍓</div>
-            <div class="mt-4 text-yellow-500">Processing...</div>
+            <div class="mt-4 text-yellow-500" data-translate="processing">Processing...</div>
         </div>
     </div>
     <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
         <div class="bg-white p-6 rounded-lg">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">Settings</h2>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800" data-translate="settingsTitle">Settings</h2>
             <div class="mb-4">
-                <label for="voiceSelect" class="block text-gray-700 font-bold mb-2">Select Voice:</label>
+                <label for="languageSelect" class="block text-gray-700 font-bold mb-2" data-translate="selectLanguage">Select Language:</label>
+                <select id="languageSelect" class="w-full p-2 border rounded text-gray-800"></select>
+            </div>
+            <div class="mb-4">
+                <label for="voiceSelect" class="block text-gray-700 font-bold mb-2" data-translate="selectVoice">Select Voice:</label>
                 <select id="voiceSelect" class="w-full p-2 border rounded text-gray-800"></select>
             </div>
-            <button id="closeSettings" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Close</button>
+            <div class="mb-4">
+                <label for="emailClientSelect" class="block text-gray-700 font-bold mb-2" data-translate="selectEmailClient">Select Email Client:</label>
+                <select id="emailClientSelect" class="w-full p-2 border rounded text-gray-800">
+                    <option value="Gmail">Gmail</option>
+                    <option value="Outlook">Outlook</option>
+                    <option value="Hotmail">Hotmail</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="notificationTypeSelect" class="block text-gray-700 font-bold mb-2" data-translate="selectNotificationType">Select Notification Type:</label>
+                <select id="notificationTypeSelect" class="w-full p-2 border rounded text-gray-800">
+                    <option value="browser">Browser Notification</option>
+                    <option value="googleCalendar">Google Calendar</option>
+                    <option value="windows">Windows Notification</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="reminderTime" class="block text-gray-700 font-bold mb-2" data-translate="setReminder">Set Reminder:</label>
+                <input type="datetime-local" id="reminderTime" class="w-full p-2 border rounded text-gray-800">
+                <button id="setReminderButton" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded" data-translate="setReminderButton">Set Reminder</button>
+            </div>
+            <button id="closeSettings" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded" data-translate="close">Close</button>
         </div>
     </div>
     <script>
@@ -92,6 +117,8 @@
         let silenceTimeout;
         let discussionMode = false;
         let selectedVoice = '';
+        let selectedLanguage = '';
+        let selectedNotificationType = 'browser';
         const startButton = document.getElementById('startRecording');
         const statusElement = document.getElementById('status');
         const volumeControl = document.getElementById('volume');
@@ -106,6 +133,86 @@
         const settingsModal = document.getElementById('settingsModal');
         const closeSettingsButton = document.getElementById('closeSettings');
         const voiceSelect = document.getElementById('voiceSelect');
+        const languageSelect = document.getElementById('languageSelect');
+        const emailClientSelect = document.getElementById('emailClientSelect');
+        const notificationTypeSelect = document.getElementById('notificationTypeSelect');
+        const reminderTimeInput = document.getElementById('reminderTime');
+        const setReminderButton = document.getElementById('setReminderButton');
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "LoLLMS: Your Personal AI Assistant",
+                    startRecording: "Start Recording",
+                    status: "Status: Idle",
+                    discussionMode: "Discussion Mode",
+                    haltDiscussion: "Halt Discussion",
+                    saveDiscussion: "Save Discussion",
+                    loadDiscussion: "Load Discussion",
+                    settings: "Settings",
+                    footer: "LoLLMS AI Assistant v1.0 | Powered by Lollms",
+                    processing: "Processing...",
+                    settingsTitle: "Settings",
+                    selectLanguage: "Select Language:",
+                    selectVoice: "Select Voice:",
+                    selectEmailClient: "Select Email Client:",
+                    selectNotificationType: "Select Notification Type:",
+                    setReminder: "Set Reminder:",
+                    setReminderButton: "Set Reminder",
+                    close: "Close"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "LoLLMS : Votre assistant IA personnel",
+                    startRecording: "Commencer l'enregistrement",
+                    status: "Statut : Inactif",
+                    discussionMode: "Mode discussion",
+                    haltDiscussion: "Arrêter la discussion",
+                    saveDiscussion: "Sauvegarder la discussion",
+                    loadDiscussion: "Charger la discussion",
+                    settings: "Paramètres",
+                    footer: "Assistant IA LoLLMS v1.0 | Propulsé par Lollms",
+                    processing: "Traitement en cours...",
+                    settingsTitle: "Paramètres",
+                    selectLanguage: "Sélectionner la langue :",
+                    selectVoice: "Sélectionner la voix :",
+                    selectEmailClient: "Sélectionner le client e-mail :",
+                    selectNotificationType: "Sélectionner le type de notification :",
+                    setReminder: "Définir un rappel :",
+                    setReminderButton: "Définir le rappel",
+                    close: "Fermer"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    title: "LoLLMS: Tu Asistente de IA Personal",
+                    startRecording: "Iniciar Grabación",
+                    status: "Estado: Inactivo",
+                    discussionMode: "Modo Discusión",
+                    haltDiscussion: "Detener Discusión",
+                    saveDiscussion: "Guardar Discusión",
+                    loadDiscussion: "Cargar Discusión",
+                    settings: "Configuración",
+                    footer: "Asistente de IA LoLLMS v1.0 | Impulsado por Lollms",
+                    processing: "Procesando...",
+                    settingsTitle: "Configuración",
+                    selectLanguage: "Seleccionar Idioma:",
+                    selectVoice: "Seleccionar Voz:",
+                    selectEmailClient: "Seleccionar Cliente de Correo:",
+                    selectNotificationType: "Seleccionar Tipo de Notificación:",
+                    setReminder: "Establecer Recordatorio:",
+                    setReminderButton: "Establecer Recordatorio",
+                    close: "Cerrar"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'lollms_', languageSelect);
+
         startButton.addEventListener('click', toggleRecording);
         volumeControl.addEventListener('input', updateVolume);
         heartButton.addEventListener('click', showHeart);
@@ -116,6 +223,11 @@
         settingsButton.addEventListener('click', openSettings);
         closeSettingsButton.addEventListener('click', closeSettings);
         voiceSelect.addEventListener('change', updateSelectedVoice);
+        languageSelect.addEventListener('change', updateSelectedLanguage);
+        emailClientSelect.addEventListener('change', updateEmailClient);
+        notificationTypeSelect.addEventListener('change', updateNotificationType);
+        setReminderButton.addEventListener('click', setReminder);
+
         function toggleRecording() {
             if (isRecording) {
                 stopRecording();
@@ -123,6 +235,7 @@
                 startRecording();
             }
         }
+
         async function startRecording() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -138,13 +251,14 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                     </svg>
-                    Stop Recording
+${localizer.translate('startRecording')}
                 `;
                 updateStatus('Listening');
             } catch (err) {
                 console.error('Error accessing microphone:', err);
             }
         }
+
         function stopRecording() {
             if (mediaRecorder && mediaRecorder.state === 'recording') {
                 mediaRecorder.stop();
@@ -153,11 +267,12 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                     </svg>
-                    Start Recording
+                    ${localizer.translate('startRecording')}
                 `;
                 updateStatus('Processing');
             }
         }
+
         async function processAudio() {
             showLoading();
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
@@ -172,6 +287,7 @@
                 addToConversation('User', transcription);
                 const aiResponse = await getAIResponse(transcription);
                 addToConversation('LoLLMS', aiResponse);
+                hideLoading();
                 await speakResponse(aiResponse);
             } catch (error) {
                 console.error('Error processing audio:', error);
@@ -182,6 +298,7 @@
                 }
             }
         }
+
         const availableFunctions = {
             get_date_time: {
                 name: "get_date_time",
@@ -192,8 +309,12 @@
                 name: "send_email",
                 parameters: ["subject", "content"],
                 description: "Send an email using the default email client"
+            },
+            set_reminder: {
+                name: "set_reminder",
+                parameters: ["time", "time in standard iso format"],
+                description: "Set a reminder at the specified time with the given message"
             }
-            // Add more functions here as needed
         };
 
         async function getAIResponse(userInput) {
@@ -229,9 +350,9 @@ ${lc.template.separator_template}${lc.ai_message()}`;
             try {
                 const response = await lc.generateCode(prompt);
                 if (response) {
-                    const jsonResponse = JSON.parse(response);
+                    const jsonResponse = parseCustomJSON(response);// JSON.parse(response);
                     if (jsonResponse.requires_function_call) {
-                        console.log(`AI called a function: ${jsonResponse.function}`)
+                        console.log(`AI called a function: ${jsonResponse.function.name}`)
                         const functionResult = await executeFunctionCall(jsonResponse.function);
                         if (jsonResponse.function.needs_regeneration) {
                             console.log(`needs regeneration: ${jsonResponse.function}`)
@@ -256,19 +377,36 @@ ${lc.template.separator_template}${lc.ai_message()}`;
             }
         }
 
+        function parseCustomJSON(jsonString) {
+            // Remove any leading/trailing whitespace
+            jsonString = jsonString.trim();
+            
+            // Remove any markdown code block indicators
+            jsonString = jsonString.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+
+            // Replace newlines within string values with \n
+            jsonString = jsonString.replace(/:\s*"([^"]*(?:(?:\\")?[^"]*)*)"(\s*[,}])/g, (match, p1, p2) => {
+                return ': "' + p1.replace(/\n/g, '\\n') + '"' + p2;
+            });
+
+            // Parse the modified JSON string
+            try {
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+                throw new Error('Invalid JSON format');
+            }
+        }
         async function executeFunctionCall(functionCall) {
             switch(functionCall.name) {
                 case 'get_date_time':
                     return new Date().toLocaleString();
                 case 'send_email':
-                    // Create a mailto link
                     const mailtoLink = `mailto:?subject=${encodeURIComponent(functionCall.parameters.subject)}&body=${encodeURIComponent(functionCall.parameters.content)}`;
-                    emailClient = localStorage.getItem("emailClient") || 'Gmail'
+                    const emailClient = localStorage.getItem("emailClient") || 'Gmail';
                     if (emailClient === 'Outlook') {
-                        // Try to launch Outlook using the mailto protocol
                         window.location.href = mailtoLink;
                     } else {
-                        // For other clients, use the web-based approach
                         let emailUrl;
                         switch (emailClient) {
                             case 'Hotmail':
@@ -281,12 +419,46 @@ ${lc.template.separator_template}${lc.ai_message()}`;
                         }
                         window.open(emailUrl, '_blank');
                     }
-
                     console.log(`Sending email: Subject: ${functionCall.parameters.subject}, Content: ${functionCall.parameters.content}`);
                     return "Email sent successfully.";
+                case 'set_reminder':
+                    const reminderTime = new Date(functionCall.parameters.time);
+                    const reminderMessage = functionCall.parameters.message;
+                    setReminderInPlatform(reminderTime, reminderMessage);
+                    return `Reminder set for ${reminderTime.toLocaleString()} with message: ${reminderMessage}`;
                 default:
                     console.error(`Unknown function: ${functionCall.name}`);
                     return "Function not implemented.";
+            }
+        }
+
+        function setReminderInPlatform(time, message) {
+            switch (selectedNotificationType) {
+                case 'browser':
+                    if ('Notification' in window) {
+                        Notification.requestPermission().then(function (permission) {
+                            if (permission === "granted") {
+                                const now = new Date().getTime();
+                                const reminderTime = time.getTime();
+                                const delay = reminderTime - now;
+                                if (delay > 0) {
+                                    setTimeout(() => {
+                                        new Notification("Reminder", { body: message });
+                                    }, delay);
+                                }
+                            }
+                        });
+                    }
+                    break;
+                case 'googleCalendar':
+                    const calendarUrl = `https://www.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(message)}&dates=${time.toISOString().replace(/-|:|\.\d\d\d/g, "")}/${time.toISOString().replace(/-|:|\.\d\d\d/g, "")}`;
+                    window.open(calendarUrl, '_blank');
+                    break;
+                case 'windows':
+                    console.log('Windows notification not implemented in this web version');
+                    break;
+                default:
+                    console.error('Unknown notification type');
             }
         }
 
@@ -295,7 +467,7 @@ ${lc.template.separator_template}${lc.ai_message()}`;
                 console.log(`Generating using voice : ${selectedVoice}`);
                 const response = await axios.post('/tts/stream', {
                     text: text,
-                    language: 'en',
+                    language: selectedLanguage,
                     speaker: selectedVoice
                 }, {
                     responseType: 'arraybuffer'
@@ -317,31 +489,38 @@ ${lc.template.separator_template}${lc.ai_message()}`;
                 console.error('Error in text-to-speech:', error);
             }
         }
+
         function addToConversation(speaker, text) {
             const messageElement = document.createElement('div');
             messageElement.className = 'mb-2';
             messageElement.innerHTML = `<strong class="${speaker === 'User' ? 'text-yellow-500' : 'text-red-500'}">${speaker}:</strong> ${text}`;
             conversationElement.appendChild(messageElement);
             conversationElement.scrollTop = conversationElement.scrollHeight;
+            conversationHistory.push(`${speaker}: ${text}`);
         }
+
         function updateStatus(status) {
-            statusElement.textContent = `Status: ${status}`;
+            statusElement.textContent = `${localizer.translate('status')} ${status}`;
         }
+
         function updateVolume() {
             localStorage.setItem('lollmsVolume', volumeControl.value);
         }
+
         function showLoading() {
             loadingOverlay.classList.remove('hidden');
         }
+
         function hideLoading() {
             loadingOverlay.classList.add('hidden');
         }
+
         function showHeart() {
             const heart = document.createElement('div');
             heart.textContent = '❤️';
             heart.style.position = 'fixed';
             heart.style.fontSize = '2rem';
-heart.style.left = `${Math.random() * window.innerWidth}px`;
+            heart.style.left = `${Math.random() * window.innerWidth}px`;
             heart.style.top = `${Math.random() * window.innerHeight}px`;
             heart.style.transition = 'all 1s ease-out';
             document.body.appendChild(heart);
@@ -353,9 +532,10 @@ heart.style.left = `${Math.random() * window.innerWidth}px`;
                 document.body.removeChild(heart);
             }, 1050);
         }
+
         function toggleDiscussionMode() {
             discussionMode = !discussionMode;
-            discussionModeButton.textContent = discussionMode ? 'Exit Discussion Mode' : 'Discussion Mode';
+            discussionModeButton.textContent = discussionMode ? localizer.translate('haltDiscussion') : localizer.translate('discussionMode');
             discussionModeButton.classList.toggle('bg-blue-500');
             discussionModeButton.classList.toggle('bg-red-500');
             if (discussionMode) {
@@ -364,36 +544,67 @@ heart.style.left = `${Math.random() * window.innerWidth}px`;
                 stopRecording();
             }
         }
+
         function haltDiscussion() {
             if (isRecording || discussionMode) {
                 stopRecording();
                 discussionMode = false;
-                discussionModeButton.textContent = 'Discussion Mode';
+                discussionModeButton.textContent = localizer.translate('discussionMode');
                 discussionModeButton.classList.remove('bg-red-500');
                 discussionModeButton.classList.add('bg-blue-500');
             }
         }
+
         function saveDiscussion() {
-            const conversation = conversationElement.innerHTML;
-            localStorage.setItem('lollmsConversation', conversation);
+            const conversation = JSON.stringify(conversationHistory);
+            const blob = new Blob([conversation], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'conversation.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
             alert('Discussion saved successfully!');
         }
+
         function loadDiscussion() {
-            const savedConversation = localStorage.getItem('lollmsConversation');
-            if (savedConversation) {
-                conversationElement.innerHTML = savedConversation;
-                alert('Discussion loaded successfully!');
-            } else {
-                alert('No saved discussion found.');
-            }
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const loadedConversation = JSON.parse(e.target.result);
+                        conversationHistory = loadedConversation;
+                        conversationElement.innerHTML = '';
+                        loadedConversation.forEach(message => {
+                            const [speaker, text] = message.split(': ');
+                            addToConversation(speaker, text);
+                        });
+                        alert('Discussion loaded successfully!');
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        alert('Error loading discussion. Please make sure the file is valid.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         }
+
         function openSettings() {
             settingsModal.classList.remove('hidden');
             loadVoices();
         }
+
         function closeSettings() {
             settingsModal.classList.add('hidden');
         }
+
         async function loadVoices() {
             try {
                 const response = await axios.get('/tts/voices');
@@ -413,16 +624,51 @@ heart.style.left = `${Math.random() * window.innerWidth}px`;
                 console.error('Error loading voices:', error);
             }
         }
+
         function updateSelectedVoice() {
             selectedVoice = voiceSelect.value;
             localStorage.setItem('lollmsVoice', selectedVoice);
         }
+
+        function updateSelectedLanguage() {
+            selectedLanguage = languageSelect.value;
+            localStorage.setItem('lollmsLanguage', selectedLanguage);
+            localizer.setLanguage(selectedLanguage);
+            localizer.apply();
+        }
+
+        function updateEmailClient() {
+            localStorage.setItem('emailClient', emailClientSelect.value);
+        }
+
+        function updateNotificationType() {
+            selectedNotificationType = notificationTypeSelect.value;
+            localStorage.setItem('notificationType', selectedNotificationType);
+        }
+
+        function setReminder() {
+            const reminderTime = new Date(reminderTimeInput.value);
+            const reminderMessage = "This is your reminder!";
+            setReminderInPlatform(reminderTime, reminderMessage);
+            alert(`Reminder set for ${reminderTime.toLocaleString()}`);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             const savedVolume = localStorage.getItem('lollmsVolume');
             if (savedVolume) {
                 volumeControl.value = savedVolume;
             }
             selectedVoice = localStorage.getItem('lollmsVoice') || '';
+selectedLanguage = localStorage.getItem('lollmsLanguage') || 'en';
+            languageSelect.value = selectedLanguage;
+            localizer.setLanguage(selectedLanguage);
+            localizer.apply();
+            const savedEmailClient = localStorage.getItem('emailClient');
+            if (savedEmailClient) {
+                emailClientSelect.value = savedEmailClient;
+            }
+            selectedNotificationType = localStorage.getItem('notificationType') || 'browser';
+            notificationTypeSelect.value = selectedNotificationType;
         });
     </script>
 </body>
