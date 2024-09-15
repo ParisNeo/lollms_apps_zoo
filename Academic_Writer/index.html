@@ -62,6 +62,9 @@
                         <button id="generate-essay" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Generate Essay</button>
                         <button id="expand-paragraph" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Expand Paragraph</button>
                         <button id="clear" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Clear</button>
+                        <button id="save-md" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save as MD</button>
+                        <button id="save-html" class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">Save as HTML</button>
+                        <button id="save-docx" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Save as DOCX</button>
                     </div>
                 </div>
             </div>
@@ -92,7 +95,7 @@
                 <span class="text-sm font-medium text-gray-700">Word Count: </span>
                 <span id="word-count-display" class="text-sm text-gray-900">0</span>
             </div>
-            <textarea id="essay-output" class="w-full h-96 px-3 py-2 text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+            <textarea id="essay-output" class="w-full h-96 px-3 py-2 text-gray-700 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
         </div>
     </div>
 
@@ -110,6 +113,9 @@
         const generateEssayBtn = document.getElementById('generate-essay');
         const expandParagraphBtn = document.getElementById('expand-paragraph');
         const clearBtn = document.getElementById('clear');
+        const saveMdBtn = document.getElementById('save-md');
+        const saveHtmlBtn = document.getElementById('save-html');
+        const saveDocxBtn = document.getElementById('save-docx');
         const essayOutput = document.getElementById('essay-output');
         const wordCountDisplay = document.getElementById('word-count-display');
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -127,6 +133,18 @@
         function updateWordCount() {
             const wordCount = essayOutput.value.trim().split(/\s+/).length;
             wordCountDisplay.textContent = wordCount;
+        }
+
+        function saveContent(content, fileType, fileExtension) {
+            const blob = new Blob([content], { type: fileType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `essay.${fileExtension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         generateEssayBtn.addEventListener('click', async () => {
@@ -188,7 +206,32 @@ Please provide an expanded version of this paragraph.${lc.template.separator_tem
             updateWordCount();
         });
 
+        saveMdBtn.addEventListener('click', () => {
+            saveContent(essayOutput.value, 'text/markdown', 'md');
+        });
+
+        saveHtmlBtn.addEventListener('click', () => {
+            const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Essay</title></head><body>${essayOutput.value.replace(/\n/g, '<br>')}</body></html>`;
+            saveContent(htmlContent, 'text/html', 'html');
+        });
+
+        saveDocxBtn.addEventListener('click', () => {
+            alert('Saving as DOCX is not implemented in this example. You would need a library like docx.js to generate DOCX files.');
+        });
+
         essayOutput.addEventListener('input', updateWordCount);
+
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('savedEssay', essayOutput.value);
+        });
+
+        window.addEventListener('load', () => {
+            const savedEssay = localStorage.getItem('savedEssay');
+            if (savedEssay) {
+                essayOutput.value = savedEssay;
+                updateWordCount();
+            }
+        });
     </script>
 </body>
 </html>
