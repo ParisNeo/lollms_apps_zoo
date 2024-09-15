@@ -66,6 +66,36 @@
         </footer>
     </div>
 
+    <div id="explainer" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-8 rounded-lg max-w-2xl">
+            <h2 class="text-2xl font-bold mb-4" data-translate="explainer_title">Welcome to Publication Timeline Visualizer</h2>
+            <p class="mb-4" data-translate="explainer_description">This app allows you to visualize your publication timeline from an Excel file. Here's how it works:</p>
+            <ol class="list-decimal list-inside mb-4">
+                <li data-translate="explainer_step1">Upload an Excel file containing your publication data.</li>
+                <li data-translate="explainer_step2">The app will generate a chart showing your publications over time.</li>
+                <li data-translate="explainer_step3">Use the filters to explore data by author or year.</li>
+                <li data-translate="explainer_step4">View publication statistics below the chart.</li>
+            </ol>
+            <p class="mb-4" data-translate="explainer_excel_format">Your Excel file should have these columns:</p>
+            <ul class="list-disc list-inside mb-4">
+                <li>year: The publication year</li>
+                <li>title: The title of the publication</li>
+                <li>author: The author's name</li>
+            </ul>
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="dont-show-again" class="mr-2">
+                <label for="dont-show-again" data-translate="dont_show_again">Don't show this again</label>
+            </div>
+            <button id="close-explainer" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300" data-translate="close_explainer">Got it!</button>
+        </div>
+    </div>
+
+    <button id="help-button" class="fixed bottom-4 right-4 bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition duration-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    </button>
+
     <script>
         const translations = {
             en: {
@@ -88,7 +118,16 @@
                     avg_publications_per_year: "Average Publications/Year",
                     most_published_author: "Most Published Author",
                     most_productive_year: "Most Productive Year",
-                    footer_text: "© 2023 Publication Timeline Visualizer. All rights reserved."
+                    footer_text: "© 2023 Publication Timeline Visualizer. All rights reserved.",
+                    explainer_title: "Welcome to Publication Timeline Visualizer",
+                    explainer_description: "This app allows you to visualize your publication timeline from an Excel file. Here's how it works:",
+                    explainer_step1: "Upload an Excel file containing your publication data.",
+                    explainer_step2: "The app will generate a chart showing your publications over time.",
+                    explainer_step3: "Use the filters to explore data by author or year.",
+                    explainer_step4: "View publication statistics below the chart.",
+                    explainer_excel_format: "Your Excel file should have these columns:",
+                    dont_show_again: "Don't show this again",
+                    close_explainer: "Got it!"
                 }
             },
             fr: {
@@ -111,13 +150,22 @@
                     avg_publications_per_year: "Moyenne Publications/An",
                     most_published_author: "Auteur le Plus Publié",
                     most_productive_year: "Année la Plus Productive",
-                    footer_text: "© 2023 Visualiseur de Chronologie des Publications. Tous droits réservés."
+                    footer_text: "© 2023 Visualiseur de Chronologie des Publications. Tous droits réservés.",
+                    explainer_title: "Bienvenue sur le Visualiseur de Chronologie des Publications",
+                    explainer_description: "Cette application vous permet de visualiser votre chronologie de publications à partir d'un fichier Excel. Voici comment ça fonctionne:",
+                    explainer_step1: "Téléchargez un fichier Excel contenant vos données de publication.",
+                    explainer_step2: "L'application générera un graphique montrant vos publications au fil du temps.",
+                    explainer_step3: "Utilisez les filtres pour explorer les données par auteur ou par année.",
+                    explainer_step4: "Consultez les statistiques de publication sous le graphique.",
+                    explainer_excel_format: "Votre fichier Excel doit avoir ces colonnes:",
+                    dont_show_again: "Ne plus afficher",
+                    close_explainer: "Compris!"
                 }
             },
             es: {
                 name: "Español",
                 translations: {
-                    name: "name",
+                    name: "nombre",
                     title: "Visualizador de Línea de Tiempo de Publicaciones",
                     description: "Sube un archivo Excel para visualizar tu línea de tiempo de publicaciones",
                     upload_label: "Subir Archivo Excel",
@@ -134,7 +182,16 @@
                     avg_publications_per_year: "Promedio Publicaciones/Año",
                     most_published_author: "Autor Más Publicado",
                     most_productive_year: "Año Más Productivo",
-                    footer_text: "© 2023 Visualizador de Línea de Tiempo de Publicaciones. Todos los derechos reservados."
+                    footer_text: "© 2023 Visualizador de Línea de Tiempo de Publicaciones. Todos los derechos reservados.",
+                    explainer_title: "Bienvenido al Visualizador de Línea de Tiempo de Publicaciones",
+                    explainer_description: "Esta aplicación te permite visualizar tu línea de tiempo de publicaciones desde un archivo Excel. Así es como funciona:",
+                    explainer_step1: "Sube un archivo Excel que contenga tus datos de publicación.",
+                    explainer_step2: "La aplicación generará un gráfico que muestra tus publicaciones a lo largo del tiempo.",
+                    explainer_step3: "Usa los filtros para explorar datos por autor o año.",
+                    explainer_step4: "Ve las estadísticas de publicación debajo del gráfico.",
+                    explainer_excel_format: "Tu archivo Excel debe tener estas columnas:",
+                    dont_show_again: "No mostrar de nuevo",
+                    close_explainer: "¡Entendido!"
                 }
             }
         };
@@ -158,10 +215,31 @@
         const authorSelect = document.getElementById('author-select');
         const yearSelect = document.getElementById('year-select');
         const statsContainer = document.getElementById('stats-container');
+        const explainer = document.getElementById('explainer');
+        const closeExplainer = document.getElementById('close-explainer');
+        const dontShowAgain = document.getElementById('dont-show-again');
+        const helpButton = document.getElementById('help-button');
 
         uploadBtn.addEventListener('click', handleFileUpload);
         authorSelect.addEventListener('change', updateChart);
         yearSelect.addEventListener('change', updateChart);
+        closeExplainer.addEventListener('click', hideExplainer);
+        helpButton.addEventListener('click', showExplainer);
+
+        function showExplainer() {
+            explainer.classList.remove('hidden');
+        }
+
+        function hideExplainer() {
+            explainer.classList.add('hidden');
+            if (dontShowAgain.checked) {
+                localStorage.setItem('dontShowExplainer', 'true');
+            }
+        }
+
+        if (localStorage.getItem('dontShowExplainer') !== 'true') {
+            showExplainer();
+        }
 
         function handleFileUpload() {
             const file = fileUpload.files[0];
@@ -170,7 +248,7 @@
                 reader.onload = function(e) {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, {type: 'array'});
-                    const firstSheetName = workbook.SheetNames[0];
+const firstSheetName = workbook.SheetNames[0];
                     const worksheet = workbook.Sheets[firstSheetName];
                     jsonData = XLSX.utils.sheet_to_json(worksheet);
                     populateSelects(jsonData);
