@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoLLMS: Your Personal AI Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
+        }
+        @keyframes colorshift {
+            0% { background-color: #FF0000; }
+            33% { background-color: #FFD700; }
+            66% { background-color: #FF4500; }
+            100% { background-color: #FF0000; }
+        }
+        body {
+            background: black;
+        }
+    </style>
+</head>
+<body class="text-white min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2 text-red-600">LoLLMS: Your Personal AI Assistant</h1>
+            <img src="/apps/LoLLMS/icon.png" alt="Iron Man Logo" class="mx-auto rounded-full border-4 border-yellow-500 w-20 h-20">
+        </header>
+        <main class="flex flex-col items-center">
+            <div class="w-full max-w-md">
+                <button id="startRecording" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded mb-4 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Start Recording
+                </button>
+                <div id="status" class="text-center mb-4 text-yellow-500">Status: Idle</div>
+                <input type="range" id="volume" min="0" max="1" step="0.1" value="0.5" class="w-full mb-4 accent-red-600">
+                <div id="conversation" class="bg-gray-800 rounded p-4 h-64 overflow-y-auto mb-4 border border-yellow-500"></div>
+            </div>
+            <div class="flex space-x-4 mt-4">
+                <button id="heartButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    ❤️
+                </button>
+                <button id="discussionModeButton" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Discussion Mode
+                </button>
+                <button id="haltButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Halt Discussion
+                </button>
+                <button id="saveButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Save Discussion
+                </button>
+                <button id="loadButton" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Load Discussion
+                </button>
+                <button id="settingsButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Settings
+                </button>
+            </div>
+        </main>
+        <footer class="text-center mt-8 text-red-400">
+            <p>LoLLMS AI Assistant v1.0 | Powered by Lollms</p>
+        </footer>
+    </div>
+    <div id="loadingOverlay" class="hidden">
+        <div class="text-center">
+            <div class="text-6xl animate-spin text-red-600">🍓</div>
+            <div class="mt-4 text-yellow-500">Processing...</div>
+        </div>
+    </div>
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
+        <div class="bg-white p-6 rounded-lg">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Settings</h2>
+            <div class="mb-4">
+                <label for="voiceSelect" class="block text-gray-700 font-bold mb-2">Select Voice:</label>
+                <select id="voiceSelect" class="w-full p-2 border rounded text-gray-800"></select>
+            </div>
+            <button id="closeSettings" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Close</button>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        let isRecording = false;
+        let mediaRecorder;
+        let conversationHistory = [];
+        let audioChunks = [];
+        let silenceTimeout;
+        let discussionMode = false;
+        let selectedVoice = '';
+        const startButton = document.getElementById('startRecording');
+        const statusElement = document.getElementById('status');
+        const volumeControl = document.getElementById('volume');
+        const conversationElement = document.getElementById('conversation');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const heartButton = document.getElementById('heartButton');
+        const discussionModeButton = document.getElementById('discussionModeButton');
+        const haltButton = document.getElementById('haltButton');
+        const saveButton = document.getElementById('saveButton');
+        const loadButton = document.getElementById('loadButton');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsModal = document.getElementById('settingsModal');
+        const closeSettingsButton = document.getElementById('closeSettings');
+        const voiceSelect = document.getElementById('voiceSelect');
+        startButton.addEventListener('click', toggleRecording);
+        volumeControl.addEventListener('input', updateVolume);
+        heartButton.addEventListener('click', showHeart);
+        discussionModeButton.addEventListener('click', toggleDiscussionMode);
+        haltButton.addEventListener('click', haltDiscussion);
+        saveButton.addEventListener('click', saveDiscussion);
+        loadButton.addEventListener('click', loadDiscussion);
+        settingsButton.addEventListener('click', openSettings);
+        closeSettingsButton.addEventListener('click', closeSettings);
+        voiceSelect.addEventListener('change', updateSelectedVoice);
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+                mediaRecorder.onstop = processAudio;
+                mediaRecorder.start();
+                isRecording = true;
+                startButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                    </svg>
+                    Stop Recording
+                `;
+                updateStatus('Listening');
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+            }
+        }
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                isRecording = false;
+                startButton.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    Start Recording
+                `;
+                updateStatus('Processing');
+            }
+        }
+        async function processAudio() {
+            showLoading();
+            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+            audioChunks = [];
+            const formData = new FormData();
+            formData.append('file', audioBlob, 'audio.wav');
+            try {
+                const response = await axios.post('/transcribe', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                const transcription = response.data.transcription;
+                addToConversation('User', transcription);
+                const aiResponse = await getAIResponse(transcription);
+                addToConversation('LoLLMS', aiResponse);
+                await speakResponse(aiResponse);
+            } catch (error) {
+                console.error('Error processing audio:', error);
+            } finally {
+                hideLoading();
+                if (discussionMode) {
+                    startRecording();
+                }
+            }
+        }
+        const availableFunctions = {
+            get_date_time: {
+                name: "get_date_time",
+                parameters: [],
+                description: "Get the current date and time"
+            },
+            send_email: {
+                name: "send_email",
+                parameters: ["subject", "content"],
+                description: "Send an email using the default email client"
+            }
+            // Add more functions here as needed
+        };
+
+        async function getAIResponse(userInput) {
+            const functionsList = JSON.stringify(availableFunctions);
+            const fullConversation = conversationHistory.join('\n');
+            
+            const prompt = `${lc.system_message()}
+You are LoLLMs, the Lord of Large Language Multimodal Systems, created by ParisNeo. Respond to the user's input based on the entire conversation history.
+Available functions: ${functionsList}
+Generate your response as a JSON object with the following format:
+\`\`\`json
+{
+    "answer": "Your response to the user",
+    "requires_function_call": boolean,
+    "function": {
+        "name": "function_name",
+        "parameters": {
+            "param1": "value1",
+            "param2": "value2"
+        },
+        "needs_regeneration": boolean
+    }
+}
+\`\`\`
+If no function call is required, set "requires_function_call" to false and omit the "function" object.
+${lc.template.separator_template}${lc.user_message()}
+Conversation history:
+${fullConversation}
+
+User's latest input: ${userInput}
+${lc.template.separator_template}${lc.ai_message()}`;
+
+            try {
+                const response = await lc.generateCode(prompt);
+                if (response) {
+                    const jsonResponse = JSON.parse(response);
+                    if (jsonResponse.requires_function_call) {
+                        console.log(`AI called a function: ${jsonResponse.function}`)
+                        const functionResult = await executeFunctionCall(jsonResponse.function);
+                        if (jsonResponse.function.needs_regeneration) {
+                            console.log(`needs regeneration: ${jsonResponse.function}`)
+                            conversationHistory = [
+                                ...conversationHistory,
+                                `User: ${userInput}`,
+                                `LoLLMs: ${jsonResponse.answer}`,
+                                `function call result: ${functionResult}`,
+                            ];                            
+                            return await getAIResponse("go on");
+                        } else {
+                            return jsonResponse.answer;
+                        }
+                    } else {
+                        return jsonResponse.answer;
+                    }
+                }
+                return "I apologize, but I couldn't process your request at the moment.";
+            } catch (error) {
+                console.error('Error getting AI response:', error);
+                return "I'm sorry, I'm experiencing difficulties processing your request right now.";
+            }
+        }
+
+        async function executeFunctionCall(functionCall) {
+            switch(functionCall.name) {
+                case 'get_date_time':
+                    return new Date().toLocaleString();
+                case 'send_email':
+                    // Create a mailto link
+                    const mailtoLink = `mailto:?subject=${encodeURIComponent(functionCall.parameters.subject)}&body=${encodeURIComponent(functionCall.parameters.content)}`;
+                    emailClient = localStorage.getItem("emailClient") || 'Gmail'
+                    if (emailClient === 'Outlook') {
+                        // Try to launch Outlook using the mailto protocol
+                        window.location.href = mailtoLink;
+                    } else {
+                        // For other clients, use the web-based approach
+                        let emailUrl;
+                        switch (emailClient) {
+                            case 'Hotmail':
+                                emailUrl = `https://outlook.live.com/owa/?path=/mail/action/compose&subject=${encodeURIComponent(functionCall.parameters.subject)}&body=${encodeURIComponent(functionCall.parameters.content)}`;
+                                break;
+                            case 'Gmail':
+                            default:
+                                emailUrl = `https://mail.google.com/mail/?view=cm&fs=1&su=${encodeURIComponent(functionCall.parameters.subject)}&body=${encodeURIComponent(functionCall.parameters.content)}`;
+                                break;
+                        }
+                        window.open(emailUrl, '_blank');
+                    }
+
+                    console.log(`Sending email: Subject: ${functionCall.parameters.subject}, Content: ${functionCall.parameters.content}`);
+                    return "Email sent successfully.";
+                default:
+                    console.error(`Unknown function: ${functionCall.name}`);
+                    return "Function not implemented.";
+            }
+        }
+
+        async function speakResponse(text) {
+            try {
+                console.log(`Generating using voice : ${selectedVoice}`);
+                const response = await axios.post('/tts/stream', {
+                    text: text,
+                    language: 'en',
+                    speaker: selectedVoice
+                }, {
+                    responseType: 'arraybuffer'
+                });
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(response.data);
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = volumeControl.value;
+                source.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                updateStatus('Speaking');
+                source.start(0);
+                source.onended = () => {
+                    updateStatus('Listening');
+                };
+            } catch (error) {
+                console.error('Error in text-to-speech:', error);
+            }
+        }
+        function addToConversation(speaker, text) {
+            const messageElement = document.createElement('div');
+            messageElement.className = 'mb-2';
+            messageElement.innerHTML = `<strong class="${speaker === 'User' ? 'text-yellow-500' : 'text-red-500'}">${speaker}:</strong> ${text}`;
+            conversationElement.appendChild(messageElement);
+            conversationElement.scrollTop = conversationElement.scrollHeight;
+        }
+        function updateStatus(status) {
+            statusElement.textContent = `Status: ${status}`;
+        }
+        function updateVolume() {
+            localStorage.setItem('lollmsVolume', volumeControl.value);
+        }
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+        function showHeart() {
+            const heart = document.createElement('div');
+            heart.textContent = '❤️';
+            heart.style.position = 'fixed';
+            heart.style.fontSize = '2rem';
+heart.style.left = `${Math.random() * window.innerWidth}px`;
+            heart.style.top = `${Math.random() * window.innerHeight}px`;
+            heart.style.transition = 'all 1s ease-out';
+            document.body.appendChild(heart);
+            setTimeout(() => {
+                heart.style.transform = 'translateY(-100px)';
+                heart.style.opacity = '0';
+            }, 50);
+            setTimeout(() => {
+                document.body.removeChild(heart);
+            }, 1050);
+        }
+        function toggleDiscussionMode() {
+            discussionMode = !discussionMode;
+            discussionModeButton.textContent = discussionMode ? 'Exit Discussion Mode' : 'Discussion Mode';
+            discussionModeButton.classList.toggle('bg-blue-500');
+            discussionModeButton.classList.toggle('bg-red-500');
+            if (discussionMode) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+        function haltDiscussion() {
+            if (isRecording || discussionMode) {
+                stopRecording();
+                discussionMode = false;
+                discussionModeButton.textContent = 'Discussion Mode';
+                discussionModeButton.classList.remove('bg-red-500');
+                discussionModeButton.classList.add('bg-blue-500');
+            }
+        }
+        function saveDiscussion() {
+            const conversation = conversationElement.innerHTML;
+            localStorage.setItem('lollmsConversation', conversation);
+            alert('Discussion saved successfully!');
+        }
+        function loadDiscussion() {
+            const savedConversation = localStorage.getItem('lollmsConversation');
+            if (savedConversation) {
+                conversationElement.innerHTML = savedConversation;
+                alert('Discussion loaded successfully!');
+            } else {
+                alert('No saved discussion found.');
+            }
+        }
+        function openSettings() {
+            settingsModal.classList.remove('hidden');
+            loadVoices();
+        }
+        function closeSettings() {
+            settingsModal.classList.add('hidden');
+        }
+        async function loadVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                const voices = response.data.voices;
+                voiceSelect.innerHTML = '';
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    voiceSelect.appendChild(option);
+                });
+                const savedVoice = localStorage.getItem('lollmsVoice');
+                if (savedVoice) {
+                    voiceSelect.value = savedVoice;
+                }
+            } catch (error) {
+                console.error('Error loading voices:', error);
+            }
+        }
+        function updateSelectedVoice() {
+            selectedVoice = voiceSelect.value;
+            localStorage.setItem('lollmsVoice', selectedVoice);
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedVolume = localStorage.getItem('lollmsVolume');
+            if (savedVolume) {
+                volumeControl.value = savedVolume;
+            }
+            selectedVoice = localStorage.getItem('lollmsVoice') || '';
+        });
+    </script>
+</body>
+</html>
