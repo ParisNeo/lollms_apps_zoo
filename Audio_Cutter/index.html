@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Cutter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wavesurfer.js/6.6.4/wavesurfer.min.js"></script>
+    <script src="https://unpkg.com/wavesurfer.js@6.6.4/dist/plugin/wavesurfer.regions.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px 0;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        #helpSection {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen flex flex-col">
+    <header class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6 flex justify-between items-center rounded-b-lg shadow-lg">
+        <h1 class="text-3xl font-bold">Audio Cutter</h1>
+        <div class="flex space-x-4">
+            <input type="file" id="audioUpload" accept=".wav" class="hidden" />
+            <label for="audioUpload" class="tooltip bg-white text-blue-600 p-3 rounded-full cursor-pointer hover:bg-blue-100 transition inline-flex items-center justify-center shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <span class="tooltiptext">Upload WAV</span>
+            </label>
+            <button id="helpButton" class="tooltip bg-white text-purple-600 p-3 rounded-full cursor-pointer hover:bg-purple-100 transition inline-flex items-center justify-center shadow-md">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="tooltiptext">Help</span>
+            </button>
+        </div>
+    </header>
+    <main class="flex-grow flex flex-col md:flex-row p-8 space-y-8 md:space-y-0 md:space-x-8">
+        <div class="w-full md:w-3/4 bg-white rounded-lg shadow-xl p-6">
+            <div id="waveform" class="w-full h-48 bg-gray-200 rounded-lg"></div>
+            <div class="flex justify-between mt-6">
+                <div class="space-x-4">
+                    <button id="zoomIn" class="tooltip bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                        <span class="tooltiptext">Zoom In</span>
+                    </button>
+                    <button id="zoomOut" class="tooltip bg-blue-500 text-white p-3 rounded-full hover:bg-blue-600 transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                        </svg>
+                        <span class="tooltiptext">Zoom Out</span>
+                    </button>
+                </div>
+                <div class="space-x-4">
+                    <button id="play" class="tooltip bg-green-500 text-white p-3 rounded-full hover:bg-green-600 transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="tooltiptext">Play</span>
+                    </button>
+                    <button id="pause" class="tooltip bg-yellow-500 text-white p-3 rounded-full hover:bg-yellow-600 transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="tooltiptext">Pause</span>
+                    </button>
+                    <button id="stop" class="tooltip bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition shadow-md">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10h6v6H9z" />
+                        </svg>
+                        <span class="tooltiptext">Stop</span>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-center space-x-4">
+                <button id="cut" class="tooltip bg-purple-500 text-white p-3 rounded-full hover:bg-purple-600 transition shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.121 14.121L19 19m-7-7l7-7m-7 7l-2.879 2.879M12 12L9.121 9.121m0 5.758a3 3 0 10-4.243 4.243 3 3 0 004.243-4.243zm0-5.758a3 3 0 10-4.243-4.243 3 3 0 004.243 4.243z" />
+                    </svg>
+                    <span class="tooltiptext">Cut</span>
+                </button>
+                <button id="reset" class="tooltip bg-gray-500 text-white p-3 rounded-full hover:bg-gray-600 transition shadow-md">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span class="tooltiptext">Reset Selection</span>
+                </button>
+            </div>
+        </div>
+        <div class="w-full md:w-1/4 bg-white rounded-lg shadow-xl p-6">
+            <h2 class="text-2xl font-bold mb-4 text-purple-600">Audio Segments</h2>
+            <ul id="segmentList" class="space-y-4 max-h-96 overflow-y-auto"></ul>
+            <button id="undo" class="tooltip bg-gray-500 text-white p-3 rounded-full mt-6 hover:bg-gray-600 transition shadow-md w-full flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                </svg>
+                <span class="ml-2">Undo</span>
+                <span class="tooltiptext">Undo</span>
+            </button>
+        </div>
+    </main>
+    <footer class="bg-gradient-to-r from-blue-600 to-purple-600 text-white text-center p-4 mt-8 rounded-t-lg shadow-lg">
+        <p>&copy; 2024 Audio Cutter. All rights reserved. By ParisNeo using Lollms Apps Maker</p>
+    </footer>
+    <div id="helpSection">
+        <h2 class="text-2xl font-bold mb-4">Audio Cutter Help</h2>
+        <ol class="list-decimal pl-5 space-y-2">
+            <li>Upload a WAV file</li>
+            <li>Use play, pause, and stop buttons to control playback</li>
+            <li>Zoom in/out to adjust waveform view</li>
+            <li>Click and drag on the waveform to select a region</li>
+            <li>Click "Cut" to create a segment</li>
+            <li>Use "Undo" to remove the last cut</li>
+            <li>Click "Reset Selection" to clear the current selection</li>
+            <li>Save individual segments using the "Save" button next to each segment</li>
+        </ol>
+        <div class="mt-4 flex items-center">
+            <input type="checkbox" id="dontShowAgain" class="mr-2">
+            <label for="dontShowAgain">Don't show again</label>
+        </div>
+        <button id="closeHelp" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-600 transition shadow-md">Close</button>
+    </div>
+    <script>
+        let wavesurfer;
+        let audioContext;
+        let audioBuffer;
+        let regions = [];
+        let undoStack = [];
+        let currentRegion = null;
+        let helpShown = localStorage.getItem('helpShown') !== 'true';
+        document.addEventListener('DOMContentLoaded', function() {
+            wavesurfer = WaveSurfer.create({
+                container: '#waveform',
+                waveColor: 'violet',
+                progressColor: 'purple',
+                cursorColor: 'navy',
+                barWidth: 3,
+                barRadius: 3,
+                responsive: true,
+                height: 150,
+                plugins: [
+                    WaveSurfer.regions.create({
+                        regions: regions,
+                        dragSelection: {
+                            slop: 5
+                        }
+                    })
+                ]
+            });
+            const audioUpload = document.getElementById('audioUpload');
+            const playButton = document.getElementById('play');
+            const pauseButton = document.getElementById('pause');
+            const stopButton = document.getElementById('stop');
+            const zoomInButton = document.getElementById('zoomIn');
+            const zoomOutButton = document.getElementById('zoomOut');
+            const cutButton = document.getElementById('cut');
+            const undoButton = document.getElementById('undo');
+            const resetButton = document.getElementById('reset');
+            const helpButton = document.getElementById('helpButton');
+            const helpSection = document.getElementById('helpSection');
+            const closeHelpButton = document.getElementById('closeHelp');
+            const dontShowAgainCheckbox = document.getElementById('dontShowAgain');
+
+            dontShowAgainCheckbox.checked = !(localStorage.getItem('showHelp')==='true');
+
+if(localStorage.getItem('showHelp')==='true'){
+                helpSection.style.display = 'block';
+            }
+
+            audioUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const arrayBuffer = e.target.result;
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        audioContext.decodeAudioData(arrayBuffer, function(buffer) {
+                            audioBuffer = buffer;
+                            wavesurfer.loadDecodedBuffer(buffer);
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+
+            playButton.addEventListener('click', () => wavesurfer.play());
+            pauseButton.addEventListener('click', () => wavesurfer.pause());
+            stopButton.addEventListener('click', () => wavesurfer.stop());
+            zoomInButton.addEventListener('click', () => {
+                const currentZoom = wavesurfer.params.minPxPerSec;
+                wavesurfer.zoom(currentZoom * 1.5);
+            });
+            zoomOutButton.addEventListener('click', () => {
+                const currentZoom = wavesurfer.params.minPxPerSec;
+                wavesurfer.zoom(currentZoom / 1.5);
+            });
+            cutButton.addEventListener('click', () => {
+                if (currentRegion) {
+                    undoStack.push({type: 'cut', region: {...currentRegion}});
+                    regions.push({...currentRegion});
+                    updateSegmentList();
+                    wavesurfer.regions.clear();
+                    currentRegion = null;
+                }
+            });
+            undoButton.addEventListener('click', () => {
+                if (undoStack.length > 0) {
+                    const lastAction = undoStack.pop();
+                    if (lastAction.type === 'cut') {
+                        regions.pop();
+                        updateSegmentList();
+                    }
+                }
+            });
+            resetButton.addEventListener('click', () => {
+                if (currentRegion) {
+                    wavesurfer.regions.clear();
+                    currentRegion = null;
+                }
+            });
+            helpButton.addEventListener('click', () => {
+                dontShowAgainCheckbox.checked = !(localStorage.getItem('showHelp')==='true');
+                helpSection.style.display = 'block';
+            });
+            closeHelpButton.addEventListener('click', () => {
+                helpSection.style.display = 'none';
+                if (dontShowAgainCheckbox.checked) {
+                    localStorage.setItem('showHelp', 'false');
+                } else {
+                    localStorage.setItem('showHelp', 'true');                    
+                }
+            });
+            wavesurfer.on('region-created', function(region) {
+                if (currentRegion) {
+                    wavesurfer.regions.clear();
+                }
+                currentRegion = region;
+            });
+            function updateSegmentList() {
+                const segmentList = document.getElementById('segmentList');
+                segmentList.innerHTML = '';
+                regions.forEach((region, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'flex justify-between items-center bg-gray-100 p-4 rounded-lg shadow-md';
+                    li.innerHTML = `
+                        <span class="text-lg font-semibold text-purple-600 cursor-pointer">Segment ${index + 1}</span>
+                        <button class="bg-blue-500 text-white px-4 py-2 rounded-full text-sm hover:bg-blue-600 transition shadow-md" onclick="saveSegment(${index})">Save</button>
+                    `;
+                    li.addEventListener('click', () => {
+                        wavesurfer.regions.clear();
+                        const newRegion = wavesurfer.addRegion({
+                            start: region.start,
+                            end: region.end,
+                            color: 'rgba(255, 0, 0, 0.1)'
+                        });
+                        currentRegion = newRegion;
+                    });
+                    segmentList.appendChild(li);
+                });
+            }
+            window.saveSegment = function(index) {
+                const region = regions[index];
+                const start = region.start;
+                const end = region.end;
+                const duration = end - start;
+                const offlineCtx = new OfflineAudioContext(audioBuffer.numberOfChannels, duration * audioBuffer.sampleRate, audioBuffer.sampleRate);
+                const source = offlineCtx.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineCtx.destination);
+                source.start(0, start, duration);
+                offlineCtx.startRendering().then(function(renderedBuffer) {
+                    const wav = audioBufferToWav(renderedBuffer);
+                    const blob = new Blob([new DataView(wav)], { type: 'audio/wav' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `segment_${index + 1}.wav`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }
+            function audioBufferToWav(buffer) {
+                const numOfChan = buffer.numberOfChannels;
+                const length = buffer.length * numOfChan * 2 + 44;
+                const out = new ArrayBuffer(length);
+                const view = new DataView(out);
+                const channels = [];
+                let i;
+                let sample;
+                let offset = 0;
+                let pos = 0;
+                setUint32(0x46464952);
+                setUint32(length - 8);
+                setUint32(0x45564157);
+                setUint32(0x20746d66);
+                setUint32(16);
+                setUint16(1);
+                setUint16(numOfChan);
+                setUint32(buffer.sampleRate);
+                setUint32(buffer.sampleRate * 2 * numOfChan);
+                setUint16(numOfChan * 2);
+                setUint16(16);
+                setUint32(0x61746164);
+                setUint32(length - pos - 4);
+                for(i = 0; i < buffer.numberOfChannels; i++)
+                    channels.push(buffer.getChannelData(i));
+                while(pos < length) {
+                    for(i = 0; i < numOfChan; i++) {
+                        sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767)|0;
+                        view.setInt16(pos, sample, true);
+                        pos += 2;
+                    }
+                    offset++;
+                }
+                return out;
+                function setUint16(data) {
+                    view.setUint16(pos, data, true);
+                    pos += 2;
+                }
+                function setUint32(data) {
+                    view.setUint32(pos, data, true);
+                    pos += 4;
+                }
+            }
+        });
+    </script>
+</body>
+</html>
