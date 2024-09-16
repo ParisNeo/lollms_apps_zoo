@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Classic</title>
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: #000;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #game-canvas {
+            border: 2px solid #fff;
+        }
+        #menu, #leaderboard, #settings, #pause-menu, #popup {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border: 2px solid #fff;
+            text-align: center;
+        }
+        button {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 15px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            font-family: 'Press Start 2P', cursive;
+        }
+        #score, #level, #next-piece {
+            margin-top: 10px;
+        }
+        #leaderboard-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        #leaderboard-list li {
+            margin-bottom: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="300" height="600"></canvas>
+        <div id="score">Score: 0</div>
+        <div id="level">Level: 1</div>
+        <div id="next-piece">Next Piece:</div>
+        <button id="pause-button">Pause</button>
+    </div>
+
+    <div id="menu">
+        <h1>Tetris Classic</h1>
+        <button id="start-button">Start Game</button>
+        <button id="high-scores-button">High Scores</button>
+        <button id="settings-button">Settings</button>
+    </div>
+
+    <div id="leaderboard" class="hidden">
+        <h2>High Scores</h2>
+        <ol id="leaderboard-list"></ol>
+        <button id="back-to-menu">Back to Menu</button>
+    </div>
+
+    <div id="settings" class="hidden">
+        <h2>Settings</h2>
+        <label>
+            <input type="checkbox" id="music-toggle" checked> Music
+        </label>
+        <br>
+        <label>
+            <input type="checkbox" id="sfx-toggle" checked> Sound Effects
+        </label>
+        <h3>Controls</h3>
+        <p>Left/Right Arrow: Move</p>
+        <p>Up Arrow: Rotate</p>
+        <p>Down Arrow: Soft Drop</p>
+        <p>Space: Hard Drop</p>
+        <button id="back-to-menu-settings">Back to Menu</button>
+    </div>
+
+    <div id="pause-menu" class="hidden">
+        <h2>Paused</h2>
+        <button id="resume-button">Resume</button>
+        <button id="restart-button">Restart</button>
+        <button id="main-menu-button">Main Menu</button>
+    </div>
+
+    <div id="popup" class="hidden">
+        <h2 id="popup-title"></h2>
+        <p id="popup-message"></p>
+        <button id="popup-close">Close</button>
+    </div>
+
+    <script>
+        const COLS = 10;
+        const ROWS = 20;
+        const BLOCK_SIZE = 30;
+        const COLORS = [
+            'cyan', 'blue', 'orange', 'yellow', 'green', 'purple', 'red'
+        ];
+
+        let canvas, ctx, nextPieceCanvas, nextPieceCtx;
+        let board, currentPiece, nextPiece;
+        let score = 0;
+        let level = 1;
+        let dropInterval;
+        let paused = false;
+        let gameIsOver = false;
+
+        const SHAPES = [
+            [[1, 1, 1, 1]],
+            [[1, 1, 1], [0, 1, 0]],
+            [[1, 1, 1], [1, 0, 0]],
+            [[1, 1, 1], [0, 0, 1]],
+            [[1, 1], [1, 1]],
+            [[1, 1, 0], [0, 1, 1]],
+            [[0, 1, 1], [1, 1, 0]]
+        ];
+
+        const gameContainer = document.getElementById('game-container');
+        const menuElement = document.getElementById('menu');
+        const leaderboardElement = document.getElementById('leaderboard');
+        const settingsElement = document.getElementById('settings');
+        const pauseMenuElement = document.getElementById('pause-menu');
+        const popupElement = document.getElementById('popup');
+        const startButton = document.getElementById('start-button');
+        const highScoresButton = document.getElementById('high-scores-button');
+        const settingsButton = document.getElementById('settings-button');
+        const backToMenuButton = document.getElementById('back-to-menu');
+        const backToMenuSettingsButton = document.getElementById('back-to-menu-settings');
+        const musicToggle = document.getElementById('music-toggle');
+        const sfxToggle = document.getElementById('sfx-toggle');
+        const leaderboardList = document.getElementById('leaderboard-list');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const pauseButton = document.getElementById('pause-button');
+        const resumeButton = document.getElementById('resume-button');
+        const restartButton = document.getElementById('restart-button');
+        const mainMenuButton = document.getElementById('main-menu-button');
+        const popupTitle = document.getElementById('popup-title');
+        const popupMessage = document.getElementById('popup-message');
+        const popupClose = document.getElementById('popup-close');
+
+        function init() {
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+            nextPieceCanvas = document.createElement('canvas');
+            nextPieceCanvas.width = BLOCK_SIZE * 4;
+            nextPieceCanvas.height = BLOCK_SIZE * 4;
+            nextPieceCtx = nextPieceCanvas.getContext('2d');
+            document.getElementById('next-piece').appendChild(nextPieceCanvas);
+
+            board = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+            currentPiece = getRandomPiece();
+            nextPiece = getRandomPiece();
+            drawBoard();
+            drawNextPiece();
+
+            document.addEventListener('keydown', handleKeyPress);
+        }
+
+        function update() {
+            if (!paused && !gameIsOver) {
+                moveDown();
+                drawBoard();
+                drawNextPiece();
+                updateScore();
+                updateLevel();
+            }
+        }
+
+        function getRandomPiece() {
+            const randomIndex = Math.floor(Math.random() * SHAPES.length);
+            return {
+                shape: SHAPES[randomIndex],
+                color: COLORS[randomIndex],
+                x: Math.floor(COLS / 2) - Math.ceil(SHAPES[randomIndex][0].length / 2),
+                y: 0
+            };
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        ctx.fillStyle = COLORS[value - 1];
+                        ctx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        ctx.strokeStyle = '#000';
+                        ctx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                });
+            });
+
+            if (currentPiece) {
+                ctx.fillStyle = currentPiece.color;
+                currentPiece.shape.forEach((row, y) => {
+                    row.forEach((value, x) => {
+                        if (value) {
+                            ctx.fillRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                            ctx.strokeStyle = '#000';
+                            ctx.strokeRect((currentPiece.x + x) * BLOCK_SIZE, (currentPiece.y + y) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        }
+                    });
+                });
+            }
+        }
+
+        function drawNextPiece() {
+            nextPieceCtx.clearRect(0, 0, nextPieceCanvas.width, nextPieceCanvas.height);
+            nextPieceCtx.fillStyle = nextPiece.color;
+            nextPiece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        nextPieceCtx.fillRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                        nextPieceCtx.strokeStyle = '#000';
+                        nextPieceCtx.strokeRect(x * BLOCK_SIZE, y * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+                    }
+                });
+            });
+        }
+
+        function moveDown() {
+            currentPiece.y++;
+            if (hasCollision()) {
+                currentPiece.y--;
+                placePiece();
+                clearLines();
+                currentPiece = nextPiece;
+                nextPiece = getRandomPiece();
+                if (hasCollision()) {
+                    gameOver();
+                }
+            }
+        }
+
+        function moveLeft() {
+            currentPiece.x--;
+            if (hasCollision()) {
+                currentPiece.x++;
+            }
+        }
+
+        function moveRight() {
+            currentPiece.x++;
+            if (hasCollision()) {
+                currentPiece.x--;
+            }
+        }
+
+        function rotate() {
+            const rotated = currentPiece.shape[0].map((_, i) =>
+                currentPiece.shape.map(row => row[i]).reverse()
+            );
+            const previousShape = currentPiece.shape;
+            currentPiece.shape = rotated;
+            if (hasCollision()) {
+                currentPiece.shape = previousShape;
+            }
+        }
+
+        function hasCollision() {
+            return currentPiece.shape.some((row, dy) =>
+                row.some((value, dx) =>
+                    value && (
+                        currentPiece.y + dy >= ROWS ||
+                        currentPiece.x + dx < 0 ||
+                        currentPiece.x + dx >= COLS ||
+                        board[currentPiece.y + dy][currentPiece.x + dx]
+                    )
+                )
+            );
+        }
+
+        function placePiece() {
+            currentPiece.shape.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) {
+                        board[currentPiece.y + y][currentPiece.x + x] = COLORS.indexOf(currentPiece.color) + 1;
+                    }
+                });
+            });
+        }
+
+        function clearLines() {
+            let linesCleared = 0;
+            board = board.filter(row => {
+                if (row.every(cell => cell !== 0)) {
+                    linesCleared++;
+                    return false;
+                }
+                return true;
+            });
+            updateScore(linesCleared);
+            while (linesCleared > 0) {
+                board.unshift(Array(COLS).fill(0));
+                linesCleared--;
+            }
+        }
+
+        function updateScore(linesCleared) {
+            if(linesCleared===undefined){
+                return
+            }
+            console.log(linesCleared)
+            const points = [0, 40, 100, 300, 1200];
+            score += points[linesCleared];// * level;
+            scoreElement.textContent = `Score: ${score}`;
+        }
+
+        function updateLevel() {
+            level = Math.floor(score / 1000) + 1;
+            levelElement.textContent = `Level: ${level}`;
+            clearInterval(dropInterval);
+            dropInterval = setInterval(update, Math.max(100, 1000 - (level * 50)));
+        }
+
+        function handleKeyPress(event) {
+            if (!paused && !gameIsOver) {
+                switch (event.keyCode) {
+                    case 37:
+                        moveLeft();
+                        break;
+                    case 39:
+                        moveRight();
+                        break;
+                    case 40:
+                        moveDown();
+                        break;
+                    case 38:
+                        rotate();
+                        break;
+                    case 32:
+                        while (!hasCollision()) {
+                            currentPiece.y++;
+                        }
+                        currentPiece.y--;
+                        placePiece();
+                        clearLines();
+                        currentPiece = nextPiece;
+                        nextPiece = getRandomPiece();
+                        if (hasCollision()) {
+                            gameOver();
+                        }
+                        break;
+                }
+                drawBoard();
+            }
+        }
+
+        function gameOver() {
+            clearInterval(dropInterval);
+            gameIsOver = true;
+            showPopup('Game Over', `Your score: ${score}`);
+            showMenu();
+        }
+
+        function updateLeaderboard(name, score) {
+            let leaderboard = JSON.parse(localStorage.getItem('tetrisLeaderboard')) || [];
+            leaderboard.push({ name, score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem('tetrisLeaderboard', JSON.stringify(leaderboard));
+            displayLeaderboard();
+        }
+
+        function displayLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem('tetrisLeaderboard')) || [];
+            leaderboardList.innerHTML = '';
+            leaderboard.forEach(entry => {
+                const li = document.createElement('li');
+                li.textContent = `${entry.name}: ${entry.score}`;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        function showMenu() {
+            menuElement.classList.remove('hidden');
+            leaderboardElement.classList.add('hidden');
+            settingsElement.classList.add('hidden');
+            pauseMenuElement.classList.add('hidden');
+            gameContainer.classList.add('hidden');
+        }
+
+        function startGame() {
+            menuElement.classList.add('hidden');
+            gameContainer.classList.remove('hidden');
+            init();
+            dropInterval = setInterval(update, Math.max(100, 1000 - (level * 50)));
+            paused = false;
+            gameIsOver = false;
+            score = 0;
+            level = 1;
+            scoreElement.textContent = `Score: ${score}`;
+            levelElement.textContent = `Level: ${level}`;
+        }
+
+        function pauseGame() {
+            paused = true;
+            pauseMenuElement.classList.remove('hidden');
+        }
+
+        function resumeGame() {
+            paused = false;
+            pauseMenuElement.classList.add('hidden');
+        }
+
+        function restartGame() {
+            clearInterval(dropInterval);
+            score = 0;
+            level = 1;
+            init();
+            dropInterval = setInterval(update, Math.max(100, 1000 - (level * 50)));
+            paused = false;
+            gameIsOver = false;
+            pauseMenuElement.classList.add('hidden');
+            scoreElement.textContent = `Score: ${score}`;
+            levelElement.textContent = `Level: ${level}`;
+        }
+
+        function showPopup(title, message) {
+            popupTitle.textContent = title;
+            popupMessage.textContent = message;
+            popupElement.classList.remove('hidden');
+        }
+
+        function closePopup() {
+            popupElement.classList.add('hidden');
+        }
+
+        startButton.addEventListener('click', startGame);
+        highScoresButton.addEventListener('click', () => {
+            menuElement.classList.add('hidden');
+            leaderboardElement.classList.remove('hidden');
+            displayLeaderboard();
+        });
+        settingsButton.addEventListener('click', () => {
+            menuElement.classList.add('hidden');
+            settingsElement.classList.remove('hidden');
+        });
+        backToMenuButton.addEventListener('click', showMenu);
+        backToMenuSettingsButton.addEventListener('click', showMenu);
+        pauseButton.addEventListener('click', pauseGame);
+        resumeButton.addEventListener('click', resumeGame);
+        restartButton.addEventListener('click', restartGame);
+        mainMenuButton.addEventListener('click', () => {
+            clearInterval(dropInterval);
+            showMenu();
+        });
+        popupClose.addEventListener('click', closePopup);
+
+        showMenu();
+    </script>
+</body>
+</html>
