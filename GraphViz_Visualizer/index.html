@@ -10,56 +10,225 @@
     <script src="/lollms_assets/js/axios.min"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border-left-color: #09f;
-            animation: spin 1s ease infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .spinner {border: 4px solid rgba(255, 255, 255, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09f; animation: spin 1s ease infinite;}
+        @keyframes spin {0% {transform: rotate(0deg);} 100% {transform: rotate(360deg);}}
+        #graphContainer {width: 100%; height: calc(100vh - 200px); overflow: hidden;}
+        body {transition: background-color 0.3s, color 0.3s;}
+        .dark-mode {background-color: #121212; color: #e0e0e0;}
+        .dark-mode .bg-white {background-color: #1e1e1e;}
+        .dark-mode .bg-gray-100 {background-color: #1a1a1a;}
+        .dark-mode .bg-gray-200 {background-color: #2a2a2a;}
+        .dark-mode .text-gray-700 {color: #d0d0d0;}
+        .dark-mode textarea, .dark-mode input {background-color: #2a2a2a; color: #e0e0e0; border-color: #3a3a3a;}
+        .dark-mode button {background-color: #3a3a3a; color: #e0e0e0;}
+        .dark-mode button:hover {background-color: #4a4a4a;}
+        .dark-mode #helpModal {background-color: rgba(0, 0, 0, 0.8);}
+        .dark-mode #helpModal > div {background-color: #1e1e1e; color: #e0e0e0;}
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col">
-    <div class="container mx-auto p-4 flex-grow">
-        <h1 class="text-3xl font-bold mb-4 text-center">Graphviz Code Generator and Visualizer</h1>
-        <div class="mb-4">
-            <label for="prompt" class="block mb-2 font-bold">Enter your graph description:</label>
-            <textarea id="prompt" rows="4" class="w-full p-2 border rounded" placeholder="Describe your graph here..."></textarea>
-        </div>
-        <button id="generateBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 mb-4">Generate Graph</button>
-        <div id="spinner" class="spinner hidden mb-4"></div>
-        <div id="errorMessage" class="text-red-500 mb-4 hidden"></div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <h2 class="text-xl font-bold mb-2">Generated Graphviz Code:</h2>
-                <textarea id="graphvizCode" rows="10" class="w-full p-2 border rounded"></textarea>
+<body class="bg-gray-100 flex flex-col h-screen">
+    <div class="container mx-auto p-4 flex-grow flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-center flex-grow">Graphviz Code Generator and Visualizer</h1>
+            <div class="flex space-x-2">
+                <button id="helpBtn" class="bg-blue-500 text-white p-2 rounded-full" title="Help">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+                <button id="darkModeBtn" class="bg-gray-800 text-white p-2 rounded-full" title="Toggle Dark Mode">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
             </div>
-            <div>
-                <h2 class="text-xl font-bold mb-2">Visualization:</h2>
-                <div class="border p-2 bg-white">
-                    <div id="graphContainer" class="relative overflow-hidden" style="max-width: 100%; max-height: 500px;">
-                        <div id="graph"></div>
-                        <div class="absolute top-2 right-2 flex space-x-2">
-                            <button id="zoomInBtn" class="bg-gray-200 p-1 rounded">🔍+</button>
-                            <button id="zoomOutBtn" class="bg-gray-200 p-1 rounded">🔍-</button>
-                            <button id="exportSvgBtn" class="bg-gray-200 p-1 rounded">SVG</button>
-                            <button id="exportPngBtn" class="bg-gray-200 p-1 rounded">PNG</button>
+        </div>
+        <div class="flex flex-wrap gap-1 mb-4 p-1 bg-gray-100 rounded-lg shadow-inner w-fit">
+            <!-- Graph manipulation buttons: Blue -->
+            <button id="generateBtn" class="bg-blue-500 text-white w-[50px] h-[50px] rounded hover:bg-blue-600 flex items-center justify-center" title="Generate Graph">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </button>
+            <button id="updateBtn" class="bg-blue-500 text-white w-[50px] h-[50px] rounded hover:bg-blue-600 flex items-center justify-center" title="Update Graph">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </button>
+            
+            <!-- Explanation button: Green -->
+            <button id="explainBtn" class="bg-green-500 text-white w-[50px] h-[50px] rounded hover:bg-green-600 flex items-center justify-center" title="Explain Graph">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            
+            <!-- Code manipulation buttons: Purple -->
+            <button id="saveCodeBtn" class="bg-purple-500 text-white w-[50px] h-[50px] rounded hover:bg-purple-600 flex items-center justify-center" title="Save Code">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4 4v16h16V8l-4-4H4zm11 0v5h-6V4h6zm-8 14v-7h10v7H7zm8-2h2v-3h-2v3z" fill="currentColor"/>
+                    <path d="M6 3h12l4 4v14a1 1 0 01-1 1H5a1 1 0 01-1-1V4a1 1 0 011-1zm1 1v5h8V4H7zm-1 7v8h12v-8H6zm8 1h2v5h-2v-5z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+            </button>
+            <button id="loadCodeBtn" class="bg-purple-500 text-white w-[50px] h-[50px] rounded hover:bg-purple-600 flex items-center justify-center" title="Load Code">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 3a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V9l-6-6H5z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M14 3v6h6" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M12 11v7m-3-3l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path d="M8 13h2m4 0h2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            
+            <!-- Explanation manipulation buttons: Orange -->
+            <button id="saveExplanationBtn" class="bg-orange-500 text-white w-[50px] h-[50px] rounded hover:bg-orange-600 flex items-center justify-center" title="Save Explanation">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4v16h16V8l-4-4H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M14 4v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M8 12h8M8 15h6M8 18h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M18 16.5v2l1 1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="loadExplanationBtn" class="bg-orange-500 text-white w-[50px] h-[50px] rounded hover:bg-orange-600 flex items-center justify-center" title="Load Explanation">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4v16h16V8l-4-4H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M14 4v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M8 12h8M8 15h6M8 18h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M12 7v7m-3-3l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            
+            <!-- Description manipulation buttons: Teal -->
+            <button id="saveDescriptionBtn" class="bg-teal-500 text-white w-[50px] h-[50px] rounded hover:bg-teal-600 flex items-center justify-center" title="Save Description">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4v16h16V8l-4-4H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M14 4v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M8 10h8M8 13h8M8 16h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M17 14l2 2m0 0l2 2m-2-2l-2 2m2-2l2-2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+            </button>
+            <button id="loadDescriptionBtn" class="bg-teal-500 text-white w-[50px] h-[50px] rounded hover:bg-teal-600 flex items-center justify-center" title="Load Description">
+                <svg width="24" height="24" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4v16h16V8l-4-4H4z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M14 4v4h4" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                  <path d="M8 10h8M8 13h8M8 16h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                  <path d="M12 7v7m-3-3l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+        </div>
+                
+        <div class="flex-grow flex">
+            <div class="w-1/3 mr-4 flex flex-col">
+                <div class="mb-4 flex-grow">
+                    <label for="prompt" class="block mb-2 font-bold">Enter your graph description:</label>
+                    <textarea id="prompt" class="w-full p-2 border rounded resize-none flex-grow h-full" placeholder="Describe your graph here..."></textarea>
+                </div>
+                <div id="spinner" class="spinner hidden mb-2 self-center"></div>
+                <div id="errorMessage" class="text-red-500 mb-2 hidden"></div>
+            </div>
+            <div class="w-2/3 flex flex-col">
+                <div class="flex-grow">
+                    <div class="flex mb-2">
+                        <button id="codeTabBtn" class="bg-gray-200 px-4 py-2 rounded-t-lg mr-2">Code</button>
+                        <button id="viewTabBtn" class="bg-white px-4 py-2 rounded-t-lg">View</button>
+                    </div>
+                    <div id="codeTab" class="bg-white p-4 rounded-b-lg rounded-tr-lg h-full">
+                        <textarea id="graphvizCode" class="w-full h-full p-2 border rounded resize-none" placeholder="Graphviz code will appear here..."></textarea>
+                    </div>
+                    <div id="viewTab" class="bg-white p-4 rounded-b-lg rounded-tr-lg h-full hidden">
+                        <div id="graphContainer" class="relative">
+                            <div id="graph"></div>
+                            <div class="absolute top-2 right-2 flex space-x-2">
+                                <button id="zoomInBtn" class="bg-gray-200 p-1 rounded" title="Zoom In">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                                    </svg>
+                                </button>
+                                <button id="zoomOutBtn" class="bg-gray-200 p-1 rounded" title="Zoom Out">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                                    </svg>
+                                </button>
+                                <button id="exportSvgBtn" class="bg-gray-200 p-1 rounded" title="Export as SVG">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                                <button id="exportPngBtn" class="bg-gray-200 p-1 rounded" title="Export as PNG">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <button id="updateBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 mt-4">Update Graph</button>
+        <div class="mt-4">
+            <label for="explanation" class="block mb-2 font-bold">Explanation:</label>
+            <textarea id="explanation" class="w-full p-2 border rounded resize-none" rows="4" readonly></textarea>
+        </div>
     </div>
+    <div id="helpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg max-w-4xl w-full mx-4 my-8 overflow-y-auto max-h-[90vh]">
+            <h2 class="text-2xl font-bold mb-6 text-blue-600">Graph Generator Help</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-blue-500">Basic Usage</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>Enter a description of your graph in the left text area</li>
+                        <li>Click "Generate Graph" to create the Graphviz code and visualization</li>
+                        <li>Edit the code directly and click "Update Graph" to see changes</li>
+                        <li>Use zoom buttons and drag the graph to navigate</li>
+                        <li>Export options are available for SVG and PNG formats</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-blue-500">Saving and Loading</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><span class="font-semibold text-purple-600">Code:</span> Save/load Graphviz code for later use</li>
+                        <li><span class="font-semibold text-orange-600">Explanation:</span> Save/load graph explanations</li>
+                        <li><span class="font-semibold text-teal-600">Description:</span> Save/load initial graph descriptions</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-blue-500">Button Color Guide</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><span class="font-semibold text-blue-600">Blue:</span> Graph manipulation (Generate, Update)</li>
+                        <li><span class="font-semibold text-green-600">Green:</span> Explain graph</li>
+                        <li><span class="font-semibold text-purple-600">Purple:</span> Code operations</li>
+                        <li><span class="font-semibold text-orange-600">Orange:</span> Explanation operations</li>
+                        <li><span class="font-semibold text-teal-600">Teal:</span> Description operations</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-semibold mb-2 text-blue-500">Tips</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li>Use clear, concise descriptions for better graph generation</li>
+                        <li>Experiment with different Graphviz attributes in the code</li>
+                        <li>Save your work regularly using the provided save buttons</li>
+                        <li>Utilize the explanation feature to understand complex graphs</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <button id="closeHelpBtn" class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition duration-300">Close Help</button>
+            </div>
+        </div>
+    </div>
+    
+    
     <script>
         const lc = new LollmsClient();
         const generateBtn = document.getElementById('generateBtn');
         const updateBtn = document.getElementById('updateBtn');
+        const explainBtn = document.getElementById('explainBtn');
         const promptInput = document.getElementById('prompt');
         const graphvizCodeArea = document.getElementById('graphvizCode');
         const graphContainer = document.getElementById('graph');
@@ -69,12 +238,30 @@
         const zoomOutBtn = document.getElementById('zoomOutBtn');
         const exportSvgBtn = document.getElementById('exportSvgBtn');
         const exportPngBtn = document.getElementById('exportPngBtn');
+        const codeTabBtn = document.getElementById('codeTabBtn');
+        const viewTabBtn = document.getElementById('viewTabBtn');
+        const codeTab = document.getElementById('codeTab');
+        const viewTab = document.getElementById('viewTab');
+        const helpBtn = document.getElementById('helpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const closeHelpBtn = document.getElementById('closeHelpBtn');
+        const darkModeBtn = document.getElementById('darkModeBtn');
+        const explanationArea = document.getElementById('explanation');
+        const saveDescriptionBtn = document.getElementById('saveDescriptionBtn');
+        const loadDescriptionBtn = document.getElementById('loadDescriptionBtn');
+        const saveCodeBtn = document.getElementById('saveCodeBtn');
+        const loadCodeBtn = document.getElementById('loadCodeBtn');
+        const saveExplanationBtn = document.getElementById('saveExplanationBtn');
+        const loadExplanationBtn = document.getElementById('loadExplanationBtn');
+
         let currentScale = 1;
         let panOffset = { x: 0, y: 0 };
         let isDragging = false;
         let startPanPosition = { x: 0, y: 0 };
+
         generateBtn.addEventListener('click', generateGraph);
         updateBtn.addEventListener('click', updateGraph);
+        explainBtn.addEventListener('click', explainGraph);
         zoomInBtn.addEventListener('click', () => zoom(1.1));
         zoomOutBtn.addEventListener('click', () => zoom(0.9));
         exportSvgBtn.addEventListener('click', exportSvg);
@@ -83,6 +270,19 @@
         graphContainer.addEventListener('mousemove', pan);
         graphContainer.addEventListener('mouseup', endPan);
         graphContainer.addEventListener('mouseleave', endPan);
+        graphContainer.addEventListener('wheel', handleMouseWheel);
+        codeTabBtn.addEventListener('click', () => switchTab('code'));
+        viewTabBtn.addEventListener('click', () => switchTab('view'));
+        helpBtn.addEventListener('click', () => helpModal.classList.remove('hidden'));
+        closeHelpBtn.addEventListener('click', () => helpModal.classList.add('hidden'));
+        darkModeBtn.addEventListener('click', toggleDarkMode);
+        saveDescriptionBtn.addEventListener('click', () => saveToFile('description', promptInput.value));
+        loadDescriptionBtn.addEventListener('click', () => loadFromFile('description', promptInput));
+        saveCodeBtn.addEventListener('click', () => saveToFile('code', graphvizCodeArea.value));
+        loadCodeBtn.addEventListener('click', () => loadFromFile('code', graphvizCodeArea));
+        saveExplanationBtn.addEventListener('click', () => saveToFile('explanation', explanationArea.value));
+        loadExplanationBtn.addEventListener('click', () => loadFromFile('explanation', explanationArea));
+
         async function generateGraph() {
             const prompt = promptInput.value.trim();
             if (!prompt) {
@@ -95,6 +295,7 @@
                 const graphvizCode = await generateGraphvizCode(prompt);
                 graphvizCodeArea.value = graphvizCode;
                 renderGraph(graphvizCode);
+                switchTab('view');
             } catch (error) {
                 showError('An error occurred while generating the graph. Please try again.');
                 console.error(error);
@@ -102,11 +303,38 @@
                 hideSpinner();
             }
         }
+
         async function generateGraphvizCode(prompt) {
             const fullPrompt = `Generate Graphviz code for the following graph description: ${prompt}\nPlease provide only the Graphviz code without any additional explanations or markdown formatting.`;
             const code = await lc.generateCode(fullPrompt);
             return code;
         }
+
+        async function explainGraph() {
+            const graphvizCode = graphvizCodeArea.value.trim();
+            if (!graphvizCode) {
+                showError('Please generate or enter Graphviz code first.');
+                return;
+            }
+            showSpinner();
+            hideError();
+            try {
+                const explanation = await generateExplanation(graphvizCode);
+                explanationArea.value = explanation;
+            } catch (error) {
+                showError('An error occurred while explaining the graph. Please try again.');
+                console.error(error);
+            } finally {
+                hideSpinner();
+            }
+        }
+
+        async function generateExplanation(graphvizCode) {
+            const prompt = `Explain the following Graphviz code in simple terms:\n\n${graphvizCode}\n\nProvide a brief explanation of what the graph represents and its main components.`;
+            const explanation = await lc.generate(prompt);
+            return explanation;
+        }
+
         function renderGraph(graphvizCode) {
             const viz = new Viz();
             viz.renderSVGElement(graphvizCode)
@@ -120,24 +348,31 @@
                     console.error(error);
                 });
         }
+
         function showSpinner() {
             spinner.classList.remove('hidden');
             generateBtn.disabled = true;
             updateBtn.disabled = true;
+            explainBtn.disabled = true;
         }
+
         function hideSpinner() {
             spinner.classList.add('hidden');
             generateBtn.disabled = false;
             updateBtn.disabled = false;
+            explainBtn.disabled = false;
         }
+
         function showError(message) {
             errorMessage.textContent = message;
             errorMessage.classList.remove('hidden');
         }
+
         function hideError() {
             errorMessage.textContent = '';
             errorMessage.classList.add('hidden');
         }
+
         function updateGraph() {
             const graphvizCode = graphvizCodeArea.value.trim();
             if (!graphvizCode) {
@@ -146,26 +381,32 @@
             }
             hideError();
             renderGraph(graphvizCode);
+            switchTab('view');
         }
+
         function zoom(factor) {
             currentScale *= factor;
             applyTransform();
         }
+
         function resetZoom() {
             currentScale = 1;
             panOffset = { x: 0, y: 0 };
             applyTransform();
         }
+
         function applyTransform() {
             const svg = graphContainer.querySelector('svg');
             if (svg) {
                 svg.style.transform = `scale(${currentScale}) translate(${panOffset.x}px, ${panOffset.y}px)`;
             }
         }
+
         function startPan(e) {
             isDragging = true;
             startPanPosition = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
         }
+
         function pan(e) {
             if (!isDragging) return;
             panOffset = {
@@ -174,9 +415,18 @@
             };
             applyTransform();
         }
+
         function endPan() {
             isDragging = false;
         }
+
+        function handleMouseWheel(e) {
+            e.preventDefault();
+            const delta = e.deltaY;
+            const zoomFactor = delta > 0 ? 0.9 : 1.1;
+            zoom(zoomFactor);
+        }
+
         function exportSvg() {
             const svg = graphContainer.querySelector('svg');
             if (svg) {
@@ -190,6 +440,7 @@
                 URL.revokeObjectURL(url);
             }
         }
+
         function exportPng() {
             const svg = graphContainer.querySelector('svg');
             if (svg) {
@@ -198,18 +449,107 @@
                 const ctx = canvas.getContext('2d');
                 const img = new Image();
                 img.onload = function() {
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    ctx.drawImage(img, 0, 0);
-                    const pngUrl = canvas.toDataURL('image/png');
-                    const link = document.createElement('a');
-                    link.href = pngUrl;
-                    link.download = 'graph.png';
-                    link.click();
+                    const promptResolution = prompt("Enter the desired scaling factor (e.g., 1.5 for 150% resolution):");
+                    if (promptResolution) {
+                        const scaleFactor = parseFloat(promptResolution);
+                        if (!isNaN(scaleFactor) && scaleFactor > 0) {
+                            const width = img.width * scaleFactor;
+                            const height = img.height * scaleFactor;
+                            canvas.width = width;
+                            canvas.height = height;
+                            ctx.fillStyle = 'white';
+                            ctx.fillRect(0, 0, width, height);
+                            ctx.drawImage(img, 0, 0, width, height);
+                            canvas.toBlob(function(blob) {
+                                const url = URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = 'graph.png';
+                                link.click();
+                                URL.revokeObjectURL(url);
+                            }, 'image/png');
+                        } else {
+                            alert("Invalid scaling factor. Please enter a positive number.");
+                        }
+                    }
                 };
-                img.src = 'data:image/svg+xml;base64,' + btoa(svgData);
+                img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
             }
         }
-    </script>
+
+        function switchTab(tab) {
+            if (tab === 'code') {
+                codeTab.classList.remove('hidden');
+                viewTab.classList.add('hidden');
+                codeTabBtn.classList.add('bg-white');
+                codeTabBtn.classList.remove('bg-gray-200');
+                viewTabBtn.classList.add('bg-gray-200');
+                viewTabBtn.classList.remove('bg-white');
+            } else {
+                codeTab.classList.add('hidden');
+                viewTab.classList.remove('hidden');
+                codeTabBtn.classList.add('bg-gray-200');
+                codeTabBtn.classList.remove('bg-white');
+                viewTabBtn.classList.add('bg-white');
+                viewTabBtn.classList.remove('bg-gray-200');
+            }
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            const isDarkMode = document.body.classList.contains('dark-mode');
+            localStorage.setItem('darkMode', isDarkMode);
+            updateDarkModeButton(isDarkMode);
+        }
+
+        function updateDarkModeButton(isDarkMode) {
+            const icon = darkModeBtn.querySelector('svg');
+            if (isDarkMode) {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />';
+            } else {
+                icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />';
+            }
+        }
+
+        function initDarkMode() {
+            const savedDarkMode = localStorage.getItem('darkMode');
+            if (savedDarkMode === 'true') {
+                document.body.classList.add('dark-mode');
+                updateDarkModeButton(true);
+            }
+        }
+
+        function saveToFile(type, content) {
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `graphviz_${type}.txt`;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadFromFile(type, targetElement) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.onload = readerEvent => {
+                    const content = readerEvent.target.result;
+                    targetElement.value = content;
+                    if (type === 'code') {
+                        renderGraph(content);
+                        switchTab('view');
+                    }
+                }
+                reader.readAsText(file);
+            }
+            input.click();
+        }
+
+        initDarkMode();
+</script>
 </body>
 </html>
