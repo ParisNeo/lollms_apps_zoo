@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Recorder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/wavesurfer.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-red-600 mb-2">YouTube Recorder</h1>
+            <p class="text-gray-600">Record your screen and audio for YouTube videos</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="flex justify-center space-x-4 mb-4">
+                <button id="startBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                    Start Recording
+                </button>
+                <button id="stopBtn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded hidden">
+                    Stop Recording
+                </button>
+            </div>
+            <p id="status" class="text-center text-gray-600">Ready to record</p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Video Preview</h2>
+            <video id="videoPreview" class="w-full h-auto mb-4" controls></video>
+            <h2 class="text-2xl font-bold mb-4">Audio Preview</h2>
+            <div id="waveform"></div>
+            <audio id="audioPreview" class="w-full mt-4" controls></audio>
+            <div class="mt-4">
+                <h3 class="text-xl font-bold mb-2">Transcription</h3>
+                <textarea id="transcriptionText" class="w-full h-40 p-2 border rounded" readonly></textarea>
+            </div>
+            <div class="mt-4">
+                <h3 class="text-xl font-bold mb-2">Enhanced Text</h3>
+                <textarea id="enhancedText" class="w-full h-40 p-2 border rounded"></textarea>
+            </div>
+            <div id="voiceSelectionContainer" class="mt-4">
+                <h3 class="text-xl font-bold mb-2">Select Voice</h3>
+                <select id="voiceSelect" class="w-full p-2 border rounded"></select>
+            </div>
+            <h2 class="text-2xl font-bold mb-4">Enhanced Audio Preview</h2>
+            <div id="enhancedwaveform"></div>
+            <audio id="enhancedAudioPreview" class="w-full mt-4" controls></audio>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Actions</h2>
+            <div class="flex flex-wrap justify-center space-x-4">
+                <button id="downloadVideo" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
+                    Download Video
+                </button>
+                <button id="downloadAudio" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
+                    Download Audio
+                </button>
+                <button id="transcribeBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
+                    Transcribe
+                </button>
+                <button id="enhanceBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
+                    Enhance
+                </button>
+                <button id="synthesizeBtn" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
+                    Synthesize
+                </button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Project Management</h2>
+            <div class="flex flex-wrap justify-center space-x-4">
+                <button id="saveProject" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mb-2">
+                    Save Project
+                </button>
+                <button id="loadProject" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-2">
+                    Load Project
+                </button>
+            </div>
+        </div>
+
+        <footer class="text-center text-gray-600">
+            <p>&copy; 2023 YouTube Recorder. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex justify-center items-center" style="display: none;">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4">Processing...</div>
+        </div>
+    </div>
+
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let audioContext;
+        let audioStream;
+        let videoStream;
+        let wavesurfer;
+        const lc = new LollmsClient();
+
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const status = document.getElementById('status');
+        const videoPreview = document.getElementById('videoPreview');
+        const audioPreview = document.getElementById('audioPreview');
+        const downloadVideo = document.getElementById('downloadVideo');
+        const downloadAudio = document.getElementById('downloadAudio');
+        const transcribeBtn = document.getElementById('transcribeBtn');
+        const enhanceBtn = document.getElementById('enhanceBtn');
+        const synthesizeBtn = document.getElementById('synthesizeBtn');
+        const transcriptionText = document.getElementById('transcriptionText');
+        const enhancedText = document.getElementById('enhancedText');
+        const voiceSelectionContainer = document.getElementById('voiceSelectionContainer');
+        const voiceSelect = document.getElementById('voiceSelect');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const saveProjectBtn = document.getElementById('saveProject');
+        const loadProjectBtn = document.getElementById('loadProject');
+
+        wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: 'violet',
+            progressColor: 'purple'
+        });
+
+        startBtn.addEventListener('click', startRecording);
+        stopBtn.addEventListener('click', stopRecording);
+        downloadVideo.addEventListener('click', () => downloadMedia('video'));
+        downloadAudio.addEventListener('click', () => downloadMedia('audio'));
+        transcribeBtn.addEventListener('click', transcribeAudio);
+        enhanceBtn.addEventListener('click', enhanceTranscription);
+        synthesizeBtn.addEventListener('click', synthesizeSpeech);
+        saveProjectBtn.addEventListener('click', saveProject);
+        loadProjectBtn.addEventListener('click', loadProject);
+        async function startRecording() {
+            try {
+                videoStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+                const combinedStream = new MediaStream([
+                    ...videoStream.getTracks(),
+                    ...audioStream.getTracks()
+                ]);
+
+                mediaRecorder = new MediaRecorder(combinedStream);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = processRecording;
+
+                mediaRecorder.start();
+                startBtn.classList.add("hidden");
+                stopBtn.classList.remove("hidden");
+                status.textContent = 'Recording in progress';
+
+                audioContext = new AudioContext();
+                const source = audioContext.createMediaStreamSource(audioStream);
+                const analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+
+                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                function updateWaveform() {
+                    analyser.getByteTimeDomainData(dataArray);
+                    const normalizedData = Array.from(dataArray).map(val => (val / 128) - 1);
+                    wavesurfer.load('', normalizedData);
+                    requestAnimationFrame(updateWaveform);
+                }
+                updateWaveform();
+
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                status.textContent = 'Error: ' + error.message;
+            }
+        }
+
+        function stopRecording() {
+            mediaRecorder.stop();
+            videoStream.getTracks().forEach(track => track.stop());
+            audioStream.getTracks().forEach(track => track.stop());
+            startBtn.classList.remove("hidden");
+            stopBtn.classList.add("hidden");
+
+            status.textContent = 'Recording stopped';
+            showLoading();
+        }
+
+        function processRecording() {
+            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+            const videoUrl = URL.createObjectURL(videoBlob);
+            videoPreview.src = videoUrl;
+
+            const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            wavesurfer.load(audioUrl);
+            audioPreview.src = audioUrl;
+
+            downloadVideo.disabled = false;
+            downloadAudio.disabled = false;
+            transcribeBtn.disabled = false;
+            saveVideoBtn.disabled = false;
+            hideLoading();
+        }
+
+        function downloadMedia(type) {
+            const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/wav' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `recorded_${type}.${type === 'video' ? 'webm' : 'wav'}`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        async function transcribeAudio() {
+            showLoading();
+            try {
+                const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+                const formData = new FormData();
+                formData.append('file', audioBlob, 'audio.wav');
+
+                const response = await axios.post('/transcribe', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                transcriptionText.value = response.data.transcription;
+                enhanceBtn.disabled = false;
+            } catch (error) {
+                console.error('Transcription error:', error);
+                alert('Error during transcription');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function enhanceTranscription() {
+            showLoading();
+            try {
+                const prompt = `${lc.system_message()}Enhance the following transcription, improving clarity and coherence:\n\n${transcriptionText.value}\nPlease answer directly with the enhanced transcription without any comments.\n${lc.ai_message()}`;
+                const enhancedResponse = await lc.generate(prompt);
+                enhancedText.value = enhancedResponse;
+                synthesizeBtn.disabled = false;
+                loadVoices();
+            } catch (error) {
+                console.error('Enhancement error:', error);
+                alert('Error during enhancement');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        async function loadVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                const voices = response.data.voices;
+                voiceSelect.innerHTML = voices.map(voice => `<option value="${voice}">${voice}</option>`).join('');
+                voiceSelectionContainer.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading voices:', error);
+                alert('Error loading voices');
+            }
+        }
+
+        async function synthesizeSpeech() {
+            showLoading();
+            try {
+                const selectedVoice = voiceSelect.value;
+                const textToSynthesize = enhancedText.value;
+
+                const response = await axios.post('/tts/file', {
+                    text: textToSynthesize,
+                    speaker: selectedVoice,
+                    language: 'en'
+                }, {
+                    responseType: 'blob'
+                });
+
+                const audioBlob = new Blob([response.data], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPreview.src = audioUrl;
+                wavesurfer.load(audioUrl);
+            } catch (error) {
+                console.error('Speech synthesis error:', error);
+                alert('Error during speech synthesis');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+
+        function saveProject() {
+            const projectData = {
+                transcription: transcriptionText.value,
+                enhancedText: enhancedText.value,
+                recordedChunks: recordedChunks
+            };
+            localStorage.setItem('youtubeRecorderProject', JSON.stringify(projectData));
+            alert('Project saved successfully!');
+        }
+
+        function loadProject() {
+            const savedProject = localStorage.getItem('youtubeRecorderProject');
+            if (savedProject) {
+                const projectData = JSON.parse(savedProject);
+                transcriptionText.value = projectData.transcription;
+                enhancedText.value = projectData.enhancedText;
+                recordedChunks = projectData.recordedChunks;
+
+                if (recordedChunks.length > 0) {
+                    processRecording();
+}
+
+                enhanceBtn.disabled = false;
+                synthesizeBtn.disabled = false;
+                alert('Project loaded successfully!');
+            } else {
+                alert('No saved project found!');
+            }
+        }
+
+        function saveWav() {
+            const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+            const url = URL.createObjectURL(audioBlob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'recorded_audio.wav';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        function saveVideo() {
+            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
+            const url = URL.createObjectURL(videoBlob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = 'recorded_video.webm';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+    </script>
+</body>
+</html>
