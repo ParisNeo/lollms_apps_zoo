@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Weather Data Aggregator</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">   
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            font-family: Arial, sans-serif;
+        }
+        .neon-text {
+            font-size: large;
+        }
+        .neon-box {
+            box-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px #ff00de, 0 0 7px #ff00de, 0 0 10px #ff00de;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        .weather-icon {
+            font-size: 48px;
+            line-height: 48px;
+            text-align: center;
+            width: 48px;
+            height: 48px;
+        }
+        .settings-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .settings-content {
+            background-color: #2a2a2a;
+            padding: 2rem;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #fff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+    <div class="container mx-auto p-4">
+        <header class="mb-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold neon-text">Advanced Weather Data Aggregator</h1>
+            <button id="settingsBtn" class="p-2 bg-gray-800 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+        <main>
+            <div class="gap-4">
+                <section class="p-4 w-full">
+                    <h2 class="text-2xl font-semibold mb-2 neon-text">Dashboard</h2>
+                    <div id="dashboard" class="space-y-4">
+                        <div id="local-time-weather" class="neon-box p-4 rounded shadow">
+                            <h3 class="text-xl font-semibold mb-2 neon-text">Selected Location Time and Weather</h3>
+                            <p id="selected-time" class="text-center text-4xl mb-2 neon-text"></p>
+                            <p id="selected-address"></p>
+                            <p id="current-weather"></p>
+                            <p id="current-wind"></p>
+                        </div>
+                        <div id="weather-map" class="neon-box p-4 rounded shadow" style="height: 400px;"></div>
+                        <div class="neon-box p-4 rounded shadow">
+                            <div class="flex">
+                                <button id="aiAnalysisTab" class="px-4 py-2 bg-purple-600 text-white rounded-t-lg">AI Analysis</button>
+                                <button id="graphTab" class="px-4 py-2 bg-gray-600 text-white rounded-t-lg ml-2">Graph</button>
+                            </div>
+                            <div id="aiAnalysisContent" class="mt-2">
+                                <h3 class="text-xl font-semibold mb-2 neon-text">AI Weather Analysis</h3>
+                                <button id="generateAnalysisBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                    <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                    </svg>
+                                    Generate Analysis
+                                </button>
+                                <button id="generateAudioBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded ml-2 hidden">
+                                    <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15.414a5 5 0 001.414 1.414m2.828 2.828a9 9 0 002.828 2.828"></path>
+                                    </svg>
+                                    Generate Audio
+                                </button>
+                                <div id="analysis-spinner" class="spinner hidden mt-4"></div>
+                                <div id="analysis-result"></div>
+                                <audio id="audioPlayer" controls class="mt-4 w-full hidden"></audio>
+                            </div>
+                            <div id="graphContent" class="mt-2 hidden">
+                                <h3 class="text-xl font-semibold mb-2 neon-text">Weather Graph</h3>
+                                <canvas id="weatherChart"></canvas>
+                            </div>
+                        </div>
+                        <div id="alerts" class="neon-box p-4 rounded shadow">
+                            <h3 class="text-xl font-semibold mb-2 neon-text">Alerts and Notifications</h3>
+                            <ul id="alertList" class="list-disc pl-5"></ul>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+    <div id="settingsOverlay" class="settings-overlay hidden">
+        <div class="settings-content">
+            <h2 class="text-2xl font-semibold mb-2 neon-text">Settings</h2>
+            <form id="settingsForm" class="space-y-4">
+                <div>
+                    <label for="location" class="block text-sm font-medium text-gray-300">Location</label>
+                    <input type="text" id="location" name="location" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white" placeholder="Enter city name or select on map">
+                </div>
+                <div>
+                    <label for="alertThreshold" class="block text-sm font-medium text-gray-300">Alert Temperature Threshold (°C)</label>
+                    <input type="number" id="alertThreshold" name="alertThreshold" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white" value="30">
+                </div>
+                <div>
+                    <label for="voiceSelect" class="block text-sm font-medium text-gray-300">Voice Selection</label>
+                    <select id="voiceSelect" name="voiceSelect" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+                    </select>
+                </div>
+                <div>
+                    <label for="themeSelect" class="block text-sm font-medium text-gray-300">Theme Selection</label>
+                    <select id="themeSelect" name="themeSelect" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
+                        <option value="default">Default</option>
+                        <option value="neon">Neon</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700">Update Settings</button>
+                <button type="button" id="closeSettingsBtn" class="w-full bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 mt-2">Close</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        const mr = new MarkdownRenderer();
+        const lc = new LollmsClient(null, null, 4096, -1, 4096, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS);
+        let map;
+        let weatherChart;
+        let marker;
+        let currentWeatherData;
+        let selectedVoice = '';
+        let lastGeneratedAnalysis = '';
+        function initMap() {
+            map = L.map('weather-map').setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors'
+            }).addTo(map);
+            map.on('click', function(e) {
+                updateLocationFromMap(e.latlng);
+            });
+        }
+        function initWeatherChart() {
+            const ctx = document.getElementById('weatherChart').getContext('2d');
+            weatherChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Temperature (°C)',
+                            data: [],
+                            borderColor: 'rgb(255, 99, 132)',
+                            yAxisID: 'y',
+                        },
+                        {
+                            label: 'Humidity (%)',
+                            data: [],
+                            borderColor: 'rgb(54, 162, 235)',
+                            yAxisID: 'y1',
+                        },
+                        {
+                            label: 'Wind Speed (m/s)',
+                            data: [],
+                            borderColor: 'rgb(75, 192, 192)',
+yAxisID: 'y2',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM d, yyyy'
+                                }
+                            },
+                            ticks: {
+                                source: 'data',
+                                autoSkip: true,
+                                maxRotation: 45,
+                                minRotation: 45,
+                                color: '#e0e0e0'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Date',
+                                color: '#e0e0e0'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Temperature (°C)',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Humidity (%)',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#e0e0e0'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Wind Speed (m/s)',
+                                color: '#e0e0e0'
+                            },
+                            ticks: {
+                                color: '#e0e0e0'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#e0e0e0'
+                            }
+                        },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    xMin: new Date(),
+                                    xMax: new Date(),
+                                    borderColor: 'rgb(255, 255, 255)',
+                                    borderWidth: 2,
+                                    label: {
+                                        content: 'Current Time',
+                                        enabled: true,
+                                        position: 'top'
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        async function fetchWeatherData(lat, lon) {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,relativehumidity_2m,weathercode,windspeed_10m&forecast_days=3`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`OpenMeteo API error: ${response.status} ${response.statusText}`);
+                }
+                return await response.json();
+            } catch (error) {
+                console.error('Error fetching data from OpenMeteo:', error);
+                throw error;
+            }
+        }
+        function updateMap(lat, lon, weatherCondition) {
+            if (marker) {
+                map.removeLayer(marker);
+            }
+            map.setView([lat, lon], 10);
+            const weatherIcon = L.divIcon({
+                className: 'weather-icon',
+                html: getWeatherIconHtml(weatherCondition),
+                iconSize: [48, 48]
+            });
+            marker = L.marker([lat, lon], {icon: weatherIcon}).addTo(map);
+        }
+        function getWeatherIconHtml(weatherCode) {
+            const iconMap = {
+                0: '☀️', 1: '🌤️', 2: '⛅', 3: '☁️', 45: '🌫️', 48: '🌫️', 51: '🌦️', 53: '🌦️', 55: '🌧️',
+                61: '🌧️', 63: '🌧️', 65: '🌧️', 71: '🌨️', 73: '🌨️', 75: '❄️', 77: '❄️', 80: '🌦️',
+                81: '🌧️', 82: '🌧️', 85: '🌨️', 86: '❄️', 95: '⛈️', 96: '⛈️', 99: '⛈️',
+            };
+            return iconMap[weatherCode] || '❓';
+        }
+        function updateWeatherChart(weatherData) {
+            const temperatures = [];
+            const humidities = [];
+            const windSpeeds = [];
+            const labels = [];
+            weatherData.hourly.time.forEach((time, index) => {
+                labels.push(new Date(time));
+                temperatures.push({x: new Date(time), y: weatherData.hourly.temperature_2m[index]});
+                humidities.push({x: new Date(time), y: weatherData.hourly.relativehumidity_2m[index]});
+                windSpeeds.push({x: new Date(time), y: weatherData.hourly.windspeed_10m[index]});
+            });
+            weatherChart.data.labels = labels;
+            weatherChart.data.datasets[0].data = temperatures;
+            weatherChart.data.datasets[1].data = humidities;
+            weatherChart.data.datasets[2].data = windSpeeds;
+            
+            const currentTime = new Date();
+            weatherChart.options.plugins.annotation.annotations.line1.xMin = currentTime;
+            weatherChart.options.plugins.annotation.annotations.line1.xMax = currentTime;
+            
+            const maxTemp = Math.max(...weatherData.hourly.temperature_2m);
+            const minTemp = Math.min(...weatherData.hourly.temperature_2m);
+            const maxHumidity = Math.max(...weatherData.hourly.relativehumidity_2m);
+            const minHumidity = Math.min(...weatherData.hourly.relativehumidity_2m);
+            const maxWind = Math.max(...weatherData.hourly.windspeed_10m);
+            const minWind = Math.min(...weatherData.hourly.windspeed_10m);
+            
+            weatherChart.options.scales.y.min = Math.min(minTemp, minHumidity, minWind);
+            weatherChart.options.scales.y.max = Math.max(maxTemp, maxHumidity, maxWind);
+            weatherChart.options.scales.y1.min = Math.min(minTemp, minHumidity, minWind);
+            weatherChart.options.scales.y1.max = Math.max(maxTemp, maxHumidity, maxWind);
+            weatherChart.options.scales.y2.min = Math.min(minTemp, minHumidity, minWind);
+            weatherChart.options.scales.y2.max = Math.max(maxTemp, maxHumidity, maxWind);
+            
+            weatherChart.update();
+        }
+        async function analyzeWeatherData(weatherData) {
+            const location = document.getElementById('location').value;
+            const prompt = `Analyze the following weather data for ${location} and provide a brief summary of the weather conditions and any notable patterns or extreme conditions:\n\n${JSON.stringify(weatherData)}\nOnly answer with the analysis in markdown format.`;
+            document.getElementById('analysis-spinner').classList.remove('hidden');
+            document.getElementById('analysis-result').innerHTML = '';
+            try {
+                const analysis = await lc.generate(prompt);
+                lastGeneratedAnalysis = analysis;
+                const renderedAnalysis = await mr.renderMarkdown(analysis);
+                document.getElementById('analysis-result').innerHTML = renderedAnalysis;
+                document.getElementById('generateAudioBtn').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating analysis:', error);
+                document.getElementById('analysis-result').innerHTML = 'An error occurred while generating the analysis.';
+            } finally {
+                document.getElementById('analysis-spinner').classList.add('hidden');
+            }
+        }
+        async function generateAudio() {
+            try {
+                document.getElementById('analysis-spinner').classList.remove('hidden');
+                const response = await axios.post('/tts/file', {
+                    text: lastGeneratedAnalysis,
+                    speaker: selectedVoice,
+                    language: 'en'
+                }, {
+                    responseType: 'blob'
+                });
+                const audioBlob = new Blob([response.data], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.src = audioUrl;
+                audioPlayer.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating audio:', error);
+                alert('An error occurred while generating the audio. Please try again.');
+            }
+            document.getElementById('analysis-spinner').classList.add('hidden');
+        }
+        function checkAlerts(weatherData, threshold) {
+            const alerts = [];
+            const maxTemp = Math.max(...weatherData.hourly.temperature_2m);
+            if (maxTemp > threshold) {
+                alerts.push(`High temperature alert: ${maxTemp.toFixed(1)}°C`);
+            }
+            const maxWindSpeed = Math.max(...weatherData.hourly.windspeed_10m);
+            if (maxWindSpeed > 10) {
+                alerts.push(`High wind speed alert: ${maxWindSpeed.toFixed(1)} m/s`);
+            }
+            const alertList = document.getElementById('alertList');
+            alertList.innerHTML = '';
+            alerts.forEach(alert => {
+                const li = document.createElement('li');
+                li.textContent = alert;
+                alertList.appendChild(li);
+            });
+        }
+        async function updateLocationFromMap(latlng) {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`);
+            const data = await response.json();
+            const address = data.display_name;
+            document.getElementById('location').value = address;
+            document.getElementById('selected-address').textContent = `Address: ${address}`;
+            updateWeatherInfo(latlng.lat, latlng.lng);
+        }
+        async function updateWeatherInfo(lat, lon) {
+            const location = document.getElementById('location').value;
+            const threshold = parseFloat(document.getElementById('alertThreshold').value);
+            try {
+                let weatherData;
+                if (!lat || !lon) {
+                    const geocodeResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}`);
+                    const geocodeData = await geocodeResponse.json();
+                    if (geocodeData.length === 0) {
+                        return;
+                    }
+                    lat = geocodeData[0].lat;
+                    lon = geocodeData[0].lon;
+                }
+                weatherData = await fetchWeatherData(lat, lon);
+                currentWeatherData = weatherData;
+                updateMap(lat, lon, weatherData.hourly.weathercode[0]);
+                updateWeatherChart(weatherData);
+                checkAlerts(weatherData, threshold);
+                updateSelectedTimeWeather(weatherData, lat, lon);
+            } catch (error) {
+                console.error('Error updating weather information:', error);
+                alert('An error occurred while fetching weather data. Please try again.');
+            }
+        }
+        function updateSelectedTimeWeather(weatherData, lat, lon) {
+            const now = new Date();
+            const timeZone = getTimeZone(lat, lon);
+            const selectedDate = now.toLocaleDateString('en-US', { timeZone: timeZone });
+            const selectedTime = now.toLocaleTimeString('en-US', { timeZone: timeZone });
+            const currentTemp = weatherData.hourly.temperature_2m[0];
+            const currentHumidity = weatherData.hourly.relativehumidity_2m[0];
+            const currentWeatherCode = weatherData.hourly.weathercode[0];
+            const currentWindSpeed = weatherData.hourly.windspeed_10m[0];
+            const weatherIcon = getWeatherIconHtml(currentWeatherCode);
+            document.getElementById('selected-time').innerHTML = `
+                <div>${selectedDate}</div>
+                <div class="text-4xl font-bold">${selectedTime}</div>
+            `;
+            document.getElementById('current-weather').innerHTML = `Current Weather: ${weatherIcon} ${currentTemp}°C, ${currentHumidity}% humidity`;
+            document.getElementById('current-wind').textContent = `Wind Speed: ${currentWindSpeed} m/s`;
+        }
+        function getTimeZone(lat, lon) {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone;
+        }
+        function updateSelectedDateTime() {
+            const lat = marker ? marker.getLatLng().lat : null;
+            const lon = marker ? marker.getLatLng().lng : null;
+            if (lat && lon) {
+                const now = new Date();
+                const timeZone = getTimeZone(lat, lon);
+                const selectedDate = now.toLocaleDateString('en-US', { timeZone: timeZone });
+                const selectedTime = now.toLocaleTimeString('en-US', { timeZone: timeZone });
+                document.getElementById('selected-time').innerHTML = `
+                    <div>${selectedDate}</div>
+                    <div class="text-4xl font-bold">${selectedTime}</div>
+                `;
+                
+                if (weatherChart) {
+                    weatherChart.options.plugins.annotation.annotations.line1.xMin = now;
+                    weatherChart.options.plugins.annotation.annotations.line1.xMax = now;
+                    weatherChart.update();
+                }
+            }
+        }
+        async function getAvailableVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                return response.data.voices;
+            } catch (error) {
+                console.error('Error fetching available voices:', error);
+                return [];
+            }
+        }
+        async function populateVoiceSelect() {
+            const voiceSelect = document.getElementById('voiceSelect');
+            const voices = await getAvailableVoices();
+            voices.forEach(voice => {
+                const option = document.createElement('option');
+                option.value = voice;
+                option.textContent = voice;
+                voiceSelect.appendChild(option);
+            });
+        }
+        function applyTheme(theme) {
+            const body = document.body;
+            const elements = document.querySelectorAll('.neon-text, .neon-box');
+            if (theme === 'neon') {
+                body.classList.add('neon-theme');
+                elements.forEach(el => {
+                    el.classList.add('neon-glow');
+                });
+            } else {
+                body.classList.remove('neon-theme');
+                elements.forEach(el => {
+                    el.classList.remove('neon-glow');
+                });
+            }
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            initMap();
+            initWeatherChart();
+            populateVoiceSelect();
+            document.getElementById('settingsForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                updateWeatherInfo();
+                selectedVoice = document.getElementById('voiceSelect').value;
+const selectedTheme = document.getElementById('themeSelect').value;
+                applyTheme(selectedTheme);
+                document.getElementById('settingsOverlay').classList.add('hidden');
+            });
+            document.getElementById('settingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsOverlay').classList.remove('hidden');
+            });
+            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+                document.getElementById('settingsOverlay').classList.add('hidden');
+            });
+            document.getElementById('aiAnalysisTab').addEventListener('click', () => {
+                document.getElementById('aiAnalysisContent').classList.remove('hidden');
+                document.getElementById('graphContent').classList.add('hidden');
+                document.getElementById('aiAnalysisTab').classList.add('bg-purple-600');
+                document.getElementById('aiAnalysisTab').classList.remove('bg-gray-600');
+                document.getElementById('graphTab').classList.add('bg-gray-600');
+                document.getElementById('graphTab').classList.remove('bg-purple-600');
+            });
+            document.getElementById('graphTab').addEventListener('click', () => {
+                document.getElementById('aiAnalysisContent').classList.add('hidden');
+                document.getElementById('graphContent').classList.remove('hidden');
+                document.getElementById('aiAnalysisTab').classList.remove('bg-purple-600');
+                document.getElementById('aiAnalysisTab').classList.add('bg-gray-600');
+                document.getElementById('graphTab').classList.remove('bg-gray-600');
+                document.getElementById('graphTab').classList.add('bg-purple-600');
+            });
+            document.getElementById('generateAnalysisBtn').addEventListener('click', () => {
+                if (currentWeatherData) {
+                    analyzeWeatherData(currentWeatherData);
+                }
+            });
+            document.getElementById('generateAudioBtn').addEventListener('click', generateAudio);
+            updateSelectedDateTime();
+            setInterval(updateSelectedDateTime, 1000);
+            setInterval(() => {
+                const lat = marker ? marker.getLatLng().lat : null;
+                const lon = marker ? marker.getLatLng().lng : null;
+                if (lat && lon) {
+                    updateWeatherInfo(lat, lon);
+                }
+            }, 60000);
+            const defaultTheme = document.getElementById('themeSelect').value;
+            applyTheme(defaultTheme);
+        });
+    </script>
+</body>
+</html>
