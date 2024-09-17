@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -42,6 +44,7 @@
             <div class="mb-4">
                 <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2" data-translate="upload_label">Or Upload Excel File</label>
                 <input type="file" id="file-upload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                <input type="file" id="file-upload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
             </div>
             <button id="upload-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300" data-translate="upload_button">Upload and Visualize</button>
         </div>
@@ -50,6 +53,19 @@
             <h2 class="text-2xl font-bold mb-4" data-translate="search_results">Search Results</h2>
             <div id="results-list" class="space-y-4"></div>
         </div>
+        <div id="analysis-container" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold mb-4">AI Analysis</h2>
+            <div class="mb-4">
+                <label for="instructions" class="block text-sm font-medium text-gray-700 mb-2">Analysis Instructions</label>
+                <textarea id="instructions" class="w-full px-3 py-2 border border-gray-300 rounded-md resize-vertical" rows="4" placeholder="Enter instructions for AI analysis..."></textarea>
+            </div>
+            <button id="analyze-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Analyze and Visualize</button>
+            <div id="file-list" class="mt-4 space-y-2"></div>
+            <div id="ai-analysis" class="mt-6 space-y-4"></div>
+            <div id="visualization" class="mt-6"></div>
+        </div>
+        
+
         <div id="analysis-container" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
             <h2 class="text-2xl font-bold mb-4">AI Analysis</h2>
             <div class="mb-4">
@@ -95,6 +111,14 @@
             </div>
         </div>
 
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4" data-translate="journal_info_title">Journal Information</h2>
+            <div id="journal-info" class="space-y-4"></div>
+        </div>
+
+        <button id="export-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 mt-4">Export to Excel</button>
+
+        <footer class="text-center text-gray-500 text-sm mt-8">
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4" data-translate="journal_info_title">Journal Information</h2>
             <div id="journal-info" class="space-y-4"></div>
@@ -150,6 +174,13 @@
         </div>
     </div>
 
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+
     <script>
         const translations = {
             en: {
@@ -187,6 +218,10 @@
                     close_explainer: "Got it!",
                     start_year: "Start Year",
                     end_year: "End Year",
+                    max_results: "Max Results",
+                    journal_info_title: "Journal Information",
+                    best_journals: "Best Journals for This Subject",
+                    journal_submission_info: "Journal Submission Information"
                     max_results: "Max Results",
                     journal_info_title: "Journal Information",
                     best_journals: "Best Journals for This Subject",
@@ -232,6 +267,10 @@
                     journal_info_title: "Informations sur les Revues",
                     best_journals: "Meilleures Revues pour ce Sujet",
                     journal_submission_info: "Informations de Soumission aux Revues"
+                    max_results: "Résultats Maximum",
+                    journal_info_title: "Informations sur les Revues",
+                    best_journals: "Meilleures Revues pour ce Sujet",
+                    journal_submission_info: "Informations de Soumission aux Revues"
                 }
             },
             es: {
@@ -240,6 +279,7 @@
                     name: "nombre",
                     title: "Visualizador de Línea de Tiempo de Publicaciones",
                     description: "Busca artículos o sube un archivo Excel para visualizar tu línea de tiempo de publicaciones",
+                    search_label: "Buscar Artículos",
                     search_label: "Buscar Artículos",
                     search_button: "Buscar",
                     upload_label: "O Subir Archivo Excel",
@@ -273,6 +313,10 @@
                     journal_info_title: "Información de Revistas",
                     best_journals: "Mejores Revistas para este Tema",
                     journal_submission_info: "Información de Envío a Revistas"
+                    max_results: "Resultados Máximos",
+                    journal_info_title: "Información de Revistas",
+                    best_journals: "Mejores Revistas para este Tema",
+                    journal_submission_info: "Información de Envío a Revistas"
                 }
             }
         };
@@ -286,6 +330,7 @@
             localizer.apply();
             updateChartTitle();
             updateStats(jsonData);
+            updateJournalInfo();
             updateJournalInfo();
         });
 
@@ -301,17 +346,28 @@
         const resultsContainer = document.getElementById('results-container');
         const analysisContainer = document.getElementById('analysis-container');
         
+        const analysisContainer = document.getElementById('analysis-container');
+        
         const resultsList = document.getElementById('results-list');
         const ctx = document.getElementById('timeline-chart').getContext('2d');
         const authorSelect = document.getElementById('author-select');
         const yearSelect = document.getElementById('year-select');
         const statsContainer = document.getElementById('stats-container');
         const journalInfoContainer = document.getElementById('journal-info');
+        const journalInfoContainer = document.getElementById('journal-info');
         const explainer = document.getElementById('explainer');
         const closeExplainer = document.getElementById('close-explainer');
         const dontShowAgain = document.getElementById('dont-show-again');
         const helpButton = document.getElementById('help-button');
         const spinner = document.getElementById('spinner');
+        const exportBtn = document.getElementById('export-btn');
+
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const aiAnalysis = document.getElementById('ai-analysis');
+        const instructions = document.getElementById('instructions');
+        
+        
+        
         const exportBtn = document.getElementById('export-btn');
 
         const analyzeBtn = document.getElementById('analyze-btn');
@@ -327,6 +383,8 @@
         yearSelect.addEventListener('change', updateChart);
         closeExplainer.addEventListener('click', hideExplainer);
         helpButton.addEventListener('click', showExplainer);
+        exportBtn.addEventListener('click', exportToExcel);
+        analyzeBtn.addEventListener('click', lollmsAnalyze)
         exportBtn.addEventListener('click', exportToExcel);
         analyzeBtn.addEventListener('click', lollmsAnalyze)
 
@@ -356,6 +414,9 @@
         const lc = new LollmsClient();
         const tl = new TasksLibrary(lc);
 
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+
         async function handleSearch() {
             const query = searchInput.value;
             const startYear = startYearInput.value;
@@ -368,6 +429,7 @@
                     if (startYear && endYear) {
                         url += `&date-range=${startYear},${endYear}`;
                     }
+                    console.log(`Generated url :${url}`)
                     console.log(`Generated url :${url}`)
                     const response = await axios.get(url);
                     const parser = new DOMParser();
@@ -384,6 +446,9 @@
                         const journal = entry.getElementsByTagName("arxiv:journal_ref")[0] ? entry.getElementsByTagName("arxiv:journal_ref")[0].textContent : "N/A";
                         const institute = entry.getElementsByTagName("affiliation")[0] ? entry.getElementsByTagName("affiliation")[0].textContent : "N/A";
                         return { title, author, year, date: published, link, abstract, journal, institute };
+                        const journal = entry.getElementsByTagName("arxiv:journal_ref")[0] ? entry.getElementsByTagName("arxiv:journal_ref")[0].textContent : "N/A";
+                        const institute = entry.getElementsByTagName("affiliation")[0] ? entry.getElementsByTagName("affiliation")[0].textContent : "N/A";
+                        return { title, author, year, date: published, link, abstract, journal, institute };
                     });
 
                     displaySearchResults(jsonData);
@@ -391,7 +456,14 @@
                     processData(jsonData);
                     updateStats(jsonData);
                     updateJournalInfo();
+                    updateJournalInfo();
                     resultsContainer.classList.remove('hidden');
+                    analysisContainer.classList.remove('hidden')
+
+                    const titles = jsonData.map(item => item.title);
+                    const authors = jsonData.map(item => item.author);
+                    const abstracts = jsonData.map(item => item.abstract);
+
                     analysisContainer.classList.remove('hidden')
 
                     const titles = jsonData.map(item => item.title);
@@ -433,6 +505,34 @@
             hideSpinner();
         }
         
+
+        async function lollmsAnalyze() {
+            showSpinner();
+            
+            // Create an array of formatted article information
+            const formattedArticles = jsonData.map(item => 
+                `Title: ${item.title}\nAuthor: ${item.author}\nAbstract: ${item.abstract}`
+            );
+            
+            const prompt = `Analyze the following scientific articles and answer in markdown:\n\n${instructions.value}\n\nProvide a summary of the main themes and trends in these articles.`;
+                    
+            const analysis = await tl.summarizeText(
+                formattedArticles.join('\n\n---\n\n'), // Join articles with a separator
+                prompt,
+                "articles",
+                "",
+                4096,
+                4096,
+                null,
+                null,
+                "SEQUENTIAL",
+                reformat=true
+            );
+        
+            aiAnalysis.innerText = analysis;
+            hideSpinner();
+        }
+        
         function displaySearchResults(data) {
             resultsList.innerHTML = '';
             data.forEach(item => {
@@ -441,6 +541,8 @@
                 resultItem.innerHTML = `
                     <h3 class="font-bold">${item.title}</h3>
                     <p>${item.author} - ${new Date(item.date).toLocaleDateString()}</p>
+                    <p>Journal: ${item.journal}</p>
+                    <p>Institute: ${item.institute}</p>
                     <p>Journal: ${item.journal}</p>
                     <p>Institute: ${item.institute}</p>
                     <a href="${item.link}" target="_blank" class="text-indigo-600 hover:text-indigo-800">View Article</a>
@@ -484,6 +586,7 @@
                     populateSelects(jsonData);
                     processData(jsonData);
                     updateStats(jsonData);
+                    updateJournalInfo();
                     updateJournalInfo();
                     hideSpinner();
                 };
@@ -571,6 +674,7 @@
                                     let tooltip = `${author}: ${count} publication(s)\n\n`;
                                     publications.forEach(pub => {
                                         tooltip += `${pub.date}: ${pub.title}\nJournal: ${pub.journal}\nInstitute: ${pub.institute}\n\n`;
+                                        tooltip += `${pub.date}: ${pub.title}\nJournal: ${pub.journal}\nInstitute: ${pub.institute}\n\n`;
                                     });
                                     return tooltip;
                                 }
@@ -594,6 +698,7 @@
             processData(filteredData);
             updateStats(filteredData);
             updateJournalInfo();
+            updateJournalInfo();
         }
 
         function updateStats(data) {
@@ -603,6 +708,8 @@
             const averagePublicationsPerYear = totalPublications / uniqueYears;
             const mostPublishedAuthor = getMostPublishedAuthor(data);
             const mostProductiveYear = getMostProductiveYear(data);
+            const uniqueJournals = new Set(data.map(item => item.journal)).size;
+            const uniqueInstitutes = new Set(data.map(item => item.institute)).size;
             const uniqueJournals = new Set(data.map(item => item.journal)).size;
             const uniqueInstitutes = new Set(data.map(item => item.institute)).size;
 
@@ -639,6 +746,14 @@
                     <h3 class="font-bold">Unique Institutes</h3>
                     <p>${uniqueInstitutes}</p>
                 </div>
+                <div class="stat-item">
+                    <h3 class="font-bold">Unique Journals</h3>
+                    <p>${uniqueJournals}</p>
+                </div>
+                <div class="stat-item">
+                    <h3 class="font-bold">Unique Institutes</h3>
+                    <p>${uniqueInstitutes}</p>
+                </div>
             `;
         }
 
@@ -656,6 +771,7 @@
             data.forEach(item => {
                 yearCounts[item.year] = (yearCounts[item.year] || 0) + 1;
             });
+            const mostProductive = Object.entries(yearCounts).reduce((a, b) => a[1] > b[1] ? a : b);
             const mostProductive = Object.entries(yearCounts).reduce((a, b) => a[1] > b[1] ? a : b);
             return { year: mostProductive[0], count: mostProductive[1] };
         }
@@ -752,6 +868,78 @@
 
             return submissionInfo[journal] || 'Please check the journal\'s official website for submission guidelines.';
         }
+        function updateJournalInfo() {
+            const subject = searchInput.value || 'general';
+            const bestJournals = getBestJournals(subject);
+            const submissionInfo = getJournalSubmissionInfo(bestJournals[0]);
+
+            const journalCounts = {};
+            jsonData.forEach(item => {
+                journalCounts[item.journal] = (journalCounts[item.journal] || 0) + 1;
+            });
+
+            const topJournals = Object.entries(journalCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            const instituteCounts = {};
+            jsonData.forEach(item => {
+                instituteCounts[item.institute] = (instituteCounts[item.institute] || 0) + 1;
+            });
+
+            const topInstitutes = Object.entries(instituteCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5);
+
+            journalInfoContainer.innerHTML = `
+                <div>
+                    <h3 class="font-bold" data-translate="best_journals">${localizer.translate('best_journals')}</h3>
+                    <ul class="list-disc list-inside">
+                        ${bestJournals.map(journal => `<li>${journal}</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-bold" data-translate="journal_submission_info">${localizer.translate('journal_submission_info')}</h3>
+                    <p>${submissionInfo}</p>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-bold">Top Journals in Dataset</h3>
+                    <ul class="list-disc list-inside">
+                        ${topJournals.map(([journal, count]) => `<li>${journal}: ${count} publications</li>`).join('')}
+                    </ul>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-bold">Top Institutes in Dataset</h3>
+                    <ul class="list-disc list-inside">
+                        ${topInstitutes.map(([institute, count]) => `<li>${institute}: ${count} publications</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function getBestJournals(subject) {
+            const journalsBySubject = {
+                'physics': ['Physical Review Letters', 'Nature Physics', 'Science'],
+                'biology': ['Nature', 'Cell', 'PLOS Biology'],
+                'computer science': ['ACM Computing Surveys', 'Nature Machine Intelligence', 'IEEE Transactions on Pattern Analysis and Machine Intelligence'],
+                'general': ['Nature', 'Science', 'PNAS']
+            };
+
+            return journalsBySubject[subject.toLowerCase()] || journalsBySubject['general'];
+        }
+
+        function getJournalSubmissionInfo(journal) {
+            const submissionInfo = {
+                'Nature': 'Submit online at nature.com/submissions. Prepare a cover letter, manuscript, and figures.',
+                'Science': 'Submit through science.org/authors/science-information-authors. Include a cover letter and manuscript.',
+                'Physical Review Letters': 'Submit via journals.aps.org/prl/authors. Provide a suggestion for an editor.',
+                'Cell': 'Submit at cell.com/submission-guidelines. Include a cover letter and highlight the significance of your work.',
+                'PLOS Biology': 'Submit through journals.plos.org/plosbiology/s/submit-now. Ensure your manuscript adheres to PLOS ONE policies.',
+                'ACM Computing Surveys': 'Submit via acm.org/publications/authors/submission-guidelines. Follow ACM article template.',
+            };
+
+            return submissionInfo[journal] || 'Please check the journal\'s official website for submission guidelines.';
+        }
 
         startYearInput.value = '1900';
         endYearInput.value = new Date().getFullYear().toString();
@@ -767,6 +955,15 @@
             if (savedStartYear) startYearInput.value = savedStartYear;
             if (savedEndYear) endYearInput.value = savedEndYear;
         });
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        hideLoader();
 
         function showLoader() {
             document.getElementById('loadingOverlay').style.display = 'flex';
