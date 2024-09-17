@@ -114,7 +114,7 @@
                     summaries: "Summaries",
                     contribution: "Contribution Synthesis:",
                     quantitativeResults: "Quantitative Results:",
-                    footer: "PDF Research Summarizer © 2023 | Version 1.0",
+                    footer: "PDF Research Summarizer © 2024 By ParisNeo using lollms",
                     copyAll: "Copy All",
                     exportAllMarkdown: "Export All to Markdown",
                     saveAll: "Save All",
@@ -148,7 +148,7 @@ Please provide the summary.
                     summaries: "Résumés",
                     contribution: "Synthèse de la Contribution :",
                     quantitativeResults: "Résultats Quantitatifs :",
-                    footer: "Résumé de Recherche PDF © 2023 | Version 1.0",
+                    footer: "Résumé de Recherche PDF © 2024 By ParisNeo using lollms",
                     copyAll: "Tout Copier",
                     exportAllMarkdown: "Tout Exporter en Markdown",
                     saveAll: "Tout Sauvegarder",
@@ -181,7 +181,7 @@ Veuillez fournir le résumé.
                     summaries: "Zusammenfassungen",
                     contribution: "Beitragssynthese:",
                     quantitativeResults: "Quantitative Ergebnisse:",
-                    footer: "PDF-Forschungszusammenfassung © 2023 | Version 1.0",
+                    footer: "PDF-Forschungszusammenfassung © 2024 By ParisNeo using lollms",
                     copyAll: "Alle kopieren",
                     exportAllMarkdown: "Alle als Markdown exportieren",
                     saveAll: "Alle speichern",
@@ -214,7 +214,7 @@ Bitte erstellen Sie die Zusammenfassung.
                     summaries: "Riassunti",
                     contribution: "Sintesi del Contributo:",
                     quantitativeResults: "Risultati Quantitativi:",
-                    footer: "Riassunto Ricerca PDF © 2023 | Versione 1.0",
+                    footer: "Riassunto Ricerca PDF © 2024 By ParisNeo using lollms | Versione 1.0",
                     copyAll: "Copia Tutti",
                     exportAllMarkdown: "Esporta Tutti in Markdown",
                     saveAll: "Salva Tutti",
@@ -402,14 +402,14 @@ document.getElementById('exportAllMarkdownBtn').addEventListener('click', export
                 let answer;
                 if (useTasksLibrary) {
                     const context = uploadedFiles.map(file => file.content).join('\n\n');
-                    answer = await tl.answerQuestion(question, context);
+                    answer = await summarizeText(text = context, summaryInstruction = `Based on the following PDF content, answer this question: ${question}\n\nPDF Content:\n<in line>\nThe answer must be a html <div> tag with the two sections rendered as html without any comments. You can use tailwindcss for styling.\n`, maxSummarySize=1024);
                 } else {
-                    const prompt = `Based on the following PDF content, answer this question: ${question}\n\nPDF Content:\n${uploadedFiles.map(file => file.content).join('\n\n')}`;
+                    const prompt = `Based on the following PDF content, answer this question: ${question}\n\nPDF Content:\n${uploadedFiles.map(file => file.content).join('\n\n')}\nThe answer must be a html <div> tag with the two sections rendered as html without any comments. You can use tailwindcss for styling.\n`;
                     answer = await lc.generate(prompt);
                 }
                 questionAnswer.innerHTML = `<div class="bg-white shadow-md rounded-lg p-4 mt-4">
                     <h4 class="font-semibold mb-2">Question: ${question}</h4>
-                    <p>${answer}</p>
+                    <p>${ answer}</p>
                 </div>`;
             } catch (error) {
                 console.error('Error answering question:', error);
