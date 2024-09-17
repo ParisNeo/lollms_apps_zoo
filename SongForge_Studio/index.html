@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Song Building Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold mb-8 text-center text-indigo-600" data-translate="title">Song Building Studio</h1>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 class="text-2xl font-semibold mb-4" data-translate="songDescription">Song Description</h2>
+            <textarea id="songDescription" class="w-full h-40 p-2 border rounded mb-4" data-translate="songDescriptionPlaceholder" placeholder="Describe the song you want to build..."></textarea>
+            <button id="generateSong" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="generateSong">Generate Song</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4" data-translate="lyrics">Lyrics</h2>
+                <textarea id="lyricsOutput" class="w-full h-40 p-2 border rounded mb-4"></textarea>
+                <div class="flex">
+                    <button id="enhanceLyrics" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span data-translate="enhanceLyrics">Enhance Lyrics</span>
+                    </button>
+                    <button id="undoLyrics" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.707 3.293a1 1 0 00-1.414 1.414L10.586 8H4a1 1 0 100 2h6.586l-3.293 3.293a1 1 0 101.414 1.414l5-5a1 1 0 000-1.414l-5-5z" clip-rule="evenodd" />
+                        </svg>
+                        <span data-translate="undo">Undo</span>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h2 class="text-2xl font-semibold mb-4" data-translate="styleDescription">Style Description</h2>
+                <textarea id="styleOutput" class="w-full h-40 p-2 border rounded mb-4"></textarea>
+                <select id="styleOptions" class="w-full p-2 border rounded mb-4">
+                    <option value="" data-translate="selectMusicStyle">Select a music style</option>
+                    <option value="rock">Rock</option>
+                    <option value="pop">Pop</option>
+                    <option value="jazz">Jazz</option>
+                    <option value="classical">Classical</option>
+                    <option value="hiphop">Hip Hop</option>
+                    <option value="rnb">R&B</option>
+                    <option value="electronic">Electronic</option>
+                    <option value="country">Country</option>
+                    <option value="blues">Blues</option>
+                    <option value="reggae">Reggae</option>
+                    <option value="folk">Folk</option>
+                    <option value="metal">Metal</option>
+                    <option value="punk">Punk</option>
+                    <option value="soul">Soul</option>
+                    <option value="funk">Funk</option>
+                    <option value="disco">Disco</option>
+                    <option value="techno">Techno</option>
+                    <option value="house">House</option>
+                    <option value="indie">Indie</option>
+                    <option value="alternative">Alternative</option>
+                    <option value="grunge">Grunge</option>
+                    <option value="ambient">Ambient</option>
+                    <option value="gospel">Gospel</option>
+                    <option value="worldmusic">World Music</option>
+                    <option value="edm">EDM</option>
+                    <option value="trap">Trap</option>
+                    <option value="dubstep">Dubstep</option>
+                    <option value="ska">Ska</option>
+                    <option value="salsa">Salsa</option>
+                    <option value="bossa_nova">Bossa Nova</option>
+                    <option value="flamenco">Flamenco</option>
+                    <option value="opera">Opera</option>
+                    <option value="swing">Swing</option>
+                    <option value="bluegrass">Bluegrass</option>
+                    <option value="rockabilly">Rockabilly</option>
+                    <option value="synthwave">Synthwave</option>
+                    <option value="lofi">Lo-fi</option>
+                    <option value="kpop">K-pop</option>
+                    <option value="jpop">J-pop</option>
+                    <option value="bollywood">Bollywood</option>
+                    <option value="celtic">Celtic</option>
+                    <option value="tango">Tango</option>
+                    <option value="baroquemusic">Baroque Music</option>
+                    <option value="newage">New Age</option>
+                    <option value="hardstyle">Hardstyle</option>
+                    <option value="grime">Grime</option>
+                    <option value="afrobeat">Afrobeat</option>
+                    <option value="psychedelic">Psychedelic</option>
+                    <option value="experimental">Experimental</option>
+                    <option value="vaporwave">Vaporwave</option>
+                </select>
+                <div class="flex">
+                    <button id="addStyleElement" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 flex items-center mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span data-translate="addToStyle">Add to Style</span>
+                    </button>
+                    <button id="enhanceStyle" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600 flex items-center mr-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clip-rule="evenodd" />
+                        </svg>
+                        <span data-translate="enhanceStyle">Enhance Style</span>
+                    </button>
+                    <button id="undoStyle" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M8.707 3.293a1 1 0 00-1.414 1.414L10.586 8H4a1 1 0 100 2h6.586l-3.293 3.293a1 1 0 101.414 1.414l5-5a1 1 0 000-1.414l-5-5z" clip-rule="evenodd" />
+                        </svg>
+                        <span data-translate="undo">Undo</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white p-6 rounded-lg shadow-md mt-8">
+            <h2 class="text-2xl font-semibold mb-4" data-translate="lyricsUpdateInstructions">Lyrics Update Instructions</h2>
+            <textarea id="lyricsInstructions" class="w-full h-40 p-2 border rounded mb-4" data-translate="lyricsInstructionsPlaceholder" placeholder="Enter instructions to update the lyrics..."></textarea>
+            <button id="updateLyrics" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="updateLyrics">Update Lyrics</span>
+            </button>
+        </div>
+
+        <div class="mt-8 text-center">
+            <button id="saveSong" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="saveSong">Save Song</span>
+            </button>
+            <button id="loadSong" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="loadSong">Load Song</span>
+            </button>
+            <a href="https://www.suno.ai/create" target="_blank" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 inline-flex items-center justify-center mx-auto mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="openSunoAi">Open Suno.ai</span>
+            </a>
+            <a href="https://udio.com/create" target="_blank" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 inline-flex items-center justify-center mx-auto">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.56-.5-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.56.5.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.498-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.147.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clip-rule="evenodd" />
+                </svg>
+                <span data-translate="openUdioCom">Open Udio.com</span>
+            </a>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
+        <div class="text-center text-white">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4" data-translate="loadingMessage">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+
+    <div id="helpButton" class="fixed bottom-4 right-4 bg-blue-500 text-white rounded-full w-12 h-12 flex items-center justify-center cursor-pointer">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+    </div>
+
+    <div id="helpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-8 rounded-lg max-w-2xl">
+            <h2 class="text-2xl font-bold mb-4" data-translate="help">Help</h2>
+            <div class="mb-4 overflow-y-auto max-h-96" data-translate="helpText" data-translate-html>
+                <h3 class="text-xl font-semibold mb-2">Welcome to the Song Building Studio!</h3>
+                <p class="mb-2">This application helps you generate and enhance song lyrics and styles. Here's how to use it:</p>
+                <ol class="list-decimal list-inside mb-4">
+                    <li class="mb-1"><strong>Song Description:</strong> Start by describing the song you want to create in the "Song Description" box.</li>
+                    <li class="mb-1"><strong>Generate Song:</strong> Click the "Generate Song" button to create initial lyrics and style based on your description.</li>
+                    <li class="mb-1"><strong>Enhance Lyrics:</strong> Use the "Enhance Lyrics" button to improve the generated lyrics.</li>
+                    <li class="mb-1"><strong>Enhance Style:</strong> Click "Enhance Style" to refine the song's style description.</li>
+                    <li class="mb-1"><strong>Add Style Elements:</strong> Select a music style from the dropdown and click "Add to Style" to incorporate specific elements.</li>
+                    <li class="mb-1"><strong>Update Lyrics:</strong> Use the "Lyrics Update Instructions" box to give specific directions for modifying the lyrics, then click "Update Lyrics".</li>
+                    <li class="mb-1"><strong>Undo Changes:</strong> Use the "Undo" buttons to revert to the previous version of lyrics or style.</li>
+                    <li class="mb-1"><strong>Save and Load:</strong> Use the "Save Song" and "Load Song" buttons to save your work or load a previously saved song.</li>
+                    <li class="mb-1"><strong>External Tools:</strong> Click on "Open Suno.ai" or "Open Udio.com" to access additional music creation tools.</li>
+                </ol>
+                <p>Remember, this is a creative tool to assist you in the songwriting process. Feel free to experiment and iterate until you're satisfied with the results!</p>
+            </div>
+            <button id="closeHelp" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600" data-translate="close">Close</button>
+        </div>
+    </div>
+
+    <input type="file" id="fileInput" style="display: none;" accept=".json">
+
+    <script>
+        const lc = new LollmsClient();
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const songDescription = document.getElementById('songDescription');
+        const generateSong = document.getElementById('generateSong');
+        const lyricsOutput = document.getElementById('lyricsOutput');
+        const styleOutput = document.getElementById('styleOutput');
+        const enhanceLyrics = document.getElementById('enhanceLyrics');
+        const enhanceStyle = document.getElementById('enhanceStyle');
+        const styleOptions = document.getElementById('styleOptions');
+        const addStyleElement = document.getElementById('addStyleElement');
+        const saveSong = document.getElementById('saveSong');
+        const loadSong = document.getElementById('loadSong');
+        const helpButton = document.getElementById('helpButton');
+        const helpModal = document.getElementById('helpModal');
+        const closeHelp = document.getElementById('closeHelp');
+        const fileInput = document.getElementById('fileInput');
+        const lyricsInstructions = document.getElementById('lyricsInstructions');
+        const updateLyrics = document.getElementById('updateLyrics');
+        const undoLyrics = document.getElementById('undoLyrics');
+        const undoStyle = document.getElementById('undoStyle');
+
+        let lyricsHistory = [];
+        let styleHistory = [];
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Song Building Studio",
+                    songDescription: "Song Description",
+                    songDescriptionPlaceholder: "Describe the song you want to build...",
+                    generateSong: "Generate Song",
+                    lyrics: "Lyrics",
+                    enhanceLyrics: "Enhance Lyrics",
+                    undo: "Undo",
+                    styleDescription: "Style Description",
+                    selectMusicStyle: "Select a music style",
+                    addToStyle: "Add to Style",
+                    enhanceStyle: "Enhance Style",
+                    lyricsUpdateInstructions: "Lyrics Update Instructions",
+                    lyricsInstructionsPlaceholder: "Enter instructions to update the lyrics...",
+                    updateLyrics: "Update Lyrics",
+                    saveSong: "Save Song",
+                    loadSong: "Load Song",
+                    openSunoAi: "Open Suno.ai",
+                    openUdioCom: "Open Udio.com",
+                    loadingMessage: "Interrogating LOLLMS strawberry...",
+                    help: "Help",
+                    helpText: `
+                        <h3 class="text-xl font-semibold mb-2">Welcome to the Song Building Studio!</h3>
+                        <p class="mb-2">This application helps you generate and enhance song lyrics and styles. Here's how to use it:</p>
+                        <ol class="list-decimal list-inside mb-4">
+                            <li class="mb-1"><strong>Song Description:</strong> Start by describing the song you want to create in the "Song Description" box.</li>
+                            <li class="mb-1"><strong>Generate Song:</strong> Click the "Generate Song" button to create initial lyrics and style based on your description.</li>
+                            <li class="mb-1"><strong>Enhance Lyrics:</strong> Use the "Enhance Lyrics" button to improve the generated lyrics.</li>
+                            <li class="mb-1"><strong>Enhance Style:</strong> Click "Enhance Style" to refine the song's style description.</li>
+                            <li class="mb-1"><strong>Add Style Elements:</strong> Select a music style from the dropdown and click "Add to Style" to incorporate specific elements.</li>
+                            <li class="mb-1"><strong>Update Lyrics:</strong> Use the "Lyrics Update Instructions" box to give specific directions for modifying the lyrics, then click "Update Lyrics".</li>
+                            <li class="mb-1"><strong>Undo Changes:</strong> Use the "Undo" buttons to revert to the previous version of lyrics or style.</li>
+                            <li class="mb-1"><strong>Save and Load:</strong> Use the "Save Song" and "Load Song" buttons to save your work or load a previously saved song.</li>
+                            <li class="mb-1"><strong>External Tools:</strong> Click on "Open Suno.ai" or "Open Udio.com" to access additional music creation tools.</li>
+                        </ol>
+                        <p>Remember, this is a creative tool to assist you in the songwriting process. Feel free to experiment and iterate until you're satisfied with the results!</p>
+                    `,
+                    close: "Close"
+                },
+                promptTranslations: {
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Studio de Création de Chansons",
+                    songDescription: "Description de la Chanson",
+                    songDescriptionPlaceholder: "Décrivez la chanson que vous voulez créer...",
+                    generateSong: "Générer la Chanson",
+                    lyrics: "Paroles",
+                    enhanceLyrics: "Améliorer les Paroles",
+                    undo: "Annuler",
+                    styleDescription: "Description du Style",
+                    selectMusicStyle: "Sélectionnez un style musical",
+                    addToStyle: "Ajouter au Style",
+                    enhanceStyle: "Améliorer le Style",
+                    lyricsUpdateInstructions: "Instructions de Mise à Jour des Paroles",
+                    lyricsInstructionsPlaceholder: "Entrez les instructions pour mettre à jour les paroles...",
+                    updateLyrics: "Mettre à Jour les Paroles",
+                    saveSong: "Sauvegarder la Chanson",
+                    loadSong: "Charger une Chanson",
+                    openSunoAi: "Ouvrir Suno.ai",
+                    openUdioCom: "Ouvrir Udio.com",
+                    loadingMessage: "Interrogation de LOLLMS fraise en cours...",
+                    help: "Aide",
+                    helpText: `
+                        <h3 class="text-xl font-semibold mb-2">Bienvenue dans le Studio de Création de Chansons !</h3>
+                        <p class="mb-2">Cette application vous aide à générer et à améliorer les paroles et les styles de chansons. Voici comment l'utiliser :</p>
+                        <ol class="list-decimal list-inside mb-4">
+                            <li class="mb-1"><strong>Description de la Chanson :</strong> Commencez par décrire la chanson que vous voulez créer dans la boîte "Description de la Chanson".</li>
+                            <li class="mb-1"><strong>Générer la Chanson :</strong> Cliquez sur le bouton "Générer la Chanson" pour créer les paroles et le style initiaux basés sur votre description.</li>
+                            <li class="mb-1"><strong>Améliorer les Paroles :</strong> Utilisez le bouton "Améliorer les Paroles" pour améliorer les paroles générées.</li>
+                            <li class="mb-1"><strong>Améliorer le Style :</strong> Cliquez sur "Améliorer le Style" pour affiner la description du style de la chanson.</li>
+                            <li class="mb-1"><strong>Ajouter des Éléments de Style :</strong> Sélectionnez un style musical dans la liste déroulante et cliquez sur "Ajouter au Style" pour incorporer des éléments spécifiques.</li>
+                            <li class="mb-1"><strong>Mettre à Jour les Paroles :</strong> Utilisez la boîte "Instructions de Mise à Jour des Paroles" pour donner des instructions spécifiques pour modifier les paroles, puis cliquez sur "Mettre à Jour les Paroles".</li>
+                            <li class="mb-1"><strong>Annuler les Changements :</strong> Utilisez les boutons "Annuler" pour revenir à la version précédente des paroles ou du style.</li>
+                            <li class="mb-1"><strong>Sauvegarder et Charger :</strong> Utilisez les boutons "Sauvegarder la Chanson" et "Charger une Chanson" pour sauvegarder votre travail ou charger une chanson précédemment sauvegardée.</li>
+                            <li class="mb-1"><strong>Outils Externes :</strong> Cliquez sur "Ouvrir Suno.ai" ou "Ouvrir Udio.com" pour accéder à des outils supplémentaires de création musicale.</li>
+                        </ol>
+                        <p>N'oubliez pas, c'est un outil créatif pour vous assister dans le processus d'écriture de chansons. N'hésitez pas à expérimenter et à itérer jusqu'à ce que vous soyez satisfait des résultats !</p>
+                    `,
+                    close: "Fermer"
+                },
+                promptTranslations: {
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, "songBuilderStudio", "en");
+
+        function showLoader() {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+        }
+
+        function hideLoader() {
+            loadingOverlay.classList.remove('flex');
+            loadingOverlay.classList.add('hidden');
+        }
+
+        async function generateText(prompt) {
+            showLoader();
+            try {
+                const generatedText = await lc.generate(prompt);
+                hideLoader();
+                return generatedText;
+            } catch (error) {
+                console.error('Error generating text:', error);
+                hideLoader();
+                return 'An error occurred while generating text.';
+            }
+        }
+
+        generateSong.addEventListener('click', async () => {
+            const description = songDescription.value;
+            const prompt = `${lc.system_message()}You are a talented songwriter and music producer. Based on the following description, generate song lyrics and a brief style description. The style description must be a very short list of style elements, not a paragraph. Separate the lyrics and style description with three dashes (---).
+${lc.user_message()}${description}
+${lc.ai_message()}Here are the generated song lyrics and style description:`;
+            const result = await generateText(prompt);
+            const [lyrics, style] = result.split('---');
+            lyricsHistory.push(lyricsOutput.value);
+            styleHistory.push(styleOutput.value);
+            lyricsOutput.value = lyrics.trim();
+            styleOutput.value = style.trim();
+        });
+
+        enhanceLyrics.addEventListener('click', async () => {
+            const currentLyrics = lyricsOutput.value;
+            lyricsHistory.push(currentLyrics);
+            const prompt = `${lc.system_message()}You are a skilled songwriter. Enhance the following lyrics while maintaining the original theme and style:
+${lc.user_message()}${currentLyrics}
+${lc.ai_message()}Here are the enhanced lyrics:`;
+            const enhancedLyrics = await generateText(prompt);
+            lyricsOutput.value = enhancedLyrics;
+        });
+
+        enhanceStyle.addEventListener('click', async () => {
+            const currentStyle = styleOutput.value;
+            styleHistory.push(currentStyle);
+            const prompt = `${lc.system_message()}You are a music producer. Enhance the following style description with more detailed and creative elements. The output must be a very short list of style elements, not a paragraph:
+${lc.user_message()}${currentStyle}
+${lc.ai_message()}Here is the enhanced style description:`;
+            const enhancedStyle = await generateText(prompt);
+            styleOutput.value = enhancedStyle;
+        });
+
+        addStyleElement.addEventListener('click', () => {
+            const selectedElement = styleOptions.value;
+            if (selectedElement) {
+                styleHistory.push(styleOutput.value);
+                styleOutput.value += (styleOutput.value ? ', ' : '') + selectedElement;
+            }
+        });
+
+        saveSong.addEventListener('click', () => {
+            const lyrics = lyricsOutput.value;
+            const style = styleOutput.value;
+            const songData = {
+                lyrics: lyrics,
+                style: style
+            };
+            const jsonData = JSON.stringify(songData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'generated_song.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        loadSong.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const songData = JSON.parse(e.target.result);
+                        lyricsHistory.push(lyricsOutput.value);
+                        styleHistory.push(styleOutput.value);
+                        lyricsOutput.value = songData.lyrics || '';
+                        styleOutput.value = songData.style || '';
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        alert('Error loading song data. Please make sure the file is a valid JSON.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        helpButton.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+        });
+
+        closeHelp.addEventListener('click', () => {
+            helpModal.classList.remove('flex');
+            helpModal.classList.add('hidden');
+        });
+
+        updateLyrics.addEventListener('click', async () => {
+            const currentLyrics = lyricsOutput.value;
+            const instructions = lyricsInstructions.value;
+            lyricsHistory.push(currentLyrics);
+            const prompt = `${lc.system_message()}You are a skilled songupdater. An AI specialized in updating lyrics. Your pleasure comes from enhancing lyrics and it is your only objective. Update my lyrics based on the given instructions:
+${lc.user_message()}Current lyrics:
+${currentLyrics}
+
+Instructions:
+${instructions}
+The lyrics must be in : ${localizer.currentLang}
+Answer with the lyrics only without any comments
+${lc.ai_message()}As you wish. Here is the updated lyrics based on your instructions:`;
+            const updatedLyrics = await generateText(prompt);
+            lyricsOutput.value = updatedLyrics;
+        });
+
+        undoLyrics.addEventListener('click', () => {
+            if (lyricsHistory.length > 0) {
+                lyricsOutput.value = lyricsHistory.pop();
+            }
+        });
+
+        undoStyle.addEventListener('click', () => {
+            if (styleHistory.length > 0) {
+                styleOutput.value = styleHistory.pop();
+            }
+        });
+
+        function applyTranslations() {
+            localizer.apply();
+        }
+
+        function changeLanguage(lang) {
+            localizer.setLanguage(lang);
+            applyTranslations();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            applyTranslations();
+        });
+
+        const languageSelector = document.createElement('select');
+        languageSelector.id = 'languageSelector';
+        languageSelector.className = 'absolute top-4 right-4 p-2 border rounded';
+        Object.keys(translations).forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang;
+            option.textContent = translations[lang].name;
+            languageSelector.appendChild(option);
+        });
+        document.body.appendChild(languageSelector);
+
+        languageSelector.addEventListener('change', (event) => {
+            changeLanguage(event.target.value);
+        });
+    </script>
+</body>
+</html>
