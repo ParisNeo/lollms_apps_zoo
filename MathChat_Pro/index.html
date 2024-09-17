@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MathChat - Multi-Turn Math Discussion</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+
+    <!-- Lollms Libraries -->
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+
+    <style>
+        .chat-message {
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            max-width: 80%;
+        }
+        .user-message {
+            background-color: #e2e8f0;
+            margin-left: auto;
+        }
+        .ai-message {
+            background-color: #f0f9ff;
+            margin-right: auto;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600">MathChat</h1>
+            <p class="text-xl text-gray-600">Multi-Turn Math Discussion with AI</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div id="chat-area" class="h-96 overflow-y-auto mb-4 p-4 border border-gray-300 rounded"></div>
+
+            <div class="flex mb-4">
+                <input id="user-input" type="text" class="flex-grow border border-gray-300 rounded-l px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Type your math question...">
+                <button id="send-btn" class="bg-blue-500 text-white px-6 py-2 rounded-r hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500">Send</button>
+            </div>
+
+            <div class="mb-4">
+                <label for="system-prompt" class="block text-sm font-medium text-gray-700 mb-2">System Prompt:</label>
+                <textarea id="system-prompt" rows="3" class="w-full border border-gray-300 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter system prompt..."></textarea>
+            </div>
+
+            <div class="flex justify-between">
+                <button id="save-prompt-btn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500">Save Prompt</button>
+                <button id="new-conversation-btn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500">New Conversation</button>
+                <button id="clear-conversation-btn" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500">Clear Conversation</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex justify-center items-center hidden">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4 text-xl text-pink-500">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+
+    <script>
+        const mr = new MarkdownRenderer();
+        const lc = new LollmsClient();
+        const chatArea = document.getElementById('chat-area');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const systemPrompt = document.getElementById('system-prompt');
+        const savePromptBtn = document.getElementById('save-prompt-btn');
+        const newConversationBtn = document.getElementById('new-conversation-btn');
+        const clearConversationBtn = document.getElementById('clear-conversation-btn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let conversation = [];
+
+        function showLoader() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        async function addMessage(sender, content) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${sender === 'User' ? 'user-message' : 'ai-message'}`;
+            const renderedContent = await mr.renderMarkdown(content);
+            messageDiv.innerHTML = `<strong>${sender}:</strong> ${renderedContent}`;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                await addMessage('User', userMessage);
+                conversation.push({ role: 'user', content: userMessage });
+                userInput.value = '';
+
+                showLoader();
+                try {
+                    const prompt = buildPrompt();
+                    const aiResponse = await lc.generate(prompt);
+                    await addMessage('AI', aiResponse);
+                    conversation.push({ role: 'assistant', content: aiResponse });
+                } catch (error) {
+                    console.error('Error generating AI response:', error);
+                    await addMessage('System', 'Error: Unable to generate AI response.');
+                }
+                hideLoader();
+            }
+        }
+
+        function buildPrompt() {
+            let prompt = lc.system_message() + systemPrompt.value + lc.template.separator_template;
+            conversation.forEach(msg => {
+                prompt += (msg.role === 'user' ? lc.user_message() : lc.ai_message()) + msg.content + lc.template.separator_template;
+            });
+            prompt += lc.ai_message();
+            return prompt;
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+
+        savePromptBtn.addEventListener('click', () => {
+            localStorage.setItem('mathChatSystemPrompt', systemPrompt.value);
+            alert('System prompt saved!');
+        });
+
+        newConversationBtn.addEventListener('click', () => {
+            conversation = [];
+            chatArea.innerHTML = '';
+        });
+
+        clearConversationBtn.addEventListener('click', () => {
+            chatArea.innerHTML = '';
+        });
+
+        // Load saved system prompt on page load
+        window.addEventListener('load', () => {
+            const savedPrompt = localStorage.getItem('mathChatSystemPrompt');
+            if (savedPrompt) {
+                systemPrompt.value = savedPrompt;
+            } else {
+                systemPrompt.value = "You are a helpful math assistant. Use markdown and LaTeX for math equations. Explain concepts clearly and provide step-by-step solutions when appropriate.";
+            }
+        });
+    </script>
+</body>
+</html>

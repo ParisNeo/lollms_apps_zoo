@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Sanitizer App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <style>
+        .monaco-editor { min-height: 300px; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; }
+        .loading { text-align: center; color: #ff69b4; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        .file-item { display: flex; align-items: center; margin-bottom: 10px; }
+        .file-item button { margin-left: 10px; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-4" data-translate="title"></h1>
+        <div class="flex mb-4">
+            <div class="w-1/2 mr-2">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="textCodeTab"></h2>
+                    <select id="languageSelect" class="mb-2 p-2 border border-gray-300 rounded">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="csharp">C#</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                    <div id="editor" class="w-full h-64 border border-gray-300 rounded"></div>
+                    <button id="analyzeTextBtn" class="bg-green-500 text-white px-4 py-2 rounded mt-2" data-translate="analyzeTextBtn">Analyze Textual Code</button>
+                </div>
+            </div>
+            <div class="w-1/2 ml-2">
+                <div class="bg-white rounded-lg shadow-md p-4">
+                    <h2 class="text-xl font-semibold mb-2" data-translate="fileUploadTab"></h2>
+                    <input type="file" id="fileInput" class="hidden" multiple>
+                    <label for="fileInput" class="bg-blue-500 text-white px-4 py-2 rounded cursor-pointer" data-translate="uploadBtn"></label>
+                    <button id="analyzeAllBtn" class="bg-yellow-500 text-white px-4 py-2 rounded ml-2" data-translate="analyzeAllBtn">Analyze All</button>
+                    <div id="fileList" class="mt-2"></div>
+                </div>
+            </div>
+        </div>
+        <select id="textLanguageSelect" class="mb-2 p-2 border border-gray-300 rounded"></select>
+        <div id="progress" class="mt-4 hidden">
+            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                <div class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4 mt-4">
+            <div id="results"></div>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+    <script>
+        const mr = new MarkdownRenderer();
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Code Sanitizer App",
+                    textCodeTab: "Textual Code",
+                    fileUploadTab: "File Upload",
+                    uploadBtn: "Upload File(s)",
+                    analyzeTextBtn: "Analyze Textual Code",
+                    analyzeAllBtn: "Analyze All",
+                    vulnerability: "Vulnerability",
+                    severity: "Severity",
+                    description: "Description",
+                    impact: "Potential Impact",
+                    recommendation: "Recommended Fix",
+                    aiReflectionTitle: "AI Reflection Process",
+                    vulnerabilitiesTitle: "Vulnerabilities",
+                    analysisReportTitle: "Analysis Report: {fileName}",
+                    copyBtn: "Copy",
+                    saveBtn: "Save",
+                    removeBtn: "Remove"
+                },
+                promptTranslations: {
+                    analysisReportTitle: "Analysis Report: {fileName}"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Application d'Assainissement de Code",
+                    textCodeTab: "Code Textuel",
+                    fileUploadTab: "Téléchargement de Fichiers",
+                    uploadBtn: "Télécharger Fichier(s)",
+                    analyzeTextBtn: "Analyser Code Textuel",
+                    analyzeAllBtn: "Analyser Tout",
+                    vulnerability: "Vulnérabilité",
+                    severity: "Gravité",
+                    description: "Description",
+                    impact: "Impact Potentiel",
+                    recommendation: "Correction Recommandée",
+                    aiReflectionTitle: "Processus de Réflexion IA",
+                    vulnerabilitiesTitle: "Vulnérabilités",
+                    analysisReportTitle: "Rapport d'Analyse: {fileName}",
+                    copyBtn: "Copier",
+                    saveBtn: "Enregistrer",
+                    removeBtn: "Supprimer"
+                },
+                promptTranslations: {
+                    analysisReportTitle: "Rapport d'Analyse: {fileName}"
+                }
+            }
+        };
+        const textLanguageSelect = document.getElementById('textLanguageSelect');
+        const localizer = new WebAppLocalizer(translations, "codeSanitizer_", textLanguageSelect);
+        localizer.apply();
+        let editor;
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' } });
+        require(['vs/editor/editor.main'], function() {
+            editor = monaco.editor.create(document.getElementById('editor'), {
+                value: '// Paste your code here or upload a file',
+                language: 'javascript',
+                theme: 'vs-dark'
+            });
+            const languageSelect = document.getElementById('languageSelect');
+            languageSelect.addEventListener('change', (e) => {
+                monaco.editor.setModelLanguage(editor.getModel(), e.target.value);
+            });
+            const savedLanguage = localStorage.getItem('selectedLanguage');
+            if (savedLanguage) {
+                languageSelect.value = savedLanguage;
+                monaco.editor.setModelLanguage(editor.getModel(), savedLanguage);
+            }
+            languageSelect.addEventListener('change', (e) => {
+                const selectedLanguage = e.target.value;
+                monaco.editor.setModelLanguage(editor.getModel(), selectedLanguage);
+                localStorage.setItem('selectedLanguage', selectedLanguage);
+            });
+        });
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const analyzeTextBtn = document.getElementById('analyzeTextBtn');
+        const analyzeAllBtn = document.getElementById('analyzeAllBtn');
+        const progress = document.getElementById('progress');
+        const results = document.getElementById('results');
+        let uploadedFiles = [];
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            uploadedFiles = uploadedFiles.concat(files);
+            updateFileList();
+        });
+        function updateFileList() {
+            fileList.innerHTML = '';
+            uploadedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${file.name}</span>
+                    <button onclick="analyzeFile(${index})" class="bg-green-500 text-white px-2 py-1 rounded ml-2">Analyze</button>
+                    <button onclick="removeFile(${index})" class="bg-red-500 text-white px-2 py-1 rounded ml-2">${localizer.translate('removeBtn')}</button>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+        }
+        const lc = new LollmsClient();
+        analyzeTextBtn.addEventListener('click', async () => {
+            const code = editor.getValue();
+            if (code.trim() !== '') {
+                await analyzeCode(code, 'Pasted Code');
+            }
+        });
+        analyzeAllBtn.addEventListener('click', async () => {
+            const code = editor.getValue();
+            progress.classList.remove('hidden');
+            results.innerHTML = '';
+            showLoader();
+            if (code.trim() !== '') {
+                await analyzeCode(code, 'Pasted Code');
+            }
+            for (let file of uploadedFiles) {
+                const content = await readFile(file);
+                await analyzeCode(content, file.name);
+            }
+            progress.classList.add('hidden');
+            hideLoader();
+        });
+        async function analyzeFile(index) {
+            progress.classList.remove('hidden');
+            showLoader();
+            const file = uploadedFiles[index];
+            const content = await readFile(file);
+            await analyzeCode(content, file.name);
+            progress.classList.add('hidden');
+            hideLoader();
+        }
+        async function readFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file);
+            });
+        }
+        async function analyzeCode(code, fileName) {
+            const prompt = `You are a security advisor AI, specialized in code review and best practices. Your role is to help developers improve the security of their applications through careful analysis and recommendations. 
+
+Please analyze the following code for potential security issues:
+
+${code}
+
+Use this process for each endpoint or function:
+1. Identify real security problems in the code and spot the exact problematic function or endpoint. Give a technical name to the vulenerability.
+2. Criticize your own decision by proposing counter argument.
+3. Make a decision about the vulenerability.
+4. if the problem is verified, then:
+    1. rewrite the problematic function or endpoint inside a markdown code tag and comment the problematic lines.
+    2. write a test code that may expose the vulenerability. Set what outcome prooves the vulenerability exists and what outcome prooves it is immune.
+    1. Assess the risk level of the vulenerability.
+    2. Explain the potential consequences of each concern.
+    3. Provide recommendations to address each issue.
+
+If the code is well protected, congratulate the user.
+Finally, offer general advice on secure coding practices relevant to this code.`;
+            const response = await lc.generate(prompt);
+            const report = generateReport(fileName, response);
+            results.innerHTML += await mr.renderMarkdown(report);
+        }
+        function generateReport(fileName, aiResponse) {
+            const reportId = `report-${Date.now()}`;
+            return `
+                <div id="${reportId}" class="mt-8 p-6 bg-white rounded-lg shadow-md">
+                    <h3 class="text-2xl font-bold mb-4">${localizer.formatPrompt('analysisReportTitle', { fileName: fileName })}</h3>
+                    <div class="mb-4">
+                        <h4 class="text-xl font-semibold mb-2">${localizer.translate('aiReflectionTitle')}</h4>
+                        <div class="bg-gray-100 p-4 rounded">
+                            <pre>${aiResponse}</pre>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button onclick="copyReport('${reportId}')" class="bg-blue-500 text-white px-4 py-2 rounded mr-2">${localizer.translate('copyBtn')}</button>
+                        <button onclick="saveReport('${reportId}')" class="bg-green-500 text-white px-4 py-2 rounded">${localizer.translate('saveBtn')}</button>
+                    </div>
+                </div>
+            `;
+        }
+        function copyReport(reportId) {
+            const reportContent = document.getElementById(reportId).innerText;
+            navigator.clipboard.writeText(reportContent).then(() => {
+                alert('Report copied to clipboard');
+            }).catch(err => {
+                console.error('Failed to copy report: ', err);
+            });
+        }
+        function saveReport(reportId) {
+            const reportContent = document.getElementById(reportId).innerText;
+            const blob = new Blob([reportContent], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+a.download = 'security_report.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        const savedTextLanguage = localStorage.getItem('selectedTextLanguage');
+        if (savedTextLanguage) {
+            textLanguageSelect.value = savedTextLanguage;
+            localizer.setLanguage(savedTextLanguage);
+        }
+        textLanguageSelect.addEventListener('change', (e) => {
+            const selectedTextLanguage = e.target.value;
+            localizer.setLanguage(selectedTextLanguage);
+            localStorage.setItem('selectedTextLanguage', selectedTextLanguage);
+        });
+    </script>
+</body>
+</html>
