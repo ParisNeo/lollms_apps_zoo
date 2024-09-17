@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Article Structural Elements Builder</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        .spinner {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #3498db;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-4">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-2" data-translate="title">Article Structural Elements Builder</h1>
+            <p class="text-lg text-gray-600" data-translate="subtitle">Generate introduction, abstract, or conclusion for your article.</p>
+        </header>
+        <section class="mb-8">
+            <textarea id="articleText" class="w-full h-64 p-4 border border-gray-300 rounded-lg" data-translate="placeholder" placeholder="Paste your article text here..."></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <input type="file" id="fileInput" class="hidden" accept=".txt,.pdf">
+                <button id="uploadButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" data-translate="upload">Upload File</button>
+                <span id="fileStatus" class="text-gray-600"></span>
+                <button id="clearButton" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600" data-translate="clear">Clear</button>
+            </div>
+        </section>
+        <section class="text-center mb-8">
+            <select id="language_selector" class="bg-white border border-gray-300 rounded-lg px-4 py-2 mr-4">
+            </select>
+            <select id="elementType" class="bg-white border border-gray-300 rounded-lg px-4 py-2 mr-4">
+                <option value="introduction" data-translate="introduction">Introduction</option>
+                <option value="abstract" data-translate="abstract">Abstract</option>
+                <option value="conclusion" data-translate="conclusion">Conclusion</option>
+                <option value="summary" data-translate="summary">Summary</option>
+                <option value="bibliography" data-translate="bibliography">Bibliography</option>
+            </select>
+            <select id="outputTone" class="bg-white border border-gray-300 rounded-lg px-4 py-2 mr-4">
+                <option value="formal" data-translate="formal">Formal</option>
+                <option value="casual" data-translate="casual">Casual</option>
+                <option value="professional" data-translate="professional">Professional</option>
+                <option value="friendly" data-translate="friendly">Friendly</option>
+                <option value="authoritative" data-translate="authoritative">Authoritative</option>
+            </select>
+            <select id="outputStyle" class="bg-white border border-gray-300 rounded-lg px-4 py-2 mr-4">
+                <option value="academic" data-translate="academic">Academic</option>
+                <option value="journalistic" data-translate="journalistic">Journalistic</option>
+                <option value="creative" data-translate="creative">Creative</option>
+                <option value="technical" data-translate="technical">Technical</option>
+                <option value="persuasive" data-translate="persuasive">Persuasive</option>
+            </select>
+            <select id="outputLength" class="bg-white border border-gray-300 rounded-lg px-4 py-2 mr-4">
+                <option value="short" data-translate="short">Short</option>
+                <option value="medium" data-translate="medium">Medium</option>
+                <option value="long" data-translate="long">Long</option>
+                <option value="concise" data-translate="concise">Concise</option>
+                <option value="detailed" data-translate="detailed">Detailed</option>
+            </select>
+            <button id="generateButton" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600" data-translate="generate">Generate</button>
+        </section>
+        <section>
+            <h2 class="text-2xl font-bold mb-4" data-translate="output">Generated Output</h2>
+            <textarea id="elementOutput" class="w-full h-48 p-4 border border-gray-300 rounded-lg" readonly></textarea>
+            <div class="flex justify-between items-center mt-4">
+                <button id="saveButton" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600" data-translate="save">Save as .txt</button>
+                <button id="copyButton" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600" data-translate="copy">Copy to Clipboard</button>
+            </div>
+        </section>
+        <footer class="text-center mt-8 text-gray-600">
+            <p data-translate="footer">Powered by Lollms</p>
+        </footer>
+    </div>
+    <div id="spinnerOverlay" class="spinner-overlay">
+        <div class="spinner"></div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const fileInput = document.getElementById('fileInput');
+        const uploadButton = document.getElementById('uploadButton');
+        const fileStatus = document.getElementById('fileStatus');
+        const articleText = document.getElementById('articleText');
+        const generateButton = document.getElementById('generateButton');
+        const elementOutput = document.getElementById('elementOutput');
+        const saveButton = document.getElementById('saveButton');
+        const copyButton = document.getElementById('copyButton');
+        const clearButton = document.getElementById('clearButton');
+        const spinnerOverlay = document.getElementById('spinnerOverlay');
+        const elementType = document.getElementById('elementType');
+        const outputTone = document.getElementById('outputTone');
+        const outputStyle = document.getElementById('outputStyle');
+        const outputLength = document.getElementById('outputLength');
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Article Structural Elements Builder",
+                    subtitle: "Generate introduction, abstract, conclusion, summary, or bibliography for your article.",
+                    placeholder: "Paste your article text here...",
+                    upload: "Upload File",
+                    clear: "Clear",
+                    introduction: "Introduction",
+                    abstract: "Abstract",
+                    conclusion: "Conclusion",
+                    summary: "Summary",
+                    bibliography: "Bibliography",
+                    formal: "Formal",
+                    casual: "Casual",
+                    professional: "Professional",
+                    friendly: "Friendly",
+                    authoritative: "Authoritative",
+                    academic: "Academic",
+                    journalistic: "Journalistic",
+                    creative: "Creative",
+                    technical: "Technical",
+                    persuasive: "Persuasive",
+                    short: "Short",
+                    medium: "Medium",
+                    long: "Long",
+                    concise: "Concise",
+                    detailed: "Detailed",
+                    generate: "Generate",
+                    output: "Generated Output",
+                    save: "Save as .txt",
+                    copy: "Copy to Clipboard",
+                    footer: "Powered by Lollms"
+                },
+                promptTranslations: {
+                    generatePrompt: "Build a {elementType} for the following article. Use a {tone} tone, {style} style, and make it {length} in length:"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Constructeur d'éléments structurels d'article",
+                    subtitle: "Générez une introduction, un résumé, une conclusion, un sommaire ou une bibliographie pour votre article.",
+                    placeholder: "Collez le texte de votre article ici...",
+                    upload: "Télécharger un fichier",
+                    clear: "Effacer",
+                    introduction: "Introduction",
+                    abstract: "Résumé",
+                    conclusion: "Conclusion",
+                    summary: "Sommaire",
+                    bibliography: "Bibliographie",
+                    formal: "Formel",
+                    casual: "Décontracté",
+                    professional: "Professionnel",
+                    friendly: "Amical",
+                    authoritative: "Autoritaire",
+                    academic: "Académique",
+                    journalistic: "Journalistique",
+                    creative: "Créatif",
+                    technical: "Technique",
+                    persuasive: "Persuasif",
+                    short: "Court",
+                    medium: "Moyen",
+                    long: "Long",
+                    concise: "Concis",
+                    detailed: "Détaillé",
+                    generate: "Générer",
+                    output: "Sortie générée",
+                    save: "Enregistrer en .txt",
+                    copy: "Copier dans le presse-papiers",
+                    footer: "Propulsé par Lollms"
+                },
+                promptTranslations: {
+                    generatePrompt: "Construisez un(e) {elementType} pour l'article suivant. Utilisez un ton {tone}, un style {style}, et faites-le de longueur {length} :"
+                }
+            }
+        };
+        const language_selector = document.getElementById('language_selector');
+        const localizer = new WebAppLocalizer(translations, 'article_builder_', language_selector);
+        localizer.apply();
+
+        uploadButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const lollmsFileLoader = new LollmsFileLoader();
+                try {
+                    const content = await lollmsFileLoader.loadFile(file);
+                    articleText.value = content;
+                    fileStatus.textContent = localizer.translate("fileUploadSuccess");
+                } catch (error) {
+                    fileStatus.textContent = localizer.translate("fileUploadError");
+                }
+            }
+        });
+
+        generateButton.addEventListener('click', async () => {
+            const text = articleText.value.trim();
+            if (text) {
+                spinnerOverlay.style.display = 'flex';
+                const selectedElement = elementType.value;
+                const tone = outputTone.value;
+                const style = outputStyle.value;
+                const length = outputLength.value;
+                const prompt = lc.system_message() + localizer.formatPrompt("generatePrompt", {
+                    elementType: localizer.translate(selectedElement),
+                    tone: localizer.translate(tone),
+                    style: localizer.translate(style),
+                    length: localizer.translate(length)
+                }) + lc.template.separator_template + lc.user_message() + text + lc.template.separator_template + lc.ai_message();
+                const generatedElement = await lc.generate(prompt);
+                elementOutput.value = generatedElement;
+                spinnerOverlay.style.display = 'none';
+            }
+        });
+
+        saveButton.addEventListener('click', () => {
+            const text = elementOutput.value.trim();
+            if (text) {
+                const blob = new Blob([text], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${elementType.value}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        copyButton.addEventListener('click', () => {
+            const text = elementOutput.value.trim();
+            if (text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    alert(localizer.formatPrompt("copySuccess", { elementType: localizer.translate(elementType.value) }));
+                });
+            }
+        });
+
+        clearButton.addEventListener('click', () => {
+            articleText.value = '';
+            elementOutput.value = '';
+            fileStatus.textContent = '';
+            fileInput.value = '';
+        });
+    </script>
+</body>
+</html>

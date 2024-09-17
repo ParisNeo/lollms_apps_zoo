@@ -31,9 +31,28 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4">Video Preview</h2>
             <video id="videoPreview" class="w-full h-auto mb-4" controls></video>
+            <div class="flex justify-center space-x-4 mb-4">
+                <button id="loadVideo" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Load Video
+                </button>
+                <button id="downloadVideo" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded" disabled>
+                    Download Video
+                </button>
+                <button id="extractAudio" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                    Extract Audio
+                </button>
+            </div>
             <h2 class="text-2xl font-bold mb-4">Audio Preview</h2>
             <div id="waveform"></div>
             <audio id="audioPreview" class="w-full mt-4" controls></audio>
+            <div class="flex justify-center space-x-4 mt-4">
+                <button id="loadAudio" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                    Load Audio
+                </button>
+                <button id="downloadAudio" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded" disabled>
+                    Download Audio
+                </button>
+            </div>
             <div class="mt-4">
                 <h3 class="text-xl font-bold mb-2">Transcription</h3>
                 <textarea id="transcriptionText" class="w-full h-40 p-2 border rounded" readonly></textarea>
@@ -46,6 +65,16 @@
                 <h3 class="text-xl font-bold mb-2">Select Voice</h3>
                 <select id="voiceSelect" class="w-full p-2 border rounded"></select>
             </div>
+            <div id="languageSelectionContainer" class="mt-4">
+                <h3 class="text-xl font-bold mb-2">Select Language</h3>
+                <select id="languageSelect" class="w-full p-2 border rounded">
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="es">Spanish</option>
+                    <option value="de">German</option>
+                    <option value="it">Italian</option>
+                </select>
+            </div>
             <h2 class="text-2xl font-bold mb-4">Enhanced Audio Preview</h2>
             <div id="enhancedwaveform"></div>
             <audio id="enhancedAudioPreview" class="w-full mt-4" controls></audio>
@@ -54,12 +83,6 @@
         <div class="bg-white rounded-lg shadow-md p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4">Actions</h2>
             <div class="flex flex-wrap justify-center space-x-4">
-                <button id="downloadVideo" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
-                    Download Video
-                </button>
-                <button id="downloadAudio" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
-                    Download Audio
-                </button>
                 <button id="transcribeBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded mb-2" disabled>
                     Transcribe
                 </button>
@@ -110,6 +133,8 @@
         const status = document.getElementById('status');
         const videoPreview = document.getElementById('videoPreview');
         const audioPreview = document.getElementById('audioPreview');
+        const loadVideo = document.getElementById('loadVideo');
+        const loadAudio = document.getElementById('loadAudio');
         const downloadVideo = document.getElementById('downloadVideo');
         const downloadAudio = document.getElementById('downloadAudio');
         const transcribeBtn = document.getElementById('transcribeBtn');
@@ -119,9 +144,11 @@
         const enhancedText = document.getElementById('enhancedText');
         const voiceSelectionContainer = document.getElementById('voiceSelectionContainer');
         const voiceSelect = document.getElementById('voiceSelect');
+        const languageSelect = document.getElementById('languageSelect');
         const loadingOverlay = document.getElementById('loadingOverlay');
         const saveProjectBtn = document.getElementById('saveProject');
         const loadProjectBtn = document.getElementById('loadProject');
+        const extractAudioBtn = document.getElementById('extractAudio');
 
         wavesurfer = WaveSurfer.create({
             container: '#waveform',
@@ -131,6 +158,8 @@
 
         startBtn.addEventListener('click', startRecording);
         stopBtn.addEventListener('click', stopRecording);
+        loadVideo.addEventListener('click', () => loadMedia('video'));
+        loadAudio.addEventListener('click', () => loadMedia('audio'));
         downloadVideo.addEventListener('click', () => downloadMedia('video'));
         downloadAudio.addEventListener('click', () => downloadMedia('audio'));
         transcribeBtn.addEventListener('click', transcribeAudio);
@@ -138,6 +167,8 @@
         synthesizeBtn.addEventListener('click', synthesizeSpeech);
         saveProjectBtn.addEventListener('click', saveProject);
         loadProjectBtn.addEventListener('click', loadProject);
+        extractAudioBtn.addEventListener('click', extractAudio);
+
         async function startRecording() {
             try {
                 videoStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
@@ -207,13 +238,32 @@
             downloadVideo.disabled = false;
             downloadAudio.disabled = false;
             transcribeBtn.disabled = false;
-            saveVideoBtn.disabled = false;
             hideLoading();
         }
 
+        function loadMedia(type) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = type === 'video' ? 'video/*' : 'audio/*';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                const url = URL.createObjectURL(file);
+                if (type === 'video') {
+                    videoPreview.src = url;
+                    downloadVideo.disabled = false;
+                } else {
+                    audioPreview.src = url;
+                    wavesurfer.load(url);
+                    downloadAudio.disabled = false;
+                }
+                transcribeBtn.disabled = false;
+            };
+            input.click();
+        }
+
         function downloadMedia(type) {
-            const blob = new Blob(recordedChunks, { type: type === 'video' ? 'video/webm' : 'audio/wav' });
-            const url = URL.createObjectURL(blob);
+            const element = type === 'video' ? videoPreview : audioPreview;
+            const url = element.src;
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
@@ -229,7 +279,7 @@
         async function transcribeAudio() {
             showLoading();
             try {
-                const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
+                const audioBlob = await fetch(audioPreview.src).then(r => r.blob());
                 const formData = new FormData();
                 formData.append('file', audioBlob, 'audio.wav');
 
@@ -279,20 +329,26 @@
             showLoading();
             try {
                 const selectedVoice = voiceSelect.value;
+                const selectedLanguage = languageSelect.value;
                 const textToSynthesize = enhancedText.value;
 
                 const response = await axios.post('/tts/file', {
                     text: textToSynthesize,
-                    speaker: selectedVoice,
-                    language: 'en'
+speaker: selectedVoice,
+                    language: selectedLanguage
                 }, {
                     responseType: 'blob'
                 });
 
                 const audioBlob = new Blob([response.data], { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-                audioPreview.src = audioUrl;
-                wavesurfer.load(audioUrl);
+                const enhancedAudioPreview = document.getElementById('enhancedAudioPreview');
+                enhancedAudioPreview.src = audioUrl;
+                WaveSurfer.create({
+                    container: '#enhancedwaveform',
+                    waveColor: 'violet',
+                    progressColor: 'purple'
+                }).load(audioUrl);
             } catch (error) {
                 console.error('Speech synthesis error:', error);
                 alert('Error during speech synthesis');
@@ -313,7 +369,8 @@
             const projectData = {
                 transcription: transcriptionText.value,
                 enhancedText: enhancedText.value,
-                recordedChunks: recordedChunks
+                videoSrc: videoPreview.src,
+                audioSrc: audioPreview.src
             };
             localStorage.setItem('youtubeRecorderProject', JSON.stringify(projectData));
             alert('Project saved successfully!');
@@ -325,12 +382,12 @@
                 const projectData = JSON.parse(savedProject);
                 transcriptionText.value = projectData.transcription;
                 enhancedText.value = projectData.enhancedText;
-                recordedChunks = projectData.recordedChunks;
+                videoPreview.src = projectData.videoSrc;
+                audioPreview.src = projectData.audioSrc;
+                wavesurfer.load(projectData.audioSrc);
 
-                if (recordedChunks.length > 0) {
-                    processRecording();
-}
-
+                downloadVideo.disabled = false;
+                downloadAudio.disabled = false;
                 enhanceBtn.disabled = false;
                 synthesizeBtn.disabled = false;
                 alert('Project loaded successfully!');
@@ -339,34 +396,88 @@
             }
         }
 
-        function saveWav() {
-            const audioBlob = new Blob(recordedChunks, { type: 'audio/wav' });
-            const url = URL.createObjectURL(audioBlob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'recorded_audio.wav';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
+        async function extractAudio() {
+            showLoading();
+            try {
+                const videoFile = await fetch(videoPreview.src).then(r => r.blob());
+                const audioContext = new AudioContext();
+                const audioBuffer = await audioContext.decodeAudioData(await videoFile.arrayBuffer());
+                
+                const offlineContext = new OfflineAudioContext(
+                    audioBuffer.numberOfChannels,
+                    audioBuffer.length,
+                    audioBuffer.sampleRate
+                );
+                
+                const source = offlineContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(offlineContext.destination);
+                source.start();
+                
+                const renderedBuffer = await offlineContext.startRendering();
+                const audioBlob = new Blob([toWav(renderedBuffer)], { type: 'audio/wav' });
+                
+                const audioUrl = URL.createObjectURL(audioBlob);
+                audioPreview.src = audioUrl;
+                wavesurfer.load(audioUrl);
+                downloadAudio.disabled = false;
+                transcribeBtn.disabled = false;
+            } catch (error) {
+                console.error('Audio extraction error:', error);
+                alert('Error during audio extraction');
+            } finally {
+                hideLoading();
+            }
         }
 
-        function saveVideo() {
-            const videoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-            const url = URL.createObjectURL(videoBlob);
-            const a = document.createElement('a');
-            a.style.display = 'none';
-            a.href = url;
-            a.download = 'recorded_video.webm';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                window.URL.revokeObjectURL(url);
-            }, 100);
+        function toWav(audioBuffer) {
+            const numOfChan = audioBuffer.numberOfChannels;
+            const length = audioBuffer.length * numOfChan * 2 + 44;
+            const buffer = new ArrayBuffer(length);
+            const view = new DataView(buffer);
+            const channels = [];
+            let sample;
+            let offset = 0;
+            let pos = 0;
+
+            setUint32(0x46464952);
+            setUint32(length - 8);
+            setUint32(0x45564157);
+            setUint32(0x20746d66);
+            setUint32(16);
+            setUint16(1);
+            setUint16(numOfChan);
+            setUint32(audioBuffer.sampleRate);
+            setUint32(audioBuffer.sampleRate * 2 * numOfChan);
+            setUint16(numOfChan * 2);
+            setUint16(16);
+            setUint32(0x61746164);
+            setUint32(length - pos - 4);
+
+            for (let i = 0; i < audioBuffer.numberOfChannels; i++)
+                channels.push(audioBuffer.getChannelData(i));
+
+            while (pos < length) {
+                for (let i = 0; i < numOfChan; i++) {
+                    sample = Math.max(-1, Math.min(1, channels[i][offset]));
+                    sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                    view.setInt16(pos, sample, true);
+                    pos += 2;
+                }
+                offset++;
+            }
+
+            return buffer;
+
+            function setUint16(data) {
+                view.setUint16(pos, data, true);
+                pos += 2;
+            }
+
+            function setUint32(data) {
+                view.setUint32(pos, data, true);
+                pos += 4;
+            }
         }
     </script>
 </body>
