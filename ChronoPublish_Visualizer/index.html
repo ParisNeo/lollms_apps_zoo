@@ -11,8 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
-    <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -71,8 +69,9 @@
                     </select>
                 </div>
             </div>
-            <div class="relative" style="height: 60vh;">
+            <div id="timeline-container" class="relative hidden" style="height: 60vh;">
                 <canvas id="timeline-chart"></canvas>
+                <button id="toggleLegend" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Toggle Legend</button>
             </div>
         </div>
 
@@ -149,10 +148,110 @@
             <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
         </div>
     </div>
-</body>
+    <style>
+        #chartjs-tooltip {
+            background: #ffffff;
+            color: #333333;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 15px;
+            max-width: 350px;
+            font-family: Arial, sans-serif;
+        }
 
+        #chartjs-tooltip .tooltip-header {
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+        }
 
+        #chartjs-tooltip .tooltip-header h3 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+            color: #2c3e50;
+        }
+
+        #chartjs-tooltip .tooltip-header p {
+            margin: 0;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        #chartjs-tooltip .tooltip-body {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #chartjs-tooltip .publication {
+            margin-bottom: 10px;
+        }
+
+        #chartjs-tooltip .publication h4 {
+            margin: 0 0 5px 0;
+            font-size: 16px;
+            color: #3498db;
+        }
+
+        #chartjs-tooltip .publication p {
+            margin: 0 0 3px 0;
+            font-size: 14px;
+        }
+
+        #chartjs-tooltip hr {
+            border: none;
+            border-top: 1px solid #e0e0e0;
+            margin: 10px 0;
+        }
+        .abstract-tooltip {
+            position: absolute;
+            z-index: 1000;
+            background-color: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 15px;
+            max-width: 500px;
+            max-height: 200px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            color: #333;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s;
+            overflow-y: auto;
+        }
+
+        .abstract-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .abstract-content {
+            padding-right: 10px;
+        }
+
+        /* Scrollbar styling for webkit browsers */
+        .abstract-tooltip::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .abstract-tooltip::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .abstract-tooltip::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .abstract-tooltip::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+    </style>
     <script>
+        let legendVisible = true; // Global variable to track legend visibility
         const translations = {
             en: {
                 name: "English",
@@ -316,6 +415,8 @@
         
         const resultsList = document.getElementById('results-list');
         const ctx = document.getElementById('timeline-chart').getContext('2d');
+        const timelineContainer = document.getElementById('timeline-container');
+        
         const authorSelect = document.getElementById('author-select');
         const yearSelect = document.getElementById('year-select');
         const statsContainer = document.getElementById('stats-container');
@@ -498,17 +599,80 @@
                 resultsList.appendChild(resultItem);
             });
         }
+        let abstractTooltip = null;
 
         function showAbstract(event) {
+            event.preventDefault(); // Prevent default action
+
             const abstract = event.currentTarget.getAttribute('data-abstract');
-            const tooltip = document.createElement('div');
-            tooltip.className = 'abstract-tooltip bg-white border border-gray-200 p-2 rounded shadow-lg max-w-md';
-            tooltip.textContent = abstract;
-            tooltip.style.position = 'absolute';
-            tooltip.style.left = `${event.pageX + 10}px`;
-            tooltip.style.top = `${event.pageY + 10}px`;
-            document.body.appendChild(tooltip);
+            
+            // Remove any existing tooltips
+            if (abstractTooltip) {
+                abstractTooltip.remove();
+            }
+
+            // Create tooltip
+            abstractTooltip = document.createElement('div');
+            abstractTooltip.className = 'abstract-tooltip';
+            abstractTooltip.innerHTML = `
+                <div class="abstract-content">${abstract}</div>
+            `;
+
+            // Append tooltip to body
+            document.body.appendChild(abstractTooltip);
+
+            // Position tooltip under the cursor
+            updateTooltipPosition(event);
+
+            // Add event listeners
+            document.addEventListener('mousemove', updateTooltipPosition);
+            abstractTooltip.addEventListener('mouseenter', () => {
+                document.removeEventListener('mousemove', updateTooltipPosition);
+            });
+            abstractTooltip.addEventListener('mouseleave', () => {
+                document.addEventListener('mousemove', updateTooltipPosition);
+            });
+            document.addEventListener('click', closeTooltip);
+
+            // Animate tooltip
+            setTimeout(() => abstractTooltip.classList.add('show'), 10);
         }
+
+        function updateTooltipPosition(event) {
+            if (!abstractTooltip) return;
+
+            const margin = 10; // Margin from cursor
+            let left = event.pageX + margin;
+            let top = event.pageY + margin;
+
+            // Adjust position if tooltip goes off-screen
+            const tooltipRect = abstractTooltip.getBoundingClientRect();
+            if (left + tooltipRect.width > window.innerWidth - margin) {
+                left = event.pageX - tooltipRect.width - margin;
+            }
+            if (top + tooltipRect.height > window.innerHeight - margin) {
+                top = event.pageY - tooltipRect.height - margin;
+            }
+
+            abstractTooltip.style.left = `${left}px`;
+            abstractTooltip.style.top = `${top}px`;
+        }
+
+        function closeTooltip(event) {
+            if (abstractTooltip && !abstractTooltip.contains(event.target)) {
+                abstractTooltip.classList.remove('show');
+                setTimeout(() => {
+                    if (abstractTooltip) {
+                        abstractTooltip.remove();
+                        abstractTooltip = null;
+                    }
+                }, 300); // Wait for fade-out animation
+                document.removeEventListener('mousemove', updateTooltipPosition);
+                document.removeEventListener('click', closeTooltip);
+            }
+        }
+
+
 
         function hideAbstract() {
             const tooltip = document.querySelector('.abstract-tooltip');
@@ -600,6 +764,7 @@
                     },
                     plugins: {
                         legend: {
+                            display: legendVisible, // Use the legendVisible variable
                             position: 'top',
                         },
                         title: {
@@ -607,27 +772,87 @@
                             text: localizer.translate('title')
                         },
                         tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const dataIndex = context.dataIndex;
-                                    const datasetIndex = context.datasetIndex;
-                                    const year = labels[dataIndex];
-                                    const author = datasets[datasetIndex].label;
-                                    const count = context.parsed.y;
-                                    const publications = jsonData.filter(item => item.year == year && item.author === author);
-                                    let tooltip = `${author}: ${count} publication(s)\n\n`;
-                                    publications.forEach(pub => {
-                                        tooltip += `${pub.date}: ${pub.title}\nJournal: ${pub.journal}\nInstitute: ${pub.institute}\n\n`;
-                                        tooltip += `${pub.date}: ${pub.title}\nJournal: ${pub.journal}\nInstitute: ${pub.institute}\n\n`;
-                                    });
-                                    return tooltip;
+                            enabled: false,
+                            external: function(context) {
+                                // Tooltip Element
+                                let tooltipEl = document.getElementById('chartjs-tooltip');
+
+                                // Create element on first render
+                                if (!tooltipEl) {
+                                    tooltipEl = document.createElement('div');
+                                    tooltipEl.id = 'chartjs-tooltip';
+                                    document.body.appendChild(tooltipEl);
                                 }
+
+                                // Hide if no tooltip
+                                const tooltipModel = context.tooltip;
+                                if (tooltipModel.opacity === 0) {
+                                    tooltipEl.style.opacity = 0;
+                                    return;
+                                }
+
+                                // Set Text
+                                if (tooltipModel.body) {
+                                    const dataIndex = tooltipModel.dataPoints[0].dataIndex;
+                                    const datasetIndex = tooltipModel.dataPoints[0].datasetIndex;
+                                    const year = context.chart.data.labels[dataIndex];
+                                    const author = context.chart.data.datasets[datasetIndex].label;
+                                    const count = tooltipModel.dataPoints[0].parsed.y;
+                                    const publications = jsonData.filter(item => item.year == year && item.author === author);
+
+                                    let innerHtml = `
+                                        <div class="tooltip-header">
+                                            <h3>${author}</h3>
+                                            <p>${count} publication(s) in ${year}</p>
+                                        </div>
+                                        <div class="tooltip-body">
+                                    `;
+
+                                    publications.forEach((pub, index) => {
+                                        innerHtml += `
+                                            <div class="publication">
+                                                <h4>${pub.title}</h4>
+                                                <p><strong>Date:</strong> ${pub.date}</p>
+                                                <p><strong>Journal:</strong> ${pub.journal}</p>
+                                                <p><strong>Institute:</strong> ${pub.institute}</p>
+                                            </div>
+                                        `;
+                                        if (index < publications.length - 1) {
+                                            innerHtml += '<hr>';
+                                        }
+                                    });
+
+                                    innerHtml += '</div>';
+
+                                    tooltipEl.innerHTML = innerHtml;
+                                }
+
+                                // `this` will be the overall tooltip
+                                const position = context.chart.canvas.getBoundingClientRect();
+
+                                // Display, position, and set styles for font
+                                tooltipEl.style.opacity = 1;
+                                tooltipEl.style.position = 'absolute';
+                                tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
+                                tooltipEl.style.top = position.top + window.pageYOffset + tooltipModel.caretY + 'px';
+                                tooltipEl.style.font = tooltipModel.options.bodyFont.string;
+                                tooltipEl.style.pointerEvents = 'none';
+                                tooltipEl.style.transition = 'all .2s ease';
+                                tooltipEl.style.transform = 'translate(-50%, 0)';
+                                tooltipEl.style.zIndex = '1000';
                             }
                         }
                     }
                 }
             });
+            timelineContainer.classList.remove("hidden")
         }
+        // Add an event listener for the toggle button
+        document.getElementById('toggleLegend').addEventListener('click', function() {
+            legendVisible = !legendVisible; // Toggle the visibility
+            chart.options.plugins.legend.display = legendVisible;
+            chart.update(); // Update the chart to reflect the changes
+        });        
 
         function updateChart() {
             const selectedAuthor = authorSelect.value;
