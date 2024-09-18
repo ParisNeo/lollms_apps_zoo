@@ -101,7 +101,7 @@
             </div>
             <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-grow flex flex-col">
                 <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="chat">Chat</h2>
-                <div id="chatArea" class="flex-grow overflow-y-auto mb-4 p-4 border border-indigo-300 rounded-md relative">
+                <div id="chatArea" class="container w-full h-[500px] overflow-y-auto flex-grow mb-4 p-4 border border-indigo-300 rounded-md relative">
                     <div id="chatLoader" class="absolute inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
                         <div class="loading">
                             <div class="strawberry">🍓</div>
@@ -109,6 +109,7 @@
                         </div>
                     </div>
                 </div>
+                
                 <div class="flex items-center">
                     <input type="text" id="userInput" class="flex-grow p-2 border border-indigo-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message...">
                     <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">Send</button>
@@ -289,7 +290,7 @@
         }
         function updateChatContext() {
             const pdfContent = uploadedFiles.map(file => file.content).join('\n\n');
-            systemMessage = `You are an AI assistant that answers questions based on the content of the uploaded PDFs. You act as the PDF and talk to the user with the knowledge stored inside the PDF. Try to be factual and give references from the PDF. Call yourself a name that depicts the PDF content. Here's the content of the PDFs:\n\n${pdfContent}.\nTo illustrate math equations or formulae, use this syntax \\[equation content\\] or $$equation content$$. You can write graphviz diagrams, mermaid diagrams, code, as well as svg code by putting them in the corresponding markdown code tag.`;
+            systemMessage = `You are an AI assistant that answers questions based on the content of the uploaded PDFs. You act as the PDF and talk to the user with the knowledge stored inside the PDF. Try to be factual and give references from the PDF. Call yourself a name that depicts the PDF content. Here's the content of the PDFs:\n\n${pdfContent}.\nTo illustrate math equations or formulae, use this syntax \\[equation content\\] or $$equation content$$. You can write graphviz diagrams, mermaid diagrams, code, by putting them in the corresponding markdown code tag. Svg elements should not be placed inside svg markdown code tags. This will allow it to be rendered.`;
             chatContext = [];
         }
         async function sendMessage() {
@@ -362,7 +363,12 @@
         }
         async function renderMessages() {
             const chatArea = document.getElementById('chatArea');
-            chatArea.innerHTML = '';
+            chatArea.innerHTML = `
+                        <div class="loading">
+                            <div class="strawberry">🍓</div>
+                            <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+                        </div>            
+            `;
             for (let message of chatContext) {
                 const [sender, ...contentParts] = message.split(':');
                 const content = contentParts.join(':').trim();
