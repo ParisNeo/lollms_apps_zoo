@@ -280,10 +280,20 @@
             chatContext.push(`AI: ${response}`);
             hideLoader();
         }
+        function findFileDiv(fileName) {
+            const fileItems = document.querySelectorAll('.file-item');
+            for (let item of fileItems) {
+                const span = item.querySelector('span');
+                if (span && span.textContent.includes(fileName)) {
+                    return item;
+                }
+            }
+            return null;
+        }        
         function deleteFile(fileName) {
             uploadedFiles = uploadedFiles.filter(file => file.name !== fileName);
             updateChatContext();
-            const fileDiv = document.querySelector(`.file-item:has(span:contains('${fileName}'))`);
+            const fileDiv = findFileDiv(fileName);
             if (fileDiv) {
                 fileDiv.remove();
             }
