@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Formatter</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container mx-auto p-6">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-blue-600">Document Formatter</h1>
+            <p class="text-lg text-gray-600">Easily reformat your documents with custom templates.</p>
+        </header>
+
+        <div class="bg-white p-6 rounded-lg shadow-lg">
+            <form id="formatterForm" class="space-y-6">
+                <!-- Content Document Upload or Text Input -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-700">Upload Content Document or Enter Text</label>
+                    <input type="file" id="contentFile" accept=".pdf,.docx" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
+                    <textarea id="contentText" placeholder="Or enter your content here..." class="mt-2 p-2 border border-gray-300 rounded-md w-full h-32"></textarea>
+                </div>
+
+                <!-- Template Document Upload or Text Input -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-700">Upload Template Document or Enter Template</label>
+                    <input type="file" id="templateFile" accept=".docx,.tex" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
+                    <textarea id="templateText" placeholder="Or enter your template here..." class="mt-2 p-2 border border-gray-300 rounded-md w-full h-32"></textarea>
+                </div>
+
+                <!-- Template Type Selection -->
+                <div>
+                    <label class="block text-lg font-medium text-gray-700">Select Template Type</label>
+                    <select id="templateType" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
+                        <option value="docx">Word Template (.docx)</option>
+                        <option value="tex">LaTeX Template (.tex)</option>
+                        <option value="markdown">Markdown (.md)</option>
+                    </select>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-between">
+                    <button type="button" id="formatButton" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Format Document</button>
+                    <button type="reset" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Output Section -->
+        <div id="outputSection" class="mt-8 hidden">
+            <h2 class="text-2xl font-bold text-gray-700">Formatted Document</h2>
+            <a id="downloadLink" href="#" download class="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Download Formatted Document</a>
+        </div>
+    </div>
+
+    <footer class="text-center mt-12 text-gray-600">
+        <p>Powered by Lollms</p>
+        <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a> | 
+        <a href="#" class="text-blue-600 hover:underline">Terms of Service</a>
+    </footer>
+
+    <script>
+        document.getElementById('formatButton').addEventListener('click', async function() {
+            const contentFile = document.getElementById('contentFile').files[0];
+            const templateFile = document.getElementById('templateFile').files[0];
+            const contentText = document.getElementById('contentText').value;
+            const templateText = document.getElementById('templateText').value;
+            const templateType = document.getElementById('templateType').value;
+
+            if ((!contentFile && !contentText) || (!templateFile && !templateText)) {
+                alert("Please provide both content and template, either by uploading files or entering text.");
+                return;
+            }
+
+            // Initialize Lollms Client
+            const lc = new LollmsClient();
+
+            // Load the content and template data
+            let contentFileData = contentText;
+            let templateFileData = templateText;
+
+            if (contentFile) {
+                contentFileData = await contentFile.text();
+            }
+
+            if (templateFile) {
+                templateFileData = await templateFile.text();
+            }
+
+            // Construct the prompt
+            const system_prompt = `Format the following content using the provided template.`;
+            const user_prompt = `Content:\n${contentFileData}\n\nTemplate:\n${templateFileData}`;
+
+            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.template.separator_template + lc.ai_message();
+
+            // Generate the formatted document
+            let formattedDocument;
+            if (templateType === 'tex') {
+                prompt += "\n\nPlease generate a full LaTeX code and enclose it within LaTeX markdown tags.";
+                formattedDocument = await lc.generateCode(prompt);
+            } else if (templateType === 'markdown') {
+                prompt += "\n\nPlease generate the content in Markdown format.";
+                formattedDocument = await lc.generate(prompt);
+            } else if (templateType === 'docx') {
+                prompt += "\n\nPlease generate a Python code that creates a DOCX file with the formatted content.";
+                formattedDocument = await lc.generateCode(prompt);
+            }
+
+            // Create a download link for the formatted document
+            const outputSection = document.getElementById('outputSection');
+            const downloadLink = document.getElementById('downloadLink');
+            downloadLink.href = URL.createObjectURL(new Blob([formattedDocument], { type: templateType === 'docx' ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "text/plain" }));
+            downloadLink.download = `formatted_document.${templateType === 'docx' ? 'docx' : templateType === 'markdown' ? 'md' : 'tex'}`;
+            outputSection.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>

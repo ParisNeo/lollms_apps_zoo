@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat with PDFs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>    
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background-color: #f0f4f8; border-radius: 0.25rem; margin-bottom: 0.5rem; }
+        .file-item button { margin-left: 0.5rem; }
+        .blurred-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); display: none; z-index: 1000; }
+        .settings-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            z-index: 1001;
+            display: none;
+            width: 80%; /* Added width property */
+            max-width: 600px; /* Added max-width for larger screens */
+        }
+        #loadingOverlay { position: absolute; /* Change from fixed to absolute */ top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
+        .loading { text-align: center; color: #ff69b4; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 flex justify-between items-center">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="appTitle">Chat with PDFs</h1>
+            <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-1/3">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="uploadPDF">Upload PDFs</h2>
+                    <input type="file" id="pdfUpload" accept=".pdf" multiple class="mb-4 p-2 border border-indigo-300 rounded-md">
+                    <div id="uploadedFiles" class="mb-4"></div>
+                </div>
+            </div>
+            <div class="w-full md:w-2/3">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="chat">Chat</h2>
+                    <div id="chatArea" class="h-96 overflow-y-auto mb-4 p-4 border border-indigo-300 rounded-md"></div>
+                    <div class="flex">
+                        <input type="text" id="userInput" class="flex-grow p-2 border border-indigo-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message...">
+                        <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">Send</button>
+                    </div>
+                    <div id="loadingOverlay">
+                        <div class="loading">
+                            <div class="strawberry">🍓</div>
+                            <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="settings">Settings</h2>
+        <div class="mb-4">
+            <label for="userName" class="block mb-2 text-indigo-600">User Name:</label>
+            <input type="text" id="userName" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="userInfo" class="block mb-2 text-indigo-600">User Information:</label>
+            <textarea id="userInfo" class="w-full h-32 border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+        <div class="mb-4">
+            <label for="temperature" class="block mb-2 text-indigo-600">Temperature:</label>
+            <input type="number" id="temperature" min="0" max="1" step="0.1" value="0.7" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="maxTokens" class="block mb-2 text-indigo-600">Max Tokens:</label>
+            <input type="number" id="maxTokens" min="1" max="4096" value="2048" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="lollmsHost" class="block mb-2 text-indigo-600">LoLLMs Host Address:</label>
+            <input type="text" id="lollmsHost" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="contextSize" class="block mb-2 text-indigo-600">Context Size:</label>
+            <input type="number" id="contextSize" min="1" max="8192" value="4096" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <button id="saveSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Settings</button>
+        <button id="closeSettingsBtn" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Close</button>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const lollmsFileLoader = new LollmsFileLoader();
+        const mr = new MarkdownRenderer();
+        let uploadedFiles = [];
+        let chatContext = [];
+        let systemMessage = 'You are an AI assistant that answers questions based on the content of the uploaded PDFs. The user did not upload a PDF yet, please ask him to upload one or many PDFs.';
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('pdfUpload').addEventListener('change', handleFileUpload);
+            document.getElementById('sendBtn').addEventListener('click', sendMessage);
+            document.getElementById('settingsBtn').addEventListener('click', showSettings);
+            document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+            document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
+            document.getElementById('userInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            loadSettings();
+        });
+        async function handleFileUpload(event) {
+            const files = event.target.files;
+            const uploadedFilesDiv = document.getElementById('uploadedFiles');
+            uploadedFilesDiv.innerHTML = '';
+            for (let file of files) {
+                if (file.type === 'application/pdf') {
+                    const content = await lollmsFileLoader.loadFile(file);
+                    uploadedFiles.push({ name: file.name, content: content });
+                    const fileDiv = document.createElement('div');
+                    fileDiv.className = 'file-item';
+                    fileDiv.innerHTML = `<span>${file.name}</span>`;
+                    uploadedFilesDiv.appendChild(fileDiv);
+                }
+            }
+            updateChatContext();
+            showLoader();
+            const fullPrompt = `${lc.system_message()}${systemMessage}${lc.template.separator_template}${chatContext.join('\n')}${lc.template.separator_template}${lc.ai_message()}`;
+            const response = await lc.generate(fullPrompt);
+            const renderedResponse = await mr.renderMarkdown(response);
+            chatArea.innerHTML += `<div class="mb-2"><strong>AI:</strong> ${renderedResponse}</div>`;
+            chatContext.push(`AI: ${response}`);
+            hideLoader();
+        }
+        function updateChatContext() {
+            const pdfContent = uploadedFiles.map(file => file.content).join('\n\n');
+            systemMessage = `You are an AI assistant that answers questions based on the content of the uploaded PDFs. You act as the PDF and talk to the user with the knowledge stored inside the PDF. Try to be factual and give references from the PDF. Call yourself a name that depicts the PDF content. Here's the content of the PDFs:\n\n${pdfContent}.\nTo illustrate math equations or formulae, use this syntax \\[equation content\\] or $$equation content$$.`;
+            chatContext = [];
+        }
+        async function sendMessage() {
+            const userInput = document.getElementById('userInput');
+            const chatArea = document.getElementById('chatArea');
+            const message = userInput.value.trim();
+            if (message === '') return;
+            const renderedMessage = await mr.renderMarkdown(message);
+            chatArea.innerHTML += `<div class="mb-2"><strong>You:</strong> ${renderedMessage}</div>`;
+            userInput.value = '';
+            showLoader();
+            try {
+                const userName = localStorage.getItem('userName') || 'User';
+                const userInfo = localStorage.getItem('userInfo') || '';
+                const fullPrompt = `${lc.system_message()}${systemMessage}${lc.template.separator_template}${chatContext.join('\n')}${lc.user_message()}${message}${lc.template.separator_template}${lc.ai_message()}Based on the PDF content and the user's question, here's my response:`;
+                const response = await lc.generate(fullPrompt);
+                const renderedResponse = await mr.renderMarkdown(response);
+                chatArea.innerHTML += `<div class="mb-2"><strong>AI:</strong> ${renderedResponse}</div>`;
+                chatContext.push(`${userName}: ${message}`);
+                chatContext.push(`AI: ${response}`);
+                if (chatContext.length > 10) chatContext = chatContext.slice(-10);
+            } catch (error) {
+                console.error('Error generating response:', error);
+                chatArea.innerHTML += `<div class="mb-2 text-red-500"><strong>Error:</strong> Failed to generate response. Please try again.</div>`;
+            } finally {
+                chatArea.scrollTop = chatArea.scrollHeight;
+                hideLoader();
+            }
+        }
+        function showSettings() {
+            document.getElementById('settingsOverlay').style.display = 'block';
+            document.getElementById('settingsPopup').style.display = 'block';
+        }
+        function closeSettings() {
+            document.getElementById('settingsOverlay').style.display = 'none';
+            document.getElementById('settingsPopup').style.display = 'none';
+        }
+        function saveSettings() {
+            const userName = document.getElementById('userName').value;
+            const userInfo = document.getElementById('userInfo').value;
+            const temperature = document.getElementById('temperature').value;
+            const maxTokens = document.getElementById('maxTokens').value;
+            const lollmsHost = document.getElementById('lollmsHost').value;
+            const contextSize = document.getElementById('contextSize').value;
+            localStorage.setItem('userName', userName);
+            localStorage.setItem('userInfo', userInfo);
+            localStorage.setItem('temperature', temperature);
+            localStorage.setItem('maxTokens', maxTokens);
+            localStorage.setItem('lollmsHost', lollmsHost);
+            localStorage.setItem('contextSize', contextSize);
+            lc.updateSettings({
+                temperature: parseFloat(temperature),
+                n_predict: parseInt(maxTokens),
+                host_address: lollmsHost,
+                ctx_size: parseInt(contextSize)
+            });
+            closeSettings();
+        }
+        function loadSettings() {
+            document.getElementById('userName').value = localStorage.getItem('userName') || '';
+            document.getElementById('userInfo').value = localStorage.getItem('userInfo') || '';
+            document.getElementById('temperature').value = localStorage.getItem('temperature') || '0.7';
+            document.getElementById('maxTokens').value = localStorage.getItem('maxTokens') || '2048';
+            document.getElementById('lollmsHost').value = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
+            document.getElementById('contextSize').value = localStorage.getItem('contextSize') || '4096';
+            lc.updateSettings({
+                host_address: localStorage.getItem('lollmsHost') || 'http://localhost:9600',
+                ctx_size: parseInt(localStorage.getItem('contextSize') || '4096')
+            });
+        }
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    </script>
