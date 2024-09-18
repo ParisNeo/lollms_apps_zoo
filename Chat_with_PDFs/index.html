@@ -24,42 +24,74 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>       
     <style>
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         .file-item { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem; background-color: #f0f4f8; border-radius: 0.25rem; margin-bottom: 0.5rem; }
         .file-item button { margin-left: 0.5rem; }
         .blurred-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); display: none; z-index: 1000; }
-        .settings-popup {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: white;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            z-index: 1001;
+        .settings-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 2rem; border-radius: 0.5rem; z-index: 1001; display: none; width: 80%; max-width: 600px; }
+        #chatLoader {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
             display: none;
-            width: 80%; /* Added width property */
-            max-width: 600px; /* Added max-width for larger screens */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-        #loadingOverlay { position: absolute; /* Change from fixed to absolute */ top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 1000; }
         .loading { text-align: center; color: #ff69b4; }
-        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }        
+        .message-controls { display: none; gap: 0.5rem; }
+        .message:hover .message-controls { display: flex; }
+        .edit-popup { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 2rem; border-radius: 0.5rem; z-index: 1002; display: none; width: 80%; max-width: 600px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .edit-popup textarea { width: 100%; height: 150px; margin-bottom: 1rem; padding: 0.5rem; border: 1px solid #ccc; border-radius: 0.25rem; }
+        .edit-popup-buttons { display: flex; justify-content: flex-end; gap: 1rem; }
+        #chatArea { flex-grow: 1; }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        .listening-animation {
+            animation: pulse 1s infinite;
+        }
+        .transcribing-animation {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #3498db;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
-    <div class="container mx-auto px-4 py-8">
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans flex flex-col min-h-screen">
+    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
         <header class="mb-8 flex justify-between items-center">
             <h1 class="text-4xl font-bold text-indigo-800" data-translate="appTitle">Chat with PDFs</h1>
-            <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </button>
+            <div class="flex items-center">
+                <select id="languageSelect" class="mr-2 bg-white border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <button id="helpBtn" class="ml-2 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+            </div>
         </header>
-        <main class="flex flex-col md:flex-row gap-8">
+        <main class="flex flex-col md:flex-row gap-8 flex-grow">
             <div class="w-full md:w-1/3">
                 <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
                     <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="uploadPDF">Upload PDFs</h2>
@@ -67,21 +99,32 @@
                     <div id="uploadedFiles" class="mb-4"></div>
                 </div>
             </div>
-            <div class="w-full md:w-2/3">
-                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-                    <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="chat">Chat</h2>
-                    <div id="chatArea" class="h-96 overflow-y-auto mb-4 p-4 border border-indigo-300 rounded-md"></div>
-                    <div class="flex">
-                        <input type="text" id="userInput" class="flex-grow p-2 border border-indigo-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message...">
-                        <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">Send</button>
-                    </div>
-                    <div id="loadingOverlay">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-grow flex flex-col">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700" data-translate="chat">Chat</h2>
+                <div id="chatArea" class="flex-grow overflow-y-auto mb-4 p-4 border border-indigo-300 rounded-md relative">
+                    <div id="chatLoader" class="absolute inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
                         <div class="loading">
                             <div class="strawberry">🍓</div>
                             <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
                         </div>
                     </div>
                 </div>
+                <div class="flex items-center">
+                    <input type="text" id="userInput" class="flex-grow p-2 border border-indigo-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Type your message...">
+                    <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">Send</button>
+                    <button id="micBtn" class="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-full transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                        </svg>
+                    </button>
+                </div>
+                <button id="saveBtn" class="bg-transparent mt-4" title="Save discussion">
+                    <svg width="50" height="50" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="7" y="7" width="36" height="36" rx="2" ry="2" fill="black" />
+                        <rect x="10" y="10" width="30" height="10" fill="white" />
+                        <circle cx="25" cy="32" r="5" fill="white" />
+                    </svg>                      
+                </button>
             </div>
         </main>
     </div>
@@ -103,7 +146,7 @@
         <div class="mb-4">
             <label for="maxTokens" class="block mb-2 text-indigo-600">Max Tokens:</label>
             <input type="number" id="maxTokens" min="1" max="4096" value="2048" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        </div>
+</div>
         <div class="mb-4">
             <label for="lollmsHost" class="block mb-2 text-indigo-600">LoLLMs Host Address:</label>
             <input type="text" id="lollmsHost" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -112,10 +155,39 @@
             <label for="contextSize" class="block mb-2 text-indigo-600">Context Size:</label>
             <input type="number" id="contextSize" min="1" max="8192" value="4096" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500">
         </div>
+        <div class="mb-4">
+            <label for="voiceSelect" class="block mb-2 text-indigo-600">TTS Voice:</label>
+            <select id="voiceSelect" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+        </div>
         <button id="saveSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Settings</button>
         <button id="closeSettingsBtn" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Close</button>
     </div>
-
+    <div id="editOverlay" class="blurred-overlay"></div>
+    <div id="editPopup" class="edit-popup">
+        <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Edit Message</h2>
+        <textarea id="editMessageContent" class="w-full border border-indigo-300 rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        <div class="edit-popup-buttons">
+            <button id="saveEditBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save</button>
+            <button id="cancelEditBtn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Cancel</button>
+        </div>
+    </div>
+    <div id="helpOverlay" class="blurred-overlay"></div>
+    <div id="helpPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold mb-4 text-indigo-700">How to Use</h2>
+        <ol class="list-decimal pl-5 space-y-2">
+            <li>Upload one or more PDF files using the "Upload PDFs" section.</li>
+            <li>Wait for the AI to process the uploaded PDFs.</li>
+            <li>Type your questions or prompts in the chat input at the bottom.</li>
+            <li>Click "Send" or press Enter to submit your message.</li>
+            <li>The AI will respond based on the content of the uploaded PDFs.</li>
+            <li>You can edit or delete messages by hovering over them and using the icons.</li>
+            <li>Adjust settings using the gear icon in the top-right corner.</li>
+            <li>Save the discussion using the "Save Discussion" button.</li>
+            <li>Use the microphone button to speak your message instead of typing.</li>
+            <li>Click on the speaker icon next to AI messages to hear them read aloud.</li>
+        </ol>
+        <button id="closeHelpBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+    </div>
     <script>
         const lc = new LollmsClient();
         const lollmsFileLoader = new LollmsFileLoader();
@@ -123,6 +195,38 @@
         let uploadedFiles = [];
         let chatContext = [];
         let systemMessage = 'You are an AI assistant that answers questions based on the content of the uploaded PDFs. The user did not upload a PDF yet, please ask him to upload one or many PDFs.';
+        let currentEditingMessage = null;
+        let currentAudio = null;
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "Chat with PDFs",
+                    uploadPDF: "Upload PDFs",
+                    chat: "Chat",
+                    settings: "Settings"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "Discuter avec des PDFs",
+                    uploadPDF: "Télécharger des PDFs",
+                    chat: "Discussion",
+                    settings: "Paramètres"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    appTitle: "Chatear con PDFs",
+                    uploadPDF: "Subir PDFs",
+                    chat: "Chat",
+                    settings: "Ajustes"
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, 'pdf_chat_', 'languageSelect');
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('pdfUpload').addEventListener('change', handleFileUpload);
             document.getElementById('sendBtn').addEventListener('click', sendMessage);
@@ -134,7 +238,19 @@
                     sendMessage();
                 }
             });
+            document.getElementById('saveEditBtn').addEventListener('click', saveEditedMessage);
+            document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
+            document.getElementById('languageSelect').addEventListener('change', function() {
+                localizer.setLanguage(this.value);
+                localizer.apply();
+            });
+            document.getElementById('helpBtn').addEventListener('click', showHelp);
+            document.getElementById('closeHelpBtn').addEventListener('click', closeHelp);
+            document.getElementById('saveBtn').addEventListener('click', saveDiscussion);
+            document.getElementById('micBtn').addEventListener('click', startSpeechRecognition);
             loadSettings();
+            localizer.apply();
+            loadVoices();
         });
         async function handleFileUpload(event) {
             const files = event.target.files;
@@ -146,7 +262,12 @@
                     uploadedFiles.push({ name: file.name, content: content });
                     const fileDiv = document.createElement('div');
                     fileDiv.className = 'file-item';
-                    fileDiv.innerHTML = `<span>${file.name}</span>`;
+                    fileDiv.innerHTML = `
+                        <span>${file.name}</span>
+                        <svg onclick="deleteFile('${file.name}')" class="w-6 h-6 cursor-pointer text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    `;
                     uploadedFilesDiv.appendChild(fileDiv);
                 }
             }
@@ -154,42 +275,120 @@
             showLoader();
             const fullPrompt = `${lc.system_message()}${systemMessage}${lc.template.separator_template}${chatContext.join('\n')}${lc.template.separator_template}${lc.ai_message()}`;
             const response = await lc.generate(fullPrompt);
-            const renderedResponse = await mr.renderMarkdown(response);
-            chatArea.innerHTML += `<div class="mb-2"><strong>AI:</strong> ${renderedResponse}</div>`;
+            addMessageToChat('AI', response);
             chatContext.push(`AI: ${response}`);
             hideLoader();
         }
+        function deleteFile(fileName) {
+            uploadedFiles = uploadedFiles.filter(file => file.name !== fileName);
+            updateChatContext();
+            const fileDiv = document.querySelector(`.file-item:has(span:contains('${fileName}'))`);
+            if (fileDiv) {
+                fileDiv.remove();
+            }
+        }
         function updateChatContext() {
             const pdfContent = uploadedFiles.map(file => file.content).join('\n\n');
-            systemMessage = `You are an AI assistant that answers questions based on the content of the uploaded PDFs. You act as the PDF and talk to the user with the knowledge stored inside the PDF. Try to be factual and give references from the PDF. Call yourself a name that depicts the PDF content. Here's the content of the PDFs:\n\n${pdfContent}.\nTo illustrate math equations or formulae, use this syntax \\[equation content\\] or $$equation content$$.`;
+            systemMessage = `You are an AI assistant that answers questions based on the content of the uploaded PDFs. You act as the PDF and talk to the user with the knowledge stored inside the PDF. Try to be factual and give references from the PDF. Call yourself a name that depicts the PDF content. Here's the content of the PDFs:\n\n${pdfContent}.\nTo illustrate math equations or formulae, use this syntax \\[equation content\\] or $$equation content$$. You can write graphviz diagrams, mermaid diagrams, code, as well as svg code by putting them in the corresponding markdown code tag.`;
             chatContext = [];
         }
         async function sendMessage() {
             const userInput = document.getElementById('userInput');
-            const chatArea = document.getElementById('chatArea');
             const message = userInput.value.trim();
             if (message === '') return;
-            const renderedMessage = await mr.renderMarkdown(message);
-            chatArea.innerHTML += `<div class="mb-2"><strong>You:</strong> ${renderedMessage}</div>`;
+            
+            const userName = localStorage.getItem('userName') || 'User';
+            await addMessageToChat(userName, message);
             userInput.value = '';
             showLoader();
             try {
-                const userName = localStorage.getItem('userName') || 'User';
-                const userInfo = localStorage.getItem('userInfo') || '';
                 const fullPrompt = `${lc.system_message()}${systemMessage}${lc.template.separator_template}${chatContext.join('\n')}${lc.user_message()}${message}${lc.template.separator_template}${lc.ai_message()}Based on the PDF content and the user's question, here's my response:`;
                 const response = await lc.generate(fullPrompt);
-                const renderedResponse = await mr.renderMarkdown(response);
-                chatArea.innerHTML += `<div class="mb-2"><strong>AI:</strong> ${renderedResponse}</div>`;
-                chatContext.push(`${userName}: ${message}`);
-                chatContext.push(`AI: ${response}`);
-                if (chatContext.length > 10) chatContext = chatContext.slice(-10);
+                
+                await addMessageToChat('AI', response);
+                if (chatContext.length > 10) {
+                    chatContext = chatContext.slice(-10);
+                    await renderMessages();
+                }
             } catch (error) {
                 console.error('Error generating response:', error);
-                chatArea.innerHTML += `<div class="mb-2 text-red-500"><strong>Error:</strong> Failed to generate response. Please try again.</div>`;
+                await addMessageToChat('Error', 'Failed to generate response. Please try again.');
             } finally {
-                chatArea.scrollTop = chatArea.scrollHeight;
                 hideLoader();
             }
+        }
+        async function addMessageToChat(sender, content) {
+            chatContext.push(`${sender}: ${content}`);
+            const renderedResponse = await mr.renderMarkdown(content);
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender.toLowerCase()}-message mb-4`;
+            messageDiv.innerHTML = `
+                <div class="font-bold">${sender}</div>
+                <div>${renderedResponse}</div>
+                <div class="message-controls mt-2">
+                    <svg title="Edit message" onclick="editMessage(this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    <svg title="Delete message" onclick="deleteMessage(this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    ${sender === 'AI' ? `<svg title="Speak" onclick="speakMessage(this, this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>` : ''}
+                </div>
+            `;
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        function editMessage(messageDiv) {
+            currentEditingMessage = messageDiv;
+            const index = Array.from(messageDiv.parentNode.children).indexOf(messageDiv);
+            const content = chatContext[index].split(': ').slice(1).join(': ').trim();
+            document.getElementById('editMessageContent').value = content;
+            document.getElementById('editOverlay').style.display = 'block';
+            document.getElementById('editPopup').style.display = 'block';
+        }
+        async function saveEditedMessage() {
+            const newContent = document.getElementById('editMessageContent').value.trim();
+            if (newContent !== '') {
+                const index = Array.from(currentEditingMessage.parentNode.children).indexOf(currentEditingMessage);
+                const sender = chatContext[index].split(':')[0];
+                chatContext[index] = `${sender}: ${newContent}`;
+                await renderMessages();
+                closeEditPopup();
+            }
+        }
+        async function deleteMessage(messageDiv) {
+            if (confirm('Are you sure you want to delete this message?')) {
+                const index = Array.from(messageDiv.parentNode.children).indexOf(messageDiv);
+                chatContext.splice(index, 1);
+                await renderMessages();
+            }
+        }
+        async function renderMessages() {
+            const chatArea = document.getElementById('chatArea');
+            chatArea.innerHTML = '';
+            for (let message of chatContext) {
+                const [sender, ...contentParts] = message.split(':');
+                const content = contentParts.join(':').trim();
+                const renderedContent = await mr.renderMarkdown(content);
+                const messageDiv = document.createElement('div');
+messageDiv.className = `message ${sender.toLowerCase()}-message mb-4`;
+                messageDiv.innerHTML = `
+                    <div class="font-bold">${sender}</div>
+                    <div>${renderedContent}</div>
+                    <div class="message-controls mt-2">
+                        <svg onclick="editMessage(this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                        <svg onclick="deleteMessage(this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        ${sender === 'AI' ? `<svg onclick="speakMessage(this, this.parentNode.parentNode)" class="w-6 h-6 cursor-pointer text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>` : ''}
+                    </div>
+                `;
+                chatArea.appendChild(messageDiv);
+            }
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+        function cancelEdit() {
+            closeEditPopup();
+        }
+        function closeEditPopup() {
+            document.getElementById('editOverlay').style.display = 'none';
+            document.getElementById('editPopup').style.display = 'none';
+            currentEditingMessage = null;
         }
         function showSettings() {
             document.getElementById('settingsOverlay').style.display = 'block';
@@ -206,12 +405,14 @@
             const maxTokens = document.getElementById('maxTokens').value;
             const lollmsHost = document.getElementById('lollmsHost').value;
             const contextSize = document.getElementById('contextSize').value;
+            const selectedVoice = document.getElementById('voiceSelect').value;
             localStorage.setItem('userName', userName);
             localStorage.setItem('userInfo', userInfo);
             localStorage.setItem('temperature', temperature);
             localStorage.setItem('maxTokens', maxTokens);
             localStorage.setItem('lollmsHost', lollmsHost);
             localStorage.setItem('contextSize', contextSize);
+            localStorage.setItem('selectedVoice', selectedVoice);
             lc.updateSettings({
                 temperature: parseFloat(temperature),
                 n_predict: parseInt(maxTokens),
@@ -233,9 +434,103 @@
             });
         }
         function showLoader() {
-            document.getElementById('loadingOverlay').style.display = 'flex';
+            document.getElementById('chatLoader').style.display = 'flex';
         }
         function hideLoader() {
-            document.getElementById('loadingOverlay').style.display = 'none';
+            document.getElementById('chatLoader').style.display = 'none';
+        }
+        function showHelp() {
+            document.getElementById('helpOverlay').style.display = 'block';
+            document.getElementById('helpPopup').style.display = 'block';
+        }
+        function closeHelp() {
+            document.getElementById('helpOverlay').style.display = 'none';
+            document.getElementById('helpPopup').style.display = 'none';
+        }
+        function saveDiscussion() {
+            const discussionContent = chatContext.join('\n');
+            const blob = new Blob([discussionContent], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'chat_discussion.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        async function loadVoices() {
+            try {
+                const response = await axios.get('/tts/voices');
+                const voices = response.data.voices;
+                const voiceSelect = document.getElementById('voiceSelect');
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    voiceSelect.appendChild(option);
+                });
+                const savedVoice = localStorage.getItem('selectedVoice');
+                if (savedVoice && voices.includes(savedVoice)) {
+                    voiceSelect.value = savedVoice;
+                }
+            } catch (error) {
+                console.error('Error loading voices:', error);
+            }
+        }
+        async function speakMessage(button, messageDiv) {
+            button.classList.add("border-2", "border-red-500", "rounded-lg");
+            const content = messageDiv.querySelector('div:nth-child(2)').textContent;
+            const selectedVoice = localStorage.getItem('pdfsSelectedVoice') || document.getElementById('voiceSelect').value;
+            try {
+                const response = await axios.post('/tts/file', {
+                    text: content,
+                    speaker: selectedVoice,
+                    language: 'en'
+                }, {
+                    responseType: 'blob'
+                });
+                const audioBlob = new Blob([response.data], { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
+                if (currentAudio) {
+                    currentAudio.pause();
+                    currentAudio = null;
+                }
+                const audio = new Audio(audioUrl);
+                audio.play();
+                currentAudio = audio;
+                
+                const audioPlayer = document.createElement('audio');
+                audioPlayer.controls = true;
+                audioPlayer.src = audioUrl;
+                messageDiv.appendChild(audioPlayer);
+            } catch (error) {
+                console.error('Error generating speech:', error);
+            }
+            button.classList.remove("border-2", "border-red-500", "rounded-lg");
+        }
+        function startSpeechRecognition() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.start();
+            const micBtn = document.getElementById('micBtn');
+            micBtn.classList.add('listening-animation');
+            recognition.onstart = function() {
+                micBtn.innerHTML = '<div class="transcribing-animation"></div>';
+            };
+            recognition.onresult = function(event) {
+                const transcript = event.results[0][0].transcript;
+                document.getElementById('userInput').value = transcript;
+                micBtn.classList.remove('listening-animation');
+                micBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>';
+                sendMessage();
+            };
+            recognition.onerror = function(event) {
+                console.error('Speech recognition error:', event.error);
+                micBtn.classList.remove('listening-animation');
+                micBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>';
+            };
         }
     </script>
+</body>
+</html>
