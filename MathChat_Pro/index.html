@@ -21,8 +21,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
-    <div class="container mx-auto px-4 py-8">
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen flex flex-col">
+    <div class="container mx-auto px-4 py-8 flex-grow flex flex-col">
         <header class="text-center mb-8 flex justify-between items-center">
             <h1 class="text-4xl font-bold text-indigo-800">MathChat</h1>
             <div class="flex space-x-2">
@@ -54,8 +54,8 @@
                 </button>
             </div>
         </header>
-        <div class="bg-white shadow-lg rounded-lg p-6">
-            <div id="chat-area" class="h-96 overflow-y-auto mb-4 p-4 border border-indigo-300 rounded relative">
+        <div class="bg-white shadow-lg rounded-lg p-6 flex-grow flex flex-col">
+            <div id="chat-area" class="flex-grow overflow-y-auto mb-4 p-4 border border-indigo-300 rounded relative">
                 <div id="chatLoader" class="absolute inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
                     <div class="loading">
                         <div class="strawberry">🍓</div>
@@ -110,6 +110,25 @@
         .loading { text-align: center; color: #ff69b4; }
         .strawberry { font-size: 64px; animation: spin 2s linear infinite; }    
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        .copy-button {
+            display: none;
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background-color: #4a5568;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .message-container {
+            position: relative;
+        }
+        .message-container:hover .copy-button {
+            display: block;
+        }
     </style>
     <script>
         const mr = new MarkdownRenderer();
@@ -132,7 +151,7 @@
         const promptIdeasOverlay = document.getElementById('promptIdeasOverlay');
         const promptIdeasPopup = document.getElementById('promptIdeasPopup');
         const promptIdeasList = document.getElementById('promptIdeasList');
-        const closePromptIdeasBtn = document.getElementById('close-prompt-ideas-btn');
+const closePromptIdeasBtn = document.getElementById('close-prompt-ideas-btn');
         let conversation = [];
         function showLoader() {
             chatLoader.style.display = 'flex';
@@ -142,9 +161,18 @@
         }
         async function addMessage(sender, content) {
             const messageDiv = document.createElement('div');
-messageDiv.className = `bg-white shadow-lg rounded-lg p-4 mb-4 ${sender === 'User' ? 'ml-auto' : 'mr-auto'} max-w-3/4`;
+            messageDiv.className = `message-container bg-white shadow-lg rounded-lg p-4 mb-4 ${sender === 'User' ? 'ml-auto' : 'mr-auto'} max-w-3/4`;
             const renderedContent = await mr.renderMarkdown(content);
-            messageDiv.innerHTML = `<strong class="text-indigo-600">${sender}:</strong> ${renderedContent}`;
+            messageDiv.innerHTML = `
+                <strong class="text-indigo-600">${sender}:</strong> ${renderedContent}
+                <button class="copy-button">Copy</button>
+            `;
+            const copyButton = messageDiv.querySelector('.copy-button');
+            copyButton.addEventListener('click', () => {
+                navigator.clipboard.writeText(content);
+                copyButton.textContent = 'Copied!';
+                setTimeout(() => copyButton.textContent = 'Copy', 2000);
+            });
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
@@ -244,7 +272,17 @@ messageDiv.className = `bg-white shadow-lg rounded-lg p-4 mb-4 ${sender === 'Use
                 "Solve a system of linear equations using matrices",
                 "Explain the properties of complex numbers",
                 "Describe the concept of statistical hypothesis testing",
-                "Explain the fundamental theorem of calculus"
+                "Explain the fundamental theorem of calculus",
+                "Discuss the applications of linear algebra in machine learning",
+                "Explain the concept of eigenvectors and eigenvalues",
+                "Describe the process of integration by parts",
+                "Explain the difference between correlation and causation in statistics",
+                "Discuss the properties of prime numbers and their importance in cryptography",
+                "Explain the concept of differential equations and their applications",
+                "Describe the principles of mathematical induction",
+                "Explain the concept of vector spaces and their properties",
+                "Discuss the applications of game theory in economics",
+                "Explain the concept of fractals and their mathematical properties"
             ];
             promptIdeasList.innerHTML = '';
             ideas.forEach(idea => {
@@ -275,5 +313,5 @@ messageDiv.className = `bg-white shadow-lg rounded-lg p-4 mb-4 ${sender === 'Use
             }
         });
     </script>
-</body>
-</html>
+    </body>
+    </html>
