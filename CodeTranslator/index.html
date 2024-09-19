@@ -9,67 +9,91 @@
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <div class="container mx-auto p-4">
-        <h1 class="text-3xl font-bold mb-6 text-center">Code Translator</h1>
-        <div class="mt-4">
-            <h2 class="text-xl font-semibold mb-2">Additional Instructions</h2>
-            <textarea id="additionalInstructions" class="w-full h-24 p-2 border rounded" placeholder="Enter additional instructions for the AI (e.g., specific libraries to use, optimization requests, etc.)"></textarea>
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <h2 class="text-xl font-semibold mb-2">Input</h2>
-                <select id="inputLang" class="w-full p-2 mb-2 border rounded">
-                    <option value="python">Python</option>
-                    <option value="javascript">JavaScript</option>
-                    <option value="java">Java</option>
-                    <option value="c">C</option>
-                    <option value="cpp">C++</option>
-                    <option value="csharp">C#</option>
-                    <option value="php">PHP</option>
-                    <option value="ruby">Ruby</option>
-                    <option value="swift">Swift</option>
-                    <option value="go">Go</option>
-                    <option value="rust">Rust</option>
-                    <option value="typescript">TypeScript</option>
-                    <option value="kotlin">Kotlin</option>
-                    <option value="scala">Scala</option>
-                    <option value="r">R</option>
-                    <option value="perl">Perl</option>
-                    <option value="haskell">Haskell</option>
-                    <option value="lua">Lua</option>
-                    <option value="dart">Dart</option>
-                    <option value="julia">Julia</option>
-                    <option value="matlab">MATLAB</option>
-                    <option value="bash">Bash</option>
-                    <option value="powershell">PowerShell</option>
-                    <option value="sql">SQL</option>
-                    <option value="html">HTML</option>
-                    <option value="css">CSS</option>
-                    <option value="xml">XML</option>
-                    <option value="json">JSON</option>
-                    <option value="yaml">YAML</option>
-                    <option value="vbnet">VB.NET</option>
-                    <option value="objectivec">Objective-C</option>
-                    <option value="assembly">Assembly</option>
-                    <option value="fortran">Fortran</option>
-                    <option value="cobol">COBOL</option>
-                    <option value="lisp">Lisp</option>
-                    <option value="prolog">Prolog</option>
-                    <option value="erlang">Erlang</option>
-                    <option value="elixir">Elixir</option>
-                    <option value="clojure">Clojure</option>
-                    <option value="f#">F#</option>
-                    <option value="mermaid diagram">Mermaid</option>
-                    <option value="graphviz diagram">Graphviz</option>
-                    <option value="english description of the code to be translated">English</option>
-                    <option value="french description of the code to be translated">French</option>
-                </select>
-                <div id="inputEditor" class="w-full h-96 border rounded"></div>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-6 text-center">Code Translator</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-indigo-700">Tools</h2>
+                <div class="space-x-2">
+                    <button id="translateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Translate
+                    </button>
+                    <button id="saveBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Save
+                    </button>
+                    <button id="loadBtn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        Load
+                    </button>
+                </div>
             </div>
-            <div>
-                <h2 class="text-xl font-semibold mb-2">Output</h2>
-                <select id="outputLang" class="w-full p-2 mb-2 border rounded">
+            <h2 class="text-2xl font-semibold mb-2 text-indigo-700">Additional Instructions</h2>
+            <textarea id="additionalInstructions" class="w-full h-24 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter additional instructions for the AI (e.g., specific libraries to use, optimization requests, etc.)"></textarea>
+        </div>
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex flex-grow space-x-2">
+                <div class="flex-1">
+                    <h2 class="text-2xl font-semibold mb-2 text-indigo-700">Input</h2>
+                    <select id="inputLang" class="w-full p-2 mb-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="java">Java</option>
+                        <option value="c">C</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                        <option value="php">PHP</option>
+                        <option value="ruby">Ruby</option>
+                        <option value="swift">Swift</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="kotlin">Kotlin</option>
+                        <option value="scala">Scala</option>
+                        <option value="r">R</option>
+                        <option value="perl">Perl</option>
+                        <option value="haskell">Haskell</option>
+                        <option value="lua">Lua</option>
+                        <option value="dart">Dart</option>
+                        <option value="julia">Julia</option>
+                        <option value="matlab">MATLAB</option>
+                        <option value="bash">Bash</option>
+                        <option value="powershell">PowerShell</option>
+                        <option value="sql">SQL</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="xml">XML</option>
+                        <option value="json">JSON</option>
+                        <option value="yaml">YAML</option>
+                        <option value="vbnet">VB.NET</option>
+                        <option value="objectivec">Objective-C</option>
+                        <option value="assembly">Assembly</option>
+                        <option value="fortran">Fortran</option>
+                        <option value="cobol">COBOL</option>
+                        <option value="lisp">Lisp</option>
+                        <option value="prolog">Prolog</option>
+                        <option value="erlang">Erlang</option>
+                        <option value="elixir">Elixir</option>
+                        <option value="clojure">Clojure</option>
+                        <option value="f#">F#</option>
+                        <option value="mermaid diagram">Mermaid</option>
+                        <option value="graphviz diagram">Graphviz</option>
+                        <option value="english description of the code to be translated">English</option>
+                        <option value="french description of the code to be translated">French</option>
+                    </select>
+                    <div id="inputEditor" class="w-full h-96 border border-indigo-300 rounded-md"></div>
+                </div>
+            <div class="flex-1">
+                <h2 class="text-2xl font-semibold mb-2 text-indigo-700">Output</h2>
+                <select id="outputLang" class="w-full p-2 mb-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="python">Python</option>
                     <option value="javascript">JavaScript</option>
                     <option value="java">Java</option>
@@ -115,22 +139,28 @@
                     <option value="english description of the code in plaintext format put inside a plaintext markdown tag">English</option>
                     <option value="french description of the code in plaintext format put inside a plaintext markdown tag">French</option>
                 </select>
-                <div id="outputEditor" class="w-full h-96 border rounded"></div>
-                <div id="sideOutputEditor" class="w-full h-96 border rounded hidden"></div>
+                <div id="outputEditor" class="w-full h-96 border border-indigo-300 rounded-md"></div>
+                <div id="sideOutputEditor" class="w-full h-96 border border-indigo-300 rounded-md hidden"></div>
             </div>
         </div>
-        <div class="flex justify-center mt-4">
-            <button id="translateBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Translate</button>
-        </div>
-        <div class="flex justify-end mt-4 space-x-2">
-            <button id="saveBtn" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Save</button>
-            <button id="copyBtn" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Copy</button>
-        </div>
+            <div class="bg-white flex flex-col shadow-lg rounded-lg p-6 mb-8 space-y-2">
+                <button title="Copy to clipboard" id="copyBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </button>
+                <button title="Save output" id="saveOutputBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300 ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                </button>
+            </div>
+        </main>
     </div>
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
-        <div class="bg-white p-4 rounded-lg shadow-lg text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <p class="mt-2">Translating...</p>
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-lg font-semibold text-indigo-700">Translating...</p>
         </div>
     </div>
     <script>
@@ -171,12 +201,8 @@
             const additionalInstructions = document.getElementById('additionalInstructions').value;
             document.getElementById('loadingOverlay').classList.remove('hidden');
             try {
-                if (outputLang === 'c' || outputLang === 'cpp'){
-                    extra = "Important: Make sure you return two separate codes one for the header and one for the code in this order. First the header code, then the source code.\n\n"
-                }else{
-                    extra=""
-                }
-                const prompt = `Translate the following ${inputLang} code to ${outputLang}:\n\n${inputCode}\n\n${extra}Additional instructions:\n${additionalInstructions}\n\nTranslated ${outputLang} code:`;
+                const extra = (outputLang === 'c' || outputLang === 'cpp') ? "Important: Make sure you return two separate codes one for the header and one for the code in this order. First the header code, then the source code.\n\n" : "";
+const prompt = `Translate the following ${inputLang} code to ${outputLang}:\n\n${inputCode}\n\n${extra}Additional instructions:\n${additionalInstructions}\n\nTranslated ${outputLang} code:`;
                 const codes = await lc.generateCodes(prompt);
                 if (codes.length > 0) {
                     if (outputLang === 'c' || outputLang === 'cpp') {
@@ -184,10 +210,10 @@
                         const sourceCode = codes[1].content;
                         outputEditor.setValue(`${headerCode}`);
                         sideOutputEditor.setValue(`${sourceCode}`);
-                        sideOutputEditorContainer.classList.remove("hidden")
+                        sideOutputEditorContainer.classList.remove("hidden");
                         sideOutputEditor.layout();
                     } else {
-                        sideOutputEditorContainer.classList.add("hidden")
+                        sideOutputEditorContainer.classList.add("hidden");
                         outputEditor.setValue(codes[0].content);
                     }
                     saveData();
@@ -200,35 +226,21 @@
             }
         });
         document.getElementById('saveBtn').addEventListener('click', () => {
-            const outputCode = outputEditor.getValue();
-            const outputLang = document.getElementById('outputLang').value;
-            if (outputLang === 'c' || outputLang === 'cpp') {
-                const sideOutputCode = sideOutputEditor.getValue();
-                const headerCode = outputCode
-                const sourceCode = sideOutputCode;
-                const headerBlob = new Blob([headerCode], { type: 'text/plain' });
-                const sourceBlob = new Blob([sourceCode], { type: 'text/plain' });
-                const headerUrl = URL.createObjectURL(headerBlob);
-                const sourceUrl = URL.createObjectURL(sourceBlob);
-                const headerLink = document.createElement('a');
-                const sourceLink = document.createElement('a');
-                headerLink.href = headerUrl;
-                sourceLink.href = sourceUrl;
-                headerLink.download = `translated_code.h`;
-                sourceLink.download = `translated_code.${outputLang}`;
-                headerLink.click();
-                sourceLink.click();
-                URL.revokeObjectURL(headerUrl);
-                URL.revokeObjectURL(sourceUrl);
-            } else {
-                const blob = new Blob([outputCode], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `translated_code.${outputLang}`;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
+            const data = {
+                inputCode: inputEditor.getValue(),
+                inputLang: document.getElementById('inputLang').value,
+                outputCode: outputEditor.getValue(),
+                sideOutputCode: sideOutputEditor.getValue(),
+                outputLang: document.getElementById('outputLang').value,
+                additionalInstructions: document.getElementById('additionalInstructions').value
+            };
+            const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'code_translator_project.json';
+            a.click();
+            URL.revokeObjectURL(url);
         });
         document.getElementById('copyBtn').addEventListener('click', () => {
             const outputCode = outputEditor.getValue();
@@ -238,6 +250,34 @@
                 console.error('Failed to copy code:', err);
                 alert('Failed to copy code. Please try again.');
             });
+        });
+        document.getElementById('loadBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const data = JSON.parse(e.target.result);
+                    inputEditor.setValue(data.inputCode);
+                    document.getElementById('inputLang').value = data.inputLang;
+                    outputEditor.setValue(data.outputCode);
+                    if (data.sideOutputCode && (data.outputLang === 'c' || data.outputLang === 'cpp')) {
+                        sideOutputEditor.setValue(data.sideOutputCode);
+                        sideOutputEditorContainer.classList.remove("hidden");
+                        sideOutputEditor.layout();
+                    } else {
+                        sideOutputEditorContainer.classList.add("hidden");
+                    }
+                    document.getElementById('outputLang').value = data.outputLang;
+                    document.getElementById('additionalInstructions').value = data.additionalInstructions;
+                    monaco.editor.setModelLanguage(inputEditor.getModel(), data.inputLang);
+                    monaco.editor.setModelLanguage(outputEditor.getModel(), data.outputLang);
+                };
+                reader.readAsText(file);
+            };
+            input.click();
         });
         function saveData() {
             const data = {
@@ -257,9 +297,9 @@
                 inputEditor.setValue(data.inputCode);
                 document.getElementById('inputLang').value = data.inputLang;
                 outputEditor.setValue(data.outputCode);
-                if (data && data.hasOwnProperty('sideOutputCode') && data.sideOutputCode !== null && (outputLang === 'c' || outputLang === 'cpp')) {
+                if (data.sideOutputCode && (data.outputLang === 'c' || data.outputLang === 'cpp')) {
                     sideOutputEditor.setValue(data.sideOutputCode);
-                    sideOutputEditorContainer.classList.remove("hidden")
+                    sideOutputEditorContainer.classList.remove("hidden");
                     sideOutputEditor.layout();
                 }
                 document.getElementById('outputLang').value = data.outputLang;
@@ -268,6 +308,53 @@
                 monaco.editor.setModelLanguage(outputEditor.getModel(), data.outputLang);
             }
         }
+        document.getElementById('saveOutputBtn').addEventListener('click', () => {
+            const outputLang = document.getElementById('outputLang').value;
+            let content = outputEditor.getValue();
+            let filename = 'output';
+            let extension = '';
+        
+            switch (outputLang) {
+                case 'python':
+                    extension = '.py';
+                    break;
+                case 'javascript':
+                    extension = '.js';
+                    break;
+                case 'java':
+                    extension = '.java';
+                    break;
+                case 'c':
+                case 'cpp':
+                    // Save header file
+                    const headerContent = outputEditor.getValue();
+                    const headerExtension = outputLang === 'c' ? '.h' : '.hpp';
+                    const headerBlob = new Blob([headerContent], { type: 'text/plain' });
+                    const headerUrl = URL.createObjectURL(headerBlob);
+                    const headerLink = document.createElement('a');
+                    headerLink.href = headerUrl;
+                    headerLink.download = `output${headerExtension}`;
+                    headerLink.click();
+                    URL.revokeObjectURL(headerUrl);
+        
+                    // Save source file
+                    const sourceContent = sideOutputEditor.getValue();
+                    extension = outputLang === 'c' ? '.c' : '.cpp';
+                    content = sourceContent;
+                    break;
+                default:
+                    extension = '.txt';
+            }
+        
+            filename += extension;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        });
     </script>
 </body>
 </html>

@@ -11,7 +11,6 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
-    <!-- External Libraries -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
@@ -23,52 +22,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-    <!-- needed for math rendering in markdown -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-
-    <!-- MarkdownRenderer -->
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">    
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-indigo-600" data-translate="title">Publication Timeline Visualizer</h1>
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="title">Publication Timeline Visualizer</h1>
             <p class="text-gray-600 mt-2" data-translate="description">Search for articles or upload an Excel file to visualize your publication timeline</p>
         </header>
 
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <div class="mb-4">
                 <label for="search-input" class="block text-sm font-medium text-gray-700 mb-2" data-translate="search_label">Search for Articles</label>
-                <input type="text" id="search-input" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter search query">
+                <input type="text" id="search-input" class="block w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter search query">
             </div>
             <div class="mb-4 flex space-x-4">
                 <div class="w-1/3">
                     <label for="start-year" class="block text-sm font-medium text-gray-700 mb-2" data-translate="start_year">Start Year</label>
-                    <input type="number" id="start-year" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Start Year" value="1900">
+                    <input type="number" id="start-year" class="block w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Start Year" value="1900">
                 </div>
                 <div class="w-1/3">
                     <label for="end-year" class="block text-sm font-medium text-gray-700 mb-2" data-translate="end_year">End Year</label>
-                    <input type="number" id="end-year" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="End Year" value="2023">
+                    <input type="number" id="end-year" class="block w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="End Year" value="2023">
                 </div>
                 <div class="w-1/3">
                     <label for="max-results" class="block text-sm font-medium text-gray-700 mb-2" data-translate="max_results">Max Results</label>
-                    <input type="number" id="max-results" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" placeholder="Max Results" value="50">
+                    <input type="number" id="max-results" class="block w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Max Results" value="50">
                 </div>
             </div>
-            <button id="search-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300 mb-4" data-translate="search_button">Search</button>
+            <button id="search-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="search_button">Search</button>
             <div class="mb-4">
                 <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2" data-translate="upload_label">Or Upload Excel File</label>
                 <input type="file" id="file-upload" accept=".xlsx, .xls" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
             </div>
             <div class="flex flex-row">
-                <button id="upload-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300" data-translate="upload_button">Upload and Visualize</button>
-                <button id="export-btn" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Export to Excel</button>
+                <button id="upload-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="upload_button">Upload and Visualize</button>
+                <button id="export-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Export to Excel</button>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <div class="flex space-x-4 mb-4">
                 <div class="w-1/3">
                     <label for="language-select" class="block text-sm font-medium text-gray-700 mb-2" data-translate="select_language">Select Language</label>
@@ -90,32 +86,32 @@
             </div>
             <div id="timeline-container" class="relative hidden" style="height: 60vh;">
                 <canvas id="timeline-chart"></canvas>
-                <button id="toggleLegend" class="bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300">Toggle Legend</button>
+                <button id="toggleLegend" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Toggle Legend</button>
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4" data-translate="stats_title">Publication Statistics</h2>
             <div id="stats-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             </div>
         </div>
 
-        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-bold mb-4" data-translate="journal_info_title">Journal Information</h2>
             <div id="journal-info" class="space-y-4"></div>
         </div>
-        <div id="analysis-container" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+        <div id="analysis-container" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
             <h2 class="text-2xl font-bold mb-4">AI Analysis</h2>
             <div class="mb-4">
                 <label for="instructions" class="block text-sm font-medium text-gray-700 mb-2">Analysis Instructions</label>
-                <textarea id="instructions" class="w-full px-3 py-2 border border-gray-300 rounded-md resize-vertical" rows="4" placeholder="Enter instructions for AI analysis..."></textarea>
+                <textarea id="instructions" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-vertical" rows="4" placeholder="Enter instructions for AI analysis..."></textarea>
             </div>
-            <button id="analyze-btn" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300">Analyze and Visualize</button>
+            <button id="analyze-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Analyze and Visualize</button>
             <div id="file-list" class="mt-4 space-y-2"></div>
             <div id="ai-analysis" class="mt-6 space-y-4"></div>
             <div id="visualization" class="mt-6"></div>
         </div>
-        <div id="results-container" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+        <div id="results-container" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
             <h2 class="text-2xl font-bold mb-4" data-translate="search_results">Search Results</h2>
             <div id="results-list" class="space-y-4"></div>
         </div> 
@@ -147,11 +143,11 @@
                 <input type="checkbox" id="dont-show-again" class="mr-2">
                 <label for="dont-show-again" data-translate="dont_show_again">Don't show this again</label>
             </div>
-            <button id="close-explainer" class="bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition duration-300" data-translate="close_explainer">Got it!</button>
+            <button id="close-explainer" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close_explainer">Got it!</button>
         </div>
     </div>
 
-    <button id="help-button" class="fixed bottom-4 right-4 bg-indigo-600 text-white p-2 rounded-full hover:bg-indigo-700 transition duration-300">
+    <button id="help-button" class="fixed bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 rounded-full transition duration-300">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
@@ -179,6 +175,7 @@
         }
 
         #chartjs-tooltip .tooltip-header {
+#chartjs-tooltip .tooltip-header {
             border-bottom: 1px solid #e0e0e0;
             margin-bottom: 10px;
             padding-bottom: 10px;
@@ -249,7 +246,6 @@
             padding-right: 10px;
         }
 
-        /* Scrollbar styling for webkit browsers */
         .abstract-tooltip::-webkit-scrollbar {
             width: 8px;
         }
@@ -271,7 +267,7 @@
     </style>
     <script>
         const mr = new MarkdownRenderer()
-        let legendVisible = true; // Global variable to track legend visibility
+        let legendVisible = true;
         const translations = {
             en: {
                 name: "English",
@@ -514,7 +510,7 @@
                     
                     jsonData = Array.from(entries).map(entry => {
                         const title = entry.getElementsByTagName("title")[0].textContent;
-                        const author = entry.getElementsByTagName("author")[0].getElementsByTagName("name")[0].textContent;
+const author = entry.getElementsByTagName("author")[0].getElementsByTagName("name")[0].textContent;
                         const published = entry.getElementsByTagName("published")[0].textContent;
                         const link = entry.getElementsByTagName("id")[0].textContent;
                         const year = new Date(published).getFullYear();
@@ -549,7 +545,6 @@
         async function lollmsAnalyze() {
             showSpinner();
             
-            // Create an array of formatted article information
             const formattedArticles = jsonData.map(item => 
                 `Title: ${item.title}\nAuthor: ${item.author}\nAbstract: ${item.abstract}`
             );
@@ -559,7 +554,7 @@ ${instructions.value}
 Provide a summary of the main themes and trends in these articles.`;
                     
             const analysis = await tl.summarizeText(
-                formattedArticles.join('\n\n---\n\n'), // Join articles with a separator
+                formattedArticles.join('\n\n---\n\n'),
                 prompt,
                 "articles",
                 "",
@@ -596,29 +591,24 @@ Provide a summary of the main themes and trends in these articles.`;
         let abstractTooltip = null;
 
         function showAbstract(event) {
-            event.preventDefault(); // Prevent default action
+            event.preventDefault();
 
             const abstract = event.currentTarget.getAttribute('data-abstract');
             
-            // Remove any existing tooltips
             if (abstractTooltip) {
                 abstractTooltip.remove();
             }
 
-            // Create tooltip
             abstractTooltip = document.createElement('div');
             abstractTooltip.className = 'abstract-tooltip';
             abstractTooltip.innerHTML = `
                 <div class="abstract-content">${abstract}</div>
             `;
 
-            // Append tooltip to body
             document.body.appendChild(abstractTooltip);
 
-            // Position tooltip under the cursor
             updateTooltipPosition(event);
 
-            // Add event listeners
             document.addEventListener('mousemove', updateTooltipPosition);
             abstractTooltip.addEventListener('mouseenter', () => {
                 document.removeEventListener('mousemove', updateTooltipPosition);
@@ -628,18 +618,16 @@ Provide a summary of the main themes and trends in these articles.`;
             });
             document.addEventListener('click', closeTooltip);
 
-            // Animate tooltip
             setTimeout(() => abstractTooltip.classList.add('show'), 10);
         }
 
         function updateTooltipPosition(event) {
             if (!abstractTooltip) return;
 
-            const margin = 10; // Margin from cursor
+            const margin = 10;
             let left = event.pageX + margin;
             let top = event.pageY + margin;
 
-            // Adjust position if tooltip goes off-screen
             const tooltipRect = abstractTooltip.getBoundingClientRect();
             if (left + tooltipRect.width > window.innerWidth - margin) {
                 left = event.pageX - tooltipRect.width - margin;
@@ -660,13 +648,11 @@ Provide a summary of the main themes and trends in these articles.`;
                         abstractTooltip.remove();
                         abstractTooltip = null;
                     }
-                }, 300); // Wait for fade-out animation
+                }, 300);
                 document.removeEventListener('mousemove', updateTooltipPosition);
                 document.removeEventListener('click', closeTooltip);
             }
         }
-
-
 
         function hideAbstract() {
             const tooltip = document.querySelector('.abstract-tooltip');
@@ -758,7 +744,7 @@ Provide a summary of the main themes and trends in these articles.`;
                     },
                     plugins: {
                         legend: {
-                            display: legendVisible, // Use the legendVisible variable
+                            display: legendVisible,
                             position: 'top',
                         },
                         title: {
@@ -768,24 +754,20 @@ Provide a summary of the main themes and trends in these articles.`;
                         tooltip: {
                             enabled: false,
                             external: function(context) {
-                                // Tooltip Element
                                 let tooltipEl = document.getElementById('chartjs-tooltip');
 
-                                // Create element on first render
                                 if (!tooltipEl) {
                                     tooltipEl = document.createElement('div');
                                     tooltipEl.id = 'chartjs-tooltip';
                                     document.body.appendChild(tooltipEl);
                                 }
 
-                                // Hide if no tooltip
                                 const tooltipModel = context.tooltip;
                                 if (tooltipModel.opacity === 0) {
                                     tooltipEl.style.opacity = 0;
                                     return;
                                 }
 
-                                // Set Text
                                 if (tooltipModel.body) {
                                     const dataIndex = tooltipModel.dataPoints[0].dataIndex;
                                     const datasetIndex = tooltipModel.dataPoints[0].datasetIndex;
@@ -821,10 +803,8 @@ Provide a summary of the main themes and trends in these articles.`;
                                     tooltipEl.innerHTML = innerHtml;
                                 }
 
-                                // `this` will be the overall tooltip
                                 const position = context.chart.canvas.getBoundingClientRect();
 
-                                // Display, position, and set styles for font
                                 tooltipEl.style.opacity = 1;
                                 tooltipEl.style.position = 'absolute';
                                 tooltipEl.style.left = position.left + window.pageXOffset + tooltipModel.caretX + 'px';
@@ -841,11 +821,11 @@ Provide a summary of the main themes and trends in these articles.`;
             });
             timelineContainer.classList.remove("hidden")
         }
-        // Add an event listener for the toggle button
+
         document.getElementById('toggleLegend').addEventListener('click', function() {
-            legendVisible = !legendVisible; // Toggle the visibility
+            legendVisible = !legendVisible;
             chart.options.plugins.legend.display = legendVisible;
-            chart.update(); // Update the chart to reflect the changes
+            chart.update();
         });        
 
         function updateChart() {
@@ -908,7 +888,7 @@ Provide a summary of the main themes and trends in these articles.`;
                 </div>
                 <div class="stat-item">
                     <h3 class="font-bold">Unique Journals</h3>
-                    <p>${uniqueJournals}</p>
+<p>${uniqueJournals}</p>
                 </div>
                 <div class="stat-item">
                     <h3 class="font-bold">Unique Institutes</h3>
