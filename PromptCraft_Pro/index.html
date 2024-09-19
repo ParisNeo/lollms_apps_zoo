@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Enhancer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center text-indigo-800 mb-8">Prompt Enhancer</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="mb-4">
+                <label for="prompt-type" class="block text-sm font-medium text-gray-700 mb-2">Prompt Type:</label>
+                <select id="prompt-type" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="system">System Prompt</option>
+                    <option value="user">User Prompt</option>
+                </select>
+            </div>
+            <div class="mb-4 flex items-center">
+                <label for="prompt-examples" class="block text-sm font-medium text-gray-700 mb-2 mr-2">Prompt Examples:</label>
+                <select id="prompt-examples" class="flex-grow px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <optgroup label="Writing">
+                        <option value="writing_essay">Write an essay</option>
+                        <option value="writing_story">Create a short story</option>
+                        <option value="writing_poem">Compose a poem</option>
+                    </optgroup>
+                    <optgroup label="Coding">
+                        <option value="coding_function">Write a function</option>
+                        <option value="coding_algorithm">Implement an algorithm</option>
+                        <option value="coding_debug">Debug code</option>
+                    </optgroup>
+                    <optgroup label="Analysis">
+                        <option value="analysis_data">Analyze dataset</option>
+                        <option value="analysis_trend">Identify trends</option>
+                        <option value="analysis_report">Generate report</option>
+                    </optgroup>
+                    <optgroup label="Creativity">
+                        <option value="creativity_brainstorm">Brainstorm ideas</option>
+                        <option value="creativity_design">Design concept</option>
+                        <option value="creativity_innovate">Innovate product</option>
+                    </optgroup>
+                    <optgroup label="Roleplay">
+                        <option value="roleplay_historical">Historical figure</option>
+                        <option value="roleplay_fictional">Fictional character</option>
+                        <option value="roleplay_professional">Professional role</option>
+                    </optgroup>
+                </select>
+                <button id="select-example" class="ml-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Select</button>
+            </div>
+            <div class="mb-4">
+                <label for="thinking-method" class="block text-sm font-medium text-gray-700 mb-2">Thinking Method:</label>
+                <select id="thinking-method" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="default">Default</option>
+                    <option value="chain_of_thought">Chain of Thought</option>
+                    <option value="tree_of_thought">Tree of Thought</option>
+                    <option value="mixture_of_experts">Mixture of Experts</option>
+                    <option value="adversarial_thinking">Adversarial Thinking</option>
+                    <option value="distillation">Distillation</option>
+                    <option value="multi_perspective_analysis">Multi-Perspective Analysis</option>
+                    <option value="recursive_refinement">Recursive Refinement</option>
+                    <option value="analogical_reasoning">Analogical Reasoning</option>
+                    <option value="metacognitive_reflection">Metacognitive Reflection</option>
+                    <option value="counterfactual_thinking">Counterfactual Thinking</option>
+                    <option value="collaborative_intelligence">Collaborative Intelligence</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="task-input" class="block text-sm font-medium text-gray-700 mb-2">Enter your task:</label>
+                <textarea id="task-input" rows="4" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe your task here..."></textarea>
+            </div>
+            <div class="flex justify-center space-x-4 mb-6">
+                <button id="generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded transition duration-300">Generate</button>
+                <button id="cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-6 rounded transition duration-300">Cancel</button>
+            </div>
+            <div id="result-container" class="hidden">
+                <label for="enhanced-prompt" class="block text-sm font-medium text-gray-700 mb-2">Enhanced Prompt:</label>
+                <div class="relative">
+                    <textarea id="enhanced-prompt" rows="6" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+                    <button id="copy-btn" class="absolute top-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded transition duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="test-user-prompt-container" class="mt-4 hidden">
+                <label for="user-prompt-input" class="block text-sm font-medium text-gray-700 mb-2">User Prompt for Testing:</label>
+                <textarea id="user-prompt-input" rows="4" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter system prompt for testing..."></textarea>
+            </div>
+            <div id="test-prompt-container" class="mt-4 hidden">
+                <button id="test-prompt-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded transition duration-300">Test Generated Prompt</button>
+            </div>
+            <div id="test-result-container" class="hidden">
+                <label for="test-output" class="block text-sm font-medium text-gray-700 mb-2">Test output:</label>
+                <div class="relative">
+                    <textarea id="test-output" rows="6" class="w-full px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" readonly></textarea>
+                    <button id="copy-btn2" class="absolute top-2 right-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded transition duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <div id="loading-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-50 hidden items-center justify-center">
+        <div class="text-white text-2xl font-bold animate-pulse">
+            Enhancing your prompt...
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const taskInput = document.getElementById('task-input');
+        const promptType = document.getElementById('prompt-type');
+        const promptExamples = document.getElementById('prompt-examples');
+        const thinkingMethod = document.getElementById('thinking-method');
+        const generateBtn = document.getElementById('generate-btn');
+        const cancelBtn = document.getElementById('cancel-btn');
+        const resultContainer = document.getElementById('result-container');
+        const enhancedPrompt = document.getElementById('enhanced-prompt');
+        const copyBtn = document.getElementById('copy-btn');
+        const copyBtn2 = document.getElementById('copy-btn2');
+        
+        const loadingOverlay = document.getElementById('loading-overlay');
+        const selectExampleBtn = document.getElementById('select-example');
+        const testPromptBtn = document.getElementById('test-prompt-btn');
+        const testPromptContainer = document.getElementById('test-prompt-container');
+        const testResultContainer = document.getElementById('test-result-container');
+        const testResultOutput = document.getElementById('test-output');
+        
+        
+        const userPromptContainer = document.getElementById('test-user-prompt-container');
+        const userPromptInput = document.getElementById('user-prompt-input');
+        const examples = {
+            system: {
+                writing_essay: "You are a professional essay writer. Provide a well-structured and informative essay on the given topic.",
+                writing_story: "You are a creative short story author. Craft an engaging narrative with vivid characters and a compelling plot.",
+                writing_poem: "You are a skilled poet. Compose a beautiful poem that captures emotions and imagery related to the given theme.",
+                coding_function: "You are an expert programmer. Write an efficient and well-documented function to solve the given problem.",
+                coding_algorithm: "You are a computer scientist. Implement a robust algorithm to address the specified computational challenge.",
+                coding_debug: "You are a software debugger. Analyze the provided code and identify potential issues or improvements.",
+                analysis_data: "You are a data analyst. Examine the given dataset and provide insightful observations and trends.",
+                analysis_trend: "You are a market researcher. Identify and explain key trends in the provided information or data.",
+                analysis_report: "You are a business analyst. Generate a comprehensive report based on the given data and objectives.",
+                creativity_brainstorm: "You are an innovation consultant. Generate a diverse range of creative ideas for the given challenge.",
+                creativity_design: "You are a product designer. Develop a unique and functional design concept for the specified product or service.",
+                creativity_innovate: "You are an R&D specialist. Propose innovative improvements or features for the given product or process.",
+                roleplay_historical: "You are a historical reenactor. Assume the persona of the specified historical figure and respond accordingly.",
+                roleplay_fictional: "You are a method actor. Embody the given fictional character, complete with their mannerisms and speech patterns.",
+                roleplay_professional: "You are a professional in the specified field. Respond to inquiries and situations as an expert in that role."
+            },
+            user: {
+                writing_essay: "Write a comprehensive essay on the impact of artificial intelligence on modern society.",
+                writing_story: "Create a short story about a time traveler's first experience in ancient Rome.",
+                writing_poem: "Compose a poem that captures the essence of a sunrise over the ocean.",
+                coding_function: "Write a Python function to find the longest palindromic substring in a given string.",
+                coding_algorithm: "Implement the A* pathfinding algorithm for a 2D grid-based game.",
+                coding_debug: "Review and optimize this sorting algorithm implementation for better performance.",
+                analysis_data: "Analyze this customer feedback dataset and identify key areas for improvement in our service.",
+                analysis_trend: "Examine the global renewable energy adoption rates over the past decade and predict future trends.",
+                analysis_report: "Generate a quarterly sales report based on the provided regional sales data.",
+                creativity_brainstorm: "Generate innovative ideas for reducing plastic waste in urban environments.",
+                creativity_design: "Design a multifunctional piece of furniture for small living spaces.",
+                creativity_innovate: "Propose new features for a smart home system to enhance energy efficiency and user comfort.",
+                roleplay_historical: "As Leonardo da Vinci, describe your process for inventing new machines and your thoughts on art and science.",
+                roleplay_fictional: "Respond as Sherlock Holmes to a client describing a mysterious theft at a London museum.",
+                roleplay_professional: "As a cybersecurity expert, explain the potential risks of using public Wi-Fi networks and how to mitigate them."
+            }
+        };
+        function updateExamplePrompt() {
+            const type = promptType.value;
+            const example = promptExamples.value;
+            if (type && example && examples[type][example]) {
+                taskInput.value = examples[type][example];
+            }
+        }
+        promptType.addEventListener('change', updateExamplePrompt);
+        selectExampleBtn.addEventListener('click', updateExamplePrompt);
+        generateBtn.addEventListener('click', async () => {
+            const task = taskInput.value.trim();
+            if (task) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+                try {
+                    const type = promptType.value;
+                    const example = promptExamples.value;
+                    const method = thinkingMethod.value;
+                    let methodInstruction = '';
+                    switch (method) {
+                        case 'chain_of_thought':
+                            methodInstruction = 'Use the Chain of Thought method to break down your reasoning process step by step.';
+                            break;
+                        case 'tree_of_thought':
+                            methodInstruction = 'Use the Tree of Thought method to explore multiple paths of reasoning and select the most promising one.';
+                            break;
+                        case 'mixture_of_experts':
+                            methodInstruction = 'Utilize a Mixture of Experts approach by considering multiple specialized perspectives on the problem.';
+                            break;
+                        case 'adversarial_thinking':
+                            methodInstruction = 'Employ Adversarial Thinking by considering potential counterarguments and addressing them in your response.';
+                            break;
+                        case 'distillation':
+                            methodInstruction = 'Apply Distillation techniques to simplify complex ideas while retaining their essential meaning.';
+                            break;
+                        case 'multi_perspective_analysis':
+                            methodInstruction = 'Conduct a Multi-Perspective Analysis by examining the problem from various angles and stakeholder viewpoints.';
+                            break;
+                        case 'recursive_refinement':
+                            methodInstruction = 'Use Recursive Refinement to iteratively improve your response, building upon initial ideas.';
+                            break;
+                        case 'analogical_reasoning':
+                            methodInstruction = 'Apply Analogical Reasoning by drawing parallels between the current problem and similar situations or concepts.';
+                            break;
+                        case 'metacognitive_reflection':
+                            methodInstruction = 'Engage in Metacognitive Reflection by critically evaluating your own thought processes and assumptions.';
+                            break;
+                        case 'counterfactual_thinking':
+                            methodInstruction = 'Utilize Counterfactual Thinking by considering alternative scenarios and their potential outcomes.';
+                            break;
+                        case 'collaborative_intelligence':
+                            methodInstruction = 'Simulate Collaborative Intelligence by synthesizing insights from multiple imaginary experts in relevant fields.';
+                            break;
+                        default:
+                            methodInstruction = '';
+                    }
+                    const prompt = `${lc.user_message()}Please enhance the following ${type} prompt for the ${example} category using the ${method} thinking method:\n${task}\n${methodInstruction}.\nAnswer only with the prompt in a compact yet detailed format without any comment.\n${lc.ai_message()}`;
+                    const response = await lc.generate(prompt);
+                    enhancedPrompt.value = response.trim();
+                    resultContainer.classList.remove('hidden');
+                    testPromptContainer.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error generating prompt:', error);
+                    alert('An error occurred while generating the prompt. Please try again.');
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    userPromptContainer.classList.remove('hidden');
+                }
+            } else {
+                alert('Please enter a task description.');
+            }
+        });
+
+        cancelBtn.addEventListener('click', () => {
+            taskInput.value = '';
+            resultContainer.classList.add('hidden');
+            testPromptContainer.classList.add('hidden');
+        });
+
+        copyBtn.addEventListener('click', () => {
+            enhancedPrompt.select();
+            document.execCommand('copy');
+            alert('Prompt copied to clipboard!');
+        });
+        copyBtn2.addEventListener('click', () => {
+            testResultOutput.select();
+            document.execCommand('copy');
+            alert('Prompt copied to clipboard!');
+        });
+        testPromptBtn.addEventListener('click', async () => {
+            const generatedPrompt = enhancedPrompt.value.trim();
+            const userPrompt = userPromptInput.value.trim();
+            const prompt_type = promptType.value;
+            console.log(`prompt_type:${prompt_type}`)
+            if (generatedPrompt) {
+                loadingOverlay.classList.remove('hidden');
+                loadingOverlay.classList.add('flex');
+                try {
+                    const fullPrompt = prompt_type=="system" ? `${lc.system_message()}${generatedPrompt}${lc.separatorTemplate()}${lc.user_message()}${userPrompt}` : `${lc.user_message()}${generatedPrompt}`;
+                    const response = await lc.generate(fullPrompt);
+                    testResultOutput.value = response.trim();
+                } catch (error) {
+                    console.error('Error testing prompt:', error);
+                    alert('An error occurred while testing the prompt. Please try again.');
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                    loadingOverlay.classList.remove('flex');
+                    testResultContainer.classList.remove("hidden")
+                }
+            } else {
+                alert('Please generate a prompt first.');
+            }
+        });
+    </script>
+</body>
+</html>

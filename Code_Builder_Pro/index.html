@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Templated Code Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .editor {height: 300px;border: 1px solid #ccc;border-radius: 4px;}
+        #outputEditor {height: 400px;}
+        html,body{margin:0;padding:0;height:100%;overflow:auto}
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center}
+        .loading{text-align:center;color:#ff69b4}
+        .strawberry{font-size:64px;animation:spin 2s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">Templated Code Builder</h1>
+            <button id="settingsBtn" class="text-indigo-600 hover:text-indigo-800">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            </button>
+        </header>
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Template Code</h2>
+                <div id="templateEditor" class="editor mb-4"></div>
+                <select id="templateLanguage" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <optgroup label="Popular Languages">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="csharp">C#</option>
+                        <option value="cpp">C++</option>
+                    </optgroup>
+                    <optgroup label="Web Development">
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="php">PHP</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="vue">Vue.js</option>
+                    </optgroup>
+                    <optgroup label="Other Languages">
+                        <option value="ruby">Ruby</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="swift">Swift</option>
+                        <option value="kotlin">Kotlin</option>
+                    </optgroup>
+                    <optgroup label="Old Languages">
+                        <option value="basic">BASIC</option>
+                        <option value="asm_x86">Assembly x86</option>
+                    </optgroup>
+                </select>
+                <div class="mt-4">
+                    <input type="file" id="templateFile" class="hidden" accept=".js,.py,.java,.cs,.cpp,.html,.css,.php,.ts,.rb,.go,.rs,.swift,.kt,.bas,.asm">
+                    <label for="templateFile" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
+                        Load Template File
+                    </label>
+                </div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Content Code</h2>
+                <div id="contentEditor" class="editor mb-4"></div>
+                <select id="contentLanguage" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <optgroup label="Popular Languages">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="csharp">C#</option>
+                        <option value="cpp">C++</option>
+                    </optgroup>
+                    <optgroup label="Web Development">
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="php">PHP</option>
+                        <option value="typescript">TypeScript</option>
+                        <option value="vue">Vue.js</option>
+                    </optgroup>
+                    <optgroup label="Other Languages">
+                        <option value="ruby">Ruby</option>
+                        <option value="go">Go</option>
+                        <option value="rust">Rust</option>
+                        <option value="swift">Swift</option>
+                        <option value="kotlin">Kotlin</option>
+                    </optgroup>
+                    <optgroup label="Old Languages">
+                        <option value="basic">BASIC</option>
+                        <option value="asm_x86">Assembly x86</option>
+                    </optgroup>
+                </select>
+                <div class="mt-4">
+                    <input type="file" id="contentFile" class="hidden" accept=".js,.py,.java,.cs,.cpp,.html,.css,.php,.ts,.rb,.go,.rs,.swift,.kt,.bas,.asm">
+                    <label for="contentFile" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded cursor-pointer">
+                        Load Content File
+                    </label>
+                </div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg p-6 md:col-span-2">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Generation Steering Text</h2>
+                <textarea id="steeringText" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter generation steering text here..."></textarea>
+            </div>
+            <div id="loadingOverlay" class="overlay">
+                <div class="loading">
+                    <div class="strawberry">🍓</div>
+                    <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+                </div>
+            </div>
+        </main>
+        <div class="mt-8 text-center">
+            <button id="generateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                Generate Code
+            </button>
+            <button id="copyBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ml-4">
+                Copy Code
+            </button>
+            <button id="saveBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ml-4">
+                Save Code
+            </button>
+            <button id="saveProjectBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ml-4">
+                Save Project
+            </button>
+            <input type="file" id="loadProjectFile" class="hidden" accept=".txt">
+            <label for="loadProjectFile" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ml-4 cursor-pointer">
+                Load Project
+            </label>
+        </div>
+        <div class="mt-8 bg-white shadow-lg rounded-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Generated Code</h2>
+            <div id="outputEditor" class="editor"></div>
+        </div>
+    </div>
+    <script>
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' }});
+        require(['vs/editor/editor.main'], function() {
+            const templateEditor = monaco.editor.create(document.getElementById('templateEditor'), {
+                value: '',
+                language: 'javascript',
+                theme: 'vs-dark'
+            });
+            const contentEditor = monaco.editor.create(document.getElementById('contentEditor'), {
+                value: '',
+                language: 'javascript',
+                theme: 'vs-dark'
+            });
+            const outputEditor = monaco.editor.create(document.getElementById('outputEditor'), {
+                value: '',
+                language: 'javascript',
+                theme: 'vs-dark',
+                readOnly: true
+            });
+            const templateLanguageSelect = document.getElementById('templateLanguage');
+            const contentLanguageSelect = document.getElementById('contentLanguage');
+            const steeringTextArea = document.getElementById('steeringText');
+            const generateBtn = document.getElementById('generateBtn');
+            const copyBtn = document.getElementById('copyBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const saveProjectBtn = document.getElementById('saveProjectBtn');
+            const loadProjectFile = document.getElementById('loadProjectFile');
+            const templateFileInput = document.getElementById('templateFile');
+            const contentFileInput = document.getElementById('contentFile');
+
+            templateLanguageSelect.addEventListener('change', function() {
+                monaco.editor.setModelLanguage(templateEditor.getModel(), this.value);
+            });
+            contentLanguageSelect.addEventListener('change', function() {
+                monaco.editor.setModelLanguage(contentEditor.getModel(), this.value);
+            });
+            templateFileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        templateEditor.setValue(e.target.result);
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        const language = getLanguageFromExtension(extension);
+                        templateLanguageSelect.value = language;
+                        monaco.editor.setModelLanguage(templateEditor.getModel(), language);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            contentFileInput.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        contentEditor.setValue(e.target.result);
+                        const extension = file.name.split('.').pop().toLowerCase();
+                        const language = getLanguageFromExtension(extension);
+                        contentLanguageSelect.value = language;
+                        monaco.editor.setModelLanguage(contentEditor.getModel(), language);
+                    };
+                    reader.readAsText(file);
+                }
+            });
+            function getLanguageFromExtension(extension) {
+                const extensionMap = {
+                    'js': 'javascript',
+                    'py': 'python',
+                    'java': 'java',
+                    'cs': 'csharp',
+                    'cpp': 'cpp',
+                    'html': 'html',
+                    'css': 'css',
+                    'php': 'php',
+                    'ts': 'typescript',
+                    'rb': 'ruby',
+                    'go': 'go',
+                    'rs': 'rust',
+                    'swift': 'swift',
+                    'kt': 'kotlin',
+                    'bas': 'basic',
+                    'asm': 'asm_x86',
+                    'vue': 'vue'
+                };
+                return extensionMap[extension] || 'plaintext';
+            }
+            generateBtn.addEventListener('click', async function() {
+                const templateCode = templateEditor.getValue();
+                const contentCode = contentEditor.getValue();
+                const steeringText = steeringTextArea.value;
+                if (!templateCode || (!contentCode && !steeringText)) {
+                    alert('Please provide template code and either content code or steering text.');
+                    return;
+                }
+                try {
+                    showLoader();
+                    const lc = new LollmsClient();
+                    const prompt = `Generate code based on the following template:\n\n${templateCode}\n\nContent code:\n${contentCode}\n\nSteering text:\n${steeringText}\n\nGenerated code:`;
+                    const generatedCode = await lc.generateCode(prompt);
+                    if (generatedCode) {
+                        outputEditor.setValue(generatedCode);
+                        monaco.editor.setModelLanguage(outputEditor.getModel(), templateLanguageSelect.value);
+                        outputEditor.getAction('editor.action.formatDocument').run();
+                        outputEditor.layout();
+                    } else {
+                        alert('Failed to generate code. Please try again.');
+                    }
+                } catch (error) {
+                    console.error('Error generating code:', error);
+                    alert('An error occurred while generating code. Please try again.');
+                } finally {
+                    hideLoader();
+                }
+            });
+
+            copyBtn.addEventListener('click', function() {
+                const generatedCode = outputEditor.getValue();
+                navigator.clipboard.writeText(generatedCode).then(function() {
+                    alert('Generated code copied to clipboard!');
+                }, function(err) {
+                    console.error('Could not copy text: ', err);
+                });
+            });
+
+            saveBtn.addEventListener('click', function() {
+                const generatedCode = outputEditor.getValue();
+                const blob = new Blob([generatedCode], {type: 'text/plain'});
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'generated_code.txt';
+                a.click();
+            });
+
+            saveProjectBtn.addEventListener('click', function() {
+                const templateCode = templateEditor.getValue();
+                const contentCode = contentEditor.getValue();
+                const steeringText = steeringTextArea.value;
+                const generatedCode = outputEditor.getValue();
+
+                const projectData = `TEMPLATE CODE
+${templateCode}
+===SEPARATOR===
+CONTENT CODE
+${contentCode}
+===SEPARATOR===
+STEERING TEXT
+${steeringText}
+===SEPARATOR===
+GENERATED CODE
+${generatedCode}`;
+
+                const blob = new Blob([projectData], {type: 'text/plain'});
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'code_project.txt';
+                a.click();
+            });
+
+            loadProjectFile.addEventListener('change', function(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        const projectData = e.target.result;
+                        const [templateCode, contentCode, steeringText, generatedCode] = projectData.split('===SEPARATOR===');
+
+                        templateEditor.setValue(templateCode.replace('TEMPLATE CODE\n', '').trim());
+                        contentEditor.setValue(contentCode.replace('CONTENT CODE\n', '').trim());
+                        steeringTextArea.value = steeringText.replace('STEERING TEXT\n', '').trim();
+                        outputEditor.setValue(generatedCode.replace('GENERATED CODE\n', '').trim());
+                    };
+                    reader.readAsText(file);
+                }
+            });
+
+            window.addEventListener('resize', function() {
+                templateEditor.layout();
+                contentEditor.layout();
+                outputEditor.layout();
+            });
+        });
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        hideLoader();
+    </script>
+</body>
+</html>
