@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Celestial Insights: Astrological Sign Finder and Forecast</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gradient-to-r from-indigo-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="title"></h1>
+            <div class="flex items-center">
+                <select id="languageSelector" class="mr-2 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </select>
+                <button id="settingsBtn" class="p-2 bg-indigo-600 text-white rounded-full">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <h2 class="text-2xl font-semibold text-indigo-600 text-center mb-8" data-translate="subtitle"></h2>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <label for="name" class="block text-sm font-medium text-gray-700 mb-2" data-translate="nameLabel"></label>
+            <input type="text" id="name" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+            <label for="birthdate" class="block text-sm font-medium text-gray-700 mb-2" data-translate="birthdateLabel"></label>
+            <input type="text" id="birthdate" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4">
+            <p id="currentSign" class="text-lg font-semibold text-indigo-600 mb-4"></p>
+            <button id="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="submitButton"></button>
+        </div>
+        <div id="result" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h3 class="text-2xl font-bold text-indigo-800 mb-4" data-translate="signTitle"></h3>
+            <p id="sign" class="text-xl mb-4"></p>
+            <h3 class="text-2xl font-bold text-indigo-800 mb-4" data-translate="forecastTitle"></h3>
+            <div id="forecast" class="prose max-w-none"></div>
+        </div>
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8" role="alert">
+            <p class="font-bold" data-translate="disclaimerTitle"></p>
+            <p data-translate="disclaimerContent"></p>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-indigo-800 font-semibold" data-translate="loadingMessage"></p>
+        </div>
+    </div>
+    <div id="settingsPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <h3 class="text-xl font-bold mb-4">Settings</h3>
+            <div class="mb-4">
+                <label for="tone" class="block text-sm font-medium text-gray-700 mb-2">Tone:</label>
+                <select id="tone" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="humorous">Humorous</option>
+                    <option value="serious">Serious</option>
+                    <option value="optimistic">Optimistic</option>
+                    <option value="mysterious">Mysterious</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="objectives" class="block text-sm font-medium text-gray-700 mb-2">Objectives:</label>
+                <textarea id="objectives" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" rows="3">Enhance your happiness level</textarea>
+            </div>
+            <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Settings</button>
+        </div>
+    </div>
+    <footer class="bg-indigo-800 text-white py-4 text-center">
+        <p data-translate="footerText"></p>
+    </footer>
+    <script>
+        const lc = new LollmsClient(null,null,4096,-1,4096,0.1,50,0.95,0.8,40,null,8,"",ELF_GENERATION_FORMAT.LOLLMS);
+        const mr = new MarkdownRenderer();
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "Celestial Insights",
+                    subtitle: "Discover Your Astrological Sign and Forecast",
+                    nameLabel: "Enter your name:",
+                    birthdateLabel: "Enter your birth date:",
+                    submitButton: "Get Your Celestial Insights",
+                    signTitle: "Your Astrological Sign",
+                    forecastTitle: "Your Cheerful Forecast",
+                    disclaimerTitle: "Disclaimer",
+                    disclaimerContent: "Celestial Insights is designed for entertainment purposes only. Astrological readings are not based on scientific evidence but serve as a tool for self-reflection and personal growth. Always rely on professional advice for important life decisions.",
+                    loadingMessage: "Consulting the stars...",
+                    footerText: "© 2024 Celestial Insights. All rights reserved."
+                },
+                promptTranslations: {
+                    forecastPrompt: "You are a cheerful and optimistic astrologer. Generate a brief, positive, and uplifting astrological forecast for {name}, who is {age} years old and has the zodiac sign {sign} ({symbol}). The forecast should be general and encouraging, focusing on potential opportunities and personal growth. Use markdown formatting to make the forecast visually appealing."
+                },
+                zodiacSigns: {
+                    "Capricorn": "Capricorn",
+                    "Aquarius": "Aquarius",
+                    "Pisces": "Pisces",
+                    "Aries": "Aries",
+                    "Taurus": "Taurus",
+                    "Gemini": "Gemini",
+                    "Cancer": "Cancer",
+                    "Leo": "Leo",
+                    "Virgo": "Virgo",
+                    "Libra": "Libra",
+                    "Scorpio": "Scorpio",
+                    "Sagittarius": "Sagittarius"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "Perspectives Célestes",
+                    subtitle: "Découvrez Votre Signe Astrologique et Votre Prévision",
+                    nameLabel: "Entrez votre nom :",
+                    birthdateLabel: "Entrez votre date de naissance :",
+                    submitButton: "Obtenez Vos Perspectives Célestes",
+                    signTitle: "Votre Signe Astrologique",
+                    forecastTitle: "Votre Prévision Joyeuse",
+                    disclaimerTitle: "Avertissement",
+                    disclaimerContent: "Perspectives Célestes est conçu uniquement à des fins de divertissement. Les lectures astrologiques ne sont pas basées sur des preuves scientifiques mais servent d'outil pour l'introspection et la croissance personnelle. Fiez-vous toujours à des conseils professionnels pour les décisions importantes de la vie.",
+                    loadingMessage: "Consultation des étoiles...",
+                    footerText: "© 2024 Perspectives Célestes. Tous droits réservés."
+                },
+                promptTranslations: {
+                    forecastPrompt: "Vous êtes un astrologue joyeux et optimiste. Générez une prévision astrologique brève, positive et encourageante pour {name}, qui a {age} ans et dont le signe du zodiaque est {sign} ({symbol}). La prévision doit être générale et encourageante, en se concentrant sur les opportunités potentielles et la croissance personnelle. Utilisez le formatage markdown pour rendre la prévision visuellement attrayante."
+                },
+                zodiacSigns: {
+                    "Capricorn": "Capricorne",
+                    "Aquarius": "Verseau",
+                    "Pisces": "Poissons",
+                    "Aries": "Bélier",
+                    "Taurus": "Taureau",
+                    "Gemini": "Gémeaux",
+                    "Cancer": "Cancer",
+                    "Leo": "Lion",
+                    "Virgo": "Vierge",
+                    "Libra": "Balance",
+                    "Scorpio": "Scorpion",
+                    "Sagittarius": "Sagittaire"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    title: "Perspectivas Celestiales",
+                    subtitle: "Descubre Tu Signo Astrológico y Pronóstico",
+                    nameLabel: "Ingresa tu nombre:",
+                    birthdateLabel: "Ingresa tu fecha de nacimiento:",
+                    submitButton: "Obtén Tus Perspectivas Celestiales",
+                    signTitle: "Tu Signo Astrológico",
+                    forecastTitle: "Tu Alegre Pronóstico",
+                    disclaimerTitle: "Aviso Legal",
+                    disclaimerContent: "Perspectivas Celestiales está diseñado solo con fines de entretenimiento. Las lecturas astrológicas no se basan en evidencia científica, sino que sirven como una herramienta para la autorreflexión y el crecimiento personal. Siempre confía en el asesoramiento profesional para decisiones importantes de la vida.",
+                    loadingMessage: "Consultando las estrellas...",
+                    footerText: "© 2024 Perspectivas Celestiales. Todos los derechos reservados."
+                },
+promptTranslations: {
+                    forecastPrompt: "Eres un astrólogo alegre y optimista. Genera un pronóstico astrológico breve, positivo y alentador para {name}, que tiene {age} años y cuyo signo zodiacal es {sign} ({symbol}). El pronóstico debe ser general y alentador, centrándose en oportunidades potenciales y crecimiento personal. Utiliza el formato markdown para hacer el pronóstico visualmente atractivo."
+                },
+                zodiacSigns: {
+                    "Capricorn": "Capricornio",
+                    "Aquarius": "Acuario",
+                    "Pisces": "Piscis",
+                    "Aries": "Aries",
+                    "Taurus": "Tauro",
+                    "Gemini": "Géminis",
+                    "Cancer": "Cáncer",
+                    "Leo": "Leo",
+                    "Virgo": "Virgo",
+                    "Libra": "Libra",
+                    "Scorpio": "Escorpio",
+                    "Sagittarius": "Sagitario"
+                }
+            }
+        };
+        const languageSelector = document.getElementById('languageSelector');
+        const localizer = new WebAppLocalizer(translations, 'celestialInsights_', languageSelector);
+        const zodiacSigns = [
+            { name: "Capricorn", symbol: "♑", start: [12, 22], end: [1, 19] },
+            { name: "Aquarius", symbol: "♒", start: [1, 20], end: [2, 18] },
+            { name: "Pisces", symbol: "♓", start: [2, 19], end: [3, 20] },
+            { name: "Aries", symbol: "♈", start: [3, 21], end: [4, 19] },
+            { name: "Taurus", symbol: "♉", start: [4, 20], end: [5, 20] },
+            { name: "Gemini", symbol: "♊", start: [5, 21], end: [6, 20] },
+            { name: "Cancer", symbol: "♋", start: [6, 21], end: [7, 22] },
+            { name: "Leo", symbol: "♌", start: [7, 23], end: [8, 22] },
+            { name: "Virgo", symbol: "♍", start: [8, 23], end: [9, 22] },
+            { name: "Libra", symbol: "♎", start: [9, 23], end: [10, 22] },
+            { name: "Scorpio", symbol: "♏", start: [10, 23], end: [11, 21] },
+            { name: "Sagittarius", symbol: "♐", start: [11, 22], end: [12, 21] }
+        ];
+        function getZodiacSign(date) {
+            const month = date.getMonth() + 1;
+            const day = date.getDate();
+            for (let sign of zodiacSigns) {
+                if ((month === sign.start[0] && day >= sign.start[1]) || (month === sign.end[0] && day <= sign.end[1])) {
+                    return sign;
+                }
+            }
+            return zodiacSigns[0];
+        }
+        async function generateForecast(name, age, sign) {
+            const tone = document.getElementById('tone').value;
+            const objectives = document.getElementById('objectives').value;
+            const prompt = `${lc.system_message()}You are a ${tone} astrologer. Your objective is to ${objectives}. ${localizer.formatPrompt("forecastPrompt", { name: name, age: age, sign: sign.name, symbol: sign.symbol })}${lc.template.separator_template}${lc.ai_message()}`;
+            showLoading();
+            try {
+                const forecast = await lc.generate(prompt);
+                return forecast;
+            } catch (error) {
+                console.error("Error generating forecast:", error);
+                return "We're sorry, but the stars are a bit cloudy right now. Please try again later for your forecast.";
+            } finally {
+                hideLoading();
+            }
+        }
+        document.getElementById('submit').addEventListener('click', async () => {
+            const name = document.getElementById('name').value;
+            const birthdate = document.getElementById('birthdate').value;
+            if (!name || !birthdate) {
+                alert("Please enter your name and birth date.");
+                return;
+            }
+            const date = new Date(birthdate);
+            const age = new Date().getFullYear() - date.getFullYear();
+            const sign = getZodiacSign(date);
+            const forecast = await generateForecast(name, age, sign);
+            const translatedSignName = translations[localizer.getCurrentLanguage()].zodiacSigns[sign.name];
+            document.getElementById('sign').textContent = `${translatedSignName} ${sign.symbol}`;
+            const renderedForecast = await mr.renderMarkdown(forecast);
+            document.getElementById('forecast').innerHTML = renderedForecast;
+            document.getElementById('result').classList.remove('hidden');
+        });
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedName = localStorage.getItem('celestialInsights_name');
+            const savedDate = localStorage.getItem('celestialInsights_birthdate');
+            if (savedName) {
+                document.getElementById('name').value = savedName;
+            }
+            if (savedDate) {
+                document.getElementById('birthdate').value = savedDate;
+                updateCurrentSign(savedDate);
+            }
+            flatpickr("#birthdate", {
+                dateFormat: "Y-m-d",
+                maxDate: "today",
+                onChange: function(selectedDates, dateStr) {
+                    localStorage.setItem('celestialInsights_birthdate', dateStr);
+                    updateCurrentSign(dateStr);
+                }
+            });
+        });
+        function updateCurrentSign(dateStr) {
+            const date = new Date(dateStr);
+            const sign = getZodiacSign(date);
+            const translatedSignName = translations[localizer.getCurrentLanguage()].zodiacSigns[sign.name];
+            document.getElementById('currentSign').textContent = `Current Sign: ${translatedSignName} ${sign.symbol}`;
+        }
+        document.getElementById('name').addEventListener('change', (e) => {
+            localStorage.setItem('celestialInsights_name', e.target.value);
+        });
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsPopup').classList.remove('hidden');
+        });
+        document.getElementById('saveSettings').addEventListener('click', () => {
+            document.getElementById('settingsPopup').classList.add('hidden');
+        });
+        localizer.apply();
+    </script>
+</body>
+</html>
