@@ -20,17 +20,20 @@
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>    
+    <script src="https://cdn.jsdelivr.net/npm/pptx2json@0.0.10/index.test.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-indigo-800 mb-8">CodeDocMaker</h1>
-        
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8">Code Documentation App</h1>
         <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-semibold mb-4">Upload Files</h2>
             <input type="file" id="fileUpload" multiple class="mb-4" />
             <div id="fileList" class="mb-4"></div>
         </div>
-
         <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-semibold mb-4">Documentation Settings</h2>
             <textarea id="customInstructions" rows="4" class="w-full p-2 border border-gray-300 rounded mb-4" placeholder="Enter custom instructions..."></textarea>
@@ -65,19 +68,16 @@
             <button id="addPresetToCustomInstructions" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Add Preset</button>
             <button id="buildDocBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Build Documentation</button>
         </div>
-
         <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-semibold mb-4">Generated Documentation</h2>
             <div id="documentationOutput" class="prose max-w-none"></div>
         </div>
-
         <div class="flex justify-between mb-8">
             <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Project</button>
             <button id="loadProjectBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Load Project</button>
             <button id="saveOutputBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Output</button>
             <button id="saveOutputMarkdownBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Output as Markdown</button>
         </div>
-
         <button id="settingsBtn" class="fixed bottom-4 right-4 bg-gray-800 hover:bg-gray-900 text-white p-2 rounded-full shadow-lg">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
@@ -85,7 +85,6 @@
             </svg>
         </button>
     </div>
-
     <div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
         <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Settings</h3>
@@ -113,30 +112,26 @@
             </div>
         </div>
     </div>
-
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center hidden">
         <div class="bg-white p-5 rounded-lg shadow-xl">
             <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
             <p class="mt-4 text-center text-gray-700">Processing...</p>
         </div>
     </div>
-
     <script>
         let lc;
         let uploadedFiles = [];
         const mr = new MarkdownRenderer();
-
+        const lollmsFileLoader = new LollmsFileLoader();
         document.addEventListener('DOMContentLoaded', () => {
             initializeLollmsClient();
             setupEventListeners();
         });
-
         function initializeLollmsClient() {
             const ctxSize = localStorage.getItem('ctxSize') || 4096;
             const nPredict = localStorage.getItem('nPredict') || 4096;
             const serverUrl = localStorage.getItem('serverUrl') || 'http://localhost:9600';
             const serviceKey = localStorage.getItem('serviceKey') || '';
-
             lc = new LollmsClient(
                 serverUrl,
                 null,
@@ -152,13 +147,11 @@
                 8,
                 serviceKey
             );
-
             document.getElementById('ctxSize').value = ctxSize;
             document.getElementById('nPredict').value = nPredict;
             document.getElementById('serverUrl').value = serverUrl;
             document.getElementById('serviceKey').value = serviceKey;
         }
-
         function setupEventListeners() {
             document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
             document.getElementById('buildDocBtn').addEventListener('click', buildDocumentation);
@@ -171,38 +164,37 @@
             document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
             document.getElementById('addPresetToCustomInstructions').addEventListener('click', addPresetToCustomInstructions);
         }
-
-        function handleFileUpload(event) {
+        async function handleFileUpload(event) {
             const files = event.target.files;
             uploadedFiles = Array.from(files);
             updateFileList();
         }
-
         function updateFileList() {
             const fileList = document.getElementById('fileList');
             fileList.innerHTML = '';
-            uploadedFiles.forEach(file => {
+            uploadedFiles.forEach((file, index) => {
                 const li = document.createElement('li');
                 li.textContent = file.name;
+                const removeBtn = document.createElement('button');
+                removeBtn.textContent = 'Remove';
+                removeBtn.classList.add('ml-2', 'text-red-500');
+                removeBtn.onclick = () => removeFile(index);
+                li.appendChild(removeBtn);
                 fileList.appendChild(li);
             });
         }
-
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+        }
         async function buildDocumentation() {
             showLoader();
             const customInstructions = document.getElementById('customInstructions').value;
-            const preset = document.getElementById('presetSelector').value;
-
-            let prompt = `Generate comprehensive documentation for the following code files. ${customInstructions}\n\n`;
-            if (preset) {
-                prompt += `Focus on creating ${preset}.\n\n`;
-            }
-
+            let prompt = `Generate comprehensive documentation for the following code files. ${customInstructions}\n\nUse markdown syntax in your answer with titles and sections. Answer directly with the documentation without any comments. You can use math equations, svg illustrations, graphviz and mermaid code inside their respective markdown code tags.\n\n`;
             for (const file of uploadedFiles) {
-                const content = await readFileContent(file);
+                const content = await lollmsFileLoader.loadFile(file);
                 prompt += `File: ${file.name}\n\`\`\`\n${content}\n\`\`\`\n\n`;
             }
-
             try {
                 const documentation = await lc.generate(prompt);
                 const renderedDoc = await mr.renderMarkdown(documentation);
@@ -213,21 +205,11 @@
             }
             hideLoader();
         }
-
-        function readFileContent(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = event => resolve(event.target.result);
-                reader.onerror = error => reject(error);
-                reader.readAsText(file);
-            });
-        }
-
         function saveProject() {
             const projectData = {
                 files: uploadedFiles.map(file => file.name),
                 customInstructions: document.getElementById('customInstructions').value,
-                preset: document.getElementById('presetSelector').value,
+preset: document.getElementById('presetSelector').value,
                 documentation: document.getElementById('documentationOutput').innerHTML
             };
             const blob = new Blob([JSON.stringify(projectData)], { type: 'application/json' });
@@ -238,7 +220,6 @@
             a.click();
             URL.revokeObjectURL(url);
         }
-
         function loadProject() {
             const input = document.createElement('input');
             input.type = 'file';
@@ -251,14 +232,13 @@
                     document.getElementById('customInstructions').value = projectData.customInstructions;
                     document.getElementById('presetSelector').value = projectData.preset;
                     document.getElementById('documentationOutput').innerHTML = projectData.documentation;
-                    uploadedFiles = projectData.files.map(filename => ({ name: filename }));
+                    uploadedFiles = projectData.files.map(filename => new File([], filename));
                     updateFileList();
                 };
                 reader.readAsText(file);
             };
             input.click();
         }
-
         function saveOutput() {
             const output = document.getElementById('documentationOutput').innerText;
             const blob = new Blob([output], { type: 'text/plain' });
@@ -269,7 +249,6 @@
             a.click();
             URL.revokeObjectURL(url);
         }
-
         function saveOutputMarkdown() {
             const output = document.getElementById('documentationOutput').innerHTML;
             const blob = new Blob([output], { type: 'text/markdown' });
@@ -280,36 +259,29 @@
             a.click();
             URL.revokeObjectURL(url);
         }
-
         function saveSettings() {
             const ctxSize = document.getElementById('ctxSize').value;
             const nPredict = document.getElementById('nPredict').value;
             const serverUrl = document.getElementById('serverUrl').value;
             const serviceKey = document.getElementById('serviceKey').value;
-
             localStorage.setItem('ctxSize', ctxSize);
             localStorage.setItem('nPredict', nPredict);
             localStorage.setItem('serverUrl', serverUrl);
             localStorage.setItem('serviceKey', serviceKey);
-
             lc.updateSettings({
                 host_address: serverUrl,
                 ctx_size: parseInt(ctxSize),
                 n_predict: parseInt(nPredict),
                 service_key: serviceKey
             });
-
             document.getElementById('settingsModal').classList.add('hidden');
         }
-
         function showLoader() {
             document.getElementById('loadingOverlay').classList.remove('hidden');
         }
-
         function hideLoader() {
             document.getElementById('loadingOverlay').classList.add('hidden');
         }
-
         function addPresetToCustomInstructions() {
             const preset = document.getElementById('presetSelector').value;
             const customInstructions = document.getElementById('customInstructions');
