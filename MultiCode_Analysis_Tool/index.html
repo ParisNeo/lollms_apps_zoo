@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-translate="title">Multi Codes Analysis Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <style>
+        .editor-container { height: 300px; border: 1px solid #ccc; margin-bottom: 10px; }
+        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; }
+        .loading { text-align:center; color:#ff69b4; }
+        .strawberry { font-size:64px; animation:spin 2s linear infinite; }
+        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(-360deg); } }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="heading">Multi Codes Analysis Tool</h1>
+            <select id="languageSelector" class="p-2 border border-indigo-300 rounded-md">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+            </select>
+        </div>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <button id="addCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addCode">Add Code</button>
+            <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="saveProject">Save Project</button>
+            <button id="loadProjectBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="loadProject">Load Project</button>
+            <div id="codeEditors"></div>
+        </div>
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <textarea id="promptInput" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" rows="3" data-translate="promptPlaceholder" placeholder="Enter your prompt here..."></textarea>
+            <button id="analyzeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="analyze">Analyze</button>
+            <div id="outputArea" class="bg-gray-100 p-4 rounded-md mb-4"></div>
+            <button id="copyOutputBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copyOutput">Copy Output</button>
+            <button id="saveOutputBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveOutput">Save Output</button>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px" data-translate="loading">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "title": "Multi Codes Analysis Tool",
+                    "heading": "Multi Codes Analysis Tool",
+                    "addCode": "Add Code",
+                    "promptPlaceholder": "Enter your prompt here...",
+                    "analyze": "Analyze",
+                    "copyOutput": "Copy Output",
+                    "saveOutput": "Save Output",
+                    "loading": "Interrogating LOLLMS strawberry...",
+                    "openFile": "Open File",
+                    "fileNamePlaceholder": "File name",
+                    "outputCopied": "Output copied to clipboard!",
+                    "analysisError": "An error occurred while generating the analysis.",
+                    "saveProject": "Save Project",
+                    "loadProject": "Load Project",
+                    "removeFile": "Remove File"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "title": "Outil d'Analyse Multi-Codes",
+                    "heading": "Outil d'Analyse Multi-Codes",
+                    "addCode": "Ajouter du Code",
+                    "promptPlaceholder": "Entrez votre prompt ici...",
+                    "analyze": "Analyser",
+                    "copyOutput": "Copier la Sortie",
+                    "saveOutput": "Enregistrer la Sortie",
+                    "loading": "Interrogation de LOLLMS fraise...",
+                    "openFile": "Ouvrir un Fichier",
+                    "fileNamePlaceholder": "Nom du fichier",
+                    "outputCopied": "Sortie copiée dans le presse-papiers !",
+                    "analysisError": "Une erreur s'est produite lors de la génération de l'analyse.",
+                    "saveProject": "Sauvegarder le Projet",
+                    "loadProject": "Charger le Projet",
+                    "removeFile": "Supprimer le Fichier"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    "title": "Herramienta de Análisis Multi-Códigos",
+                    "heading": "Herramienta de Análisis Multi-Códigos",
+                    "addCode": "Agregar Código",
+                    "promptPlaceholder": "Ingrese su prompt aquí...",
+                    "analyze": "Analizar",
+                    "copyOutput": "Copiar Salida",
+                    "saveOutput": "Guardar Salida",
+                    "loading": "Interrogando a LOLLMS fresa...",
+                    "openFile": "Abrir Archivo",
+                    "fileNamePlaceholder": "Nombre del archivo",
+                    "outputCopied": "¡Salida copiada al portapapeles!",
+                    "analysisError": "Ocurrió un error al generar el análisis.",
+                    "saveProject": "Guardar Proyecto",
+                    "loadProject": "Cargar Proyecto",
+                    "removeFile": "Eliminar Archivo"
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, 'multiCodeAnalysis_', document.getElementById('languageSelector'));
+        localizer.apply();
+        require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' }});
+        let editors = [];
+        const codeEditorsContainer = document.getElementById('codeEditors');
+        const addCodeBtn = document.getElementById('addCodeBtn');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const promptInput = document.getElementById('promptInput');
+        const outputArea = document.getElementById('outputArea');
+        const copyOutputBtn = document.getElementById('copyOutputBtn');
+        const saveOutputBtn = document.getElementById('saveOutputBtn');
+        const saveProjectBtn = document.getElementById('saveProjectBtn');
+        const loadProjectBtn = document.getElementById('loadProjectBtn');
+        const markdownRenderer = new MarkdownRenderer();
+        const lc = new LollmsClient();
+        function createCodeEditor(fileName = '', content = '') {
+            const editorContainer = document.createElement('div');
+            editorContainer.className = 'mb-4';
+            const fileNameInput = document.createElement('input');
+            fileNameInput.type = 'text';
+            fileNameInput.value = fileName;
+            fileNameInput.placeholder = localizer.translate('fileNamePlaceholder');
+            fileNameInput.className = 'border border-indigo-300 rounded-md p-2 mr-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
+            editorContainer.appendChild(fileNameInput);
+            const openFileBtn = document.createElement('button');
+            openFileBtn.textContent = localizer.translate('openFile');
+            openFileBtn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-2';
+            editorContainer.appendChild(openFileBtn);
+            const removeFileBtn = document.createElement('button');
+            removeFileBtn.textContent = localizer.translate('removeFile');
+            removeFileBtn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-2 ml-2';
+            editorContainer.appendChild(removeFileBtn);
+            const monacoContainer = document.createElement('div');
+            monacoContainer.className = 'editor-container';
+            editorContainer.appendChild(monacoContainer);
+            codeEditorsContainer.appendChild(editorContainer);
+            require(['vs/editor/editor.main'], function() {
+                const editor = monaco.editor.create(monacoContainer, {
+                    value: content,
+                    language: 'javascript',
+                    theme: 'vs-dark'
+                });
+                editors.push({
+                    editor: editor,
+                    fileNameInput: fileNameInput,
+                    container: editorContainer
+                });
+                openFileBtn.addEventListener('click', () => {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.onchange = e => {
+                        const file = e.target.files[0];
+                        const reader = new FileReader();
+                        reader.readAsText(file, 'UTF-8');
+                        reader.onload = readerEvent => {
+                            const content = readerEvent.target.result;
+                            editor.setValue(content);
+                            fileNameInput.value = file.name;
+                        }
+                    }
+                    input.click();
+                });
+                removeFileBtn.addEventListener('click', () => {
+                    codeEditorsContainer.removeChild(editorContainer);
+                    editors = editors.filter(e => e.container !== editorContainer);
+                });
+            });
+        }
+        addCodeBtn.addEventListener('click', () => createCodeEditor());
+        analyzeBtn.addEventListener('click', async () => {
+            showLoader();
+            const prompt = promptInput.value;
+            const codes = editors.map(e => ({
+                fileName: e.fileNameInput.value,
+                content: e.editor.getValue()
+            }));
+            const systemPrompt = "You are a code analysis expert. Analyze the following code files based on the given prompt.";
+            const userPrompt = `Files to analyze:\n${codes.map(c => `${c.fileName}:\n${c.content}\n`).join('\n')}\n\nPrompt: ${prompt}\n\nProvide a detailed analysis of the code files based on the given prompt. Include a summary, key findings, and any relevant code snippets.`;
+            try {
+                const response = await lc.generate(lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message());
+                const renderedOutput = await markdownRenderer.renderMarkdown(response);
+                outputArea.innerHTML = renderedOutput;
+            } catch (error) {
+                console.error("Error generating analysis:", error);
+                outputArea.innerHTML = localizer.translate('analysisError');
+            } finally {
+                hideLoader();
+            }
+        });
+        copyOutputBtn.addEventListener('click', () => {
+            const range = document.createRange();
+            range.selectNode(outputArea);
+            window.getSelection().removeAllRanges();
+            window.getSelection().addRange(range);
+            document.execCommand('copy');
+            window.getSelection().removeAllRanges();
+            alert(localizer.translate('outputCopied'));
+        });
+        saveOutputBtn.addEventListener('click', () => {
+            const blob = new Blob([outputArea.innerText], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'analysis_result.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+        saveProjectBtn.addEventListener('click', () => {
+            const project = {
+                prompt: promptInput.value,
+                files: editors.map(e => ({
+fileName: e.fileNameInput.value,
+                    content: e.editor.getValue()
+                })),
+                output: outputArea.innerHTML
+            };
+            const blob = new Blob([JSON.stringify(project)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'multi_code_analysis_project.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+        loadProjectBtn.addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = readerEvent => {
+                    const project = JSON.parse(readerEvent.target.result);
+                    promptInput.value = project.prompt;
+                    outputArea.innerHTML = project.output;
+                    codeEditorsContainer.innerHTML = '';
+                    editors = [];
+                    project.files.forEach(file => {
+                        createCodeEditor(file.fileName, file.content);
+                    });
+                }
+            }
+            input.click();
+        });
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        createCodeEditor();
+        document.getElementById('languageSelector').addEventListener('change', function() {
+            localizer.setLanguage(this.value);
+            localizer.apply();
+        });
+        function loadSavedState() {
+            const savedPrompt = localStorage.getItem('multiCodeAnalysis_prompt');
+            if (savedPrompt) {
+                promptInput.value = savedPrompt;
+            }
+            const savedOutput = localStorage.getItem('multiCodeAnalysis_output');
+            if (savedOutput) {
+                outputArea.innerHTML = savedOutput;
+            }
+            const savedFiles = JSON.parse(localStorage.getItem('multiCodeAnalysis_files') || '[]');
+            savedFiles.forEach(file => {
+                createCodeEditor(file.fileName, file.content);
+            });
+        }
+        function saveState() {
+            localStorage.setItem('multiCodeAnalysis_prompt', promptInput.value);
+            localStorage.setItem('multiCodeAnalysis_output', outputArea.innerHTML);
+            const files = editors.map(e => ({
+                fileName: e.fileNameInput.value,
+                content: e.editor.getValue()
+            }));
+            localStorage.setItem('multiCodeAnalysis_files', JSON.stringify(files));
+        }
+        window.addEventListener('beforeunload', saveState);
+        loadSavedState();
+    </script>
+</body>
+</html>
