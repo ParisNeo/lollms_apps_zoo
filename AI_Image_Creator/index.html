@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Lollms Image Editor</title>
-        <script src="/lollms_assets/js/tailwindcss"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
         <script>
             tailwind.config = {
                 darkMode: 'class',
@@ -17,12 +17,57 @@
                 plugins: [],
             }
         </script>
-           
         <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
         <script src="/lollms_assets/js/lollms_client_js"></script>
         <script src="/lollms_assets/js/axios.min"></script>
         <script src="/lollms_assets/js/lollms_tti"></script>
         <style>
+            .vertical-slider-container {
+                width: 30px;
+                height: 100px;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }
+            .vertical-slider {
+                -webkit-appearance: none;
+                width: 100px;
+                height: 4px;
+                background: #e0e0e0;
+                outline: none;
+                opacity: 0.7;
+                -webkit-transition: .2s;
+                transition: opacity .2s;
+                transform: rotate(-90deg);
+                border-radius: 2px;
+            }
+            .vertical-slider:hover {
+                opacity: 1;
+            }
+            .vertical-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 16px;
+                height: 16px;
+                background: #3498db;
+                cursor: pointer;
+                border-radius: 50%;
+                box-shadow: 0 0 4px rgba(0,0,0,0.2);
+            }
+            .vertical-slider::-moz-range-thumb {
+                width: 16px;
+                height: 16px;
+                background: #3498db;
+                cursor: pointer;
+                border-radius: 50%;
+                box-shadow: 0 0 4px rgba(0,0,0,0.2);
+            }
+            .vertical-slider::-webkit-slider-thumb:hover {
+                background: #2980b9;
+            }
+            .vertical-slider::-moz-range-thumb:hover {
+                background: #2980b9;
+            }        
             @keyframes spin {
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
@@ -36,9 +81,8 @@
             .tool-btn {
                 @apply p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300;
             }
-    
             .tool-btn.active {
-                @apply bg-blue-500 text-white;
+                @apply bg-indigo-600 text-white;
             }
             #gallery {
                 grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
@@ -76,71 +120,67 @@
                 justify-content: space-between;
                 align-items: center;
             }
+            .blurred-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(5px);
+                display: none;
+                z-index: 1000;
+            }
+            .settings-popup {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: white;
+                padding: 20px;
+                border-radius: 10px;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+                display: none;
+                z-index: 1001;
+            }
         </style>
     </head>
-    <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300">
+    <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans text-gray-900 dark:text-gray-100 transition-colors duration-300">
         <div class="flex h-screen">
-            <!-- Sidebar (Image Gallery) -->
-            <div class="sidebar bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                <h2 class="text-lg font-bold mb-4 dark:text-white">Image Gallery</h2>
+            <div class="sidebar bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <h2 class="text-lg font-bold mb-4 text-indigo-800 dark:text-indigo-300">Image Gallery</h2>
                 <div id="gallery" class="grid grid-cols-2 gap-4">
-                    <!-- Gallery items will be dynamically added here -->
                 </div>
             </div>
-    
-            <!-- Main Content Area -->
             <div class="flex flex-col flex-grow">
-                <!-- Image Viewer -->
-                <div class="image-viewer-container bg-white dark:bg-gray-800 rounded-lg shadow-md">
+                <div class="image-viewer-container bg-white dark:bg-gray-800 rounded-lg shadow-lg">
                     <canvas id="viewerCanvas" class="w-full h-full object-contain"></canvas>
                     <canvas id="drawingCanvas" class="absolute top-0 left-0 w-full h-full drawing-canvas"></canvas>
                 </div>
-    
-                <!-- Bottom Bar (Image Generation Settings) -->
-                <div class="bottom-bar bg-white dark:bg-gray-800 rounded-lg shadow-md">
-                    <div class="flex items-center">
-                        <textarea id="promptInput" class="flex-grow p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" rows="2" placeholder="Enter your image prompt here..."></textarea>
-                        <button id="generateBtn" class="ml-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">Generate</button>
-                    </div>
-                    <div class="flex items-center mt-4">
-                        <label for="imageCount" class="block mb-2 dark:text-white">Number of Images:</label>
-                        <input type="number" id="imageCount" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="1" min="1" max="10">
-                    </div>
-                    <div class="flex items-center mt-4">
-                        <input type="checkbox" id="useDirectPrompt" class="mr-2">
-                        <label for="useDirectPrompt" class="dark:text-white">Use direct prompt (no enhancement)</label>
-                    </div>
-                    <div class="flex items-center mt-4">
-                        <label for="imageSize" class="block mb-2 dark:text-white">Image Size:</label>
-                        <select id="imageSize" class="w-48 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600">
-                            <option value="custom">Custom</option>
-                            <option value="512x512">512x512 (1:1)</option>
-                            <option value="640x640">640x640 (1:1)</option>
-                            <option value="768x768">768x768 (1:1)</option>
-                            <option value="1024x1024">1024x1024 (1:1)</option>
-                            <option value="640x480">640x480 (4:3)</option>
-                            <option value="800x600">800x600 (4:3)</option>
-                            <option value="1024x768">1024x768 (4:3)</option>
-                            <option value="1280x720">1280x720 (16:9)</option>
-                            <option value="1920x1080">1920x1080 (16:9)</option>
-                            <option value="1080x1920">1080x1920 (9:16)</option>
-                        </select>
-                    </div>
-                    <div id="customSizeInputs" class="flex">
-                        <div class="mr-4">
-                            <label for="imageWidth" class="block mb-2 dark:text-white">Width:</label>
-                            <input type="number" id="imageWidth" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="512" min="64" max="1920" step="64">
-                        </div>
-                        <div>
-                            <label for="imageHeight" class="block mb-2 dark:text-white">Height:</label>
-                            <input type="number" id="imageHeight" class="w-24 p-2 border rounded-md dark:bg-gray-700 dark:text-white dark:border-gray-600" value="512" min="64" max="1920" step="64">
-                        </div>
+                <div class="bottom-bar bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                    <div class="flex items-center w-full">
+                        <textarea id="promptInput" class="flex-grow w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:text-white dark:border-gray-600" placeholder="Enter your image prompt here..."></textarea>
+                        <button id="generateBtn" class="ml-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate</button>
+                        <button id="settingsBtn" class="ml-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                        </button>
+                        <button id="styleBtn" class="ml-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                            </svg>
+                        </button>
+                        <button id="ideasBtn" class="ml-2 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
-    
-            <!-- Toolbox -->
-            <div class="toolbox bg-white dark:bg-gray-800 rounded-lg shadow-md">
+            <div class="toolbox bg-white dark:bg-gray-800 rounded-lg shadow-lg">
                 <button id="darkModeToggle">
                     <svg id="lightIcon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-sun"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
                 </button>                
@@ -182,25 +222,222 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"></path></svg>
                 </button>
                 <input type="color" id="colorPicker" class="w-6 h-6 p-0 border-0" value="#000000">
-                <input type="range" id="brushSize" min="1" max="20" value="2" class="w-24">
+                <div class="vertical-slider-container">
+                    <input type="range" id="brushSize" min="1" max="20" value="2" class="vertical-slider">
+                </div>
             </div>
         </div>
-    
         <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
             <div class="bg-white dark:bg-gray-800 rounded-lg p-8 text-center">
-                <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                <p class="text-xl font-bold dark:text-white">Generating Image...</p>
+                <div class="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-indigo-500 mx-auto mb-4"></div>
+                <p class="text-xl font-bold text-indigo-800 dark:text-indigo-300">Generating Image...</p>
             </div>
         </div>
-    
-
+        <div id="settingsOverlay" class="blurred-overlay"></div>
+        <div id="settingsPopup" class="settings-popup">
+            <h2 class="text-2xl font-bold mb-4">Settings</h2>
+            <div class="mb-4">
+                <label for="imageCount" class="block mb-2">Number of Images:</label>
+                <input type="number" id="imageCount" class="w-full p-2 border border-indigo-300 rounded-md" value="1" min="1" max="10">
+            </div>
+            <div class="mb-4">
+                <input type="checkbox" id="useDirectPrompt" class="mr-2">
+                <label for="useDirectPrompt">Use direct prompt (no enhancement)</label>
+            </div>
+            <div class="mb-4">
+                <label for="imageSize" class="block mb-2">Image Size:</label>
+                <select id="imageSize" class="w-full p-2 border border-indigo-300 rounded-md">
+                    <option value="custom">Custom</option>
+                    <option value="512x512">512x512 (1:1)</option>
+                    <option value="640x640">640x640 (1:1)</option>
+                    <option value="768x768">768x768 (1:1)</option>
+                    <option value="1024x1024">1024x1024 (1:1)</option>
+                    <option value="640x480">640x480 (4:3)</option>
+                    <option value="800x600">800x600 (4:3)</option>
+                    <option value="1024x768">1024x768 (4:3)</option>
+                    <option value="1280x720">1280x720 (16:9)</option>
+                    <option value="1920x1080">1920x1080 (16:9)</option>
+                    <option value="1080x1920">1080x1920 (9:16)</option>
+                </select>
+            </div>
+            <div id="customSizeInputs" class="flex mb-4">
+                <div class="mr-4">
+                    <label for="imageWidth" class="block mb-2">Width:</label>
+                    <input type="number" id="imageWidth" class="w-full p-2 border border-indigo-300 rounded-md" value="512" min="64" max="1920" step="64">
+                </div>
+                <div>
+                    <label for="imageHeight" class="block mb-2">Height:</label>
+                    <input type="number" id="imageHeight" class="w-full p-2 border border-indigo-300 rounded-md" value="512" min="64" max="1920" step="64">
+                </div>
+            </div>
+            <div class="mb-4">
+                <label for="cameraFocalLength" class="block mb-2">Camera Focal Length:</label>
+                <input type="number" id="cameraFocalLength" class="w-full p-2 border border-indigo-300 rounded-md" value="50" min="10" max="200">
+            </div>
+            <div class="mb-4">
+                <label for="cameraDistance" class="block mb-2">Camera Distance:</label>
+                <input type="number" id="cameraDistance" class="w-full p-2 border border-indigo-300 rounded-md" value="10" min="1" max="100">
+            </div>
+            <div class="mb-4">
+                <label for="imageType" class="block mb-2">Image Type:</label>
+                <select id="imageType" class="w-full p-2 border border-indigo-300 rounded-md">
+                    <option value="realistic">Realistic</option>
+                    <option value="3d">3D</option>
+                    <option value="cartoon">Cartoon</option>
+                    <option value="anime">Anime</option>
+                    <option value="sketch">Sketch</option>
+                </select>
+            </div>
+            <button id="closeSettings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+        </div>
+        <div id="stylePopup" class="settings-popup">
+            <h2 class="text-2xl font-bold mb-4">Style Elements</h2>
+            <div class="mb-4">
+                <input type="text" id="searchInput" placeholder="Search styles..." class="w-full px-3 py-2 border rounded-md">
+            </div>
+            <div id="styleOptions" class="container overflow-y-auto grid grid-cols-2 gap-4 max-h-80 p-4">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+            <div class="mt-4">
+                <button id="applyStyle" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Apply</button>
+                <button id="closeStyle" class="ml-2 bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Close</button>
+            </div>
+        </div>
+        <div id="ideasPopup" class="settings-popup">
+            <h2 class="text-2xl font-bold mb-4">Prompt Ideas</h2>
+            <div id="ideasList" class="max-h-96 overflow-y-auto">
+            </div>
+            <button id="closeIdeas" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+        </div>
     <script>
+        const styleOptions = {
+            "Art Styles": [
+                "Impressionist", "Cubist", "Surrealist", "Pop Art", "Abstract", "Minimalist", 
+                "Expressionist", "Baroque", "Art Nouveau", "Realism", "Romanticism", "Futurism",
+                "Art Deco", "Gothic", "Renaissance", "Rococo", "Neoclassicism", "Dadaism",
+                "Fauvism", "Symbolism", "Constructivism", "Suprematism", "De Stijl", "Bauhaus",
+                "Ukiyo-e", "Pointillism", "Photorealism", "Hyperrealism", "Naive Art", "Outsider Art"
+            ],
+            "Color Schemes": [
+                "Vibrant", "Pastel", "Monochrome", "Sepia", "Neon", "Earthy", 
+                "Duotone", "Analogous", "Complementary", "Triadic", "Tetradic", "Split-complementary",
+                "Achromatic", "Warm", "Cool", "Jewel Tones", "Muted", "Iridescent",
+                "Metallic", "Gradient", "Ombre", "Holographic", "Fluorescent", "Retro Palette",
+                "Autumn Colors", "Spring Colors", "Summer Colors", "Winter Colors"
+            ],
+            "Lighting": [
+                "Soft Light", "Dramatic Shadows", "Backlit", "Golden Hour", "Studio Lighting", 
+                "Cinematic", "Chiaroscuro", "Volumetric", "Rim Light", "Natural Light", "Low Key", "High Key",
+                "Rembrandt Lighting", "Butterfly Lighting", "Split Lighting", "Loop Lighting",
+                "Broad Lighting", "Short Lighting", "Paramount Lighting", "Silhouette", "Lens Flare",
+                "Light Painting", "Bioluminescence", "Neon Lighting", "Candlelight", "Moonlight"
+            ],
+            "Graphic Production Type": [
+                "Digital Painting", "Vector Illustration", "3D Render", "Photo Manipulation", 
+                "Concept Art", "Matte Painting", "Infographic", "Typography", "Collage", 
+                "Pixel Art", "Isometric Design", "Hand-drawn Animation",
+                "Rotoscoping", "Stop Motion", "Motion Graphics", "Cinemagraph", "Generative Art",
+                "Ascii Art", "Layered Paper Art", "Risograph", "Linocut", "Screenprint",
+                "Cyanotype", "Lithography", "Etching", "Woodcut"
+            ],
+            "Point of View / Camera Settings": [
+                "Wide Angle", "Standard (50mm)", "Telephoto", "Macro", "Fisheye", "Aerial View", 
+                "Worm's Eye View", "Dutch Angle", "Panoramic", "Tilt-shift", "Bokeh", "360-degree",
+                "First Person", "Third Person", "Over-the-Shoulder", "Dolly Zoom", "Steadicam",
+                "Handheld", "Tracking Shot", "Crane Shot", "Establishing Shot", "Close-up",
+                "Extreme Close-up", "Medium Shot", "Long Shot", "Two Shot"
+            ],
+            "Additional Stylistic Elements": [
+                "Double Exposure", "Glitch Art", "Vaporwave", "Watercolor Effect", "Oil Paint Texture", 
+                "Pencil Sketch", "Blueprint Style", "Pointillism", "Halftone Pattern", "Low Poly", 
+                "Geometric Patterns", "Steampunk",
+                "Cyberpunk", "Dieselpunk", "Afrofuturism", "Retrofuturism", "Grunge",
+                "Vintage", "Retro", "Psychedelic", "Art Brut", "Kitsch", "Memphis Design",
+                "Bauhaus", "Brutalism", "Organic Shapes", "Fractal Art", "Optical Illusion"
+            ],
+            "Textures and Materials": [
+                "Glossy", "Matte", "Rough", "Smooth", "Metallic", "Wooden",
+                "Fabric", "Leather", "Glass", "Plastic", "Stone", "Concrete",
+                "Marble", "Fur", "Feathers", "Liquid", "Smoke", "Fire",
+                "Ice", "Rust", "Patina", "Cracked", "Peeling Paint", "Mosaic"
+            ],
+            "Composition Techniques": [
+                "Rule of Thirds", "Golden Ratio", "Symmetry", "Asymmetry", "Leading Lines",
+                "Framing", "Triangular Composition", "Radial Balance", "Negative Space",
+                "Juxtaposition", "Repetition", "Overlapping", "Foreground Interest",
+                "Scale and Proportion", "Rhythm", "Pattern", "Depth of Field", "Forced Perspective"
+            ],
+            "Historical Periods": [
+                "Ancient Egyptian", "Classical Greek", "Roman", "Byzantine", "Medieval",
+                "Renaissance", "Baroque", "Rococo", "Neoclassical", "Romantic",
+                "Victorian", "Art Nouveau", "Art Deco", "Modernist", "Post-modern",
+                "Contemporary", "Futuristic", "Prehistoric", "Bronze Age", "Iron Age"
+            ],
+            "Cultural Influences": [
+                "African", "Asian", "European", "Middle Eastern", "Native American",
+                "Oceanic", "Latin American", "Nordic", "Celtic", "Slavic",
+                "Polynesian", "Mesoamerican", "Indian", "Japanese", "Chinese",
+                "Korean", "Persian", "Arabic", "Scandinavian", "Mediterranean"
+            ]
+        };
+
+
+        function createCheckboxes(category, options) {
+            const div = document.createElement('div');
+            div.className = 'mb-4';
+            div.innerHTML = `
+                <h3 class="text-lg font-semibold mb-2">${category}</h3>
+                <div class="grid grid-cols-3 gap-2">
+                    ${options.map(option => `
+                        <label class="flex items-center">
+                            <input type="checkbox" class="mr-2" value="${option.toLowerCase().replace(/\s+/g, '-')}">
+                            ${option}
+                        </label>
+                    `).join('')}
+                </div>
+            `;
+            return div;
+        }
+
+        const styleOptionsContainer = document.getElementById('styleOptions');
+        const searchInput = document.getElementById('searchInput');
+
+        function renderOptions() {
+            styleOptionsContainer.innerHTML = '';
+            Object.entries(styleOptions).forEach(([category, options]) => {
+                styleOptionsContainer.appendChild(createCheckboxes(category, options));
+            });
+        }
+
+        function filterOptions(searchTerm) {
+            const filteredOptions = {};
+            Object.entries(styleOptions).forEach(([category, options]) => {
+                const filteredCategoryOptions = options.filter(option => 
+                    option.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    category.toLowerCase().includes(searchTerm.toLowerCase())
+                );
+                if (filteredCategoryOptions.length > 0) {
+                    filteredOptions[category] = filteredCategoryOptions;
+                }
+            });
+            return filteredOptions;
+        }
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value;
+            const filteredOptions = filterOptions(searchTerm);
+            styleOptionsContainer.innerHTML = '';
+            Object.entries(filteredOptions).forEach(([category, options]) => {
+                styleOptionsContainer.appendChild(createCheckboxes(category, options));
+            });
+        });
+
+        // Initial render
+        renderOptions();
 
         let db;
-
         function initDB() {
             const request = indexedDB.open('ImageDB', 1);
-
             request.onupgradeneeded = function(event) {
                 db = event.target.result;
                 const objectStore = db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
@@ -208,32 +445,26 @@
                 objectStore.createIndex('originalPrompt', 'originalPrompt', { unique: false });
                 objectStore.createIndex('enhancedPrompt', 'enhancedPrompt', { unique: false });
             };
-
             request.onsuccess = function(event) {
                 db = event.target.result;
                 updateGallery();
             };
-
             request.onerror = function(event) {
                 console.error('Database error:', event.target.errorCode);
             };
         }
-
         function saveImage(src, originalPrompt, title, enhancedPrompt) {
             const transaction = db.transaction(['images'], 'readwrite');
             const objectStore = transaction.objectStore('images');
             const image = { src, originalPrompt, title, enhancedPrompt };
             const request = objectStore.add(image);
-
             request.onsuccess = function() {
                 updateGallery();
             };
-
             request.onerror = function(event) {
                 console.error('Error saving image:', event.target.errorCode);
             };
         }
- 
         const lc = new LollmsClient();
         const ttiClient = new LollmsTTI();
         const promptInput = document.getElementById('promptInput');
@@ -248,6 +479,21 @@
         const zoomOutBtn = document.getElementById('zoomOut');
         const imageSizeSelect = document.getElementById('imageSize');
         const customSizeInputs = document.getElementById('customSizeInputs');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const closeSettingsBtn = document.getElementById('closeSettings');
+        const styleBtn = document.getElementById('styleBtn');
+        const stylePopup = document.getElementById('stylePopup');
+        const applyStyleBtn = document.getElementById('applyStyle');
+        const closeStyleBtn = document.getElementById('closeStyle');
+        const cameraFocalLength = document.getElementById('cameraFocalLength');
+        const cameraDistance = document.getElementById('cameraDistance');
+        const imageType = document.getElementById('imageType');
+        const ideasBtn = document.getElementById('ideasBtn');
+        const ideasPopup = document.getElementById('ideasPopup');
+        const ideasList = document.getElementById('ideasList');
+        const closeIdeasBtn = document.getElementById('closeIdeas');
 
         imageSizeSelect.addEventListener('change', () => {
             const selectedSize = imageSizeSelect.value;
@@ -260,10 +506,84 @@
                 imageHeight.value = height;
             }
         });
-
-        // Initialize the custom size inputs visibility
         customSizeInputs.style.display = imageSizeSelect.value === 'custom' ? 'flex' : 'none';
 
+        settingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            settingsPopup.style.display = 'block';
+        });
+
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+        });
+
+        styleBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            stylePopup.style.display = 'block';
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('darkMode') === 'true') {
+                document.documentElement.classList.add('dark');
+            }
+            initDB();
+            updateDarkModeIcon();
+
+            const applyStyleBtn = document.getElementById('applyStyle');
+            const stylePopup = document.getElementById('stylePopup');
+            const promptInput = document.getElementById('promptInput'); // Make sure this ID matches your prompt input field
+            const settingsOverlay = document.getElementById('settingsOverlay'); // Make sure this ID matches your overlay element
+
+            applyStyleBtn.addEventListener('click', () => {
+                const selectedStyles = Array.from(stylePopup.querySelectorAll('input[type="checkbox"]:checked'))
+                    .map(cb => cb.parentElement.textContent.trim());
+                const styleText = selectedStyles.join(', ');
+                
+                if (styleText) {
+                    promptInput.value += promptInput.value ? `${styleText}` : `${styleText}`;
+                }
+                
+                if (settingsOverlay) {
+                    settingsOverlay.style.display = 'none';
+                }
+                stylePopup.style.display = 'none';
+            });
+        });
+
+        closeStyleBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            stylePopup.style.display = 'none';
+        });
+
+        ideasBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            ideasPopup.style.display = 'block';
+            generateIdeas();
+        });
+
+        closeIdeasBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            ideasPopup.style.display = 'none';
+        });
+
+        async function generateIdeas() {
+            const ideasPrompt = "Generate 20 creative and diverse image prompt ideas for AI image generation. Each idea should be a short, descriptive sentence. Separate each idea with a newline character.";
+            const ideas = await lc.generate(lc.system_message() + ideasPrompt + lc.ai_message());
+            const ideasArray = ideas.split('\n').filter(idea => idea.trim() !== '');
+            ideasList.innerHTML = '';
+            ideasArray.forEach(idea => {
+                const ideaElement = document.createElement('div');
+                ideaElement.className = 'p-2 hover:bg-gray-100 cursor-pointer';
+                ideaElement.textContent = idea;
+                ideaElement.addEventListener('click', () => {
+                    promptInput.value = idea;
+                    settingsOverlay.style.display = 'none';
+                    ideasPopup.style.display = 'none';
+                });
+                ideasList.appendChild(ideaElement);
+            });
+        }
 
         let images = JSON.parse(localStorage.getItem('generatedImages')) || [];
         let currentImage = null;
@@ -278,15 +598,12 @@
         const colors = ['#000000', '#FF0000', '#00FF00', '#0000FF', '#FFFF00'];
         let currentColor = colors[0];
         let brushSize = 2;
-
         const ctx = viewerCanvas.getContext('2d');
         const drawCtx = drawingCanvas.getContext('2d');
-
         function updateGallery() {
             const transaction = db.transaction(['images'], 'readonly');
             const objectStore = transaction.objectStore('images');
             const request = objectStore.getAll();
-
             request.onsuccess = function(event) {
                 const images = event.target.result;
                 gallery.innerHTML = '';
@@ -294,27 +611,35 @@
                     const item = document.createElement('div');
                     item.className = 'mb-4 cursor-pointer';
                     item.innerHTML = `
-                        <img src="${image.src}" alt="${image.title}" class="w-full h-32 object-cover rounded-md mb-2">
-                        <h3 class="text-sm font-semibold mb-1 dark:text-white truncate">${image.title}</h3>
-                        <button class="text-red-500 hover:text-red-600 transition duration-300" onclick="deleteImage(${image.id})">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    `;
+<img src="${image.src}" alt="${image.title}" class="w-full h-32 object-cover rounded-md mb-2">
+<h3 class="text-sm font-semibold mb-1 text-indigo-800 dark:text-indigo-300 truncate">${image.title}</h3>
+<button class="text-red-500 hover:text-red-600 transition duration-300" onclick="deleteImage(${image.id})">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+    </svg>
+</button>
+<button class="ml-2 text-blue-500 hover:text-blue-600 transition duration-300 view-prompt-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+        <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+    </svg>
+</button>
+<button class="ml-2 text-green-500 hover:text-green-600 transition duration-300 reuse-prompt-btn">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+    </svg>
+</button>
+`;
                     item.querySelector('img').addEventListener('click', () => loadImage(image));
-                    gallery.appendChild(item);
+                    item.querySelector('.view-prompt-btn').addEventListener('click', () => viewPrompt(image));
+                    item.querySelector('.reuse-prompt-btn').addEventListener('click', () => reusePrompt(image));
+gallery.appendChild(item);
                 });
             };
-
             request.onerror = function(event) {
                 console.error('Error loading images:', event.target.errorCode);
             };
         }
-
-
-
-
         function loadImage(image) {
             currentImage = new Image();
             currentImage.onload = () => {
@@ -323,27 +648,20 @@
             };
             currentImage.src = image.src;
             currentImage.prompt = image.enhancedPrompt;
-
-            // Display the image information
-            const imageInfo = document.createElement('div');
-            imageInfo.className = 'mt-4 p-4 bg-gray-100 dark:bg-gray-700 rounded-md';
-            imageInfo.innerHTML = `
-                <h3 class="text-lg font-semibold mb-2 dark:text-white">${image.title}</h3>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">Original: ${image.originalPrompt}</p>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mb-4">Enhanced: ${image.enhancedPrompt}</p>
-                <button id="saveEditedImage" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-md transition duration-300">Save Edited Image</button>
-            `;
-            const imageViewer = document.getElementById('imageViewer');
+            const imageViewer = document.querySelector('.image-viewer-container');
             const existingImageInfo = imageViewer.querySelector('div:last-child');
             if (existingImageInfo) {
                 existingImageInfo.remove();
             }
             imageViewer.appendChild(imageInfo);
-
-            // Add event listener to the save button
             document.getElementById('saveEditedImage').addEventListener('click', saveEditedImage);
         }
-
+        function viewPrompt(image) {
+            alert(`Original Prompt: ${image.originalPrompt}\n\nEnhanced Prompt: ${image.enhancedPrompt}`);
+        }
+        function reusePrompt(image) {
+            promptInput.value = image.originalPrompt;
+        }
         function saveEditedImage() {
             const editedImageData = drawingCanvas.toDataURL('image/png');
             const editedImage = {
@@ -352,28 +670,22 @@
                 originalPrompt: currentImage.originalPrompt,
                 enhancedPrompt: currentImage.prompt
             };
-
             const transaction = db.transaction(['images'], 'readwrite');
             const objectStore = transaction.objectStore('images');
             const request = objectStore.put(editedImage);
-
             request.onsuccess = function() {
                 updateGallery();
                 alert('Edited image saved successfully!');
             };
-
             request.onerror = function(event) {
                 console.error('Error saving edited image:', event.target.errorCode);
             };
         }
-
-
         function drawImage() {
             const containerWidth = viewerCanvas.clientWidth;
             const containerHeight = viewerCanvas.clientHeight;
             const imageAspectRatio = currentImage.width / currentImage.height;
             const containerAspectRatio = containerWidth / containerHeight;
-
             let drawWidth, drawHeight;
             if (imageAspectRatio > containerAspectRatio) {
                 drawWidth = containerWidth;
@@ -382,79 +694,63 @@
                 drawHeight = containerHeight;
                 drawWidth = containerHeight * imageAspectRatio;
             }
-
             viewerCanvas.width = containerWidth;
             viewerCanvas.height = containerHeight;
             drawingCanvas.width = containerWidth;
             drawingCanvas.height = containerHeight;
-
             const centerX = containerWidth / 2 - (drawWidth * scale) / 2;
             const centerY = containerHeight / 2 - (drawHeight * scale) / 2;
-
             ctx.clearRect(0, 0, containerWidth, containerHeight);
             ctx.drawImage(currentImage, centerX, centerY, drawWidth * scale, drawHeight * scale);
-
-            // Redraw the drawing canvas content
             drawCtx.clearRect(0, 0, containerWidth, containerHeight);
             drawCtx.drawImage(drawingCanvas, 0, 0);
         }
-
         function deleteImage(id) {
             const transaction = db.transaction(['images'], 'readwrite');
             const objectStore = transaction.objectStore('images');
             const request = objectStore.delete(id);
-
             request.onsuccess = function() {
                 updateGallery();
             };
-
             request.onerror = function(event) {
                 console.error('Error deleting image:', event.target.errorCode);
             };
         }
-
-
         async function generateTitle(prompt) {
             const titlePrompt = `Generate a short, catchy title for an image based on this prompt: "${prompt}". The title should be no more than 5 words. Only answer with the title without any explanations.`;
             return await lc.generate(lc.system_message() + titlePrompt + lc.ai_message());
         }
-
         async function generateImage() {
             const prompt = promptInput.value;
             if (!prompt) return;
-
             const width = parseInt(imageWidth.value);
             const height = parseInt(imageHeight.value);
-            const count = parseInt(imageCount.value);
+            const count = parseInt(document.getElementById('imageCount').value);
             const useDirectPrompt = document.getElementById('useDirectPrompt').checked;
-
+            const focalLength = parseInt(cameraFocalLength.value);
+            const distance = parseInt(cameraDistance.value);
+            const type = imageType.value;
             loadingOverlay.classList.remove('hidden');
             const statusElement = document.createElement('p');
-            statusElement.className = 'text-lg font-semibold mt-4 dark:text-white';
+            statusElement.className = 'text-lg font-semibold mt-4 text-indigo-800 dark:text-indigo-300';
             loadingOverlay.querySelector('div').appendChild(statusElement);
-
             try {
                 let enhancedPrompt = prompt;
                 if (!useDirectPrompt) {
                     statusElement.textContent = 'Enhancing prompt...';
-                    enhancedPrompt = await lc.generate(lc.system_message() + `Enhance this image prompt:\n${prompt}\nOnly answer with the prompt with no comments.\nOnly answer with the prompt without any explanations.` + lc.ai_message());
+                    enhancedPrompt = await lc.generate(lc.system_message() + `Enhance this image prompt:\n${prompt}\nCamera focal length: ${focalLength}mm\nCamera distance: ${distance}m\nImage type: ${type}\nOnly answer with the prompt with no comments.\nOnly answer with the prompt without any explanations.` + lc.ai_message());
                 }
-                
                 for (let i = 0; i < count; i++) {
                     statusElement.textContent = `Generating image ${i + 1} of ${count}...`;
                     const base64Image = await ttiClient.generateImage(enhancedPrompt, '', width, height);
-                    
                     statusElement.textContent = 'Creating title...';
                     const title = await generateTitle(prompt);
-                    
                     statusElement.textContent = 'Saving image...';
                     saveImage(`data:image/jpeg;base64,${base64Image}`, prompt, title, enhancedPrompt);
-                    
                     if (i === 0) {
                         loadImage({ src: `data:image/jpeg;base64,${base64Image}`, prompt: enhancedPrompt });
                     }
                 }
-                
                 statusElement.textContent = `${count} image(s) generated successfully!`;
                 setTimeout(() => {
                     loadingOverlay.classList.add('hidden');
@@ -469,33 +765,24 @@
                 }, 3000);
             }
         }
-
-
-
         generateBtn.addEventListener('click', generateImage);
-
         [imageWidth, imageHeight].forEach(input => {
             input.addEventListener('change', () => {
                 input.value = Math.max(64, Math.min(1024, Math.round(input.value / 64) * 64));
             });
         });
-
         zoomInBtn.addEventListener('click', () => {
             scale *= 1.1;
             drawImage();
         });
-
         zoomOutBtn.addEventListener('click', () => {
             scale *= 0.9;
             drawImage();
         });
-
-
         function startDrawing(e) {
             isDrawing = true;
             [lastX, lastY] = [e.offsetX, e.offsetY];
         }
-
         function draw(e) {
             if (!isDrawing) return;
             drawCtx.beginPath();
@@ -512,7 +799,6 @@
             drawCtx.stroke();
             [lastX, lastY] = [e.offsetX, e.offsetY];
         }
-
         function stopDrawing() {
             if (isDrawing) {
                 isDrawing = false;
@@ -524,7 +810,6 @@
             redoHistory = [];
             updateUndoRedoButtons();
         }
-
         function undo() {
             if (drawHistory.length > 1) {
                 redoHistory.push(drawHistory.pop());
@@ -532,7 +817,6 @@
             }
             updateUndoRedoButtons();
         }
-
         function redo() {
             if (redoHistory.length > 0) {
                 const redoState = redoHistory.pop();
@@ -549,17 +833,14 @@
             };
             img.src = state;
         }
-
         function updateUndoRedoButtons() {
             undoBtn.disabled = drawHistory.length <= 1;
             redoBtn.disabled = redoHistory.length === 0;
         }
-
         function clearDrawing() {
             drawCtx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
             saveDrawingState();
         }
-
         drawingCanvas.addEventListener('mousedown', startDrawing);
         drawingCanvas.addEventListener('mousemove', draw);
         drawingCanvas.addEventListener('mouseup', stopDrawing);
@@ -568,7 +849,6 @@
         const darkModeIcon = darkModeToggle.querySelector('svg');
 
         function updateDarkModeIcon() {
-            console.log("Updating dark mode icon, dark mode is:", document.documentElement.classList.contains('dark'));
             if (document.documentElement.classList.contains('dark')) {
                 darkModeIcon.innerHTML = `
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -581,23 +861,17 @@
         }
 
         darkModeToggle.addEventListener('click', () => {
-            console.log("Dark mode toggle clicked");
-            console.log("Before toggle:", document.documentElement.classList.contains('dark'));
             document.documentElement.classList.toggle('dark');
-            console.log("After toggle:", document.documentElement.classList.contains('dark'));
             localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
             updateDarkModeIcon();
-            console.log("Dark mode in localStorage:", localStorage.getItem('darkMode'));
         });
 
-        // Check for saved dark mode preference
         if (localStorage.getItem('darkMode') === 'true' || 
             (!('darkMode' in localStorage) && 
             window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         }
 
-        // Save dark mode preference
         darkModeToggle.addEventListener('click', () => {
             document.documentElement.classList.toggle('dark');
             localStorage.setItem('darkMode', document.documentElement.classList.contains('dark'));
@@ -634,7 +908,6 @@
             }
         }
 
-        // Initialize drawing state
         saveDrawingState();
         const downloadBtn = document.getElementById('downloadBtn');
 
@@ -648,15 +921,6 @@
                 alert('No image to download. Please generate or select an image first.');
             }
         });
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log("DOM loaded, checking initial dark mode");
-            if (localStorage.getItem('darkMode') === 'true') {
-                document.documentElement.classList.add('dark');
-            }
-            initDB(); // Initialize the database
-            // Initial icon update
-            updateDarkModeIcon();
-        }); 
     </script>
 </body>
 </html>
