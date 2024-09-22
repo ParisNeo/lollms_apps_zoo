@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Story Teller</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <style>
+        .blurred-overlay {display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: 1000;}
+        .settings-popup {display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 2rem; border-radius: 0.5rem; z-index: 1001; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);}
+        html,body{margin:0;padding:0;height:100%;overflow:hidden}
+        body{display:flex;justify-content:center;align-items:center;background:#fff;font-family:sans-serif}
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center;z-index:1000;}
+        .loading{text-align:center;color:#ff69b4}
+        .strawberry{font-size:64px;animation:spin 2s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">Story Teller</h1>
+            <div class="flex items-center">
+                <select id="languageSelector" class="mr-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                </select>
+                <button id="settingsBtn" class="text-indigo-600 hover:text-indigo-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+            </div>
+        </header>
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 w-full md:w-1/3">
+                <h2 class="text-2xl font-semibold mb-4" id="storyInfoTitle">Story Information</h2>
+                <label for="genre">Genre:</label>
+                <select id="genre" class="w-full mb-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select Genre</option>
+                    <option value="fantasy">Fantasy</option>
+                    <option value="sci-fi">Science Fiction</option>
+                    <option value="mystery">Mystery</option>
+                    <option value="romance">Romance</option>
+                </select>
+                <label for="characters">Characters:</label>
+                <select id="characters" class="w-full mb-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" multiple>
+                    <option value="hero">Hero</option>
+                    <option value="villain">Villain</option>
+                    <option value="sidekick">Sidekick</option>
+                    <option value="mentor">Mentor</option>
+                </select>
+                <label for="setting">Setting:</label>
+                <select id="setting" class="w-full mb-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select Setting</option>
+                    <option value="medieval">Medieval</option>
+                    <option value="futuristic">Futuristic</option>
+                    <option value="modern">Modern</option>
+                    <option value="historical">Historical</option>
+                </select>
+                <label for="tone">Tone:</label>
+                <select id="tone" class="w-full mb-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select Tone</option>
+                    <option value="humorous">Humorous</option>
+                    <option value="serious">Serious</option>
+                    <option value="dramatic">Dramatic</option>
+                    <option value="light-hearted">Light-hearted</option>
+                </select>
+                <label for="customInput">Custom Input:</label>
+                <textarea id="customInput" class="w-full mb-4 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Add custom ideas or guidelines (optional)"></textarea>
+                <button id="buildStoryBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Build Story
+                </button>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 w-full md:w-2/3">
+                <h2 class="text-2xl font-semibold mb-4" id="generatedStoryTitle">Generated Story</h2>
+                <div id="storyOutput" class="mb-4 h-64 overflow-y-auto border border-indigo-300 rounded-md p-4"></div>
+                <div class="flex justify-between">
+                    <button id="synthesizeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Synthesize Audio
+                    </button>
+                    <button id="saveAudioBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" disabled>
+                        Save Audio
+                    </button>
+                </div>
+                <audio id="audioPlayer" controls class="w-full mt-4" style="display: none;"></audio>
+                <div class="mt-4">
+                    <button id="saveHtmlBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2">
+                        Save as HTML
+                    </button>
+                    <button id="saveDocxBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2">
+                        Save as DOCX
+                    </button>
+                    <button id="saveMarkdownBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Save as Markdown
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold mb-4" id="settingsTitle">Settings</h2>
+        <label for="tokenSlider" class="block mb-2" id="tokenSliderLabel">Number of tokens to generate:</label>
+        <input type="range" id="tokenSlider" min="100" max="4096" value="1024" class="w-full mb-4">
+        <span id="tokenValue">1024</span>
+        <button id="closeSettingsBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+            Close
+        </button>
+    </div>
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px" id="interrogatingAIText">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const mr = new MarkdownRenderer();
+        let currentLanguage = 'en';
+        const translations = {
+            en: {
+                storyInfo: "Story Information",
+                generatedStory: "Generated Story",
+                buildStory: "Build Story",
+                synthesizeAudio: "Synthesize Audio",
+                saveAudio: "Save Audio",
+                saveHtml: "Save as HTML",
+                saveDocx: "Save as DOCX",
+                saveMarkdown: "Save as Markdown",
+                settings: "Settings",
+                tokenSlider: "Number of tokens to generate:",
+                close: "Close",
+                interrogatingAI: "Interrogating LOLLMS strawberry...",
+                selectGenre: "Select Genre",
+                selectSetting: "Select Setting",
+                customInputPlaceholder: "Add custom ideas or guidelines (optional)"
+            },
+            fr: {
+                storyInfo: "Informations sur l'histoire",
+                generatedStory: "Histoire générée",
+                buildStory: "Créer l'histoire",
+                synthesizeAudio: "Synthétiser l'audio",
+                saveAudio: "Sauvegarder l'audio",
+                saveHtml: "Sauvegarder en HTML",
+                saveDocx: "Sauvegarder en DOCX",
+                saveMarkdown: "Sauvegarder en Markdown",
+                settings: "Paramètres",
+                tokenSlider: "Nombre de tokens à générer :",
+                close: "Fermer",
+                interrogatingAI: "Interrogation de LOLLMS fraise...",
+                selectGenre: "Sélectionner le genre",
+                selectSetting: "Sélectionner le cadre",
+                customInputPlaceholder: "Ajouter des idées ou des directives personnalisées (facultatif)"
+            },
+            es: {
+                storyInfo: "Información de la historia",
+                generatedStory: "Historia generada",
+                buildStory: "Construir historia",
+                synthesizeAudio: "Sintetizar audio",
+                saveAudio: "Guardar audio",
+                saveHtml: "Guardar como HTML",
+                saveDocx: "Guardar como DOCX",
+                saveMarkdown: "Guardar como Markdown",
+                settings: "Ajustes",
+                tokenSlider: "Número de tokens a generar:",
+                close: "Cerrar",
+                interrogatingAI: "Interrogando a LOLLMS fresa...",
+                selectGenre: "Seleccionar género",
+                selectSetting: "Seleccionar escenario",
+                customInputPlaceholder: "Agregar ideas o pautas personalizadas (opcional)"
+            },
+            de: {
+                storyInfo: "Geschichteninformationen",
+                generatedStory: "Generierte Geschichte",
+                buildStory: "Geschichte erstellen",
+                synthesizeAudio: "Audio synthetisieren",
+                saveAudio: "Audio speichern",
+saveHtml: "Als HTML speichern",
+                saveDocx: "Als DOCX speichern",
+                saveMarkdown: "Als Markdown speichern",
+                settings: "Einstellungen",
+                tokenSlider: "Anzahl der zu generierenden Tokens:",
+                close: "Schließen",
+                interrogatingAI: "LOLLMS Erdbeere wird befragt...",
+                selectGenre: "Genre auswählen",
+                selectSetting: "Umgebung auswählen",
+                customInputPlaceholder: "Fügen Sie benutzerdefinierte Ideen oder Richtlinien hinzu (optional)"
+            }
+        };
+        function updateLanguage(lang) {
+            currentLanguage = lang;
+            document.getElementById('storyInfoTitle').textContent = translations[lang].storyInfo;
+            document.getElementById('generatedStoryTitle').textContent = translations[lang].generatedStory;
+            document.getElementById('buildStoryBtn').textContent = translations[lang].buildStory;
+            document.getElementById('synthesizeBtn').textContent = translations[lang].synthesizeAudio;
+            document.getElementById('saveAudioBtn').textContent = translations[lang].saveAudio;
+            document.getElementById('saveHtmlBtn').textContent = translations[lang].saveHtml;
+            document.getElementById('saveDocxBtn').textContent = translations[lang].saveDocx;
+            document.getElementById('saveMarkdownBtn').textContent = translations[lang].saveMarkdown;
+            document.getElementById('settingsTitle').textContent = translations[lang].settings;
+            document.getElementById('tokenSliderLabel').textContent = translations[lang].tokenSlider;
+            document.getElementById('closeSettingsBtn').textContent = translations[lang].close;
+            document.getElementById('interrogatingAIText').textContent = translations[lang].interrogatingAI;
+            document.querySelector('#genre option[value=""]').textContent = translations[lang].selectGenre;
+            document.querySelector('#setting option[value=""]').textContent = translations[lang].selectSetting;
+            document.getElementById('customInput').placeholder = translations[lang].customInputPlaceholder;
+        }
+        document.getElementById('languageSelector').addEventListener('change', (e) => {
+            updateLanguage(e.target.value);
+        });
+        let tokenCount = 1024;
+        const tokenSlider = document.getElementById('tokenSlider');
+        const tokenValue = document.getElementById('tokenValue');
+        tokenSlider.addEventListener('input', (e) => {
+            tokenCount = e.target.value;
+            tokenValue.textContent = tokenCount;
+        });
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').style.display = 'block';
+            document.getElementById('settingsPopup').style.display = 'block';
+        });
+        document.getElementById('closeSettingsBtn').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').style.display = 'none';
+            document.getElementById('settingsPopup').style.display = 'none';
+        });
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        document.getElementById('buildStoryBtn').addEventListener('click', async () => {
+            const genre = document.getElementById('genre').value;
+            const characters = Array.from(document.getElementById('characters').selectedOptions).map(option => option.value);
+            const setting = document.getElementById('setting').value;
+            const tone = document.getElementById('tone').value;
+            const customInput = document.getElementById('customInput').value;
+            const prompt = `Create a ${genre} story set in a ${setting} world, featuring ${characters.join(', ')}. The tone should be ${tone}. ${customInput ? 'Additional guidelines: ' + customInput : ''} The story should be engaging and approximately ${tokenCount} words long.`;
+            showLoader();
+            try {
+                const story = await lc.generate(prompt);
+                const renderedStory = await mr.renderMarkdown(story);
+                document.getElementById('storyOutput').innerHTML = renderedStory;
+            } catch (error) {
+                console.error('Error generating story:', error);
+                document.getElementById('storyOutput').textContent = 'An error occurred while generating the story.';
+            } finally {
+                hideLoader();
+            }
+        });
+        document.getElementById('synthesizeBtn').addEventListener('click', async () => {
+            const story = document.getElementById('storyOutput').textContent;
+            showLoader();
+            try {
+                const response = await fetch('/tts/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: story, language: currentLanguage }),
+                });
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.src = audioUrl;
+                audioPlayer.style.display = 'block';
+                document.getElementById('saveAudioBtn').disabled = false;
+            } catch (error) {
+                console.error('Error synthesizing audio:', error);
+            } finally {
+                hideLoader();
+            }
+        });
+        document.getElementById('saveAudioBtn').addEventListener('click', () => {
+            const audioPlayer = document.getElementById('audioPlayer');
+            const audioUrl = audioPlayer.src;
+            const link = document.createElement('a');
+            link.href = audioUrl;
+            link.download = 'generated_story_audio.wav';
+            link.click();
+        });
+        function saveAs(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        document.getElementById('saveHtmlBtn').addEventListener('click', () => {
+            const storyHtml = document.getElementById('storyOutput').innerHTML;
+            const fullHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Generated Story</title></head><body>${storyHtml}</body></html>`;
+            saveAs(fullHtml, 'generated_story.html', 'text/html');
+        });
+        document.getElementById('saveDocxBtn').addEventListener('click', () => {
+            const storyText = document.getElementById('storyOutput').textContent;
+            saveAs(storyText, 'generated_story.txt', 'text/plain');
+        });
+        document.getElementById('saveMarkdownBtn').addEventListener('click', () => {
+            const storyHtml = document.getElementById('storyOutput').innerHTML;
+            let markdown = storyHtml
+                .replace(/<h1.*?>(.*?)<\/h1>/gi, '# $1\n\n')
+                .replace(/<h2.*?>(.*?)<\/h2>/gi, '## $1\n\n')
+                .replace(/<p.*?>(.*?)<\/p>/gi, '$1\n\n')
+                .replace(/<br\s*\/?>/gi, '\n');
+            saveAs(markdown, 'generated_story.md', 'text/markdown');
+        });
+        updateLanguage('en');
+        hideLoader();
+    </script>
+</body>
+</html>
