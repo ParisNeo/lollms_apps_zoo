@@ -6,23 +6,24 @@
     <title>Markdown Renderer App</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-html.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/viz.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/viz.js/2.1.2/full.render.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.min.js"></script>    
+    
     <style>
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center}
+        .loading{text-align:center;color:#ff69b4}
+        .strawberry{font-size:64px;animation:spin 2s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
     </style>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen flex flex-col font-sans">
@@ -64,8 +65,14 @@
         </div>
     </main>
     <footer class="bg-indigo-200 text-center p-4">
-        <p>&copy; 2023 Markdown Renderer App</p>
+        <p>&copy; 2024 Markdown Renderer App to showcase the Markdown Renderer library By Paris Neo</p>
     </footer>
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
     <script>
         const markdownInput = document.getElementById('markdown-input');
         const output = document.getElementById('output');
@@ -75,15 +82,32 @@
         const mr = new MarkdownRenderer();
         const tabBtns = document.querySelectorAll('.tab-btn');
         const tabContents = document.querySelectorAll('.tab-content');
+        function loadContent() {
+            const savedInput = localStorage.getItem('markdownInput');
+            const savedOutput = localStorage.getItem('markdownOutput');
+            if (savedInput) {
+                markdownInput.value = savedInput;
+            }
+            if (savedOutput) {
+                output.innerHTML = savedOutput;
+            }
+        }
         async function renderMarkdown() {
+            showLoader();
             const markdown = markdownInput.value;
             const renderedHtml = await mr.renderMarkdown(markdown);
             output.innerHTML = renderedHtml;
+            localStorage.setItem('markdownInput', markdown);
+            localStorage.setItem('markdownOutput', renderedHtml);
+            hideLoader();
+            document.querySelector('.tab-btn[data-tab="output"]').click();
         }
         renderBtn.addEventListener('click', renderMarkdown);
         clearBtn.addEventListener('click', () => {
             markdownInput.value = '';
             output.innerHTML = '';
+            localStorage.removeItem('markdownInput');
+            localStorage.removeItem('markdownOutput');
         });
         copyBtn.addEventListener('click', () => {
             const tempTextArea = document.createElement('textarea');
@@ -94,7 +118,9 @@
             document.body.removeChild(tempTextArea);
             alert('HTML copied to clipboard!');
         });
-        markdownInput.addEventListener('input', debounce(renderMarkdown, 300));
+        markdownInput.addEventListener('input', debounce(() => {
+            renderMarkdown();
+        }, 300));
         function debounce(func, wait) {
             let timeout;
             return function executedFunction(...args) {
@@ -115,6 +141,14 @@
                 document.getElementById(`${tabId}-tab`).classList.add('active');
             });
         });
+        window.addEventListener('load', loadContent);
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        hideLoader();
     </script>
 </body>
 </html>
