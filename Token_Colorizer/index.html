@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Advanced Token Colorizer</title>
     <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
             --bg-light: #f3f4f6;
@@ -44,73 +45,60 @@
         }
     </style>
 </head>
-<body class="flex flex-col min-h-screen bg-gray-100 text-gray-800">
-
+<body class="flex flex-col min-h-screen bg-gradient-to-r from-blue-100 to-purple-100 text-gray-800 font-sans">
 <header class="bg-white shadow-md py-6 transition-all duration-300 relative">
     <div class="container mx-auto px-4">
-        <h1 class="text-4xl font-bold text-center">Advanced Token Colorizer</h1>
+        <h1 class="text-4xl font-bold text-center text-indigo-800">Advanced Token Colorizer</h1>
         <p class="text-lg text-center text-gray-600 mt-2">Enter a prompt to see its words colored by their token IDs.</p>
     </div>
-    <button id="toggleDarkMode" class="absolute top-4 right-4 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg transition-all duration-300 flex items-center">
+    <button id="toggleDarkMode" class="absolute top-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300 flex items-center">
         <svg id="sunIcon" class="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path></svg>
         <svg id="moonIcon" class="w-6 h-6 mr-2 hidden" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
         <span id="modeText">Dark Mode</span>
     </button>
 </header>
-
 <main class="container mx-auto px-4 py-8 flex-grow">
     <div class="max-w-3xl mx-auto">
         <section class="mb-8">
-            <textarea id="promptInput" rows="4" class="w-full p-4 border border-gray-300 rounded-lg shadow-sm bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300" placeholder="Type your prompt here..."></textarea>
+            <textarea id="promptInput" rows="4" class="w-full p-4 border border-indigo-300 rounded-lg shadow-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300" placeholder="Type your prompt here..."></textarea>
             <div class="mt-4">
-                <button id="colorizeButton" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 transform hover:scale-105">Colorize Tokens</button>
+                <button id="colorizeButton" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105">Colorize Tokens</button>
             </div>
         </section>
-
         <section>
-            <h2 class="text-2xl font-semibold mb-4">Output:</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-800">Output:</h2>
             <p id="tokenCount" class="mt-4 text-lg font-medium"></p>
-            <div id="outputContainer" class="p-6 border border-gray-300 rounded-lg bg-white min-h-[200px] transition-all duration-300 whitespace-pre-wrap shadow-lg"></div>
+            <div id="outputContainer" class="p-6 border border-indigo-300 rounded-lg bg-white min-h-[200px] transition-all duration-300 whitespace-pre-wrap shadow-lg"></div>
+        </section>
+        <section class="mt-8">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-800">Statistics:</h2>
+            <div id="statistics" class="p-6 border border-indigo-300 rounded-lg bg-white shadow-lg">
+                <p id="meanTokens" class="text-lg font-medium"></p>
+                <p id="stdDevTokens" class="text-lg font-medium"></p>
+            </div>
+            <div class="mt-4">
+                <canvas id="tokenHistogram"></canvas>
+            </div>
         </section>
     </div>
 </main>
-
 <footer class="bg-white shadow-md py-4 transition-all duration-300 mt-auto">
     <div class="container mx-auto px-4">
-        <p class="text-center text-gray-600">&copy; 2023 Advanced Token Colorizer. All rights reserved.</p>
-        <p class="text-center text-gray-500 mt-2">Built by Code Warrior using Claude Sonnet on lollms system by ParisNeo</p>
+        <p class="text-center text-gray-600">&copy; 2024 Advanced Token Colorizer. All rights reserved.</p>
+        <p class="text-center text-gray-500 mt-2">Built by Lollms Apps Maker using Claude Sonnet on lollms system by ParisNeo</p>
     </div>
 </footer>
-
 <script src="/lollms_assets/js/lollms_client_js"></script>
 <script src="/lollms_assets/js/axios.min"></script>
 <script>
-const lc = new LollmsClient(
-    null,    // Host address (default: http://localhost:9600)
-    null,    // Model name (default model used)
-    4096,    // Context size
-    -1,      // Personality
-    4096,    // Max tokens to be predicted
-    0.1,     // Temperature
-    50,      // Top K
-    0.95,    // Top P
-    0.8,     // Repeat penalty
-    40,      // Repeat last N
-    null,    // Seed
-    8,       // Number of threads
-    "",      // Service key
-    ELF_GENERATION_FORMAT.LOLLMS // Default generation mode
-);
-
+const lc = new LollmsClient(null, null, 4096, -1, 4096, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS);
 document.getElementById('colorizeButton').addEventListener('click', async function() {
     const prompt = document.getElementById('promptInput').value;
     const outputContainer = document.getElementById('outputContainer');
     outputContainer.innerHTML = '';
-
     try {
         const tokens = await lc.tokenize(prompt);
         let tokenCount = tokens.length;
-
         tokens.forEach((token, index) => {
             const [tokenText, tokenId] = token;
             const hue = (index * 137.5) % 360;
@@ -122,52 +110,78 @@ document.getElementById('colorizeButton').addEventListener('click', async functi
             span.dataset.tokenId = tokenId;
             outputContainer.appendChild(span);
         });
-
         document.getElementById('tokenCount').textContent = `Total Tokens: ${tokenCount}`;
+        updateStatistics(tokens);
     } catch (error) {
         console.error('Error during tokenization:', error);
         outputContainer.textContent = 'An error occurred during tokenization.';
     }
 });
-
+function updateStatistics(tokens) {
+    const tokenLengths = tokens.map(token => token[0].length);
+    const mean = tokenLengths.reduce((a, b) => a + b, 0) / tokenLengths.length;
+    const variance = tokenLengths.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / tokenLengths.length;
+    const stdDev = Math.sqrt(variance);
+    document.getElementById('meanTokens').textContent = `Mean tokens per line: ${mean.toFixed(2)}`;
+    document.getElementById('stdDevTokens').textContent = `Standard Deviation: ${stdDev.toFixed(2)}`;
+    const histogram = {};
+    tokenLengths.forEach(length => {
+        histogram[length] = (histogram[length] || 0) + 1;
+    });
+    const ctx = document.getElementById('tokenHistogram').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(histogram),
+            datasets: [{
+                label: 'Token Length Distribution',
+                data: Object.values(histogram),
+                backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
 const body = document.body;
 const toggleButton = document.getElementById('toggleDarkMode');
 const sunIcon = document.getElementById('sunIcon');
 const moonIcon = document.getElementById('moonIcon');
 const modeText = document.getElementById('modeText');
-
 function setDarkMode(isDark) {
     body.classList.toggle('dark', isDark);
     sunIcon.classList.toggle('hidden', isDark);
     moonIcon.classList.toggle('hidden', !isDark);
     modeText.textContent = isDark ? 'Light Mode' : 'Dark Mode';
     localStorage.setItem('darkMode', isDark);
-
     const elementsToToggle = [
         document.querySelector('header'),
         document.querySelector('footer'),
         document.getElementById('promptInput'),
-        document.getElementById('outputContainer')
+        document.getElementById('outputContainer'),
+        document.getElementById('statistics')
     ];
-
     elementsToToggle.forEach(el => {
         el.classList.toggle('bg-gray-800', isDark);
         el.classList.toggle('text-gray-200', isDark);
     });
-
     document.getElementById('toggleDarkMode').classList.toggle('bg-gray-700', isDark);
     document.getElementById('toggleDarkMode').classList.toggle('text-gray-200', isDark);
 }
-
 toggleButton.addEventListener('click', function() {
     const isDark = !body.classList.contains('dark');
     setDarkMode(isDark);
 });
-
 if (localStorage.getItem('darkMode') === 'true') {
     setDarkMode(true);
 }
 </script>
-
 </body>
 </html>
