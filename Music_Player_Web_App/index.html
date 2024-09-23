@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Groovy Tunes Player</title>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         .theme-default {
@@ -74,13 +74,11 @@
             background-color: var(--accent-color);
             filter: brightness(110%);
         }     
-        
         #visualizerContainer {
             background-color: var(--bg-color);
             border: 1px solid var(--accent-color);
             border-radius: 4px;
         }
-        
         #animationSelect {
             background-color: var(--accent-color);
             color: var(--bg-color);
@@ -88,30 +86,35 @@
         .animation-btn {
             transition: all 0.3s ease;
         }
-
         .animation-btn.bg-accent-color {
             background-color: var(--accent-color);
             color: var(--bg-color);
         }
-
         .animation-btn:hover {
             transform: scale(1.1);
         }
+        .playlist-item.selected {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
     </style>
 </head>
-<body class="theme-default">
-    <div class="flex h-screen">
-        <!-- Playlists Sidebar -->
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans theme-default">
+    <div class="container mx-auto px-4 py-8 flex h-screen">
         <div class="w-64 sidebar p-4 flex flex-col">
             <div class="flex-grow overflow-y-auto">
-                <h2 class="text-xl font-bold mb-4">Playlists</h2>
+                <h2 class="text-xl font-bold mb-4 text-indigo-800">Playlists</h2>
                 <ul id="playlistsList" class="space-y-2"></ul>
-                <button id="createPlaylistBtn" class="btn text-white px-4 py-2 rounded mt-4 w-full">
+                <button id="createPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4 w-full">
                     <i class="fas fa-plus mr-2"></i>Create Playlist
                 </button>
+                <input type="file" id="importPlaylistBtn" accept=".json" class="hidden">
+                <label for="importPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-2 w-full inline-block text-center cursor-pointer">
+                    <i class="fas fa-file-import mr-2"></i>Import Playlist
+                </label>
             </div>
             <div class="mt-auto pt-4">
-                <h3 class="text-lg font-semibold mb-2">Visualizer</h3>
+                <h3 class="text-lg font-semibold mb-2 text-indigo-800">Visualizer</h3>
                 <div id="animationToolbar" class="flex justify-around items-center">
                     <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="none">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -130,15 +133,15 @@
                     </button>
                 </div>
             </div>
-        </div>        <!-- Main Content -->
-        <div class="flex-1 flex flex-col p-6">
-            <h1 class="text-3xl font-bold text-center mb-4">Groovy Tunes Player</h1>
+        </div>        
+        <div class="flex-1 flex flex-col p-6 bg-white shadow-lg rounded-lg">
+            <h1 class="text-4xl font-bold text-indigo-800 text-center mb-4">Groovy Tunes Player</h1>
             <div class="mb-4 flex justify-between items-center">
                 <input type="file" id="audioUpload" accept="audio/*" class="hidden" multiple>
-                <label for="audioUpload" class="btn px-4 py-2 rounded cursor-pointer">
+                <label for="audioUpload" id="uploadTracksLabel" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 cursor-pointer hidden">
                     <i class="fas fa-upload mr-2"></i>Upload Tracks
                 </label>
-                <select id="themeSelect" class="border border-gray-300 rounded px-3 py-2">
+                <select id="themeSelect" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 px-3 py-2">
                     <option value="default">Default Theme</option>
                     <option value="dark">Dark Theme</option>
                     <option value="neon">Neon Theme</option>
@@ -146,7 +149,7 @@
             </div>
             <ul id="audioList" class="flex-grow overflow-y-auto mb-4"></ul>
             <div class="flex justify-end mb-4">
-                <button id="exportPlaylistBtn" class="btn text-white px-4 py-2 rounded">
+                <button id="exportPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                     <i class="fas fa-file-export mr-2"></i>Export Playlist
                 </button>
             </div>
@@ -154,23 +157,18 @@
                 <canvas id="visualizer" class="w-full h-full"></canvas>
             </div>
             <div id="playerControls" class="flex justify-center items-center space-x-4 mb-4">
-                <button id="prevBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-step-backward"></i></button>
-                <button id="playBtn" class="btn text-white p-4 rounded-full"><i class="fas fa-play"></i></button>
-                <button id="nextBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-step-forward"></i></button>
-                <button id="shuffleBtn" class="btn text-white p-2 rounded-full"><i class="fas fa-random"></i></button>
+                <button id="prevBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 rounded-full transition duration-300"><i class="fas fa-step-backward"></i></button>
+                <button id="playBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-4 rounded-full transition duration-300"><i class="fas fa-play"></i></button>
+                <button id="nextBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 rounded-full transition duration-300"><i class="fas fa-step-forward"></i></button>
+                <button id="shuffleBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 rounded-full transition duration-300"><i class="fas fa-random"></i></button>
             </div>
             <div id="progressBarContainer" class="w-full bg-gray-200 rounded-full h-2 mb-2 cursor-pointer">
-                <div id="progressBar" class="bg-blue-600 h-2 rounded-full" style="width: 0%"></div>
+                <div id="progressBar" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
             </div>
-            <p id="currentTrack" class="text-center font-semibold"></p>
+            <p id="currentTrack" class="text-center font-semibold text-indigo-800"></p>
         </div>
     </div>
-
     <audio id="audioPlayer" class="hidden"></audio>
-    <script>
-        console.log('Visualizer container:', document.getElementById('visualizerContainer'));
-        console.log('Visualizer canvas:', document.getElementById('visualizer'));
-    </script>
     <script>
         let audioSource;
         const audioUpload = document.getElementById('audioUpload');
@@ -182,56 +180,47 @@
         const shuffleBtn = document.getElementById('shuffleBtn');
         const createPlaylistBtn = document.getElementById('createPlaylistBtn');
         const exportPlaylistBtn = document.getElementById('exportPlaylistBtn');
+        const importPlaylistBtn = document.getElementById('importPlaylistBtn');
         const progressBar = document.getElementById('progressBar');
         const progressBarContainer = document.getElementById('progressBarContainer');
         const currentTrack = document.getElementById('currentTrack');
         const themeSelect = document.getElementById('themeSelect');
-
+        const uploadTracksLabel = document.getElementById('uploadTracksLabel');
         let audioFiles = [];
         let currentIndex = 0;
         let isPlaying = false;
         let isShuffled = false;
         let db;
-
-        // Initialize IndexedDB
         const dbName = 'AudioPlayerDB';
         const dbVersion = 1;
         const request = indexedDB.open(dbName, dbVersion);
-
         request.onerror = function(event) {
             console.error("IndexedDB error:", event.target.error);
         };
-
         request.onsuccess = function(event) {
             db = event.target.result;
             loadTracksFromDB();
         };
-
         request.onupgradeneeded = function(event) {
             db = event.target.result;
             const objectStore = db.createObjectStore("tracks", { keyPath: "name" });
         };
-
         function loadTracksFromDB() {
             const transaction = db.transaction(["tracks"], "readonly");
             const objectStore = transaction.objectStore("tracks");
             const request = objectStore.getAll();
-
             request.onsuccess = function(event) {
                 audioFiles = event.target.result;
                 updateAudioList();
             };
         }
-
         function saveTracksToDB() {
             const transaction = db.transaction(["tracks"], "readwrite");
             const objectStore = transaction.objectStore("tracks");
-
             audioFiles.forEach(track => {
                 objectStore.put(track);
             });
         }
-
         audioUpload.addEventListener('change', (event) => {
             const files = Array.from(event.target.files);
             files.forEach(file => {
@@ -246,7 +235,6 @@
             });
             audioUpload.value = '';
         });
-
         function updateAudioList() {
             audioList.innerHTML = '';
             audioFiles.forEach((file, index) => {
@@ -263,9 +251,8 @@
                 audioList.appendChild(listItem);
             });
             addDragAndDropListeners();
-            updateTrackHighlight();  // Add this line
+            updateTrackHighlight();
         }
-
         function addDragAndDropListeners() {
             const trackItems = document.querySelectorAll('.track-item');
             trackItems.forEach(item => {
@@ -275,30 +262,25 @@
                 item.addEventListener('dragend', dragEnd);
             });
         }
-
         function dragStart(e) {
             e.dataTransfer.setData('text/plain', e.target.dataset.index);
             e.target.classList.add('dragging');
         }
-
         function dragOver(e) {
             e.preventDefault();
         }
-
         function drop(e) {
             e.preventDefault();
-            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const toIndex = parseInt(e.target.closest('.track-item').dataset.index);
             const movedItem = audioFiles.splice(fromIndex, 1)[0];
             audioFiles.splice(toIndex, 0, movedItem);
             updateAudioList();
             saveTracksToDB();
         }
-
         function dragEnd(e) {
             e.target.classList.remove('dragging');
         }
-
         audioList.addEventListener('click', (event) => {
             if (event.target.classList.contains('remove-btn') || event.target.closest('.remove-btn')) {
                 const index = parseInt(event.target.closest('.remove-btn').dataset.index);
@@ -310,12 +292,10 @@
                 playTrack();
             }
         });
-
         playBtn.addEventListener('click', togglePlay);
         prevBtn.addEventListener('click', playPrevious);
         nextBtn.addEventListener('click', playNext);
         shuffleBtn.addEventListener('click', toggleShuffle);
-
         function togglePlay() {
             if (audioFiles.length === 0) return;
             if (isPlaying) {
@@ -326,7 +306,6 @@
             }
             isPlaying = !isPlaying;
         }
-
         function playTrack() {
             const track = audioFiles[currentIndex];
             const blob = new Blob([track.data], { type: 'audio/mpeg' });
@@ -336,44 +315,36 @@
             playBtn.innerHTML = '<i class="fas fa-pause"></i>';
             isPlaying = true;
             currentTrack.textContent = track.name;
-            updateTrackHighlight();  // Add this line
+            updateTrackHighlight();
             onPlayTrack();
             visualizerContainer.classList.remove('hidden');
             resizeCanvas();
-
         }
-
         function playPrevious() {
             currentIndex = (currentIndex - 1 + audioFiles.length) % audioFiles.length;
             playTrack();
-            updateTrackHighlight();  // Add this line
+            updateTrackHighlight();
         }
-        
         function playNext() {
             currentIndex = (currentIndex + 1) % audioFiles.length;
             playTrack();
-            updateTrackHighlight();  // Add this line
+            updateTrackHighlight();
         }
-
         function toggleShuffle() {
             isShuffled = !isShuffled;
             shuffleBtn.classList.toggle('text-blue-500');
         }
-
         progressBarContainer.addEventListener('click', (event) => {
             const rect = progressBarContainer.getBoundingClientRect();
             const x = event.clientX - rect.left;
             const clickedValue = x / rect.width;
             audioPlayer.currentTime = clickedValue * audioPlayer.duration;
         });
-
         audioPlayer.addEventListener('timeupdate', () => {
             const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100;
             progressBar.style.width = `${progress}%`;
         });
-
         audioPlayer.addEventListener('ended', playNext);
-
         exportPlaylistBtn.addEventListener('click', () => {
             const playlistData = JSON.stringify(audioFiles.map(track => track.name), null, 2);
             const blob = new Blob([playlistData], { type: 'application/json' });
@@ -384,11 +355,29 @@
             a.click();
             URL.revokeObjectURL(url);
         });
-
+        importPlaylistBtn.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedPlaylist = JSON.parse(e.target.result);
+                        const filteredAudioFiles = audioFiles.filter(track => importedPlaylist.includes(track.name));
+                        audioFiles = filteredAudioFiles;
+                        updateAudioList();
+                        saveTracksToDB();
+                        alert('Playlist imported successfully!');
+                    } catch (error) {
+                        console.error('Error importing playlist:', error);
+                        alert('Error importing playlist. Please check the file format.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        });
         themeSelect.addEventListener('change', (event) => {
             document.body.className = `theme-${event.target.value}`;
         });
-
         function updatePlaylistsList() {
             const playlistsList = document.getElementById('playlistsList');
             playlistsList.innerHTML = '';
@@ -402,26 +391,29 @@
                         <i class="fas fa-trash"></i>
                     </button>
                 `;
+                listItem.addEventListener('click', () => {
+                    audioFiles = playlist.tracks.map(trackName => {
+                        return audioFiles.find(file => file.name === trackName);
+                    }).filter(Boolean);
+                    updateAudioList();
+                    document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('selected'));
+                    listItem.classList.add('selected');
+                    uploadTracksLabel.classList.remove('hidden');
+                });
                 playlistsList.appendChild(listItem);
             });
+            uploadTracksLabel.classList.toggle('hidden', playlistsList.children.length === 0);
         }
-
         document.getElementById('playlistsList').addEventListener('click', (event) => {
             if (event.target.classList.contains('remove-playlist-btn') || event.target.closest('.remove-playlist-btn')) {
+                event.stopPropagation();
                 const index = parseInt(event.target.closest('.remove-playlist-btn').dataset.index);
                 const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
                 playlists.splice(index, 1);
                 localStorage.setItem('playlists', JSON.stringify(playlists));
                 updatePlaylistsList();
-            } else if (event.target.closest('.playlist-item')) {
-                const index = Array.from(event.target.closest('.playlist-item').parentNode.children).indexOf(event.target.closest('.playlist-item'));
-                const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
-                const selectedPlaylist = playlists[index];
-                audioFiles = audioFiles.filter(file => selectedPlaylist.tracks.includes(file.name));
-                updateAudioList();
             }
         });
-
         createPlaylistBtn.addEventListener('click', () => {
             const playlistName = prompt('Enter playlist name:');
             if (playlistName) {
@@ -433,30 +425,23 @@
                 alert('Playlist created successfully!');
             }
         });
-
         function highlightPlayingTrack(index) {
-            // Remove 'playing' class from all tracks
             document.querySelectorAll('.track-item').forEach(item => {
                 item.classList.remove('playing');
             });
-            
-            // Add 'playing' class to the current track
             const currentTrack = document.querySelector(`.track-item[data-index="${index}"]`);
             if (currentTrack) {
                 currentTrack.classList.add('playing');
             }
         }
-        
         function updateTrackHighlight() {
             highlightPlayingTrack(currentIndex);
         }
-
         function setTheme(themeName) {
             document.body.className = `theme-${themeName}`;
             localStorage.setItem('theme', themeName);
             themeSelect.value = themeName;
         }
-
         function loadSavedTheme() {
             const savedTheme = localStorage.getItem('theme');
             if (savedTheme) {
@@ -465,7 +450,6 @@
                 setTheme('default');
             }
         }
-
         themeSelect.addEventListener('change', (event) => {
             setTheme(event.target.value);
         });
@@ -477,10 +461,8 @@
         let audioContext;
         let analyser;
         let dataArray;
-        
         const animationToolbar = document.getElementById('animationToolbar');
         let currentAnimationType = 'none';
-
         animationToolbar.addEventListener('click', (event) => {
             const button = event.target.closest('.animation-btn');
             if (button) {
@@ -488,13 +470,11 @@
                 setAnimationType(animationType);
             }
         });
-        
         function setAnimationType(type) {
             currentAnimationType = type;
             document.querySelectorAll('.animation-btn').forEach(btn => {
                 btn.classList.toggle('bg-accent-color', btn.dataset.type === type);
             });
-
             if (type === 'none') {
                 visualizerContainer.classList.add('hidden');
                 cancelAnimationFrame(animationFrame);
@@ -507,10 +487,8 @@
                     animateSpectrum();
                 }
             }
-
             saveVisualizerStatus(type);
         }
-        
         function setupAudioContext() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -518,59 +496,44 @@
                 audioSource = audioContext.createMediaElementSource(audioPlayer);
                 audioSource.connect(analyser);
                 analyser.connect(audioContext.destination);
-                analyser.fftSize = 2048; // Increased for better resolution
+                analyser.fftSize = 2048;
                 const bufferLength = analyser.frequencyBinCount;
                 dataArray = new Uint8Array(bufferLength);
             }
         }
-        
         function animateWaveform() {
             const ctx = visualizer.getContext('2d');
             const width = visualizer.width;
             const height = visualizer.height;
-        
             function draw() {
                 animationFrame = requestAnimationFrame(draw);
-        
                 analyser.getByteTimeDomainData(dataArray);
-        
                 ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-color');
                 ctx.fillRect(0, 0, width, height);
-        
                 ctx.lineWidth = 2;
                 ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--accent-color');
-        
                 ctx.beginPath();
-        
                 const sliceWidth = width * 1.0 / dataArray.length;
                 let x = 0;
-        
                 for (let i = 0; i < dataArray.length; i++) {
                     const v = dataArray[i] / 128.0;
                     const y = v * height / 2;
-        
                     if (i === 0) {
                         ctx.moveTo(x, y);
                     } else {
                         ctx.lineTo(x, y);
                     }
-        
                     x += sliceWidth;
                 }
-        
                 ctx.lineTo(width, height / 2);
                 ctx.stroke();
             }
-        
             draw();
         }
-        
         function animateSpectrum() {
-            console.log('Animating spectrum');
             const ctx = visualizer.getContext('2d');
             const width = visualizer.width;
             const height = visualizer.height;
-        
             function draw() {
                 animationFrame = requestAnimationFrame(draw);
                 analyser.getByteFrequencyData(dataArray);
@@ -582,13 +545,9 @@
                     ctx.fillRect(i * barWidth, height - barHeight, barWidth, barHeight);
                 }
             }
-        
             draw();
         }
-        
         function onPlayTrack() {
-            console.log('onPlayTrack called');
-            console.log('Animation type:', currentAnimationType);
             if (currentAnimationType !== 'none') {
                 setupAudioContext();
                 if (audioContext.state === 'suspended') {
@@ -601,18 +560,14 @@
                 }
             }
         }
-        // Ensure the canvas size matches its display size
         function resizeCanvas() {
             visualizer.width = visualizer.offsetWidth;
             visualizer.height = visualizer.offsetHeight;
-            if (animationSelect.value !== 'none') onPlayTrack();
-            
+            if (currentAnimationType !== 'none') onPlayTrack();
         }
-
         function saveVisualizerStatus(type) {
             localStorage.setItem('visualizerType', type);
         }
-
         function loadVisualizerStatus() {
             return localStorage.getItem('visualizerType') || 'none';
         }
@@ -620,12 +575,9 @@
             const savedType = loadVisualizerStatus();
             setAnimationType(savedType);
         }
-
-        // Call this function when the page loads
         document.addEventListener('DOMContentLoaded', initializeVisualizer);
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-
     </script>
 </body>
 </html>

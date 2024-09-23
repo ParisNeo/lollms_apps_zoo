@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SecureNet Analyzer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .node { fill: #ccc; stroke: #fff; stroke-width: 2px; }
+        .link { stroke: #999; stroke-opacity: 0.6; }
+        .blurred-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: 1000; }
+        .settings-popup { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: white; padding: 20px; border-radius: 10px; z-index: 1001; max-width: 500px; width: 90%; }
+        .spinner { display: none; justify-content: center; align-items: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); z-index: 1002; }
+        .spinner div { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">SecureNet Analyzer</h1>
+            <p class="text-lg text-gray-600">Comprehensive Network Analysis and Security</p>
+        </header>
+        <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8" role="alert">
+            <p class="font-bold">Disclaimer:</p>
+            <p>This tool is designed for use on your own network for domestic purposes and to identify issues within your personal network. It is not intended for attacking or causing damage to any network. Please ensure you only use this tool for legitimate purposes on networks you own or have explicit permission to analyze.</p>
+        </div>
+        <main class="flex flex-col md:flex-row gap-8">
+            <section class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Network Map</h2>
+                <div id="network-map" class="w-full h-96 border border-gray-300 rounded"></div>
+            </section>
+            <section class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Device List</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="py-2 px-4 border-b text-left">Device Name</th>
+                                <th class="py-2 px-4 border-b text-left">IP Address</th>
+                                <th class="py-2 px-4 border-b text-left">MAC Address</th>
+                                <th class="py-2 px-4 border-b text-left">Type</th>
+                                <th class="py-2 px-4 border-b text-left">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="device-list"></tbody>
+                    </table>
+                </div>
+                <button id="scan-devices-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4">Scan Devices</button>
+            </section>
+        </main>
+        <section class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Port Scanner</h2>
+            <div class="flex mb-4">
+                <input type="text" id="ip-input" placeholder="Enter IP or range" class="flex-1 border border-indigo-300 rounded-l-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="scan-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">Scan</button>
+            </div>
+            <div id="port-scan-results" class="mt-4"></div>
+        </section>
+        <section class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Risk Assessment</h2>
+            <div id="risk-assessment" class="mt-4"></div>
+            <button id="risk-assessment-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4">Perform Risk Assessment</button>
+        </section>
+        <section class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Lollms Network Insights</h2>
+            <div class="flex flex-col space-y-4">
+                <textarea id="lollms-query" rows="3" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Ask about your network status..."></textarea>
+                <button id="query-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 self-end">Query</button>
+            </div>
+            <div id="lollms-response" class="mt-4 p-4 bg-gray-100 rounded-md"></div>
+        </section>
+        <button id="settings-btn" class="fixed bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full transition duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+        </button>
+    </div>
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Settings</h2>
+        <div class="mb-4">
+            <label for="scan-frequency" class="block text-sm font-medium text-gray-700">Scan Frequency (minutes)</label>
+            <input type="number" id="scan-frequency" min="5" max="60" value="15" class="mt-1 block w-full border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="notification-toggle" class="flex items-center">
+                <input type="checkbox" id="notification-toggle" class="form-checkbox h-5 w-5 text-indigo-600">
+                <span class="ml-2 text-sm text-gray-700">Enable Notifications</span>
+            </label>
+        </div>
+        <button id="save-settings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Settings</button>
+    </div>
+    <div class="spinner" id="spinner"><div>This may take a long time as I scan the whole network. Be patient.</div></div>
+    <script>
+        let deviceList = [];
+        const lc = new LollmsClient();
+
+        async function populateDeviceList() {
+            deviceList = document.getElementById('device-list');
+            deviceList.innerHTML = '';
+            document.getElementById('spinner').style.display = 'flex';
+            try {
+                const response = await axios.get('http://localhost:8000/scan_network');
+                const devices = response.data;
+                devices.forEach(device => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="py-2 px-4 border-b">${device.name}</td>
+                        <td class="py-2 px-4 border-b">${device.ip}</td>
+                        <td class="py-2 px-4 border-b">${device.mac}</td>
+                        <td class="py-2 px-4 border-b">${device.type}</td>
+                        <td class="py-2 px-4 border-b">
+                        <td class="py-2 px-4 border-b">
+                            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-2 rounded text-xs scan-device" data-ip="${device.ip}">
+                                Scan
+                            </button>
+                        </td>
+                    `;
+                    deviceList.appendChild(row);
+                });
+                document.querySelectorAll('.scan-device').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const ip = this.getAttribute('data-ip');
+                        scanPorts(ip);
+                    });
+                });
+            } catch (error) {
+                console.error('Error scanning network:', error);
+                deviceList.innerHTML = '<tr><td colspan="5" class="py-2 px-4 border-b text-red-600">Error scanning network</td></tr>';
+            } finally {
+                document.getElementById('spinner').style.display = 'none';
+            }
+        }
+        function scanPorts(ip) {
+            const resultsDiv = document.getElementById('port-scan-results');
+            resultsDiv.innerHTML = `<p class="text-gray-600">Scanning ports for ${ip}...</p>`;
+            axios.post('http://localhost:8000/scan_ports', { ip: ip })
+                .then(response => {
+                    const ports = response.data;
+                    let html = `<h3 class="font-semibold mb-2">Scan Results for ${ip}:</h3><ul class="list-disc list-inside">`;
+                    ports.forEach(port => {
+                        html += `<li>Port ${port.number} (${port.service}): ${port.status}</li>`;
+                    });
+                    html += '</ul>';
+                    resultsDiv.innerHTML = html;
+                })
+                .catch(error => {
+                    console.error('Error scanning ports:', error);
+                    resultsDiv.innerHTML = `<p class="text-red-600">Error scanning ports for ${ip}. Please try again.</p>`;
+                });
+        }
+        document.getElementById('scan-btn').addEventListener('click', () => {
+            const ipInput = document.getElementById('ip-input').value;
+            scanPorts(ipInput);
+        });
+        async function performRiskAssessment() {
+            const riskDiv = document.getElementById('risk-assessment');
+            try {
+                const response = await lc.generateCode(`Perform a risk assessment for the following network configuration: ${JSON.stringify(scannedDevices)}.
+Answer in a json format as a list of risks:
+\`\`\`json
+[
+    {"level":"risk level", "severity": "risk severity", "description":"risk description"},
+    {"level":"risk level", "severity": "risk severity", "description":"risk description"},
+    ...
+]
+\`\`\`
+`);
+                const risks = JSON.parse(response);
+                let riskHtml = '<h3 class="font-semibold mb-2">Network Risk Assessment:</h3><ul class="list-disc list-inside">';
+                risks.forEach(risk => {
+                    riskHtml += `<li class="text-${risk.level}-600">${risk.severity} Risk: ${risk.description}</li>`;
+                });
+                riskHtml += '</ul>';
+                riskDiv.innerHTML = riskHtml;
+            } catch (error) {
+                console.error('Error performing risk assessment:', error);
+                riskDiv.innerHTML = '<p class="text-red-600">Error performing risk assessment. Please try again.</p>';
+            }
+        }
+        document.getElementById('risk-assessment-btn').addEventListener('click', performRiskAssessment);
+        document.getElementById('query-btn').addEventListener('click', async () => {
+            const query = document.getElementById('lollms-query').value;
+            const responseDiv = document.getElementById('lollms-response');
+            responseDiv.innerHTML = '<p class="text-gray-600">Analyzing network...</p>';
+            try {
+                const response = await lc.generate(`Analyze the following network query and provide insights: ${query}`);
+                responseDiv.innerHTML = `<p class="text-gray-800">${response}</p>`;
+            } catch (error) {
+                responseDiv.innerHTML = '<p class="text-red-600">Error analyzing network. Please try again.</p>';
+                console.error('Lollms API Error:', error);
+            }
+        });
+
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const saveSettingsBtn = document.getElementById('save-settings');
+
+        settingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            settingsPopup.style.display = 'block';
+        });
+
+        settingsOverlay.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            const scanFrequency = document.getElementById('scan-frequency').value;
+            const notificationsEnabled = document.getElementById('notification-toggle').checked;
+            axios.post('/update_settings', {
+                scanFrequency: scanFrequency,
+                notificationsEnabled: notificationsEnabled
+            })
+            .then(response => {
+                console.log('Settings saved:', response.data);
+                settingsOverlay.style.display = 'none';
+                settingsPopup.style.display = 'none';
+            })
+            .catch(error => {
+                console.error('Error saving settings:', error);
+            });
+        });
+
+        document.getElementById('scan-devices-btn').addEventListener('click', populateDeviceList);
+    </script>
+</body>
+</html>
