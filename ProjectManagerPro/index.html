@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TaskFlowPro</title>
+    <title>ProjectManagerPro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
@@ -170,9 +170,13 @@
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-indigo-800 mb-8" data-translate="appTitle">TaskFlowPro</h1>
-        
-        <select id="languageSelector"></select>
+        <div class="flex justify-between items-center mb-8">
+        <h1 class="text-4xl font-bold text-indigo-800" data-translate="appTitle">Project Manager Pro</h1>
+        <select id="languageSelector" class="bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <!-- Language options will be populated dynamically -->
+        </select>
+        </div>
+          
         <div id="mainPage" class="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="projects">Projects</h2>
             <button id="newProjectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="createNewProject">
@@ -374,7 +378,7 @@
             en: {
                 name: "English",
                 translations: {
-                    "appTitle": "TaskFlowPro",
+                    "appTitle": "Project Manager Pro",
                     "projects": "Projects",
                     "createNewProject": "Create New Project",
                     "collaborators": "Collaborators",
@@ -428,7 +432,7 @@
             fr: {
                 name: "Français",
                 translations: {
-                    "appTitle": "TaskFlowPro",
+                    "appTitle": "Project Manager Pro",
                     "projects": "Projets",
                     "createNewProject": "Créer un nouveau projet",
                     "collaborators": "Collaborateurs",
@@ -481,7 +485,7 @@
             }
         };
 
-        const localizer = new WebAppLocalizer(translations, 'taskflow_pro_', document.getElementById('languageSelector'));
+        const localizer = new WebAppLocalizer(translations, 'project_manager_pro_', document.getElementById('languageSelector'));
         localizer.apply()
         let projects = [];
         let collaborators = [];
@@ -837,15 +841,15 @@
         }
 
         function saveProjects() {
-            localStorage.setItem('taskflow_pro_projects', JSON.stringify(projects));
+            localStorage.setItem('project_manager_proprojects', JSON.stringify(projects));
         }
 
         function saveCollaborators() {
-            localStorage.setItem('taskflow_pro_collaborators', JSON.stringify(collaborators));
+            localStorage.setItem('project_manager_procollaborators', JSON.stringify(collaborators));
         }
 
         function loadProjects() {
-            const savedProjects = localStorage.getItem('taskflow_pro_projects');
+            const savedProjects = localStorage.getItem('project_manager_proprojects');
             if (savedProjects) {
                 projects = JSON.parse(savedProjects);
                 renderProjectList();
@@ -853,7 +857,7 @@
         }
 
         function loadCollaborators() {
-            const savedCollaborators = localStorage.getItem('taskflow_pro_collaborators');
+            const savedCollaborators = localStorage.getItem('project_manager_procollaborators');
             if (savedCollaborators) {
                 collaborators = JSON.parse(savedCollaborators);
                 renderCollaboratorList();
@@ -1013,6 +1017,8 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            const addProjectCollaboratorBtn = document.getElementById('addProjectCollaboratorBtn');
+            addProjectCollaboratorBtn.addEventListener('click', showAddProjectCollaboratorPopup);
             const spinner = document.getElementById('spinner');
             const generateOrganigramBtn = document.getElementById('generateOrganigramBtn');
             generateOrganigramBtn.addEventListener('click', generateWorkPackagesOrganigram);
