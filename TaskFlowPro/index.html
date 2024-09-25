@@ -1,0 +1,1494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskFlowPro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.css">
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            z-index: 100;
+        }
+        .node rect {
+        stroke: #333;
+        stroke-width: 1px;
+        }
+        .node text {
+        font: 12px sans-serif;
+        }
+        .link {
+        fill: none;
+        stroke: #999;
+        stroke-width: 2px;
+        }
+        .button-group {
+        cursor: pointer;
+        }
+        .button-group circle:hover {
+        stroke: #333;
+        stroke-width: 2px;
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        }
+
+        .popup.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transform: translate(-50%, -60%);
+        }
+
+        .popup h2 {
+            margin-top: 0;
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+
+        #projectEditForm {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        button[type="submit"] {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            align-self: flex-end;
+            margin-top: 10px;
+        }
+
+        button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #28a745;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 4px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1001;
+            animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s forwards;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8" data-translate="appTitle">TaskFlowPro</h1>
+        
+        <select id="languageSelector"></select>
+        <div id="mainPage" class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="projects">Projects</h2>
+            <button id="newProjectBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="createNewProject">
+                Create New Project
+            </button>
+            <div id="projectList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            </div>
+        </div>
+
+        <div id="collaboratorSection" class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="collaborators">Collaborators</h2>
+            <button id="addCollaboratorBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addCollaborator">
+                Add Collaborator
+            </button>
+            <div id="collaboratorList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            </div>
+        </div>
+
+        <div id="projectPage" class="hidden">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                <h2 id="projectTitle" class="text-2xl font-semibold text-indigo-700 mb-4"></h2>
+                <div class="flex space-x-4 mb-4">
+                    <button id="collaboratorsTab" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="collaborators">Collaborators</button>
+                    <button id="riskManagementTab" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="riskManagement">Risk Management</button>
+                    <button id="taskOrganigramTab" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="wbs">Work Breakdown Structure (WBS)</button>
+                    <button id="ganttDiagramTab" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="ganttDiagram">Gantt Diagram</button>
+                    <button id="closeProjectBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="closeProject">Close Project</button>
+                    <button id="projectInfoBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="projectInfo">Project Info</button>
+                </div>
+                
+                <div id="riskManagementSection" class="hidden">
+                    <h3 class="text-xl font-semibold text-indigo-600 mb-4" data-translate="riskManagement">Risk Management</h3>
+                    <table id="riskTable" class="w-full border-collapse border border-gray-300 mb-4">
+                        <thead>
+                            <tr class="bg-indigo-100">
+                                <th class="border border-gray-300 p-2" data-translate="riskFamily">Risk Family</th>
+                                <th class="border border-gray-300 p-2" data-translate="riskLevel">Risk Level</th>
+                                <th class="border border-gray-300 p-2" data-translate="description">Description</th>
+                                <th class="border border-gray-300 p-2" data-translate="actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                    <div class="mb-4">
+                        <select id="predefinedRisks" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="" data-translate="selectPredefinedRisk">Select a predefined risk or add your own</option>
+                            <option value="Technical" data-translate="technicalRisk">Technical Risk</option>
+                            <option value="Schedule" data-translate="scheduleRisk">Schedule Risk</option>
+                            <option value="Budget" data-translate="budgetRisk">Budget Risk</option>
+                            <option value="Scope" data-translate="scopeRisk">Scope Risk</option>
+                            <option value="Resource" data-translate="resourceRisk">Resource Risk</option>
+                        </select>
+                    </div>
+                    <button id="addRiskBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addRisk">Add Risk</button>
+                    <button id="exportRiskBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="exportRiskData">Export Risk Data</button>
+                </div>
+
+                <div id="taskOrganigramSection" class="hidden">
+                    <h3 class="text-xl font-semibold text-indigo-600 mb-4" data-translate="wbs">Work Breakdown Structure (WBS)</h3>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="uploadDocuments">Upload Documents</label>
+                        <button id="loadContract" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2" data-translate="loadContract">Load Contract</button>
+                        <button id="loadRex" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2" data-translate="loadRex">Load REX</button>
+                        <button id="loadRiskManagement" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-2" data-translate="loadRiskManagement">Load Risk Management</button>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="additionalInfo">Additional Information</label>
+                        <textarea id="additionalInfo" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    <div class="flex items-center">
+                        <button id="generateOrganigramBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 mr-2" data-translate="generateWbs">Generate Work Breakdown Structure (WBS)</button>
+                        <div id="spinner" class="hidden animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                    </div>
+                      
+                    <div id="organigramContainer" class="border border-gray-300 p-4 rounded-lg mb-4"></div>
+                    <div id="editingContainer"></div>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button id="exportPNGBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="exportPNG">Export PNG</button>
+                        <button id="exportSVGBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="exportSVG">Export SVG</button>
+                        <button id="exportHTMLBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="exportHTML">Export HTML</button>
+                    </div>
+                </div>
+
+                <div id="ganttDiagramSection" class="hidden">
+                    <h3 class="text-xl font-semibold text-indigo-600 mb-4" data-translate="ganttDiagram">Gantt Diagram</h3>
+                    <div id="ganttChart" class="mb-4"></div>
+                    <button id="findCriticalPathBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="findCriticalPath">Find Critical Path</button>
+                    <div id="criticalPathResult" class="text-indigo-700 font-semibold"></div>
+                </div>
+
+                <div id="collaboratorsSection" class="hidden">
+                    <h3 class="text-xl font-semibold text-indigo-600 mb-4" data-translate="projectCollaborators">Project Collaborators</h3>
+                    <div id="projectCollaboratorsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    </div>
+                    <button id="addProjectCollaboratorBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="addCollaborator">Add Collaborator</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h3 class="text-xl font-semibold text-indigo-700 mb-4" data-translate="settings">Settings</h3>
+        <button id="closeSettingsBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close">Close</button>
+    </div>
+
+    <div id="newProjectPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" data-translate="createNewProject">Create New Project</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="projectName">Project Name</label>
+                <input type="text" id="newProjectName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="projectDescription">Project Description</label>
+                <textarea id="newProjectDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="projectBudget">Project Budget</label>
+                <input type="number" id="newProjectBudget" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="projectCollaborators">Project Collaborators</label>
+                <select id="projectCollaborators" multiple class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </select>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="cancelNewProject" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded transition duration-300" data-translate="cancel">Cancel</button>
+                <button id="saveNewProject" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addRiskPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" data-translate="addNewRisk">Add New Risk</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="riskName">Risk Name</label>
+                <input type="text" id="newRiskName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="riskDescription">Risk Description</label>
+                <textarea id="newRiskDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="riskProbability">Risk Probability</label>
+                <input type="range" id="newRiskProbability" min="0" max="100" class="w-full">
+                <span id="probabilityValue">50</span>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="riskCriticality">Risk Criticality</label>
+                <input type="range" id="newRiskCriticality" min="0" max="100" class="w-full">
+                <span id="criticalityValue">50</span>
+            </div>
+            <div id="riskChart" class="mb-4" style="height: 300px;"></div>
+            <div class="flex justify-end space-x-2">
+                <button id="cancelNewRisk" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded transition duration-300" data-translate="cancel">Cancel</button>
+                <button id="saveNewRisk" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addCollaboratorPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" data-translate="addNewCollaborator">Add New Collaborator</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="collaboratorName">Collaborator Name</label>
+                <input type="text" id="newCollaboratorName" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="collaboratorDescription">Collaborator Description</label>
+                <textarea id="newCollaboratorDescription" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+            </div>
+            <div class="flex justify-end space-x-2">
+                <button id="cancelNewCollaborator" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded transition duration-300" data-translate="cancel">Cancel</button>
+                <button id="saveNewCollaborator" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="projectInfoPopup" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4" data-translate="projectInformation">Project Information</h3>
+            <div id="projectInfoContent"></div>
+            <div class="mt-4 flex justify-end">
+                <button id="closeProjectInfo" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const lollmsFileLoader = new LollmsFileLoader();
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "appTitle": "TaskFlowPro",
+                    "projects": "Projects",
+                    "createNewProject": "Create New Project",
+                    "collaborators": "Collaborators",
+                    "addCollaborator": "Add Collaborator",
+                    "riskManagement": "Risk Management",
+                    "wbs": "Work Breakdown Structure (WBS)",
+                    "ganttDiagram": "Gantt Diagram",
+                    "closeProject": "Close Project",
+                    "projectInfo": "Project Info",
+                    "riskFamily": "Risk Family",
+                    "riskLevel": "Risk Level",
+                    "description": "Description",
+                    "actions": "Actions",
+                    "selectPredefinedRisk": "Select a predefined risk or add your own",
+                    "technicalRisk": "Technical Risk",
+                    "scheduleRisk": "Schedule Risk",
+                    "budgetRisk": "Budget Risk",
+                    "scopeRisk": "Scope Risk",
+                    "resourceRisk": "Resource Risk",
+                    "addRisk": "Add Risk",
+                    "exportRiskData": "Export Risk Data",
+                    "uploadDocuments": "Upload Documents",
+                    "loadContract": "Load Contract",
+                    "loadRex": "Load REX",
+                    "loadRiskManagement": "Load Risk Management",
+                    "additionalInfo": "Additional Information",
+                    "generateWbs": "Generate Work Breakdown Structure (WBS)",
+                    "exportPNG": "Export PNG",
+                    "exportSVG": "Export SVG",
+                    "exportHTML": "Export HTML",
+                    "findCriticalPath": "Find Critical Path",
+                    "projectCollaborators": "Project Collaborators",
+                    "settings": "Settings",
+                    "close": "Close",
+                    "projectName": "Project Name",
+                    "projectDescription": "Project Description",
+                    "projectBudget": "Project Budget",
+                    "cancel": "Cancel",
+                    "save": "Save",
+                    "addNewRisk": "Add New Risk",
+                    "riskName": "Risk Name",
+                    "riskDescription": "Risk Description",
+                    "riskProbability": "Risk Probability",
+                    "riskCriticality": "Risk Criticality",
+                    "addNewCollaborator": "Add New Collaborator",
+                    "collaboratorName": "Collaborator Name",
+                    "collaboratorDescription": "Collaborator Description",
+                    "projectInformation": "Project Information"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "appTitle": "TaskFlowPro",
+                    "projects": "Projets",
+                    "createNewProject": "Créer un nouveau projet",
+                    "collaborators": "Collaborateurs",
+                    "addCollaborator": "Ajouter un collaborateur",
+                    "riskManagement": "Gestion des risques",
+                    "wbs": "Organigramme des taches",
+                    "ganttDiagram": "Diagramme de Gantt",
+                    "closeProject": "Fermer le projet",
+                    "projectInfo": "Informations sur le projet",
+                    "riskFamily": "Famille de risque",
+                    "riskLevel": "Niveau de risque",
+                    "description": "Description",
+                    "actions": "Actions",
+                    "selectPredefinedRisk": "Sélectionnez un risque prédéfini ou ajoutez le vôtre",
+                    "technicalRisk": "Risque technique",
+                    "scheduleRisk": "Risque de calendrier",
+                    "budgetRisk": "Risque budgétaire",
+                    "scopeRisk": "Risque de portée",
+                    "resourceRisk": "Risque de ressources",
+                    "addRisk": "Ajouter un risque",
+                    "exportRiskData": "Exporter les données de risque",
+                    "uploadDocuments": "Télécharger des documents",
+                    "loadContract": "Charger le contrat",
+                    "loadRex": "Charger le REX",
+                    "loadRiskManagement": "Charger la gestion des risques",
+                    "additionalInfo": "Informations supplémentaires",
+                    "generateWbs": "Générer la structure de découpage du projet (WBS)",
+                    "exportPNG": "Exporter en PNG",
+                    "exportSVG": "Exporter en SVG",
+                    "exportHTML": "Exporter en HTML",
+                    "findCriticalPath": "Trouver le chemin critique",
+                    "projectCollaborators": "Collaborateurs du projet",
+                    "settings": "Paramètres",
+                    "close": "Fermer",
+                    "projectName": "Nom du projet",
+                    "projectDescription": "Description du projet",
+                    "projectBudget": "Budget du projet",
+                    "cancel": "Annuler",
+                    "save": "Enregistrer",
+                    "addNewRisk": "Ajouter un nouveau risque",
+                    "riskName": "Nom du risque",
+                    "riskDescription": "Description du risque",
+                    "riskProbability": "Probabilité du risque",
+                    "riskCriticality": "Criticité du risque",
+                    "addNewCollaborator": "Ajouter un nouveau collaborateur",
+                    "collaboratorName": "Nom du collaborateur",
+                    "collaboratorDescription": "Description du collaborateur",
+                    "projectInformation": "Informations sur le projet"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'taskflow_pro_', document.getElementById('languageSelector'));
+        localizer.apply()
+        let projects = [];
+        let collaborators = [];
+        let currentProject = null;
+
+        const mainPage = document.getElementById('mainPage');
+        const projectPage = document.getElementById('projectPage');
+        const projectList = document.getElementById('projectList');
+        const collaboratorList = document.getElementById('collaboratorList');
+        const newProjectBtn = document.getElementById('newProjectBtn');
+        const addCollaboratorBtn = document.getElementById('addCollaboratorBtn');
+        const riskManagementTab = document.getElementById('riskManagementTab');
+        const taskOrganigramTab = document.getElementById('taskOrganigramTab');
+        const ganttDiagramTab = document.getElementById('ganttDiagramTab');
+        const collaboratorsTab = document.getElementById('collaboratorsTab');
+        const riskManagementSection = document.getElementById('riskManagementSection');
+        const taskOrganigramSection = document.getElementById('taskOrganigramSection');
+        const ganttDiagramSection = document.getElementById('ganttDiagramSection');
+        const collaboratorsSection = document.getElementById('collaboratorsSection');
+        const newProjectPopup = document.getElementById('newProjectPopup');
+        const cancelNewProject = document.getElementById('cancelNewProject');
+        const saveNewProject = document.getElementById('saveNewProject');
+        const addRiskBtn = document.getElementById('addRiskBtn');
+        const addRiskPopup = document.getElementById('addRiskPopup');
+        const cancelNewRisk = document.getElementById('cancelNewRisk');
+        const saveNewRisk = document.getElementById('saveNewRisk');
+        const predefinedRisks = document.getElementById('predefinedRisks');
+        const addCollaboratorPopup = document.getElementById('addCollaboratorPopup');
+        const cancelNewCollaborator = document.getElementById('cancelNewCollaborator');
+        const saveNewCollaborator = document.getElementById('saveNewCollaborator');
+        const closeProjectBtn = document.getElementById('closeProjectBtn');
+        const projectInfoBtn = document.getElementById('projectInfoBtn');
+        const projectInfoPopup = document.getElementById('projectInfoPopup');
+        const closeProjectInfo = document.getElementById('closeProjectInfo');
+
+        newProjectBtn.addEventListener('click', showNewProjectPopup);
+        cancelNewProject.addEventListener('click', hideNewProjectPopup);
+        saveNewProject.addEventListener('click', createNewProject);
+        riskManagementTab.addEventListener('click', () => showSection(riskManagementSection));
+        taskOrganigramTab.addEventListener('click', () => showSection(taskOrganigramSection));
+        ganttDiagramTab.addEventListener('click', () => showSection(ganttDiagramSection));
+        collaboratorsTab.addEventListener('click', () => showSection(collaboratorsSection));
+        addRiskBtn.addEventListener('click', showAddRiskPopup);
+        cancelNewRisk.addEventListener('click', hideAddRiskPopup);
+        saveNewRisk.addEventListener('click', addNewRisk);
+        predefinedRisks.addEventListener('change', handlePredefinedRiskSelection);
+        addCollaboratorBtn.addEventListener('click', showAddCollaboratorPopup);
+        cancelNewCollaborator.addEventListener('click', hideAddCollaboratorPopup);
+        saveNewCollaborator.addEventListener('click', addNewCollaborator);
+        closeProjectBtn.addEventListener('click', closeProject);
+        projectInfoBtn.addEventListener('click', showProjectInfo);
+        closeProjectInfo.addEventListener('click', hideProjectInfo);
+
+        function showNewProjectPopup() {
+            newProjectPopup.classList.remove('hidden');
+            updateCollaboratorsList();
+        }
+
+        function hideNewProjectPopup() {
+            newProjectPopup.classList.add('hidden');
+        }
+
+        function showAddRiskPopup() {
+            addRiskPopup.classList.remove('hidden');
+            initRiskChart();
+        }
+
+        function hideAddRiskPopup() {
+            addRiskPopup.classList.add('hidden');
+        }
+
+        function showAddCollaboratorPopup() {
+            addCollaboratorPopup.classList.remove('hidden');
+        }
+
+        function hideAddCollaboratorPopup() {
+            addCollaboratorPopup.classList.add('hidden');
+        }
+
+        function showProjectInfo() {
+            if (currentProject) {
+                const infoContent = document.getElementById('projectInfoContent');
+                infoContent.innerHTML = `
+                    <form id="projectEditForm">
+                        <div class="form-group">
+                            <label for="projectName">${localizer.translate("projectName")}:</label>
+                            <input type="text" id="projectName" value="${currentProject.name}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectDescription">${localizer.translate("description")}:</label>
+                            <textarea id="projectDescription" rows="3" required>${currentProject.description}</textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectBudget">${localizer.translate("projectBudget")}:</label>
+                            <input type="number" id="projectBudget" value="${currentProject.budget}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="projectCreationDate">${localizer.translate("created")}:</label>
+                            <input type="date" id="projectCreationDate" value="${new Date(currentProject.creationDate).toISOString().split('T')[0]}" required>
+                        </div>
+                        <button type="submit">${localizer.translate("saveChanges")}</button>
+                    </form>
+                `;
+                
+                const projectEditForm = document.getElementById('projectEditForm');
+                projectEditForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    updateProjectInfo();
+                });
+
+                projectInfoPopup.classList.remove('hidden');
+            }
+        }
+        function updateProjectInfo() {
+            currentProject.name = document.getElementById('projectName').value;
+            currentProject.description = document.getElementById('projectDescription').value;
+            currentProject.budget = parseFloat(document.getElementById('projectBudget').value);
+            currentProject.creationDate = new Date(document.getElementById('projectCreationDate').value).getTime();
+
+            // You might want to add validation here
+
+            // Update any UI elements that display project info
+            updateProjectDisplay();
+
+            // Optionally, you can close the popup after saving
+            projectInfoPopup.classList.add('hidden');
+
+            // Provide feedback to the user
+            showNotification(localizer.translate("projectUpdatedSuccessfully"));
+        }
+        function updateProjectDisplay() {
+            // Update any other parts of your UI that show project info
+            // For example:
+            document.getElementById('currentProjectName').textContent = currentProject.name;
+            // ... update other elements as needed
+        }
+
+        function showNotification(message) {
+            // Implement this function to show a temporary notification to the user
+            // For example:
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.className = 'notification';
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }        
+        function hideProjectInfo() {
+            projectInfoPopup.classList.add('hidden');
+        }
+
+        function handlePredefinedRiskSelection() {
+            const selectedRisk = predefinedRisks.value;
+            if (selectedRisk) {
+                document.getElementById('newRiskName').value = localizer.translate(selectedRisk + "Risk");
+            }
+        }
+
+        function createNewProject() {
+            const projectName = document.getElementById('newProjectName').value;
+            const projectDescription = document.getElementById('newProjectDescription').value;
+            const projectBudget = parseFloat(document.getElementById('newProjectBudget').value);
+            const selectedCollaborators = Array.from(document.getElementById('projectCollaborators').selectedOptions).map(option => option.value);
+
+            if (projectName) {
+                const project = {
+                    id: Date.now(),
+                    name: projectName,
+                    creationDate: new Date().toISOString(),
+                    description: projectDescription,
+                    budget: projectBudget,
+                    risks: [],
+                    collaborators: selectedCollaborators,
+                    contract: "",
+                    rex: "",
+                    wsb: [],
+                    gantt: [],
+                    fileContents: {
+                        contract: null,
+                        rex: null,
+                        riskManagement: null
+                    }
+                };
+                projects.push(project);
+                renderProjectList();
+                saveProjects();
+                hideNewProjectPopup();
+            }
+        }
+
+        function addNewRisk() {
+            const riskName = document.getElementById('newRiskName').value;
+            const riskDescription = document.getElementById('newRiskDescription').value;
+            const probability = parseInt(document.getElementById('newRiskProbability').value);
+            const criticality = parseInt(document.getElementById('newRiskCriticality').value);
+
+            if (riskName && currentProject) {
+                const risk = {
+                    id: Date.now(),
+                    name: riskName,
+                    description: riskDescription,
+                    probability: probability,
+                    criticality: criticality
+                };
+                currentProject.risksDescription = ""
+                currentProject.risks.push(risk);
+                renderRiskManagement();
+                saveProjects();
+                hideAddRiskPopup();
+            }
+        }
+
+        function addNewCollaborator() {
+            const collaboratorName = document.getElementById('newCollaboratorName').value;
+            const collaboratorDescription = document.getElementById('newCollaboratorDescription').value;
+
+            if (collaboratorName) {
+                const collaborator = {
+                    id: Date.now(),
+                    name: collaboratorName,
+                    description: collaboratorDescription
+                };
+                collaborators.push(collaborator);
+                renderCollaboratorList();
+                saveCollaborators();
+                hideAddCollaboratorPopup();
+            }
+        }
+
+        function renderProjectList() {
+            projectList.innerHTML = '';
+            projects.forEach(project => {
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow rounded-lg p-4';
+                card.innerHTML = `
+                    <h3 class="text-lg font-semibold text-indigo-700">${project.name}</h3>
+                    <p class="text-sm text-gray-600">${localizer.translate("created")}: ${new Date(project.creationDate).toLocaleDateString()}</p>
+                    <p class="mt-2">${project.description || localizer.translate("noDescription")}</p>
+                    <p class="mt-2">${localizer.translate("projectBudget")}: $${project.budget ? project.budget.toLocaleString() : ''}</p>
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button class="text-indigo-600 hover:text-indigo-800" onclick="editProject(${project.id})">${localizer.translate("edit")}</button>
+                        <button class="text-red-600 hover:text-red-800" onclick="deleteProject(${project.id})">${localizer.translate("delete")}</button>
+                        <button class="text-green-600 hover:text-green-800" onclick="openProject(${project.id})">${localizer.translate("open")}</button>
+                    </div>
+                `;
+                projectList.appendChild(card);
+            });
+        }
+
+        function renderCollaboratorList() {
+            collaboratorList.innerHTML = '';
+            collaborators.forEach(collaborator => {
+                const card = document.createElement('div');
+                card.className = 'bg-white shadow rounded-lg p-4';
+                card.innerHTML = `
+                    <h3 class="text-lg font-semibold text-indigo-700">${collaborator.name}</h3>
+                    <p class="mt-2">${collaborator.description || localizer.translate("noDescription")}</p>
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button class="text-indigo-600 hover:text-indigo-800" onclick="editCollaborator(${collaborator.id})">${localizer.translate("edit")}</button>
+                        <button class="text-red-600 hover:text-red-800" onclick="deleteCollaborator(${collaborator.id})">${localizer.translate("delete")}</button>
+                    </div>
+                `;
+                collaboratorList.appendChild(card);
+            });
+        }
+
+        function editProject(id) {
+            const project = projects.find(p => p.id === id);
+            if (project) {
+                document.getElementById('newProjectName').value = project.name;
+                document.getElementById('newProjectDescription').value = project.description;
+                document.getElementById('newProjectBudget').value = project.budget;
+                updateCollaboratorsList(project.collaborators);
+                showNewProjectPopup();
+                saveNewProject.onclick = function() {
+                    project.name = document.getElementById('newProjectName').value;
+                    project.description = document.getElementById('newProjectDescription').value;
+                    project.budget = parseFloat(document.getElementById('newProjectBudget').value);
+                    project.collaborators = Array.from(document.getElementById('projectCollaborators').selectedOptions).map(option => option.value);
+                    renderProjectList();
+                    saveProjects();
+                    hideNewProjectPopup();
+                };
+            }
+        }
+
+        function deleteProject(id) {
+            if (confirm(localizer.translate("confirmDeleteProject"))) {
+                projects = projects.filter(p => p.id !== id);
+                renderProjectList();
+                saveProjects();
+            }
+        }
+
+        function editCollaborator(id) {
+            const collaborator = collaborators.find(c => c.id === id);
+            if (collaborator) {
+                document.getElementById('newCollaboratorName').value = collaborator.name;
+                document.getElementById('newCollaboratorDescription').value = collaborator.description;
+                showAddCollaboratorPopup();
+                saveNewCollaborator.onclick = function() {
+                    collaborator.name = document.getElementById('newCollaboratorName').value;
+                    collaborator.description = document.getElementById('newCollaboratorDescription').value;
+                    renderCollaboratorList();
+                    saveCollaborators();
+                    hideAddCollaboratorPopup();
+                };
+            }
+        }
+
+        function deleteCollaborator(id) {
+            if (confirm(localizer.translate("confirmDeleteCollaborator"))) {
+                collaborators = collaborators.filter(c => c.id !== id);
+                renderCollaboratorList();
+                saveCollaborators();
+            }
+        }
+
+        function openProject(id) {
+            currentProject = projects.find(p => p.id === id);
+            if (currentProject) {
+                mainPage.classList.add('hidden');
+                projectPage.classList.remove('hidden');
+                document.getElementById('projectTitle').textContent = currentProject.name;
+                showSection(riskManagementSection);
+                renderRiskManagement();
+                renderTaskOrganigram();
+                renderGanttDiagram();
+                renderProjectCollaborators();
+                collaboratorSection.classList.add('hidden');
+            }
+        }
+
+        function closeProject() {
+            currentProject = null;
+            mainPage.classList.remove('hidden');
+            projectPage.classList.add('hidden');
+            collaboratorSection.classList.remove('hidden');
+        }
+
+        function showSection(section) {
+            [riskManagementSection, taskOrganigramSection, ganttDiagramSection, collaboratorsSection].forEach(s => s.classList.add('hidden'));
+            section.classList.remove('hidden');
+            [riskManagementTab, taskOrganigramTab, ganttDiagramTab, collaboratorsTab].forEach(tab => tab.classList.remove('bg-indigo-800'));
+            if (section === riskManagementSection) {
+                riskManagementTab.classList.add('bg-indigo-800');
+            } else if (section === taskOrganigramSection) {
+                taskOrganigramTab.classList.add('bg-indigo-800');
+            } else if (section === ganttDiagramSection) {
+                ganttDiagramTab.classList.add('bg-indigo-800');
+            } else if (section === collaboratorsSection) {
+                collaboratorsTab.classList.add('bg-indigo-800');
+            }
+        }
+
+        function saveProjects() {
+            localStorage.setItem('taskflow_pro_projects', JSON.stringify(projects));
+        }
+
+        function saveCollaborators() {
+            localStorage.setItem('taskflow_pro_collaborators', JSON.stringify(collaborators));
+        }
+
+        function loadProjects() {
+            const savedProjects = localStorage.getItem('taskflow_pro_projects');
+            if (savedProjects) {
+                projects = JSON.parse(savedProjects);
+                renderProjectList();
+            }
+        }
+
+        function loadCollaborators() {
+            const savedCollaborators = localStorage.getItem('taskflow_pro_collaborators');
+            if (savedCollaborators) {
+                collaborators = JSON.parse(savedCollaborators);
+                renderCollaboratorList();
+            }
+        }
+
+        function renderRiskManagement() {
+            const riskTableBody = document.querySelector('#riskTable tbody');
+            riskTableBody.innerHTML = '';
+            if (currentProject && currentProject.risks) {
+                currentProject.risks.forEach(risk => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td class="border border-gray-300 p-2">${risk.name}</td>
+                        <td class="border border-gray-300 p-2">${localizer.translate(getRiskLevel(risk.probability, risk.criticality))}</td>
+                        <td class="border border-gray-300 p-2">${risk.description}</td>
+                        <td class="border border-gray-300 p-2">
+                            <button onclick="editRisk(${risk.id})" class="text-blue-600 hover:text-blue-800 mr-2">${localizer.translate("edit")}</button>
+                            <button onclick="deleteRisk(${risk.id})" class="text-red-600 hover:text-red-800">${localizer.translate("delete")}</button>
+                        </td>
+                    `;
+                    riskTableBody.appendChild(row);
+                });
+            }
+        }
+
+        function getRiskLevel(probability, criticality) {
+            const riskScore = probability * criticality / 100;
+            if (riskScore < 25) return "lowRisk";
+            if (riskScore < 50) return "mediumRisk";
+            if (riskScore < 75) return "highRisk";
+            return "criticalRisk";
+        }
+
+        function editRisk(riskId) {
+            const risk = currentProject.risks.find(r => r.id === riskId);
+            if (risk) {
+                document.getElementById('newRiskName').value = risk.name;
+                document.getElementById('newRiskDescription').value = risk.description;
+                document.getElementById('newRiskProbability').value = risk.probability;
+                document.getElementById('newRiskCriticality').value = risk.criticality;
+                document.getElementById('probabilityValue').textContent = risk.probability;
+                document.getElementById('criticalityValue').textContent = risk.criticality;
+                showAddRiskPopup();
+                saveNewRisk.onclick = function() {
+                    risk.name = document.getElementById('newRiskName').value;
+                    risk.description = document.getElementById('newRiskDescription').value;
+                    risk.probability = parseInt(document.getElementById('newRiskProbability').value);
+                    risk.criticality = parseInt(document.getElementById('newRiskCriticality').value);
+                    renderRiskManagement();
+                    saveProjects();
+                    hideAddRiskPopup();
+                };
+            }
+        }
+
+        function deleteRisk(riskId) {
+            if (confirm(localizer.translate("confirmDeleteRisk"))) {
+                currentProject.risks = currentProject.risks.filter(r => r.id !== riskId);
+                renderRiskManagement();
+                saveProjects();
+            }
+        }
+
+        function renderTaskOrganigram() {
+            // Implement task organigram rendering logic here
+        }
+
+        function renderGanttDiagram() {
+            // Implement Gantt diagram rendering logic here
+        }
+
+
+        function renderProjectCollaborators() {
+            const projectCollaboratorsList = document.getElementById('projectCollaboratorsList');
+            projectCollaboratorsList.innerHTML = '';
+            if (currentProject && currentProject.collaborators) {
+                currentProject.collaborators.forEach(collaboratorId => {
+                    const collaborator = collaborators.find(c => c.id.toString() === collaboratorId);
+                    if (collaborator) {
+                        const card = document.createElement('div');
+                        card.className = 'bg-white shadow rounded-lg p-4';
+                        card.innerHTML = `
+                            <h3 class="text-lg font-semibold text-indigo-700">${collaborator.name}</h3>
+                            <p class="mt-2">${collaborator.description || 'No description'}</p>
+                            <button class="mt-2 text-red-600 hover:text-red-800" onclick="removeProjectCollaborator(${collaborator.id})">Remove</button>
+                        `;
+                        projectCollaboratorsList.appendChild(card);
+                    }
+                });
+            }
+        }
+
+        function removeProjectCollaborator(collaboratorId) {
+            if (currentProject) {
+                currentProject.collaborators = currentProject.collaborators.filter(id => id !== collaboratorId.toString());
+                renderProjectCollaborators();
+                saveProjects();
+            }
+        }
+
+        function initRiskChart() {
+            const ctx = document.getElementById('riskChart');
+            new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Risk',
+                        data: [{x: 50, y: 50}],
+                        backgroundColor: 'rgb(255, 99, 132)'
+                    }]
+                },
+                options: {
+                    scales: {
+                        x: {
+                            type: 'linear',
+                            position: 'bottom',
+                            title: {
+                                display: true,
+                                text: 'Probability'
+                            },
+                            min: 0,
+                            max: 100
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Criticality'
+                            },
+                            min: 0,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Probability: ${context.parsed.x}, Criticality: ${context.parsed.y}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCollaboratorsList(selectedCollaborators = []) {
+            const select = document.getElementById('projectCollaborators');
+            select.innerHTML = '';
+            collaborators.forEach(collaborator => {
+                const option = document.createElement('option');
+                option.value = collaborator.id;
+                option.textContent = collaborator.name;
+                option.selected = selectedCollaborators.includes(collaborator.id.toString());
+                select.appendChild(option);
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const spinner = document.getElementById('spinner');
+            const generateOrganigramBtn = document.getElementById('generateOrganigramBtn');
+            generateOrganigramBtn.addEventListener('click', generateWorkPackagesOrganigram);
+
+            let workPackagesData = {};
+
+            async function generateWorkPackagesOrganigram() {
+                const additionalInfo = document.getElementById('additionalInfo').value;
+                spinner.classList.remove('hidden');
+
+                const prompt = `Generate a detailed project structure for the following project:
+Project Name: ${currentProject.name}
+Project Budget: $${currentProject.budget}
+Project Collaborators: $${currentProject.collaborators}
+Additional Information: ${additionalInfo}
+
+Please create a project Work Breakdown Structure (WBS).
+Return the result as a JSON object with the following structure:
+{
+    "name": "Projet : panneau affichage dynamique",
+    "children": [
+        {
+            "name": "work package name",
+            "leader":"Leader if asuitable collaborator is available in collaborators list else put: needs to be defined"
+            "children": [
+                {"name": "task 1 name"},
+                {"name": "task 2 name"},
+                ...
+            ]
+        },
+        // ... other work packages ...
+    ]
+}`;
+
+                try {
+                    const response = await lc.generateCode(prompt);
+                    workPackagesData = JSON.parse(response);
+                    renderOrganigram(workPackagesData);
+                } catch (error) {
+                    console.error('Error generating project structure:', error);
+                    alert('Failed to generate project structure. Please try again.');
+                }
+                spinner.classList.add('hidden');
+            }
+            let selectedNode = null;
+
+            function renderOrganigram(data) {
+                const container = document.getElementById('organigramContainer');
+                container.innerHTML = '';
+                container.style.overflow = 'auto';
+                container.style.position = 'relative';
+                container.style.width = '100%';
+                container.style.height = '600px';
+
+                const margin = {top: 60, right: 20, bottom: 20, left: 20};
+                const width = 2000;
+                const height = 1500;
+
+                const svg = d3.select(container).append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .append("g")
+                    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                // Add zoom and pan behavior
+                const zoom = d3.zoom()
+                    .scaleExtent([0.1, 3])
+                    .on("zoom", zoomed);
+
+                const svgContainer = d3.select(container).select("svg");
+                svgContainer.call(zoom);
+
+                function zoomed(event) {
+                    svg.attr("transform", event.transform);
+                }
+
+                // Create a hierarchical layout
+                const root = d3.hierarchy(data);
+                const workPackages = root.children || [];
+
+                // Calculate dimensions
+                const nodeWidth = 180;
+                const nodeHeight = 40;
+                const levelHeight = 100;
+                const wpSpacing = Math.max(nodeWidth + 20, width / (workPackages.length || 1));
+
+                // Position nodes
+                root.x = width / 2;
+                root.y = 0;
+
+                workPackages.forEach((wp, i) => {
+                    wp.x = (i + 0.5) * wpSpacing;
+                    wp.y = levelHeight;
+                    (wp.children || []).forEach((task, j) => {
+                        task.x = wp.x;
+                        task.y = wp.y + levelHeight + j * (nodeHeight + 20);
+                    });
+                });
+
+                // Adjust SVG height based on the deepest branch
+                const maxDepth = d3.max(root.leaves(), d => d.depth);
+                const newHeight = Math.max((maxDepth + 1) * levelHeight + nodeHeight, height);
+                svgContainer.attr("height", newHeight);
+
+                // Create links
+                const link = svg.selectAll(".link")
+                    .data(root.links())
+                    .enter().append("path")
+                    .attr("class", "link")
+                    .attr("d", d => `M${d.source.x},${d.source.y + nodeHeight / 2}L${d.target.x},${d.target.y - nodeHeight / 2}`);
+                
+                // Create nodes
+                const node = svg.selectAll(".node")
+                    .data(root.descendants())
+                    .enter().append("g")
+                    .attr("class", d => "node" + (d.children ? " node--internal" : " node--leaf"))
+                    .attr("transform", d => `translate(${d.x - nodeWidth / 2},${d.y})`)
+                    .style("cursor", "pointer")
+                    .on("click", (event, d) => {
+                        event.stopPropagation();
+                        selectNode(d);
+                    })
+                    .on("dblclick", (event, d) => {
+                        event.stopPropagation();
+                        selectNode(d);
+                        showPopup(d);  // Changed from selectedNode to d
+                    });
+
+                // Add rectangles to nodes
+                node.append("rect")
+                    .attr("width", nodeWidth)
+                    .attr("height", nodeHeight)
+                    .attr("rx", 5)
+                    .attr("ry", 5)
+                    .style("fill", d => d.depth === 0 ? "#4CAF50" : 
+                                        d.depth === 1 ? "#2196F3" : "#FFC107");
+
+                // Add text to nodes
+                node.append("text")
+                    .attr("dy", "0.31em")
+                    .attr("x", nodeWidth / 2)
+                    .attr("y", nodeHeight / 2)
+                    .attr("text-anchor", "middle")
+                    .text(d => d.depth === 1 ? "WP: " + d.data.name : d.data.name)
+                    .style("fill", "white")
+                    .style("font-weight", "bold")
+                    .style("font-size", "12px")
+                    .each(function(d) {
+                        const self = d3.select(this);
+                        const textLength = self.node().getComputedTextLength();
+                        const text = self.text();
+                        if (textLength > nodeWidth - 10) {
+                            self.text(text.slice(0, 20) + "...");
+                        }
+                    });
+
+                // Deselect when clicking outside nodes
+                svgContainer.on("click", () => {
+                    selectNode(null);
+                });
+                function selectNode(d) {
+                    // Deselect previously selected node
+                    if (selectedNode) {
+                        d3.select(selectedNode.element).select("rect").style("stroke", null);
+                    }
+
+                    selectedNode = d ? { data: d.data, element: node.nodes()[root.descendants().indexOf(d)] } : null;
+
+                    if (selectedNode) {
+                        // Highlight selected node
+                        d3.select(selectedNode.element).select("rect").style("stroke", "red").style("stroke-width", 2);
+                    } else {
+                        hidePopup();
+                    }
+                }
+
+                function showPopup(d) {
+                    hidePopup();  // Hide any existing popup
+
+                    const popup = d3.select("organigramContainer").append("div")
+                        .attr("class", "popup")
+                        .style("position", "absolute")
+                        .style("left", "20px")
+                        .style("top", "20px")
+                        .style("background-color", "white")
+                        .style("border", "1px solid black")
+                        .style("padding", "10px")
+                        .style("z-index", "1000");
+
+                    popup.append("h3").text("Edit Node");
+                    
+                    popup.append("label").text("Name: ");
+                    popup.append("input")
+                        .attr("type", "text")
+                        .attr("value", d.data.name)
+                        .on("input", function() {
+                            d.data.name = this.value;
+                            updateGraph(data);
+                        });
+
+                    popup.append("br");
+                    popup.append("br");
+
+                    if (d.depth === 0) {
+                        popup.append("button")
+                            .text("Add Work Package")
+                            .on("click", () => addWorkPackage(d));
+                    } else if (d.depth === 1) {
+                        popup.append("button")
+                            .text("Add Task")
+                            .on("click", () => addTask(d));
+                    }
+
+                    if (d.depth > 0) {
+                        popup.append("button")
+                            .text("Delete")
+                            .on("click", () => deleteNode(d));
+                    }
+
+                    // Add close button
+                    popup.append("button")
+                        .text("Close")
+                        .on("click", hidePopup);
+                }
+
+                function hidePopup() {
+                    d3.select(".popup").remove();
+                }
+
+                function addWorkPackage(node) {
+                    const newWP = {
+                        id: `wp${node.data.children.length + 1}`,
+                        name: `New Work Package ${node.data.children.length + 1}`,
+                        type: "workpackage",
+                        children: []
+                    };
+                    node.data.children.push(newWP);
+                    updateGraph(data);
+                }
+
+                function addTask(node) {
+                    const newTask = {
+                        id: `task${node.data.children.length + 1}`,
+                        name: `New Task ${node.data.children.length + 1}`,
+                        type: "task"
+                    };
+                    node.data.children.push(newTask);
+                    updateGraph(data);
+                }
+
+                function deleteNode(node) {
+                    if (confirm("Are you sure you want to delete this node and all its children?")) {
+                        const parent = findParent(data, node.data.id);
+                        if (parent) {
+                            const index = parent.children.findIndex(child => child.id === node.data.id);
+                            if (index !== -1) {
+                                parent.children.splice(index, 1);
+                                updateGraph(data);
+                            }
+                        }
+                    }
+                }
+
+                function findParent(node, id) {
+                    if (node.children) {
+                        for (let child of node.children) {
+                            if (child.id === id) {
+                                return node;
+                            }
+                            const found = findParent(child, id);
+                            if (found) return found;
+                        }
+                    }
+                    return null;
+                }
+
+                function updateGraph(data) {
+                    hidePopup();
+                    renderOrganigram(data);
+                }
+            }
+
+            function setupEditingInterface(data) {
+                const editingContainer = document.getElementById('editingContainer');
+                editingContainer.innerHTML = '';
+
+                const addWPButton = document.createElement('button');
+                addWPButton.textContent = 'Add Work Package';
+                addWPButton.onclick = () => addWorkPackage(data);
+                editingContainer.appendChild(addWPButton);
+
+                data.workPackages.forEach((wp, index) => {
+                    const wpDiv = document.createElement('div');
+                    wpDiv.innerHTML = `
+                        <h3>Work Package ${index + 1}</h3>
+                        <input type="text" value="${wp.name}" onchange="updateWorkPackage(${index}, 'name', this.value)">
+                        <select onchange="updateWorkPackage(${index}, 'leader', this.value)">
+                            ${currentProject.collaborators.map(c => `<option value="${c.name}" ${c.name === wp.leader.name ? 'selected' : ''}>${c.name}</option>`).join('')}
+                        </select>
+                        <button onclick="addTask(${index})">Add Task</button>
+                    `;
+                    editingContainer.appendChild(wpDiv);
+
+                    wp.tasks.forEach((task, taskIndex) => {
+                        const taskDiv = document.createElement('div');
+                        taskDiv.innerHTML = `
+                            <input type="text" value="${task.name}" onchange="updateTask(${index}, ${taskIndex}, 'name', this.value)">
+                            <button onclick="removeTask(${index}, ${taskIndex})">Remove Task</button>
+                        `;
+                        wpDiv.appendChild(taskDiv);
+                    });
+                });
+            }
+
+            window.updateWorkPackage = function(index, field, value) {
+                workPackagesData.workPackages[index][field] = value;
+                renderOrganigram(workPackagesData);
+            };
+
+            window.addWorkPackage = function(data) {
+                const newWP = {
+                    id: `WP${data.workPackages.length + 1}`,
+                    name: `New Work Package ${data.workPackages.length + 1}`,
+                    description: "Description of new work package",
+                    leader: { name: "TBD", description: "To be determined" },
+                    tasks: []
+                };
+                data.workPackages.push(newWP);
+                renderOrganigram(data);
+                setupEditingInterface(data);
+            };
+
+            window.addTask = function(wpIndex) {
+                const wp = workPackagesData.workPackages[wpIndex];
+                const newTask = {
+                    id: `T${wp.id}.${wp.tasks.length + 1}`,
+                    name: `New Task ${wp.tasks.length + 1}`,
+                    description: "Description of new task"
+                };
+                wp.tasks.push(newTask);
+                renderOrganigram(workPackagesData);
+                setupEditingInterface(workPackagesData);
+            };
+
+            window.updateTask = function(wpIndex, taskIndex, field, value) {
+                workPackagesData.workPackages[wpIndex].tasks[taskIndex][field] = value;
+                renderOrganigram(workPackagesData);
+            };
+
+            window.removeTask = function(wpIndex, taskIndex) {
+                workPackagesData.workPackages[wpIndex].tasks.splice(taskIndex, 1);
+                renderOrganigram(workPackagesData);
+                setupEditingInterface(workPackagesData);
+            };
+
+            function exportRiskData() {
+                const csvContent = "data:text/csv;charset=utf-8,";
+                csvContent += "Risk Name,Risk Level,Probability,Criticality,Description\n";
+
+                if (currentProject && currentProject.risks) {
+                    currentProject.risks.forEach(risk => {
+                        const riskLevel = getRiskLevel(risk.probability, risk.criticality);
+                        csvContent += `"${risk.name}","${riskLevel}",${risk.probability},${risk.criticality},"${risk.description}"\n`;
+                    });
+                }
+
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", "risk_data.csv");
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function findCriticalPath() {
+                const criticalPathResult = document.getElementById('criticalPathResult');
+                criticalPathResult.textContent = "Critical Path: Task A → Task C → Task E → Task G";
+            }
+
+            function showAddProjectCollaboratorPopup() {
+                const availableCollaborators = collaborators.filter(c => !currentProject.collaborators.includes(c.id.toString()));
+                if (availableCollaborators.length > 0) {
+                    const select = document.createElement('select');
+                    select.id = 'availableProjectCollaborators';
+                    select.className = 'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500';
+                    availableCollaborators.forEach(collaborator => {
+                        const option = document.createElement('option');
+                        option.value = collaborator.id;
+                        option.textContent = collaborator.name;
+                        select.appendChild(option);
+                    });
+                    
+                    const popup = document.createElement('div');
+                    popup.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full';
+                    popup.innerHTML = `
+                        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                            <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Add Project Collaborator</h3>
+                            <div id="collaboratorSelectContainer"></div>
+                            <div class="mt-4 flex justify-end space-x-2">
+                                <button id="cancelAddProjectCollaborator" class="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded transition duration-300">Cancel</button>
+                                <button id="confirmAddProjectCollaborator" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Add</button>
+                            </div>
+                        </div>
+`;
+                    document.body.appendChild(popup);
+                    document.getElementById('collaboratorSelectContainer').appendChild(select);
+                    
+                    document.getElementById('cancelAddProjectCollaborator').addEventListener('click', () => {
+                        document.body.removeChild(popup);
+                    });
+                    
+                    document.getElementById('confirmAddProjectCollaborator').addEventListener('click', () => {
+                        const selectedCollaboratorId = select.value;
+                        if (selectedCollaboratorId) {
+                            currentProject.collaborators.push(selectedCollaboratorId);
+                            renderProjectCollaborators();
+                            saveProjects();
+                            document.body.removeChild(popup);
+                        }
+                    });
+                } else {
+                    alert('No available collaborators to add.');
+                }
+            }
+
+            const contractButton = document.getElementById('loadContract');
+            const rexButton = document.getElementById('loadRex');
+            const riskManagementButton = document.getElementById('loadRiskManagement');
+
+            const fileTypes = {
+                contract: ['.txt', '.pdf', '.md', '.docx'],
+                rex: ['.txt', '.pdf', '.md', '.docx'],
+                riskManagement: ['.txt', '.pdf', '.md', '.docx']
+            };
+
+
+            async function loadFile(fileType) {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = fileTypes[fileType].join(',');
+
+                input.onchange = async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        try {
+                            const content = await lollmsFileLoader.loadFile(file);
+                            console.log(`File ${file.name} content:`, content);
+                            currentProject.fileContents[fileType] = content;
+                            
+                            alert(`${fileType.charAt(0).toUpperCase() + fileType.slice(1)} loaded successfully!`);
+                        } catch (error) {
+                            console.error('Error loading file:', error);
+                            alert('Failed to load file. Please try again.');
+                        }
+                    }
+                };
+
+                input.click();
+            }
+
+            contractButton.addEventListener('click', () => loadFile('contract'));
+            rexButton.addEventListener('click', () => loadFile('rex'));
+            riskManagementButton.addEventListener('click', () => loadFile('riskManagement'));
+
+            loadProjects();
+            loadCollaborators();
+        });
+
+        document.getElementById('newRiskProbability').addEventListener('input', function() {
+            document.getElementById('probabilityValue').textContent = this.value;
+        });
+
+        document.getElementById('newRiskCriticality').addEventListener('input', function() {
+            document.getElementById('criticalityValue').textContent = this.value;
+        });
+    </script>
+</body>
+</html>
