@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSS News Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">    
+    <style>
+        .chat-message {
+            max-width: 70%;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 1rem;
+        }
+        .user-message {
+            background-color: #e0e7ff;
+            align-self: flex-end;
+        }
+        .ai-message {
+            background-color: #f3e8ff;
+            align-self: flex-start;
+        }
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            z-index: 100;
+        }
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .strawberry {
+            font-size: 64px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">RSS News Assistant</h1>
+            <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Settings</button>
+        </div>
+        <main class="flex flex-col lg:flex-row gap-8">
+            <div class="w-full lg:w-1/3 bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="rss_feeds">RSS Feeds</h2>
+                <div class="mb-4">
+                    <input type="text" id="rssInput" data-translate="enter_rss_url" placeholder="Enter RSS feed URL" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <button id="addFeedBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="add_feed">Add Feed</button>
+                    <button id="startScrapingBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="start_scraping">Start Scraping</button>
+                </div>
+                <div id="feedList" class="space-y-2"></div>
+                <div id="feedContent" class="mt-4 max-h-96 overflow-y-auto"></div>
+            </div>
+            <div class="w-full lg:w-2/3 bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="chat_with_lollms">Chat with Lollms</h2>
+                <div id="chatMessages" class="h-96 overflow-y-auto mb-4 flex flex-col"></div>
+                <div class="flex gap-2">
+                    <input type="text" id="userInput" data-translate="type_message" placeholder="Type your message..." class="flex-grow border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="send">Send</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="settings">Settings</h2>
+        <div class="mb-4">
+            <label for="languageSelector" class="block text-sm font-medium text-gray-700" data-translate="language">Language</label>
+            <select id="languageSelector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+        </div>
+        <div class="mb-4">
+            <label for="ctxSizeInput" class="block text-sm font-medium text-gray-700">Context Size</label>
+            <input type="number" id="ctxSizeInput" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+        </div>
+        <div class="mb-4">
+            <label for="hostAddressInput" class="block text-sm font-medium text-gray-700">Host Address</label>
+            <input type="text" id="hostAddressInput" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+        </div>
+        <button id="closeSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close">Close</button>
+    </div>
+    <div id="loadingOverlay" class="loading">
+        <div class="text-center">
+            <div class="strawberry">🍓</div>
+            <div class="mt-4 text-indigo-800">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+    <script>
+        const mr = new MarkdownRenderer()
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "rss_feeds": "RSS Feeds",
+                    "enter_rss_url": "Enter RSS feed URL",
+                    "add_feed": "Add Feed",
+                    "start_scraping": "Start Scraping",
+                    "chat_with_lollms": "Chat with Lollms",
+                    "type_message": "Type your message...",
+                    "send": "Send",
+                    "settings": "Settings",
+                    "language": "Language",
+                    "close": "Close"
+                },
+                promptTranslations: {
+                    "system_prompt": "You are an AI assistant that helps users understand news articles scraped from rss feeds. Your responses should be informative and concise. When referencing news articles, use the format [Article Title](Article Link) to create clickable links. Use markdown format for answering the questions.",
+                    "user_prompt": "Hello! Can you tell me about the latest news?"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "rss_feeds": "Flux RSS",
+                    "enter_rss_url": "Entrez l'URL du flux RSS",
+                    "add_feed": "Ajouter",
+                    "start_scraping": "Commencer",
+                    "chat_with_lollms": "Discuter avec Lollms",
+                    "type_message": "Tapez votre message...",
+                    "send": "Envoyer",
+                    "settings": "Paramètres",
+                    "language": "Langue",
+                    "close": "Fermer"
+                },
+                promptTranslations: {
+                    "system_prompt": "Vous êtes un assistant IA qui aide les utilisateurs à comprendre les articles d'actualité. Vos réponses doivent être informatives et concises. Lorsque vous faites référence à des articles d'actualité, utilisez le format [Titre de l'article](Lien de l'article) pour créer des liens cliquables. Utilise le markdown comme format de réponses.",
+                    "user_prompt": "Bonjour ! Pouvez-vous me parler des dernières actualités ?"
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, "rssNewsAssistant", document.getElementById("languageSelector"));
+        localizer.apply();
+        const lc = new LollmsClient();
+        let rssFeeds = JSON.parse(localStorage.getItem('rssFeeds')) || [];
+        let scrapedContent = JSON.parse(localStorage.getItem('scrapedContent')) || [];
+        let scrapedMarkdown = "";
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+        async function addFeed() {
+            const feedUrl = document.getElementById("rssInput").value.trim();
+            if (feedUrl && !rssFeeds.includes(feedUrl)) {
+                rssFeeds.push(feedUrl);
+                document.getElementById("rssInput").value = "";
+                updateFeedList();
+                localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
+            }
+        }
+        function updateFeedList() {
+            const feedList = document.getElementById("feedList");
+            feedList.innerHTML = "";
+            rssFeeds.forEach((feed, index) => {
+                const feedItem = document.createElement("div");
+                feedItem.className = "flex justify-between items-center bg-indigo-100 p-2 rounded";
+                feedItem.innerHTML = `
+                    <span>${feed}</span>
+                    <button class="text-red-600 hover:text-red-800" onclick="removeFeed(${index})">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                feedList.appendChild(feedItem);
+            });
+        }
+        function removeFeed(index) {
+            rssFeeds.splice(index, 1);
+            updateFeedList();
+            localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
+        }
+        async function startScraping() {
+            if (rssFeeds.length === 0) return;
+            showLoader();
+            try {
+                const response = await fetch("http://localhost:8000/get_rss_content", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ urls: rssFeeds }),
+                });
+                if (!response.ok) {
+                    throw new Error("Failed to fetch RSS content");
+                }
+                scrapedContent = await response.json();
+                scrapedMarkdown = convertScrapedContentToMarkdown();
+                displayScrapedContent();
+                localStorage.setItem('scrapedContent', JSON.stringify(scrapedContent));
+            } catch (error) {
+console.error("Error scraping RSS feeds:", error);
+            } finally {
+                hideLoader();
+            }
+        }
+        function convertScrapedContentToMarkdown() {
+            let markdown = "";
+            scrapedContent.forEach(feed => {
+                markdown += `## ${feed.feed_url}\n\n`;
+                feed.items.forEach(item => {
+                    markdown += `### [${item.title}](${item.link})\n\n`;
+                    if (item.published) {
+                        markdown += `**Published:** ${item.published}\n\n`;
+                    }
+                    if (item.description) {
+                        markdown += `${item.description}\n\n`;
+                    }
+                    markdown += `---\n\n`;
+                });
+                markdown += "\n";
+            });
+            return markdown;
+        }
+        function displayScrapedContent() {
+            const feedContent = document.getElementById("feedContent");
+            feedContent.innerHTML = "";
+            scrapedContent.forEach(feed => {
+                const feedDiv = document.createElement("div");
+                feedDiv.className = "mb-4";
+                feedDiv.innerHTML = `<h3 class="font-bold text-indigo-700">${feed.feed_url}</h3>`;
+                const itemsList = document.createElement("ul");
+                itemsList.className = "list-disc pl-5";
+                feed.items.forEach(item => {
+                    const listItem = document.createElement("li");
+                    listItem.innerHTML = `<a href="${item.link}" target="_blank" class="text-blue-600 hover:underline">${item.title}</a>`;
+                    itemsList.appendChild(listItem);
+                });
+                feedDiv.appendChild(itemsList);
+                feedContent.appendChild(feedDiv);
+            });
+        }
+        async function sendMessage() {
+            const userInput = document.getElementById("userInput");
+            const message = userInput.value.trim();
+            if (!message) return;
+            addMessageToChat("user", message);
+            userInput.value = "";
+            showLoader();
+            try {
+                const systemPrompt = localizer.formatPrompt("system_prompt");
+                const prompt = `${lc.system_message()}${systemPrompt}${lc.template.separator_template}${lc.user_message()}${message}${lc.template.separator_template}${lc.user_message("Rss feed search results")}${scrapedMarkdown}${lc.template.separator_template}${lc.ai_message()}`;
+                const response = await lc.generate(prompt);
+                addMessageToChat("ai", response);
+            } catch (error) {
+                console.error("Error generating response:", error);
+                addMessageToChat("ai", "I'm sorry, I encountered an error while processing your request.");
+            } finally {
+                hideLoader();
+            }
+        }
+        async function addMessageToChat(sender, content) {
+            const chatMessages = document.getElementById("chatMessages");
+            const messageDiv = document.createElement("div");
+            messageDiv.className = `chat-message ${sender}-message`;
+            messageDiv.innerHTML = await mr.renderMarkdown(content);
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        document.getElementById("addFeedBtn").addEventListener("click", addFeed);
+        document.getElementById("startScrapingBtn").addEventListener("click", startScraping);
+        document.getElementById("sendBtn").addEventListener("click", sendMessage);
+        document.getElementById("userInput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+        const settingsOverlay = document.getElementById("settingsOverlay");
+        const settingsPopup = document.getElementById("settingsPopup");
+        const closeSettingsBtn = document.getElementById("closeSettingsBtn");
+        const settingsBtn = document.getElementById("settingsBtn");
+        const ctxSizeInput = document.getElementById("ctxSizeInput");
+        const hostAddressInput = document.getElementById("hostAddressInput");
+        function toggleSettings() {
+            settingsOverlay.style.display = settingsOverlay.style.display === "none" ? "block" : "none";
+            settingsPopup.style.display = settingsPopup.style.display === "none" ? "block" : "none";
+        }
+        function updateSettings() {
+            const ctxSize = parseInt(ctxSizeInput.value);
+            const hostAddress = hostAddressInput.value.trim();
+            if (ctxSize) {
+                lc.updateSettings({ ctx_size: ctxSize });
+            }
+            if (hostAddress) {
+                lc.updateSettings({ host_address: hostAddress });
+            }
+        }
+        function loadSettings() {
+            ctxSizeInput.value = lc.ctx_size || 4096;
+            hostAddressInput.value = lc.host_address || "http://localhost:9600";
+        }
+        settingsBtn.addEventListener("click", () => {
+            loadSettings();
+            toggleSettings();
+        });
+        closeSettingsBtn.addEventListener("click", () => {
+            updateSettings();
+            toggleSettings();
+        });
+        hideLoader();
+        updateFeedList();
+        displayScrapedContent();
+    </script>
+</body>
+</html>
