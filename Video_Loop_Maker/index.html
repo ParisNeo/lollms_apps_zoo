@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lollms Loop Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans h-screen flex flex-col items-center justify-center">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-4 text-center">Lollms Loop Maker</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <input type="file" accept="video/*" id="videoInput" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 mb-4 w-full">
+            <button id="createLoopBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center justify-center w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                Create Loop
+            </button>
+            <div id="progressUI" class="hidden mt-4">
+                <div class="flex items-center justify-center">
+                    <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    <span id="progressText" class="ml-2 text-indigo-600">Processing...</span>
+                </div>
+            </div>
+            <main class="flex flex-col md:flex-row gap-8 mt-8">
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold mb-2 text-indigo-600">Original Video</h3>
+                    <video controls class="w-full rounded-lg" id="originalVideo"></video>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <h3 class="text-lg font-semibold mb-2 text-indigo-600">Looped Video</h3>
+                    <video controls loop class="w-full rounded-lg" id="loopedVideo"></video>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script>
+        const videoInput = document.getElementById('videoInput');
+        const createLoopBtn = document.getElementById('createLoopBtn');
+        const originalVideo = document.getElementById('originalVideo');
+        const loopedVideo = document.getElementById('loopedVideo');
+        const progressUI = document.getElementById('progressUI');
+        const progressText = document.getElementById('progressText');
+
+        videoInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            originalVideo.src = URL.createObjectURL(file);
+        });
+
+        createLoopBtn.addEventListener('click', async () => {
+            if (!videoInput.files[0]) {
+                alert('Please select a video file.');
+                return;
+            }
+
+            progressUI.classList.remove('hidden');
+            progressText.textContent = 'Uploading...';
+
+            const formData = new FormData();
+            formData.append('file', videoInput.files[0]);
+
+            try {
+                // Upload the file
+                const uploadResponse = await fetch('http://localhost:8000/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                if (!uploadResponse.ok) {
+                    throw new Error('Upload failed');
+                }
+                const uploadResult = await uploadResponse.json();
+
+                progressText.textContent = 'Creating loop...';
+
+                // Create the loop
+                const loopFormData = new FormData();
+                loopFormData.append('filename', uploadResult.filename);
+                const loopResponse = await fetch('http://localhost:8000/create_loop', {
+                    method: 'POST',
+                    body: loopFormData
+                });
+                if (!loopResponse.ok) {
+                    throw new Error('Loop creation failed');
+                }
+                const loopResult = await loopResponse.json();
+
+                // Set the looped video source
+                loopedVideo.src = `http://localhost:8000/video/${loopResult.looped_filename}`;
+
+                progressUI.classList.add('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                progressUI.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
