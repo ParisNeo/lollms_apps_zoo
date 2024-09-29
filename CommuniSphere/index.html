@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommuniSphere - Enhance Enterprise Communication</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .blurred-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 50;
+        }
+        .settings-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            display: none;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">CommuniSphere</h1>
+            <p class="text-xl text-indigo-600">Enhance Enterprise Communication</p>
+        </header>
+
+        <main class="flex flex-col lg:flex-row gap-8">
+            <section class="flex-1">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Content Adaptation</h2>
+                    <div class="mb-4">
+                        <label for="original-content" class="block text-sm font-medium text-gray-700">Original Content</label>
+                        <textarea id="original-content" rows="5" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                    </div>
+                    <div class="mb-4">
+                        <label for="complexity-level" class="block text-sm font-medium text-gray-700">Complexity Level</label>
+                        <input type="range" id="complexity-level" min="1" max="5" class="w-full" value="3">
+                        <div class="flex justify-between text-xs text-gray-600">
+                            <span>Simplified</span>
+                            <span>Expert</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700">Target Audience</label>
+                        <div class="mt-2">
+                            <label class="inline-flex items-center mr-4">
+                                <input type="checkbox" class="form-checkbox" name="target-audience" value="General Staff">
+                                <span class="ml-2">General Staff</span>
+                            </label>
+                            <label class="inline-flex items-center mr-4">
+                                <input type="checkbox" class="form-checkbox" name="target-audience" value="Technical Team">
+                                <span class="ml-2">Technical Team</span>
+                            </label>
+                            <label class="inline-flex items-center mr-4">
+                                <input type="checkbox" class="form-checkbox" name="target-audience" value="Management">
+                                <span class="ml-2">Management</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" class="form-checkbox" name="target-audience" value="Clients">
+                                <span class="ml-2">Clients</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button id="adapt-content" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Adapt Content
+                    </button>
+                </div>
+
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Adapted Content</h2>
+                    <div id="adapted-content" class="prose max-w-none"></div>
+                </div>
+            </section>
+
+            <section class="flex-1">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Report Generator</h2>
+                    <div class="mb-4">
+                        <label for="report-type" class="block text-sm font-medium text-gray-700">Report Type</label>
+                        <select id="report-type" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <option>Project Status</option>
+                            <option>Financial Summary</option>
+                            <option>Team Performance</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="report-data" class="block text-sm font-medium text-gray-700">Key Data Points</label>
+                        <textarea id="report-data" rows="5" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                    </div>
+                    <button id="generate-report" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Generate Report
+                    </button>
+                </div>
+
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Generated Report</h2>
+                    <div id="generated-report" class="prose max-w-none"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <button id="settingsButton" class="fixed bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-2 rounded-full shadow-lg transition duration-300">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+    </button>
+
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Settings</h2>
+        <div class="mb-4">
+            <label for="userRole" class="block text-sm font-medium text-gray-700">Your Role</label>
+            <input type="text" id="userRole" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+        </div>
+        <div class="mb-4">
+            <label for="expertiseLevel" class="block text-sm font-medium text-gray-700">Expertise Level</label>
+            <select id="expertiseLevel" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Expert</option>
+            </select>
+        </div>
+        <div class="mb-4">
+            <label for="communicationStyle" class="block text-sm font-medium text-gray-700">Preferred Communication Style</label>
+            <select id="communicationStyle" class="mt-1 block w-full rounded-md border-indigo-300 shadow-sm focus:border-indigo-500 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                <option>Formal</option>
+                <option>Casual</option>
+                <option>Direct</option>
+            </select>
+        </div>
+        <button id="saveSettings" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+            Save Settings
+        </button>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="display: none;">
+        <div class="bg-white p-4 rounded-lg shadow-lg text-center">
+            <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p class="text-indigo-800">Processing your request...</p>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        document.getElementById('adapt-content').addEventListener('click', async () => {
+            showLoader();
+            const originalContent = document.getElementById('original-content').value;
+            const complexityLevel = document.getElementById('complexity-level').value;
+            const targetAudiences = Array.from(document.querySelectorAll('input[name="target-audience"]:checked')).map(checkbox => checkbox.value);
+
+            if (targetAudiences.length === 0) {
+                alert('Please select at least one target audience.');
+                hideLoader();
+                return;
+            }
+
+            const adaptationPromises = targetAudiences.map(async (audience) => {
+                const prompt = `${lc.system_message()}You are an AI assistant specialized in adapting content for various audience levels. Please adapt the following content for a ${audience} audience at a complexity level of ${complexityLevel} out of 5:
+
+${originalContent}
+
+Provide the adapted content maintaining the original meaning but adjusting the language and explanations to suit the target audience and complexity level.${lc.user_message()}Please adapt the content as requested.${lc.ai_message()}`;
+
+                try {
+                    return await lc.generate(prompt);
+                } catch (error) {
+                    console.error(`Error adapting content for ${audience}:`, error);
+                    return `An error occurred while adapting the content for ${audience}.`;
+                }
+            });
+
+            try {
+                const adaptedContents = await Promise.all(adaptationPromises);
+                const combinedContent = adaptedContents.map((content, index) => `
+                    <h3 class="text-xl font-semibold mt-4 mb-2">Adaptation for ${targetAudiences[index]}</h3>
+                    <div>${content}</div>
+                `).join('');
+                document.getElementById('adapted-content').innerHTML = combinedContent;
+            } catch (error) {
+                console.error('Error adapting content:', error);
+                document.getElementById('adapted-content').innerHTML = 'An error occurred while adapting the content.';
+            } finally {
+                hideLoader();
+            }
+        });
+
+        document.getElementById('generate-report').addEventListener('click', async () => {
+            showLoader();
+            const reportType = document.getElementById('report-type').value;
+            const reportData = document.getElementById('report-data').value;
+
+            const prompt = `${lc.system_message()}You are an AI assistant specialized in generating professional reports. Please create a ${reportType} report based on the following key data points:
+
+${reportData}
+
+Generate a well-structured report with appropriate headings, bullet points, and a summary. Include visualizations or charts if relevant to the data provided.${lc.user_message()}Please generate the report as requested.${lc.ai_message()}`;
+
+            try {
+                const generatedReport = await lc.generate(prompt);
+                document.getElementById('generated-report').innerHTML = generatedReport;
+            } catch (error) {
+                console.error('Error generating report:', error);
+                document.getElementById('generated-report').innerHTML = 'An error occurred while generating the report.';
+            } finally {
+                hideLoader();
+            }
+        });
+
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').style.display = 'block';
+            document.getElementById('settingsPopup').style.display = 'block';
+        });
+
+        document.getElementById('settingsOverlay').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').style.display = 'none';
+            document.getElementById('settingsPopup').style.display = 'none';
+        });
+
+        document.getElementById('saveSettings').addEventListener('click', () => {
+const userRole = document.getElementById('userRole').value;
+            const expertiseLevel = document.getElementById('expertiseLevel').value;
+            const communicationStyle = document.getElementById('communicationStyle').value;
+
+            localStorage.setItem('userRole', userRole);
+            localStorage.setItem('expertiseLevel', expertiseLevel);
+            localStorage.setItem('communicationStyle', communicationStyle);
+
+            document.getElementById('settingsOverlay').style.display = 'none';
+            document.getElementById('settingsPopup').style.display = 'none';
+        });
+
+        window.addEventListener('load', () => {
+            document.getElementById('userRole').value = localStorage.getItem('userRole') || '';
+            document.getElementById('expertiseLevel').value = localStorage.getItem('expertiseLevel') || 'Intermediate';
+            document.getElementById('communicationStyle').value = localStorage.getItem('communicationStyle') || 'Casual';
+        });
+    </script>
+</body>
+</html>
