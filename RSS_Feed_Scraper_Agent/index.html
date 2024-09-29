@@ -193,6 +193,8 @@
                     <div class="flex gap-2 mt-4">
                         <button id="generateReportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Report</button>
                         <button id="saveReportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Report</button>
+                        <button id="speakReportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Speak Report</button>
+                        <button id="copyReportBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">Copy Report</button>
                     </div>
                 </div>
                 <div id="podcastTab" class="tab-content hidden w-full bg-white shadow-lg rounded-lg p-6 flex flex-col">
@@ -201,6 +203,8 @@
                     <div class="flex gap-2 mt-4">
                         <button id="generatePodcastBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Podcast</button>
                         <button id="savePodcastBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Podcast</button>
+                        <button id="speakPodcastBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Speak Podcast</button>
+                        <button id="copyPodcastBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">Copy Podcast</button>
                     </div>
                 </div>
             </div>
@@ -225,6 +229,10 @@
             <label for="podcastHost2Input" class="block text-sm font-medium text-gray-700">Podcast Host 2</label>
             <input type="text" id="podcastHost2Input" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
         </div>
+        <div class="mb-4">
+            <label for="voiceSelector" class="block text-sm font-medium text-gray-700">Text-to-Speech Voice</label>
+            <select id="voiceSelector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
+        </div>
         <button id="closeSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close">Close</button>
     </div>
     <div id="helpOverlay" class="blurred-overlay"></div>
@@ -245,17 +253,22 @@
             <p>1. Go to the "Report" tab after scraping content.</p>
             <p>2. Click "Generate Report" for an AI-generated summary of the news.</p>
             <p>3. Click "Save Report" to download the generated report.</p>
+            <p>4. Click "Speak Report" to listen to the report using text-to-speech.</p>
+            <p>5. Click "Copy Report" to copy the report to your clipboard.</p>
             
             <h3 class="text-xl font-semibold mt-4 mb-2">Podcast</h3>
             <p>1. Navigate to the "Podcast" tab after scraping content.</p>
             <p>2. Click "Generate Podcast" to create an AI-generated podcast discussion.</p>
             <p>3. Click "Save Podcast" to download the generated podcast script.</p>
+            <p>4. Click "Speak Podcast" to listen to the podcast using text-to-speech.</p>
+            <p>5. Click "Copy Podcast" to copy the podcast script to your clipboard.</p>
             
             <h3 class="text-xl font-semibold mt-4 mb-2">Settings</h3>
             <p>1. Click the gear icon to open settings.</p>
             <p>2. Adjust the context size and host address as needed.</p>
             <p>3. Set the names for the podcast hosts.</p>
-            <p>4. Click "Close" to save changes.</p>
+            <p>4. Select the preferred text-to-speech voice.</p>
+            <p>5. Click "Close" to save changes.</p>
         </div>
         <button id="closeHelpBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
     </div>
@@ -319,6 +332,7 @@
         let scrapedMarkdown = "";
         let podcastHost1 = localStorage.getItem('podcastHost1') || "Dave";
         let podcastHost2 = localStorage.getItem('podcastHost2') || "Rebecca";
+        let selectedVoice = localStorage.getItem('selectedVoice') || "";
         function showLoader() {
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
@@ -339,7 +353,7 @@
             if (selectedFeed) {
                 if (!rssFeeds.includes(selectedFeed)) {
                     rssFeeds.push(selectedFeed);
-                    updateFeedList();
+updateFeedList();
                     localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
                 } else {
                     alert("This feed is already in your list.");
@@ -368,7 +382,7 @@
             updateFeedList();
             localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
         }
-async function startScraping() {
+        async function startScraping() {
             if (rssFeeds.length === 0) return;
             showLoader();
             try {
@@ -512,14 +526,92 @@ async function startScraping() {
             link.click();
             URL.revokeObjectURL(url);
         }
+        function copyReport() {
+            const reportContent = document.getElementById("reportContent").innerText;
+            navigator.clipboard.writeText(reportContent).then(() => {
+                alert("Report copied to clipboard!");
+            }).catch(err => {
+                console.error('Error in copying text: ', err);
+            });
+        }
+        function copyPodcast() {
+            const podcastContent = document.getElementById("podcastContent").innerText;
+            navigator.clipboard.writeText(podcastContent).then(() => {
+                alert("Podcast script copied to clipboard!");
+            }).catch(err => {
+                console.error('Error in copying text: ', err);
+            });
+        }
+        async function speakReport() {
+            const reportContent = document.getElementById("reportContent").innerText;
+            await speakText(reportContent);
+        }
+        async function speakPodcast() {
+            const podcastContent = document.getElementById("podcastContent").innerText;
+            await speakText(podcastContent);
+        }
+        async function speakText(text) {
+            try {
+                const response = await fetch('/tts/stream', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        speaker: selectedVoice,
+                        language: localizer.currentLang
+                    }),
+                });
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const arrayBuffer = await response.arrayBuffer();
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                const source = audioContext.createBufferSource();
+                source.buffer = audioBuffer;
+                source.connect(audioContext.destination);
+                source.start(0);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while generating speech. Please try again.');
+            }
+        }
+        async function loadVoices() {
+            try {
+                const response = await fetch('/tts/voices');
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                const data = await response.json();
+                const voiceSelector = document.getElementById('voiceSelector');
+                voiceSelector.innerHTML = '';
+                data.voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice;
+                    voiceSelector.appendChild(option);
+                });
+                if (selectedVoice) {
+                    voiceSelector.value = selectedVoice;
+                }
+            } catch (error) {
+                console.error('Error loading voices:', error);
+            }
+        }
         document.getElementById("addFeedBtn").addEventListener("click", addFeed);
         document.getElementById("addPresetBtn").addEventListener("click", addSelectedFeed);
         document.getElementById("startScrapingBtn").addEventListener("click", startScraping);
         document.getElementById("sendBtn").addEventListener("click", sendMessage);
         document.getElementById("generateReportBtn").addEventListener("click", generateReport);
         document.getElementById("saveReportBtn").addEventListener("click", saveReport);
+        document.getElementById("speakReportBtn").addEventListener("click", speakReport);
+        document.getElementById("copyReportBtn").addEventListener("click", copyReport);
         document.getElementById("generatePodcastBtn").addEventListener("click", generatePodcast);
         document.getElementById("savePodcastBtn").addEventListener("click", savePodcast);
+        document.getElementById("speakPodcastBtn").addEventListener("click", speakPodcast);
+        document.getElementById("copyPodcastBtn").addEventListener("click", copyPodcast);
         document.getElementById("userInput").addEventListener("keypress", (e) => {
             if (e.key === "Enter") sendMessage();
         });
@@ -531,6 +623,7 @@ async function startScraping() {
         const hostAddressInput = document.getElementById("hostAddressInput");
         const podcastHost1Input = document.getElementById("podcastHost1Input");
         const podcastHost2Input = document.getElementById("podcastHost2Input");
+        const voiceSelector = document.getElementById("voiceSelector");
         const helpOverlay = document.getElementById("helpOverlay");
         const helpPopup = document.getElementById("helpPopup");
         const helpBtn = document.getElementById("helpBtn");
@@ -548,6 +641,7 @@ async function startScraping() {
             const hostAddress = hostAddressInput.value.trim();
             podcastHost1 = podcastHost1Input.value.trim() || "Dave";
             podcastHost2 = podcastHost2Input.value.trim() || "Rebecca";
+            selectedVoice = voiceSelector.value;
             if (ctxSize) {
                 lc.updateSettings({ ctx_size: ctxSize });
             }
@@ -556,12 +650,14 @@ async function startScraping() {
             }
             localStorage.setItem('podcastHost1', podcastHost1);
             localStorage.setItem('podcastHost2', podcastHost2);
+            localStorage.setItem('selectedVoice', selectedVoice);
         }
         function loadSettings() {
             ctxSizeInput.value = lc.ctx_size || 4096;
             hostAddressInput.value = lc.host_address || "http://localhost:9600";
             podcastHost1Input.value = podcastHost1;
             podcastHost2Input.value = podcastHost2;
+            loadVoices();
         }
         settingsBtn.addEventListener("click", () => {
             loadSettings();
@@ -588,6 +684,7 @@ async function startScraping() {
         updateFeedList();
         displayScrapedContent();
         document.querySelector('[data-tab="rss"]').click();
+        loadVoices();
     </script>
 </body>
 </html>
