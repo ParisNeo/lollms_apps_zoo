@@ -84,41 +84,125 @@
     </style>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
-    <div class="container mx-auto px-4 py-8">
+    <div class="container mx-auto px-4 py-8 h-screen flex flex-col">
         <div class="flex justify-between items-center mb-8">
             <h1 class="text-4xl font-bold text-indigo-800">RSS News Assistant</h1>
-            <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Settings</button>
+            <div class="flex items-center">
+                <select id="languageSelector" class="mr-2 border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"></select>
+                <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                </button>
+                <button id="helpBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded transition duration-300 ml-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </button>
+            </div>
         </div>
-        <main class="flex flex-col lg:flex-row gap-8">
-            <div class="w-full lg:w-1/3 bg-white shadow-lg rounded-lg p-6">
-                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="rss_feeds">RSS Feeds</h2>
-                <div class="mb-4">
-                    <input type="text" id="rssInput" data-translate="enter_rss_url" placeholder="Enter RSS feed URL" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                </div>
-                <div class="flex gap-2 mb-4">
-                    <button id="addFeedBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="add_feed">Add Feed</button>
-                    <button id="startScrapingBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="start_scraping">Start Scraping</button>
-                </div>
-                <div id="feedList" class="space-y-2"></div>
-                <div id="feedContent" class="mt-4 max-h-96 overflow-y-auto"></div>
+        <div class="mb-4 flex-grow flex flex-col">
+            <div class="border-b border-gray-200">
+                <nav class="-mb-px flex" aria-label="Tabs">
+                    <a href="#" class="tab-btn border-indigo-500 text-indigo-600 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="rss">RSS Scraping</a>
+                    <a href="#" id="chatTabSelector" class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm hidden" data-tab="chat">Chat</a>
+                    <a href="#" id="reportTabSelector" class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="report">Report</a>
+                    <a href="#" id="podcastTabSelector" class="tab-btn border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm" data-tab="podcast">Podcast</a>
+                </nav>
             </div>
-            <div class="w-full lg:w-2/3 bg-white shadow-lg rounded-lg p-6">
-                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="chat_with_lollms">Chat with Lollms</h2>
-                <div id="chatMessages" class="h-96 overflow-y-auto mb-4 flex flex-col"></div>
-                <div class="flex gap-2">
-                    <input type="text" id="userInput" data-translate="type_message" placeholder="Type your message..." class="flex-grow border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="send">Send</button>
+            <div class="flex-grow flex">
+                <div id="rssTab" class="tab-content w-full bg-white shadow-lg rounded-lg p-6 flex flex-col">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="rss_feeds">RSS Feeds</h2>
+                    <div class="mb-4">
+                        <label for="presetSelector" class="block text-sm font-medium text-gray-700">Add custom RSS Feed</label>
+                        <div class="flex flex-grow">
+                            <input type="text" id="rssInput" data-translate="enter_rss_url" placeholder="Enter RSS feed URL" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <button id="addFeedBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="add_feed">Add Feed</button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="presetSelector" class="block text-sm font-medium text-gray-700">Select RSS Feed</label>
+                        <div class="flex flex-grow">
+                            <select id="presetSelector" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Choose an RSS feed</option>
+                                <optgroup label="Technology">
+                                    <option value="https://techcrunch.com/feed/">TechCrunch</option>
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml">NY Times Technology</option>
+                                    <option value="https://feeds.arstechnica.com/arstechnica/index">Ars Technica</option>
+                                    <option value="https://www.wired.com/feed/rss">Wired</option>
+                                    <option value="https://www.theverge.com/rss/index.xml">The Verge</option>
+                                </optgroup>
+                                <optgroup label="News">
+                                    <option value="https://rss.cnn.com/rss/cnn_topstories.rss">CNN Top Stories</option>
+                                    <option value="https://feeds.bbci.co.uk/news/rss.xml">BBC News</option>
+                                    <option value="https://www.reuters.com/rss/topNews">Reuters Top News</option>
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/World.xml">NY Times World News</option>
+                                    <option value="https://www.npr.org/rss/rss.php?id=1001">NPR News</option>
+                                </optgroup>
+                                <optgroup label="Sports">
+                                    <option value="https://www.espn.com/espn/rss/news">ESPN News</option>
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/Sports.xml">NY Times Sports</option>
+                                    <option value="https://www.skysports.com/rss/11095">Sky Sports</option>
+                                    <option value="https://www.cbssports.com/rss/headlines/">CBS Sports</option>
+                                    <option value="https://api.foxsports.com/v1/rss?partnerKey=zBaFxRyGKCfxBagJG9b8pqLyndmvo7UU">Fox Sports</option>
+                                </optgroup>
+                                <optgroup label="Entertainment">
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml">NY Times Movies</option>
+                                    <option value="https://www.hollywoodreporter.com/t/feed/">Hollywood Reporter</option>
+                                    <option value="https://variety.com/feed/">Variety</option>
+                                    <option value="https://www.rollingstone.com/feed/">Rolling Stone</option>
+                                    <option value="https://ew.com/feed/">Entertainment Weekly</option>
+                                </optgroup>
+                                <optgroup label="Science">
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/Science.xml">NY Times Science</option>
+                                    <option value="https://www.sciencemag.org/rss/news_current.xml">Science Magazine</option>
+                                    <option value="https://www.nature.com/nature.rss">Nature</option>
+                                    <option value="https://feeds.nationalgeographic.com/ng/News/News_Main">National Geographic</option>
+                                    <option value="https://www.space.com/feeds/all">Space.com</option>
+                                </optgroup>
+                                <optgroup label="Business">
+                                    <option value="https://feeds.bloomberg.com/markets/news.rss">Bloomberg Markets</option>
+                                    <option value="https://rss.nytimes.com/services/xml/rss/nyt/Business.xml">NY Times Business</option>
+                                    <option value="https://www.forbes.com/real-time/feed2/">Forbes Real Time</option>
+                                    <option value="https://www.ft.com/rss/home">Financial Times</option>
+                                    <option value="https://www.wsj.com/xml/rss/3_7014.xml">Wall Street Journal</option>
+                                </optgroup>
+                            </select>
+                            <button id="addPresetBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Add</button>    
+</div>
+                    </div>
+                    
+                    <div class="flex gap-2 mb-4">
+                        <button id="startScrapingBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="start_scraping">Start Scraping</button>
+                    </div>
+                    <div id="feedList" class="space-y-2 flex-grow overflow-y-auto"></div>
+                    <div id="feedContent" class="mt-4 flex-grow overflow-y-auto"></div>
+                </div>
+                <div id="chatTab" class="tab-content hidden w-full bg-white shadow-lg rounded-lg p-6 flex flex-col">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="chat_with_lollms">Chat with Lollms</h2>
+                    <div id="chatMessages" class="flex-grow overflow-y-auto mb-4 flex flex-col"></div>
+                    <div class="flex gap-2">
+                        <input type="text" id="userInput" data-translate="type_message" placeholder="Type your message..." class="flex-grow border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="send">Send</button>
+                    </div>
+                </div>
+                <div id="reportTab" class="tab-content hidden w-full bg-white shadow-lg rounded-lg p-6 flex flex-col">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Report</h2>
+                    <div id="reportContent" class="flex-grow overflow-y-auto"></div>
+                    <button id="generateReportBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4">Generate Report</button>
+                </div>
+                <div id="podcastTab" class="tab-content hidden w-full bg-white shadow-lg rounded-lg p-6 flex flex-col">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">AI Podcast</h2>
+                    <div id="podcastContent" class="flex-grow overflow-y-auto"></div>
+                    <button id="generatePodcastBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4">Generate Podcast</button>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
     <div id="settingsOverlay" class="blurred-overlay"></div>
     <div id="settingsPopup" class="settings-popup">
         <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="settings">Settings</h2>
-        <div class="mb-4">
-            <label for="languageSelector" class="block text-sm font-medium text-gray-700" data-translate="language">Language</label>
-            <select id="languageSelector" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"></select>
-        </div>
         <div class="mb-4">
             <label for="ctxSizeInput" class="block text-sm font-medium text-gray-700">Context Size</label>
             <input type="number" id="ctxSizeInput" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
@@ -128,6 +212,35 @@
             <input type="text" id="hostAddressInput" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
         </div>
         <button id="closeSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="close">Close</button>
+    </div>
+    <div id="helpOverlay" class="blurred-overlay"></div>
+    <div id="helpPopup" class="settings-popup">
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Help</h2>
+        <div class="mb-4 overflow-y-auto max-h-96">
+            <h3 class="text-xl font-semibold mb-2">RSS Scraping</h3>
+            <p>1. Add RSS feeds using the input field or select from presets.</p>
+            <p>2. Click "Start Scraping" to fetch the latest content.</p>
+            <p>3. View scraped content in the feed list.</p>
+            
+            <h3 class="text-xl font-semibold mt-4 mb-2">Chat</h3>
+            <p>1. After scraping, click on the "Chat" tab.</p>
+            <p>2. Type your questions about the news in the input field.</p>
+            <p>3. Click "Send" or press Enter to get AI-generated responses.</p>
+            
+            <h3 class="text-xl font-semibold mt-4 mb-2">Report</h3>
+            <p>1. Go to the "Report" tab after scraping content.</p>
+            <p>2. Click "Generate Report" for an AI-generated summary of the news.</p>
+            
+            <h3 class="text-xl font-semibold mt-4 mb-2">Podcast</h3>
+            <p>1. Navigate to the "Podcast" tab after scraping content.</p>
+            <p>2. Click "Generate Podcast" to create an AI-generated podcast discussion.</p>
+            
+            <h3 class="text-xl font-semibold mt-4 mb-2">Settings</h3>
+            <p>1. Click the gear icon to open settings.</p>
+            <p>2. Adjust the context size and host address as needed.</p>
+            <p>3. Click "Close" to save changes.</p>
+        </div>
+        <button id="closeHelpBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
     </div>
     <div id="loadingOverlay" class="loading">
         <div class="text-center">
@@ -154,7 +267,9 @@
                 },
                 promptTranslations: {
                     "system_prompt": "You are an AI assistant that helps users understand news articles scraped from rss feeds. Your responses should be informative and concise. When referencing news articles, use the format [Article Title](Article Link) to create clickable links. Use markdown format for answering the questions.",
-                    "user_prompt": "Hello! Can you tell me about the latest news?"
+                    "user_prompt": "Hello! Can you tell me about the latest news?",
+                    "system_report_prompt": "You are an AI assistant that generates comprehensive reports based on scraped RSS feed content. Your task is to analyze the provided news articles and create a detailed report with proper citations. Use markdown format for the report, including headers, bullet points, and links to sources.",
+                    "system_podcast_prompt": "You are an AI that generates a podcast discussion between two AI hosts named Dave (male) and Rebecca (female). Create an engaging conversation about the latest news from the scraped RSS feeds. Use markdown format for the podcast script, clearly indicating the speaker for each line of dialogue."
                 }
             },
             fr: {
@@ -173,7 +288,9 @@
                 },
                 promptTranslations: {
                     "system_prompt": "Vous êtes un assistant IA qui aide les utilisateurs à comprendre les articles d'actualité. Vos réponses doivent être informatives et concises. Lorsque vous faites référence à des articles d'actualité, utilisez le format [Titre de l'article](Lien de l'article) pour créer des liens cliquables. Utilise le markdown comme format de réponses.",
-                    "user_prompt": "Bonjour ! Pouvez-vous me parler des dernières actualités ?"
+                    "user_prompt": "Bonjour ! Pouvez-vous me parler des dernières actualités ?",
+                    "system_report_prompt": "Vous êtes un assistant IA qui génère des rapports complets basés sur le contenu des flux RSS collectés. Votre tâche consiste à analyser les articles d'actualité fournis et à créer un rapport détaillé avec des citations appropriées. Utilisez le format markdown pour le rapport, incluant des en-têtes, des puces, et des liens vers les sources.",
+                    "system_podcast_prompt": "Vous êtes une IA qui génère une discussion de podcast entre deux animateurs IA nommés Dave (homme) et Rebecca (femme). Créez une conversation engageante sur les dernières nouvelles des flux RSS collectés. Utilisez le format markdown pour le script du podcast, en indiquant clairement le locuteur pour chaque ligne de dialogue."
                 }
             }
         };
@@ -196,6 +313,18 @@
                 document.getElementById("rssInput").value = "";
                 updateFeedList();
                 localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
+            }
+        }
+        function addSelectedFeed() {
+            const selectedFeed = document.getElementById("presetSelector").value;
+            if (selectedFeed) {
+                if (!rssFeeds.includes(selectedFeed)) {
+                    rssFeeds.push(selectedFeed);
+                    updateFeedList();
+                    localStorage.setItem('rssFeeds', JSON.stringify(rssFeeds));
+                } else {
+                    alert("This feed is already in your list.");
+                }
             }
         }
         function updateFeedList() {
@@ -237,9 +366,11 @@
                 scrapedContent = await response.json();
                 scrapedMarkdown = convertScrapedContentToMarkdown();
                 displayScrapedContent();
+                document.querySelector('[data-tab="chat"]').click();
+                document.getElementById("chatTabSelector").classList.remove("hidden")
                 localStorage.setItem('scrapedContent', JSON.stringify(scrapedContent));
             } catch (error) {
-console.error("Error scraping RSS feeds:", error);
+                console.error("Error scraping RSS feeds:", error);
             } finally {
                 hideLoader();
             }
@@ -267,7 +398,7 @@ console.error("Error scraping RSS feeds:", error);
             feedContent.innerHTML = "";
             scrapedContent.forEach(feed => {
                 const feedDiv = document.createElement("div");
-                feedDiv.className = "mb-4";
+feedDiv.className = "mb-4";
                 feedDiv.innerHTML = `<h3 class="font-bold text-indigo-700">${feed.feed_url}</h3>`;
                 const itemsList = document.createElement("ul");
                 itemsList.className = "list-disc pl-5";
@@ -307,9 +438,44 @@ console.error("Error scraping RSS feeds:", error);
             chatMessages.appendChild(messageDiv);
             chatMessages.scrollTop = chatMessages.scrollHeight;
         }
+        async function generateReport() {
+            showLoader();
+            try {
+                const systemPrompt = localizer.formatPrompt("system_report_prompt");
+                const prompt = `${lc.system_message()}${systemPrompt}${lc.template.separator_template}${lc.template.separator_template}${lc.user_message("Rss feed search results")}${scrapedMarkdown}${lc.template.separator_template}Important: The report must be generated in ${localizer.currentLang}. Answer with the report without any comment.${lc.template.separator_template}${lc.ai_message()}`;
+                const response = await lc.generate(prompt);
+                const reportContent = document.getElementById("reportContent");
+                reportContent.innerHTML = await mr.renderMarkdown(response);
+                document.querySelector('[data-tab="report"]').click();
+            } catch (error) {
+                console.error("Error generating report:", error);
+                alert("An error occurred while generating the report. Please try again.");
+            } finally {
+                hideLoader();
+            }
+        }
+        async function generatePodcast() {
+            showLoader();
+            try {
+                const systemPrompt = localizer.formatPrompt("system_podcast_prompt");
+                const prompt = `${lc.system_message()}${systemPrompt}${lc.template.separator_template}${lc.template.separator_template}${lc.user_message("Rss feed search results")}${scrapedMarkdown}${lc.template.separator_template}Important: The podcast must be generated in ${localizer.currentLang}. Answer with the podcast script without any comment.${lc.template.separator_template}${lc.ai_message()}`;
+                const response = await lc.generate(prompt);
+                const podcastContent = document.getElementById("podcastContent");
+                podcastContent.innerHTML = await mr.renderMarkdown(response);
+                document.querySelector('[data-tab="podcast"]').click();
+            } catch (error) {
+                console.error("Error generating podcast:", error);
+                alert("An error occurred while generating the podcast. Please try again.");
+            } finally {
+                hideLoader();
+            }
+        }
         document.getElementById("addFeedBtn").addEventListener("click", addFeed);
+        document.getElementById("addPresetBtn").addEventListener("click", addSelectedFeed);
         document.getElementById("startScrapingBtn").addEventListener("click", startScraping);
         document.getElementById("sendBtn").addEventListener("click", sendMessage);
+        document.getElementById("generateReportBtn").addEventListener("click", generateReport);
+        document.getElementById("generatePodcastBtn").addEventListener("click", generatePodcast);
         document.getElementById("userInput").addEventListener("keypress", (e) => {
             if (e.key === "Enter") sendMessage();
         });
@@ -319,9 +485,17 @@ console.error("Error scraping RSS feeds:", error);
         const settingsBtn = document.getElementById("settingsBtn");
         const ctxSizeInput = document.getElementById("ctxSizeInput");
         const hostAddressInput = document.getElementById("hostAddressInput");
+        const helpOverlay = document.getElementById("helpOverlay");
+        const helpPopup = document.getElementById("helpPopup");
+        const helpBtn = document.getElementById("helpBtn");
+        const closeHelpBtn = document.getElementById("closeHelpBtn");
         function toggleSettings() {
             settingsOverlay.style.display = settingsOverlay.style.display === "none" ? "block" : "none";
             settingsPopup.style.display = settingsPopup.style.display === "none" ? "block" : "none";
+        }
+        function toggleHelp() {
+            helpOverlay.style.display = helpOverlay.style.display === "none" ? "block" : "none";
+            helpPopup.style.display = helpPopup.style.display === "none" ? "block" : "none";
         }
         function updateSettings() {
             const ctxSize = parseInt(ctxSizeInput.value);
@@ -345,9 +519,23 @@ console.error("Error scraping RSS feeds:", error);
             updateSettings();
             toggleSettings();
         });
+        helpBtn.addEventListener("click", toggleHelp);
+        closeHelpBtn.addEventListener("click", toggleHelp);
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                tabButtons.forEach(btn => btn.classList.remove('border-indigo-500', 'text-indigo-600'));
+                tabContents.forEach(content => content.classList.add('hidden'));
+                button.classList.add('border-indigo-500', 'text-indigo-600');
+                document.getElementById(`${tabName}Tab`).classList.remove('hidden');
+            });
+        });
         hideLoader();
         updateFeedList();
         displayScrapedContent();
+        document.querySelector('[data-tab="rss"]').click();
     </script>
 </body>
 </html>
