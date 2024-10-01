@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 text-center mb-8">QR Code Generator</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8 max-w-md mx-auto">
+            <div class="mb-4">
+                <label for="text-input" class="block text-sm font-medium text-gray-700 mb-2">Enter text or URL:</label>
+                <input type="text" id="text-input" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter text to generate QR code">
+            </div>
+            <div class="mb-4">
+                <label for="color-picker" class="block text-sm font-medium text-gray-700 mb-2">QR Code Color:</label>
+                <input type="color" id="color-picker" class="w-full h-10 border border-indigo-300 rounded-md" value="#000000">
+            </div>
+            <div class="mb-4">
+                <label for="size-slider" class="block text-sm font-medium text-gray-700 mb-2">QR Code Size:</label>
+                <input type="range" id="size-slider" class="w-full" min="100" max="300" value="200">
+            </div>
+            <button id="generate-btn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate QR Code</button>
+        </div>
+        <div id="qrcode-container" class="bg-white shadow-lg rounded-lg p-6 max-w-md mx-auto flex justify-center items-center" style="height: 300px;">
+            <div id="qrcode"></div>
+        </div>
+        <div class="text-center mt-4">
+            <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 hidden">Download QR Code</button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="text-center">
+            <div class="text-6xl mb-4">🍓</div>
+            <div class="text-white text-xl">Generating QR Code...</div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const localizer = new WebAppLocalizer({
+            en: {
+                name: "English",
+                translations: {
+                    "title": "QR Code Generator",
+                    "inputLabel": "Enter text or URL:",
+                    "inputPlaceholder": "Enter text to generate QR code",
+                    "colorLabel": "QR Code Color:",
+                    "sizeLabel": "QR Code Size:",
+                    "generateButton": "Generate QR Code",
+                    "downloadButton": "Download QR Code",
+                    "loadingMessage": "Generating QR Code..."
+                }
+            }
+        }, "qrCodeGenerator");
+
+        localizer.apply();
+
+        const textInput = document.getElementById('text-input');
+        const colorPicker = document.getElementById('color-picker');
+        const sizeSlider = document.getElementById('size-slider');
+        const generateBtn = document.getElementById('generate-btn');
+        const qrcodeContainer = document.getElementById('qrcode');
+        const downloadBtn = document.getElementById('download-btn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let qrcode = null;
+
+        generateBtn.addEventListener('click', generateQRCode);
+        downloadBtn.addEventListener('click', downloadQRCode);
+
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        async function generateQRCode() {
+            const text = textInput.value.trim();
+            if (!text) {
+                alert('Please enter some text or URL');
+                return;
+            }
+
+            showLoading();
+
+            try {
+                const prompt = `Generate a QR code for the following text: "${text}"`;
+                const response = await lc.generate(prompt);
+
+                if (qrcode) {
+                    qrcode.clear();
+                    qrcode.makeCode(text);
+                } else {
+                    qrcodeContainer.innerHTML = '';
+                    qrcode = new QRCode(qrcodeContainer, {
+                        text: text,
+                        width: sizeSlider.value,
+                        height: sizeSlider.value,
+                        colorDark: colorPicker.value,
+                        colorLight: "#ffffff",
+                        correctLevel : QRCode.CorrectLevel.H
+                    });
+                }
+
+                downloadBtn.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating QR code:', error);
+                alert('An error occurred while generating the QR code. Please try again.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function downloadQRCode() {
+            const canvas = qrcodeContainer.querySelector('canvas');
+            if (canvas) {
+                const dataURL = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = 'qrcode.png';
+                link.href = dataURL;
+                link.click();
+            }
+        }
+
+        colorPicker.addEventListener('change', updateQRCode);
+        sizeSlider.addEventListener('input', updateQRCode);
+
+        function updateQRCode() {
+            if (qrcode) {
+                qrcode.clear();
+                qrcode._htOption.colorDark = colorPicker.value;
+                qrcode._htOption.width = sizeSlider.value;
+                qrcode._htOption.height = sizeSlider.value;
+                qrcode.makeCode(textInput.value);
+            }
+        }
+    </script>
+</body>
+</html>
