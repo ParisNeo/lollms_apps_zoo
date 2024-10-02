@@ -4,25 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title data-translate="title">Multi Codes Analysis Tool</title>
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="/lollms_assets/js/web.app.localizer"></script>
-    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
-    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <!-- Markdown rendered imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <!-- Markdown rendered imports -->
     <style>
         .editor-container { height: 300px; border: 1px solid #ccc; margin-bottom: 10px; }
         .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; }
@@ -105,7 +107,7 @@
                     "heading": "Multi Codes Analysis Tool",
                     "addCode": "Add Code",
                     "promptPlaceholder": "Enter your prompt here...",
-                    "analyze": "Analyze",
+                    "analyze": "Process",
                     "copyOutput": "Copy Output",
                     "saveOutput": "Save Output",
                     "loading": "Interrogating LOLLMS strawberry...",
@@ -125,7 +127,7 @@
                     "heading": "Outil d'Analyse Multi-Codes",
                     "addCode": "Ajouter du Code",
                     "promptPlaceholder": "Entrez votre prompt ici...",
-                    "analyze": "Analyser",
+                    "analyze": "Exécute",
                     "copyOutput": "Copier la Sortie",
                     "saveOutput": "Enregistrer la Sortie",
                     "loading": "Interrogation de LOLLMS fraise...",
@@ -163,6 +165,7 @@
         localizer.apply();
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' }});
         let editors = [];
+        let document_output="";
         const codeEditorsContainer = document.getElementById('codeEditors');
         const addCodeBtn = document.getElementById('addCodeBtn');
         const analyzeBtn = document.getElementById('analyzeBtn');
@@ -263,8 +266,8 @@
             }
             const userPrompt = `User: ${userSettings.name}\nEmail: ${userSettings.email}\nOperation Type: ${operationType}\n\nFiles to analyze:\n${codes.map(c => `${c.fileName}:\n${c.content}\n`).join('\n')}\n\nPrompt: ${prompt}\n\nProvide a detailed ${operationType} of the code files based on the given prompt. Include a summary, key findings, and any relevant code snippets.`;
             try {
-                const response = await lc.generate(lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message());
-                const renderedOutput = await markdownRenderer.renderMarkdown(response);
+                document_output = await lc.generate(lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message());
+                const renderedOutput = await markdownRenderer.renderMarkdown(document_output);
                 outputArea.innerHTML = renderedOutput;
             } catch (error) {
                 console.error("Error generating analysis:", error);
@@ -274,16 +277,36 @@
             }
         });
         copyOutputBtn.addEventListener('click', () => {
-            const range = document.createRange();
-            range.selectNode(outputArea);
-            window.getSelection().removeAllRanges();
-            window.getSelection().addRange(range);
-            document.execCommand('copy');
-            window.getSelection().removeAllRanges();
-            alert(localizer.translate('outputCopied'));
+            // Check if the Clipboard API is available
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                // Use the Clipboard API
+                navigator.clipboard.writeText(document_output)
+                    .then(() => {
+                        alert(localizer.translate('outputCopied'));
+                    })
+                    .catch(err => {
+                        console.error('Failed to copy: ', err);
+                        alert(localizer.translate('copyFailed'));
+                    });
+            } else {
+                // Fallback for browsers that don't support Clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = document_output;
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    alert(localizer.translate('outputCopied'));
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                    alert(localizer.translate('copyFailed'));
+                }
+                document.body.removeChild(textArea);
+            }
         });
+        
         saveOutputBtn.addEventListener('click', () => {
-            const blob = new Blob([outputArea.innerText], { type: 'text/markdown' });
+            const blob = new Blob([document_output], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
