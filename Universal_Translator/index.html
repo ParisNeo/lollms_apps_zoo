@@ -14,6 +14,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
     <script src="https://unpkg.com/pptx-text-extractor@1.0.4/dist/pptx-text-extractor.min.js"></script>
+    <!-- Markdown rendered imports -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <!-- Markdown rendered imports -->
+
     <style>
         .loading {
             animation: spin 1s linear infinite;
@@ -40,6 +56,7 @@
         let nPredictInput;
         let temperatureInput;
         let reformat_output;
+        let translation="";
 
         function initLollmsClient() {
             lc = new LollmsClient(
@@ -144,11 +161,11 @@
                     console.log("Content exceeds half context size. Splitting into chunks.");
                     const chunks = splitIntoChunks(content, tokens, halfContextSize);
                     const translatedChunks = await translateChunks(chunks, sourceLang, targetLang);
-                    const translatedContent = translatedChunks.join("\n\n");
-                    updateTranslatedText(translatedContent);
+                    translation = translatedChunks.join("\n\n");
+                    updateTranslatedText(translation);
                 } else {
-                    const translatedContent = await translateText(content, sourceLang, targetLang);
-                    updateTranslatedText(translatedContent);
+                    translation = await translateText(content, sourceLang, targetLang);
+                    updateTranslatedText(translation);
                 }
             } catch (error) {
                 console.error("Error during translation:", error);
@@ -210,9 +227,9 @@
             return translatedText.trim();
         }
 
-        function updateTranslatedText(translatedContent) {
+        async function updateTranslatedText(translatedContent) {
             const translatedTextDiv = document.getElementById("translatedText");
-            const renderedHTML = marked.parse(translatedContent);
+            const renderedHTML = await mr.renderMarkdown(translatedContent);
             translatedTextDiv.innerHTML = renderedHTML;
         }
 
@@ -223,8 +240,7 @@
         }
 
         function copyTranslation() {
-            const translatedText = document.getElementById("translatedText").textContent;
-            navigator.clipboard.writeText(translatedText).then(() => {
+            navigator.clipboard.writeText(translation).then(() => {
                 alert("Translation copied to clipboard!");
             }, (err) => {
                 console.error('Could not copy text: ', err);
@@ -232,40 +248,126 @@
         }
     </script>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen w-full p-4">
-    <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-3xl transition-transform transform" id="mainContent">
+<body class="bg-gray-100 flex flex-col items-center justify-center h-full w-full p-4">
+    <div class="bg-white shadow-lg rounded-lg p-6 w-full h-full transition-transform transform" id="mainContent">
         <h1 class="text-4xl font-bold mb-4 text-center text-purple-600">Universal Translator</h1>
         <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
             <div class="w-full md:w-1/2">
                 <label class="block mb-2">Source Language:</label>
                 <select id="sourceLang" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="English">English</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                    <option value="German">German</option>
-                    <option value="Chinese">Chinese</option>
-                    <option value="Japanese">Japanese</option>
-                    <option value="Russian">Russian</option>
-                    <option value="Arabic">Arabic</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Portuguese">Portuguese</option>
-                    <option value="Italian">Italian</option>
+                    <optgroup label="Modern Languages">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Chinese">Chinese (Mandarin)</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Russian">Russian</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Swedish">Swedish</option>
+                    </optgroup>
+                    <optgroup label="Ancient Languages">
+                        <option value="Latin">Latin</option>
+                        <option value="Ancient Greek">Ancient Greek</option>
+                        <option value="Sanskrit">Sanskrit</option>
+                        <option value="Old English">Old English</option>
+                        <option value="Classical Chinese">Classical Chinese</option>
+                        <option value="Aramaic">Aramaic</option>
+                    </optgroup>
+                    <optgroup label="Constructed Languages">
+                        <option value="Esperanto">Esperanto</option>
+                        <option value="Interlingua">Interlingua</option>
+                        <option value="Lojban">Lojban</option>
+                        <option value="Toki Pona">Toki Pona</option>
+                    </optgroup>
+                    <optgroup label="Fictional Languages">
+                        <option value="Klingon">Klingon (Star Trek)</option>
+                        <option value="Vulcan">Vulcan (Star Trek)</option>
+                        <option value="Quenya">Quenya (Tolkien's Elvish)</option>
+                        <option value="Sindarin">Sindarin (Tolkien's Elvish)</option>
+                        <option value="Na'vi">Na'vi (Avatar)</option>
+                        <option value="Dothraki">Dothraki (Game of Thrones)</option>
+                        <option value="Valyrian">High Valyrian (Game of Thrones)</option>
+                        <option value="Parseltongue">Parseltongue (Harry Potter)</option>
+                        <option value="Huttese">Huttese (Star Wars)</option>
+                        <option value="Mando'a">Mando'a (Star Wars)</option>
+                        <option value="Newspeak">Newspeak (1984)</option>
+                        <option value="Nadsat">Nadsat (A Clockwork Orange)</option>
+                        <option value="Lapine">Lapine (Watership Down)</option>
+                        <option value="Dovahzul">Dovahzul (Skyrim)</option>
+                        <option value="Simlish">Simlish (The Sims)</option>
+                        <option value="Atlantean">Atlantean (Atlantis: The Lost Empire)</option>
+                    </optgroup>
+                    <optgroup label="Indigenous Languages">
+                        <option value="Navajo">Navajo</option>
+                        <option value="Quechua">Quechua</option>
+                        <option value="Maori">Maori</option>
+                        <option value="Hawaiian">Hawaiian</option>
+                    </optgroup>
                 </select>
             </div>
             <div class="w-full md:w-1/2">
                 <label class="block mb-2">Target Language:</label>
                 <select id="targetLang" class="w-full p-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500">
-                    <option value="Spanish">Spanish</option>
-                    <option value="English">English</option>
-                    <option value="French">French</option>
-                    <option value="German">German</option>
-                    <option value="Chinese">Chinese</option>
-                    <option value="Japanese">Japanese</option>
-                    <option value="Russian">Russian</option>
-                    <option value="Arabic">Arabic</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Portuguese">Portuguese</option>
-                    <option value="Italian">Italian</option>
+                    <optgroup label="Modern Languages">
+                        <option value="French">French</option>
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="German">German</option>
+                        <option value="Chinese">Chinese (Mandarin)</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="Russian">Russian</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Portuguese">Portuguese</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Turkish">Turkish</option>
+                        <option value="Swedish">Swedish</option>
+                    </optgroup>
+                    <optgroup label="Ancient Languages">
+                        <option value="Latin">Latin</option>
+                        <option value="Ancient Greek">Ancient Greek</option>
+                        <option value="Sanskrit">Sanskrit</option>
+                        <option value="Old English">Old English</option>
+                        <option value="Classical Chinese">Classical Chinese</option>
+                        <option value="Aramaic">Aramaic</option>
+                    </optgroup>
+                    <optgroup label="Constructed Languages">
+                        <option value="Esperanto">Esperanto</option>
+                        <option value="Interlingua">Interlingua</option>
+                        <option value="Lojban">Lojban</option>
+                        <option value="Toki Pona">Toki Pona</option>
+                    </optgroup>
+                    <optgroup label="Fictional Languages">
+                        <option value="Klingon">Klingon (Star Trek)</option>
+                        <option value="Vulcan">Vulcan (Star Trek)</option>
+                        <option value="Quenya">Quenya (Tolkien's Elvish)</option>
+                        <option value="Sindarin">Sindarin (Tolkien's Elvish)</option>
+                        <option value="Na'vi">Na'vi (Avatar)</option>
+                        <option value="Dothraki">Dothraki (Game of Thrones)</option>
+                        <option value="Valyrian">High Valyrian (Game of Thrones)</option>
+                        <option value="Parseltongue">Parseltongue (Harry Potter)</option>
+                        <option value="Huttese">Huttese (Star Wars)</option>
+                        <option value="Mando'a">Mando'a (Star Wars)</option>
+                        <option value="Newspeak">Newspeak (1984)</option>
+                        <option value="Nadsat">Nadsat (A Clockwork Orange)</option>
+                        <option value="Lapine">Lapine (Watership Down)</option>
+                        <option value="Dovahzul">Dovahzul (Skyrim)</option>
+                        <option value="Simlish">Simlish (The Sims)</option>
+                        <option value="Atlantean">Atlantean (Atlantis: The Lost Empire)</option>
+                    </optgroup>
+                    <optgroup label="Indigenous Languages">
+                        <option value="Navajo">Navajo</option>
+                        <option value="Quechua">Quechua</option>
+                        <option value="Maori">Maori</option>
+                        <option value="Hawaiian">Hawaiian</option>
+                    </optgroup>
                 </select>
             </div>
         </div>
