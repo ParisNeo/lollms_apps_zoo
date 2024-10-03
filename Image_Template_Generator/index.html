@@ -20,7 +20,7 @@
             backdrop-filter: blur(5px);
             z-index: 50;
         }
-        .settings-popup {
+        .settings-popup, .template-popup {
             display: none;
             position: fixed;
             top: 50%;
@@ -55,6 +55,28 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(-360deg); }
         }
+        .image-viewer {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .image-thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        .image-thumbnail.selected {
+            border-color: #4f46e5;
+        }
+        .image-display {
+            width: 100%;
+            height: 400px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-r from-indigo-100 to-purple-100 font-sans">
@@ -73,6 +95,11 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                     </svg>
                 </button>
+                <button id="templatesBtn" class="text-indigo-600 hover:text-indigo-800">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                    </svg>
+                </button>
                 <select id="languageSelect" class="bg-white border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     <option value="en">English</option>
                     <option value="fr">Français</option>
@@ -82,36 +109,24 @@
         </header>
 
         <main class="flex flex-col md:flex-row gap-8">
-            <div class="w-full md:w-1/2">
+            <div class="w-full">
+                <div id="imageContainer" class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Generated Images</h2>
+                    <div id="imageViewer" class="image-viewer"></div>
+                    <div id="imageDisplay" class="image-display mt-4"></div>
+                </div>
                 <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
                     <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Image Generation</h2>
                     <textarea id="promptInput" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" placeholder="Enter your prompt here..."></textarea>
                     <button id="generateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Image</button>
-                </div>
-                <div id="imageContainer" class="bg-white shadow-lg rounded-lg p-6 mb-8">
-                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Generated Image</h2>
-                    <div id="generatedImage" class="w-full h-64 bg-gray-200 flex items-center justify-center">
-                        <p class="text-gray-500">Your generated image will appear here</p>
-                    </div>
-                </div>
-            </div>
-            <div class="w-full md:w-1/2">
-                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Template Management</h2>
-                    <textarea id="templateInput" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" placeholder="Enter your template here..."></textarea>
-                    <div class="flex space-x-2">
-                        <button id="saveTemplateBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Template</button>
-                        <button id="loadTemplateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Load Template</button>
-                        <button id="shareTemplateBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">Share Template</button>
-                    </div>
-                </div>
-                <div class="bg-white shadow-lg rounded-lg p-6">
-                    <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Saved Templates</h2>
-                    <ul id="savedTemplatesList" class="list-disc pl-5">
-                    </ul>
-                    <h2 class="text-2xl font-semibold text-indigo-700 mt-6 mb-4">Shared Templates</h2>
-                    <ul id="sharedTemplatesList" class="list-disc pl-5">
-                    </ul>
+                    <label for="templatesSelect"  class="block text-sm font-medium text-gray-700" >Add a template</label>
+                    <div class="flex flex-row space-x-2">
+                        <select id="templatesSelect" class="bg-white border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </select>
+                        <button id="addTemplateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Add
+                        </button>    
+                    </div>    
                 </div>
             </div>
         </main>
@@ -125,6 +140,30 @@
             <input type="text" id="hostInput" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="http://localhost:9600">
         </div>
         <button id="closeSettingsBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+    </div>
+
+    <div id="templateOverlay" class="blurred-overlay"></div>
+    <div id="templatePopup" class="template-popup">
+        <div class="w-full">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Template Management</h2>
+                <textarea id="templateInput" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" placeholder="Enter your template here..."></textarea>
+                <div class="flex space-x-2">
+                    <button id="saveTemplateBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Template</button>
+                    <button id="loadTemplateBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Load Template</button>
+                    <button id="shareTemplateBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">Share Template</button>
+                </div>
+            </div>
+            <div class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Saved Templates</h2>
+                <ul id="savedTemplatesList" class="list-disc pl-5">
+                </ul>
+                <h2 class="text-2xl font-semibold text-indigo-700 mt-6 mb-4">Shared Templates</h2>
+                <ul id="sharedTemplatesList" class="list-disc pl-5">
+                </ul>
+            </div>
+            <button id="closeTemplateBtn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+        </div>
     </div>
 
     <div id="helpOverlay" class="blurred-overlay"></div>
@@ -152,6 +191,8 @@
     <script>
         let lc;
         let ttiClient;
+        let generatedImages = [];
+
         function showLoader() {
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
@@ -159,28 +200,60 @@
             document.getElementById('loadingOverlay').style.display = 'none';
         }
         hideLoader();
+
         document.addEventListener('DOMContentLoaded', function() {
-            const savedHost = localStorage.getItem('lollmsHost');    
-            if (savedHost) {
-                lc = new LollmsClient(savedHost);
-                ttiClient = new LollmsTTI(savedHost);
-            }
+            const savedHost = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
             lc = new LollmsClient(savedHost);
             ttiClient = new LollmsTTI(savedHost);
 
+            const templatesSelect = document.getElementById('templatesSelect');
+            const savedTemplates = JSON.parse(localStorage.getItem('savedTemplates') || '[]');
+            savedTemplates.forEach((template, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Template ${index + 1}`;
+                templatesSelect.appendChild(option);
+            });
         });
+
         document.getElementById('generateBtn').addEventListener('click', async () => {
             const prompt = document.getElementById('promptInput').value;
-            const imageContainer = document.getElementById('generatedImage');
             showLoader();
             try {
-                await ttiClient.generateAndDisplayImage(prompt, '', 512, 512, imageContainer);
+                const imageData = await ttiClient.generateImage(prompt, '', 512, 512);
+                generatedImages.push(imageData);
+                updateImageViewer();
             } catch (error) {
                 console.error('Error generating image:', error);
-                imageContainer.innerHTML = '<p class="text-red-500">Error generating image. Please try again.</p>';
+                alert('Error generating image. Please try again.');
             }
             hideLoader();
         });
+
+        function updateImageViewer() {
+            const imageViewer = document.getElementById('imageViewer');
+            imageViewer.innerHTML = '';
+            generatedImages.forEach((imageData, index) => {
+                const img = document.createElement('img');
+                img.src = `data:image/png;base64,${imageData}`;
+                img.classList.add('image-thumbnail');
+                img.onclick = () => selectImage(index);
+                imageViewer.appendChild(img);
+            });
+            if (generatedImages.length > 0) {
+                selectImage(generatedImages.length - 1);
+            }
+        }
+
+        function selectImage(index) {
+            const thumbnails = document.querySelectorAll('.image-thumbnail');
+            thumbnails.forEach(thumb => thumb.classList.remove('selected'));
+            thumbnails[index].classList.add('selected');
+
+            const imageDisplay = document.getElementById('imageDisplay');
+            imageDisplay.style.backgroundImage = `url(data:image/png;base64,${generatedImages[index]})`;
+        }
+
         document.getElementById('saveTemplateBtn').addEventListener('click', () => {
             const template = document.getElementById('templateInput').value;
             if (template) {
@@ -188,8 +261,10 @@
                 templates.push(template);
                 localStorage.setItem('savedTemplates', JSON.stringify(templates));
                 updateTemplatesList();
+                updateTemplatesSelect();
             }
         });
+
         document.getElementById('loadTemplateBtn').addEventListener('click', () => {
             const templates = JSON.parse(localStorage.getItem('savedTemplates') || '[]');
             if (templates.length > 0) {
@@ -197,37 +272,114 @@
                 document.getElementById('templateInput').value = template;
             }
         });
+
         document.getElementById('shareTemplateBtn').addEventListener('click', () => {
             alert('Template sharing functionality would be implemented here.');
         });
+
         function updateTemplatesList() {
             const savedList = document.getElementById('savedTemplatesList');
             const templates = JSON.parse(localStorage.getItem('savedTemplates') || '[]');
             savedList.innerHTML = templates.map(t => `<li>${t}</li>`).join('');
         }
+
+        function updateTemplatesSelect() {
+            const templatesSelect = document.getElementById('templatesSelect');
+            const templates = JSON.parse(localStorage.getItem('savedTemplates') || '[]');
+            templatesSelect.innerHTML = '';
+            templates.forEach((template, index) => {
+                const option = document.createElement('option');
+                option.value = index;
+                option.textContent = `Template ${index + 1}`;
+                templatesSelect.appendChild(option);
+            });
+        }
+
         updateTemplatesList();
+        updateTemplatesSelect();
+
         document.getElementById('settingsBtn').addEventListener('click', () => {
             document.getElementById('settingsOverlay').style.display = 'block';
             document.getElementById('settingsPopup').style.display = 'block';
-            document.getElementById('hostInput').value = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
+            document.getElementById('hostInput').value = localStorage.getItem('lollmsHost') || '';
         });
+
         document.getElementById('closeSettingsBtn').addEventListener('click', () => {
             const newHost = document.getElementById('hostInput').value;
             localStorage.setItem('lollmsHost', newHost);
             lc.updateSettings({ host_address: newHost });
+            ttiClient.updateSettings({ host_address: newHost });
             document.getElementById('settingsOverlay').style.display = 'none';
             document.getElementById('settingsPopup').style.display = 'none';
         });
+
         document.getElementById('helpBtn').addEventListener('click', () => {
             document.getElementById('helpOverlay').style.display = 'block';
             document.getElementById('helpPopup').style.display = 'block';
         });
+
         document.getElementById('closeHelpBtn').addEventListener('click', () => {
             document.getElementById('helpOverlay').style.display = 'none';
             document.getElementById('helpPopup').style.display = 'none';
         });
+
+        document.getElementById('templatesBtn').addEventListener('click', () => {
+            document.getElementById('templateOverlay').style.display = 'block';
+            document.getElementById('templatePopup').style.display = 'block';
+        });
+
+        document.getElementById('closeTemplateBtn').addEventListener('click', () => {
+            document.getElementById('templateOverlay').style.display = 'none';
+            document.getElementById('templatePopup').style.display = 'none';
+        });
+
         document.getElementById('languageSelect').addEventListener('change', (e) => {
             console.log(`Language changed to: ${e.target.value}`);
+        });
+
+        document.getElementById('imageDisplay').addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const image = e.target;
+            let scale = parseFloat(image.style.transform.replace('scale(', '').replace(')', '') || 1);
+
+            if (e.deltaY < 0) {
+                scale *= 1.1;
+            } else {
+                scale /= 1.1;
+            }
+
+            scale = Math.min(Math.max(0.1, scale), 5);
+            image.style.transform = `scale(${scale})`;
+        });
+
+        let isDragging = false;
+        let startX, startY, translateX = 0, translateY = 0;
+
+        document.getElementById('imageDisplay').addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startX = e.clientX - translateX;
+            startY = e.clientY - translateY;
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                translateX = e.clientX - startX;
+                translateY = e.clientY - startY;
+                document.getElementById('imageDisplay').style.transform = `translate(${translateX}px, ${translateY}px)`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        document.getElementById('addTemplateBtn').addEventListener('click', () => {
+            const templatesSelect = document.getElementById('templatesSelect');
+            const selectedTemplate = templatesSelect.options[templatesSelect.selectedIndex].value;
+            const templates = JSON.parse(localStorage.getItem('savedTemplates') || '[]');
+            if (selectedTemplate >= 0 && selectedTemplate < templates.length) {
+                document.getElementById('promptInput').value += templates[selectedTemplate];
+            }
         });
     </script>
 </body>

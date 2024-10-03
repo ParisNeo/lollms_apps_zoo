@@ -77,7 +77,7 @@
                     "failedImage": "Failed to generate image. Please try again."
                 },
                 promptTranslations: {
-                    "systemPrompt": "You are a comic book storyboard writer who answers always using this json format:\n```json\n{\n    \"title\":\"The title of the story\",\n    \"outline\":\"The outline idea of the story\",\n    \"panels\":[\n    {\"name\":\"the first panel name\", \"description\":\"a description of the first panel image\",\"width\":width of the panel,\"height\": the height of the panel},\n    ...\n    ]\n}\n```\nGenerate {panelCount} panels. Answer only using the json format"
+                    "systemPrompt": "You are a comic book storyboard writer who answers always using this json format:\n```json\n{\n    \"title\":\"The title of the story\",\n    \"story\":\"Write the story of the comic book.\",\n    \"panels\":[\n    {\"name\":\"the first panel name\", \"description\":\"a description of the first panel image\",\"width\":width of the panel,\"height\": the height of the panel},\n    ...\n    ]\n}\n```\nGenerate {panelCount} panels. Answer only using the json format"
                 }
             },
             fr: {
@@ -95,7 +95,7 @@
                     "failedImage": "Échec de la génération de l'image. Veuillez réessayer."
                 },
                 promptTranslations: {
-                    "systemPrompt": "Vous êtes un scénariste de bandes dessinées qui répond toujours en utilisant ce format json :\n```json\n{\n    \"title\":\"Le titre de l'histoire\",\n    \"outline\":\"L'idée générale de l'histoire\",\n    \"panels\":[\n    {\"name\":\"le nom du premier panneau\", \"description\":\"une description de l'image du premier panneau\",\"width\":largeur du panneau,\"height\": hauteur du panneau},\n    ...\n    ]\n}\n```\nGénérez {panelCount} panneaux. Répondez uniquement en utilisant le format json"
+                    "systemPrompt": "Vous êtes un scénariste de bandes dessinées qui répond toujours en utilisant ce format json :\n```json\n{\n    \"title\":\"Le titre de l'histoire\",\n    \"story\":\"L'histoire\",\n    \"panels\":[\n    {\"name\":\"le nom du premier panneau\", \"description\":\"une description de l'image du premier panneau en anglais\",\"width\":largeur du panneau,\"height\": hauteur du panneau},\n    ...\n    ]\n}\n```\nGénérez {panelCount} panneaux. Répondez uniquement en utilisant le format json"
                 }
             },
             es: {
@@ -113,7 +113,7 @@
                     "failedImage": "Error al generar la imagen. Por favor, inténtelo de nuevo."
                 },
                 promptTranslations: {
-                    "systemPrompt": "Eres un escritor de storyboard de cómics que siempre responde usando este formato json:\n```json\n{\n    \"title\":\"El título de la historia\",\n    \"outline\":\"La idea general de la historia\",\n    \"panels\":[\n    {\"name\":\"el nombre del primer panel\", \"description\":\"una descripción de la imagen del primer panel\",\"width\":ancho del panel,\"height\": altura del panel},\n    ...\n    ]\n}\n```\nGenera {panelCount} paneles. Responde solo usando el formato json"
+                    "systemPrompt": "Eres un escritor de storyboard de cómics que siempre responde usando este formato json:\n```json\n{\n    \"title\":\"El título de la historia\",\n    \"story\":\"La historia\",\n    \"panels\":[\n    {\"name\":\"el nombre del primer panel\", \"description\":\"una descripción de la imagen del primer panel\",\"width\":ancho del panel,\"height\": altura del panel},\n    ...\n    ]\n}\n```\nGenera {panelCount} paneles. Responde solo usando el formato json"
                 }
             }
         };
@@ -139,8 +139,9 @@
 
         async function displayIllustrations(outline) {
             const illustrationsContainer = document.getElementById('illustrations');
+            illustrationsContainer.innerHTML = '';
             const outlineContainer = document.createElement('p')
-            outlineContainer.textContent = outline.outline;
+            outlineContainer.textContent = outline.story;
             const title = document.createElement('h1');
             title.textContent = outline.title;
             title.className = 'text-3xl font-bold mb-4 text-center';
@@ -150,7 +151,6 @@
             illustrationsContainer.appendChild(outlineContainer)
 
             const illustrationContent = document.createElement('div')
-            illustrationsContainer.innerHTML = '';
 
             illustrationsContainer.appendChild(illustrationContent)
             illustrationContent.innerHTML = '';
