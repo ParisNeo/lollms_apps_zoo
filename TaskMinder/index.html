@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TaskMinder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="appTitle">TaskMinder</h1>
+            <p class="text-gray-600" data-translate="appDescription">Smart Task Management</p>
+        </header>
+
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-6">
+            <form id="taskForm" class="mb-4">
+                <div class="flex flex-wrap -mx-2">
+                    <div class="w-full md:w-1/2 px-2 mb-4">
+                        <input type="text" id="taskTitle" data-translate="taskTitle" data-translate-attr="placeholder" placeholder="Task title" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                    </div>
+                    <div class="w-full md:w-1/4 px-2 mb-4">
+                        <select id="taskPriority" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="low" data-translate="low">Low</option>
+                            <option value="medium" data-translate="medium">Medium</option>
+                            <option value="high" data-translate="high">High</option>
+                        </select>
+                    </div>
+                    <div class="w-full md:w-1/4 px-2 mb-4">
+                        <input type="date" id="taskDueDate" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+                <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="addTask">Add Task</button>
+            </form>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-lg p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-semibold text-indigo-800" data-translate="tasksList">Tasks</h2>
+                <div>
+                    <select id="filterStatus" class="p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mr-2">
+                        <option value="all" data-translate="all">All</option>
+                        <option value="active" data-translate="active">Active</option>
+                        <option value="completed" data-translate="completed">Completed</option>
+                    </select>
+                    <select id="sortBy" class="p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="priority" data-translate="sortByPriority">Sort by Priority</option>
+                        <option value="dueDate" data-translate="sortByDueDate">Sort by Due Date</option>
+                    </select>
+                </div>
+            </div>
+            <ul id="taskList" class="space-y-4"></ul>
+        </div>
+    </div>
+
+    <footer class="text-center mt-8 text-gray-600">
+        <p data-translate="footer">&copy; 2024 TaskMinder. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const localizer = new WebAppLocalizer({
+            en: {
+                name: "English",
+                translations: {
+                    "appTitle": "TaskMinder",
+                    "appDescription": "Smart Task Management",
+                    "addTask": "Add Task",
+                    "taskTitle": "Task title",
+                    "priority": "Priority",
+                    "dueDate": "Due Date",
+                    "all": "All",
+                    "active": "Active",
+                    "completed": "Completed",
+                    "sortByPriority": "Sort by Priority",
+                    "sortByDueDate": "Sort by Due Date",
+                    "low": "Low",
+                    "medium": "Medium",
+                    "high": "High",
+                    "edit": "Edit",
+                    "delete": "Delete",
+                    "save": "Save",
+                    "cancel": "Cancel",
+                    "tasksList": "Tasks",
+                    "footer": "&copy; 2024 TaskMinder. All rights reserved."
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "appTitle": "GestionnaireDeTâches",
+                    "appDescription": "Gestion intelligente des tâches",
+                    "addTask": "Ajouter une tâche",
+                    "taskTitle": "Titre de la tâche",
+                    "priority": "Priorité",
+                    "dueDate": "Date d'échéance",
+                    "all": "Toutes",
+                    "active": "Actives",
+                    "completed": "Terminées",
+                    "sortByPriority": "Trier par priorité",
+                    "sortByDueDate": "Trier par date d'échéance",
+                    "low": "Basse",
+                    "medium": "Moyenne",
+                    "high": "Haute",
+                    "edit": "Modifier",
+                    "delete": "Supprimer",
+                    "save": "Enregistrer",
+                    "cancel": "Annuler",
+                    "tasksList": "Tâches",
+                    "footer": "&copy; 2024 GestionnaireDeTâches. Tous droits réservés."
+                }
+            }
+        }, "taskMinder_");
+
+        const languageSelector = document.createElement('select');
+        languageSelector.id = 'languageSelector';
+        languageSelector.className = 'p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 absolute top-4 right-4';
+        localizer.getAvailableLanguages().forEach(lang => {
+            const option = document.createElement('option');
+            option.value = lang;
+            option.textContent = localizer.translations[lang].name;
+            languageSelector.appendChild(option);
+        });
+        document.body.appendChild(languageSelector);
+
+        languageSelector.addEventListener('change', (e) => {
+            localizer.setLanguage(e.target.value);
+            localizer.apply();
+            renderTasks();
+        });
+
+        localizer.apply();
+
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+        const taskForm = document.getElementById('taskForm');
+        const taskList = document.getElementById('taskList');
+        const filterStatus = document.getElementById('filterStatus');
+        const sortBy = document.getElementById('sortBy');
+
+        function renderTasks() {
+            const filteredTasks = tasks.filter(task => {
+                if (filterStatus.value === 'all') return true;
+                if (filterStatus.value === 'active') return !task.completed;
+                if (filterStatus.value === 'completed') return task.completed;
+            });
+
+            filteredTasks.sort((a, b) => {
+                if (sortBy.value === 'priority') {
+                    const priorityOrder = { low: 1, medium: 2, high: 3 };
+                    return priorityOrder[b.priority] - priorityOrder[a.priority];
+                } else {
+                    return new Date(a.dueDate) - new Date(b.dueDate);
+                }
+            });
+
+            taskList.innerHTML = '';
+            filteredTasks.forEach((task, index) => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-4 bg-gray-50 rounded';
+                li.innerHTML = `
+                    <div class="flex items-center">
+                        <input type="checkbox" ${task.completed ? 'checked' : ''} onchange="toggleComplete(${index})" class="mr-4">
+                        <span class="${task.completed ? 'line-through text-gray-500' : ''}">${task.title}</span>
+                    </div>
+                    <div>
+                        <span class="mr-4 ${getPriorityColor(task.priority)}">${localizer.translate(task.priority)}</span>
+                        <span class="mr-4">${task.dueDate}</span>
+                        <button onclick="editTask(${index})" class="text-blue-500 hover:text-blue-700 mr-2">${localizer.translate('edit')}</button>
+                        <button onclick="deleteTask(${index})" class="text-red-500 hover:text-red-700">${localizer.translate('delete')}</button>
+                    </div>
+                `;
+                taskList.appendChild(li);
+            });
+        }
+
+        function getPriorityColor(priority) {
+            switch (priority) {
+                case 'low': return 'text-green-500';
+                case 'medium': return 'text-yellow-500';
+                case 'high': return 'text-red-500';
+                default: return '';
+            }
+        }
+
+        function addTask(e) {
+            e.preventDefault();
+            const title = document.getElementById('taskTitle').value;
+            const priority = document.getElementById('taskPriority').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+            tasks.push({ title, priority, dueDate, completed: false });
+            saveTasks();
+            taskForm.reset();
+            renderTasks();
+        }
+
+        function toggleComplete(index) {
+            tasks[index].completed = !tasks[index].completed;
+            saveTasks();
+            renderTasks();
+        }
+
+        function editTask(index) {
+            const task = tasks[index];
+            const li = taskList.children[index];
+            li.innerHTML = `
+                <input type="text" value="${task.title}" class="mr-2 p-1 border rounded">
+                <select class="mr-2 p-1 border rounded">
+                    <option value="low" ${task.priority === 'low' ? 'selected' : ''}>${localizer.translate('low')}</option>
+                    <option value="medium" ${task.priority === 'medium' ? 'selected' : ''}>${localizer.translate('medium')}</option>
+                    <option value="high" ${task.priority === 'high' ? 'selected' : ''}>${localizer.translate('high')}</option>
+                </select>
+                <input type="date" value="${task.dueDate}" class="mr-2 p-1 border rounded">
+                <button onclick="saveTask(${index})" class="text-green-500 hover:text-green-700 mr-2">${localizer.translate('save')}</button>
+                <button onclick="renderTasks()" class="text-gray-500 hover:text-gray-700">${localizer.translate('cancel')}</button>
+            `;
+        }
+
+        function saveTask(index) {
+            const li = taskList.children[index];
+            const title = li.querySelector('input[type="text"]').value;
+            const priority = li.querySelector('select').value;
+            const dueDate = li.querySelector('input[type="date"]').value;
+            tasks[index] = { ...tasks[index], title, priority, dueDate };
+            saveTasks();
+            renderTasks();
+        }
+
+        function deleteTask(index) {
+            tasks.splice(index, 1);
+            saveTasks();
+            renderTasks();
+        }
+
+        function saveTasks() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        taskForm.addEventListener('submit', addTask);
+        filterStatus.addEventListener('change', renderTasks);
+        sortBy.addEventListener('change', renderTasks);
+
+        renderTasks();
+    </script>
+</body>
+</html>
