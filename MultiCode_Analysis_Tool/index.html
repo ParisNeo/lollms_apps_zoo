@@ -10,7 +10,6 @@
     <script src="/lollms_assets/js/web.app.localizer"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
-    <!-- Markdown rendered imports -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
@@ -24,7 +23,6 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
-    <!-- Markdown rendered imports -->
     <style>
         .editor-container { height: 300px; border: 1px solid #ccc; margin-bottom: 10px; }
         .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; }
@@ -58,10 +56,11 @@
             </div>
         </div>
         <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-            <button id="addCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addCode">Add Code</button>
-            <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="saveProject">Save Project</button>
+            <button id="newBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="new">New</button>
             <button id="loadProjectBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="loadProject">Load Project</button>
+            <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="saveProject">Save Project</button>
             <div id="codeEditors"></div>
+            <button id="addCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addCode">Add Code</button>
         </div>
         <div class="bg-white shadow-lg rounded-lg p-6">
             <textarea id="promptInput" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" rows="3" data-translate="promptPlaceholder" placeholder="Enter your prompt here..."></textarea>
@@ -117,7 +116,8 @@
                     "analysisError": "An error occurred while generating the analysis.",
                     "saveProject": "Save Project",
                     "loadProject": "Load Project",
-                    "removeFile": "Remove File"
+                    "removeFile": "Remove File",
+                    "new": "New"
                 }
             },
             fr: {
@@ -137,7 +137,8 @@
                     "analysisError": "Une erreur s'est produite lors de la génération de l'analyse.",
                     "saveProject": "Sauvegarder le Projet",
                     "loadProject": "Charger le Projet",
-                    "removeFile": "Supprimer le Fichier"
+                    "removeFile": "Supprimer le Fichier",
+                    "new": "Nouveau"
                 }
             },
             es: {
@@ -157,7 +158,8 @@
                     "analysisError": "Ocurrió un error al generar el análisis.",
                     "saveProject": "Guardar Proyecto",
                     "loadProject": "Cargar Proyecto",
-                    "removeFile": "Eliminar Archivo"
+                    "removeFile": "Eliminar Archivo",
+                    "new": "Nuevo"
                 }
             }
         };
@@ -180,9 +182,10 @@
         const saveSettingsBtn = document.getElementById('saveSettingsBtn');
         const closeSettingsBtn = document.getElementById('closeSettingsBtn');
         const operationTypeSelector = document.getElementById('operationTypeSelector');
+        const newBtn = document.getElementById('newBtn');
         const markdownRenderer = new MarkdownRenderer();
         const lc = new LollmsClient();
-        let userSettings = {
+let userSettings = {
             name: '',
             email: '',
             extraInfo: ''
@@ -277,9 +280,7 @@
             }
         });
         copyOutputBtn.addEventListener('click', () => {
-            // Check if the Clipboard API is available
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                // Use the Clipboard API
                 navigator.clipboard.writeText(document_output)
                     .then(() => {
                         alert(localizer.translate('outputCopied'));
@@ -289,7 +290,6 @@
                         alert(localizer.translate('copyFailed'));
                     });
             } else {
-                // Fallback for browsers that don't support Clipboard API
                 const textArea = document.createElement('textarea');
                 textArea.value = document_output;
                 document.body.appendChild(textArea);
@@ -304,7 +304,6 @@
                 document.body.removeChild(textArea);
             }
         });
-        
         saveOutputBtn.addEventListener('click', () => {
             const blob = new Blob([document_output], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
@@ -426,6 +425,18 @@
         document.getElementById('languageSelector').addEventListener('change', function() {
             localizer.setLanguage(this.value);
             localizer.apply();
+        });
+        newBtn.addEventListener('click', () => {
+            promptInput.value = '';
+            outputArea.innerHTML = '';
+            codeEditorsContainer.innerHTML = '';
+            editors = [];
+            createCodeEditor();
+            operationTypeSelector.value = 'analysis';
+            localStorage.removeItem('multiCodeAnalysis_prompt');
+            localStorage.removeItem('multiCodeAnalysis_output');
+            localStorage.removeItem('multiCodeAnalysis_files');
+            localStorage.removeItem('multiCodeAnalysis_operationType');
         });
     </script>
 </body>
