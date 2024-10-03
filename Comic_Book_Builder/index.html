@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comic Book Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+        body { display: flex; justify-content: center; align-items: center; background: #f3f4f6; font-family: sans-serif; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.8); display: none; justify-content: center; align-items: center; }
+        .loading { text-align: center; color: #ff69b4; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        #illustrations { max-height: calc(100vh - 300px); overflow-y: auto; }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100">
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px" data-translate="loading"></div>
+        </div>
+    </div>
+
+    <div class="mx-auto px-4 py-8 h-screen flex flex-col">
+        <header class="mb-4 flex justify-between items-center">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="title"></h1>
+            <select id="languageSelector" class="border border-indigo-300 rounded-md p-2">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+            </select>
+        </header>
+        <main class="flex flex-col gap-4 flex-grow overflow-hidden">
+            <div class="bg-white shadow-lg rounded-lg p-4">
+                <label for="prompt" class="block text-lg font-medium text-gray-700" data-translate="promptLabel"></label>
+                <textarea id="prompt" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full h-24 mt-2"></textarea>
+                <div class="flex items-center mt-4">
+                    <button id="generateButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="generateButton"></button>
+                    <label for="panelsPerRow" class="ml-4" data-translate="panelsPerRowLabel"></label>
+                    <input type="number" id="panelsPerRow" min="1" max="5" value="3" class="ml-2 w-16 border border-indigo-300 rounded-md p-2">
+                    <label for="numRows" class="ml-4" data-translate="numRowsLabel"></label>
+                    <input type="number" id="numRows" min="1" max="5" value="3" class="ml-2 w-16 border border-indigo-300 rounded-md p-2">
+                    <button id="saveHtmlButton" class="ml-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveHtmlButton"></button>
+                </div>
+            </div>
+            <div id="illustrationList" class="bg-white shadow-lg rounded-lg p-4 flex-grow overflow-y">
+                <h2 class="text-2xl font-bold text-indigo-800 mb-4" data-translate="illustrationsTitle"></h2>
+                <div id="illustrations" class="mb-8 pb-10 container"></div>
+            </div>
+        </main>
+        <footer class="mt-4 text-center text-gray-600" data-translate="footer" data-translate-html></footer>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "title": "Comic Book Builder",
+                    "loading": "Interrogating LOLLMS strawberry...",
+                    "promptLabel": "Enter your comic book prompt:",
+                    "generateButton": "Generate Storyboard",
+                    "panelsPerRowLabel": "Panels per row:",
+                    "numRowsLabel": "Number of rows:",
+                    "saveHtmlButton": "Save to HTML",
+                    "illustrationsTitle": "Illustrations",
+                    "footer": "&copy; 2024 Comic Book Builder. All rights reserved.",
+                    "failedImage": "Failed to generate image. Please try again."
+                },
+                promptTranslations: {
+                    "systemPrompt": "You are a comic book storyboard writer who answers always using this json format:\n```json\n{\n    \"title\":\"The title of the story\",\n    \"outline\":\"The outline idea of the story\",\n    \"panels\":[\n    {\"name\":\"the first panel name\", \"description\":\"a description of the first panel image\",\"width\":width of the panel,\"height\": the height of the panel},\n    ...\n    ]\n}\n```\nGenerate {panelCount} panels. Answer only using the json format"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "title": "Créateur de Bandes Dessinées",
+                    "loading": "Interrogation de LOLLMS fraise...",
+                    "promptLabel": "Entrez votre prompt de bande dessinée :",
+                    "generateButton": "Générer le Storyboard",
+                    "panelsPerRowLabel": "Panneaux par ligne :",
+                    "numRowsLabel": "Nombre de lignes :",
+                    "saveHtmlButton": "Sauvegarder en HTML",
+                    "illustrationsTitle": "Illustrations",
+                    "footer": "&copy; 2024 Créateur de Bandes Dessinées. Tous droits réservés.",
+                    "failedImage": "Échec de la génération de l'image. Veuillez réessayer."
+                },
+                promptTranslations: {
+                    "systemPrompt": "Vous êtes un scénariste de bandes dessinées qui répond toujours en utilisant ce format json :\n```json\n{\n    \"title\":\"Le titre de l'histoire\",\n    \"outline\":\"L'idée générale de l'histoire\",\n    \"panels\":[\n    {\"name\":\"le nom du premier panneau\", \"description\":\"une description de l'image du premier panneau\",\"width\":largeur du panneau,\"height\": hauteur du panneau},\n    ...\n    ]\n}\n```\nGénérez {panelCount} panneaux. Répondez uniquement en utilisant le format json"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    "title": "Constructor de Cómics",
+                    "loading": "Interrogando a LOLLMS fresa...",
+                    "promptLabel": "Ingrese su prompt de cómic:",
+                    "generateButton": "Generar Storyboard",
+                    "panelsPerRowLabel": "Paneles por fila:",
+                    "numRowsLabel": "Número de filas:",
+                    "saveHtmlButton": "Guardar en HTML",
+                    "illustrationsTitle": "Ilustraciones",
+                    "footer": "&copy; 2024 Constructor de Cómics. Todos los derechos reservados.",
+                    "failedImage": "Error al generar la imagen. Por favor, inténtelo de nuevo."
+                },
+                promptTranslations: {
+                    "systemPrompt": "Eres un escritor de storyboard de cómics que siempre responde usando este formato json:\n```json\n{\n    \"title\":\"El título de la historia\",\n    \"outline\":\"La idea general de la historia\",\n    \"panels\":[\n    {\"name\":\"el nombre del primer panel\", \"description\":\"una descripción de la imagen del primer panel\",\"width\":ancho del panel,\"height\": altura del panel},\n    ...\n    ]\n}\n```\nGenera {panelCount} paneles. Responde solo usando el formato json"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'comicBookBuilder_', document.getElementById('languageSelector'));
+        localizer.apply();
+
+        document.getElementById('generateButton').addEventListener('click', async () => {
+            showLoader();
+            const panelsPerRow = parseInt(document.getElementById('panelsPerRow').value);
+            const numRows = parseInt(document.getElementById('numRows').value);
+            const panelCount = panelsPerRow * numRows;
+            const systemPrompt = localizer.formatPrompt("systemPrompt", { panelCount: panelCount });
+            const prompt = lc.system_message() + systemPrompt + lc.user_message() + document.getElementById('prompt').value;
+            const generatedStoryboard = await lc.generateCode(prompt);
+            const outline = JSON.parse(generatedStoryboard);
+            await displayIllustrations(outline);
+            hideLoader();
+            localStorage.setItem('comicBookBuilder_lastStoryboard', JSON.stringify(outline));
+            localStorage.setItem('comicBookBuilder_panelsPerRow', panelsPerRow);
+            localStorage.setItem('comicBookBuilder_numRows', numRows);
+        });
+
+        async function displayIllustrations(outline) {
+            const illustrationsContainer = document.getElementById('illustrations');
+            const outlineContainer = document.createElement('p')
+            outlineContainer.textContent = outline.outline;
+            const title = document.createElement('h1');
+            title.textContent = outline.title;
+            title.className = 'text-3xl font-bold mb-4 text-center';
+            title.style.textShadow = '2px 2px 4px #FF00FF';
+            illustrationsContainer.appendChild(title);
+
+            illustrationsContainer.appendChild(outlineContainer)
+
+            const illustrationContent = document.createElement('div')
+            illustrationsContainer.innerHTML = '';
+
+            illustrationsContainer.appendChild(illustrationContent)
+            illustrationContent.innerHTML = '';
+            illustrationContent.classList.add("grid");
+            illustrationContent.classList.add("gap-4")
+
+
+            const panelsPerRow = parseInt(document.getElementById('panelsPerRow').value);
+            const numRows = parseInt(document.getElementById('numRows').value);
+            illustrationContent.style.gridTemplateColumns = `repeat(${panelsPerRow}, 1fr)`;
+
+            for (let i = 0; i < Math.min(outline.panels.length, panelsPerRow * numRows); i++) {
+                const panel = outline.panels[i];
+                const panelDiv = document.createElement('div');
+                panelDiv.className = 'mb-8 p-4 bg-gray-100 rounded-lg';
+
+                const panelName = document.createElement('h2');
+                panelName.textContent = panel.name;
+                panelName.className = 'text-xl font-bold mb-2';
+                panelName.style.color = getRandomColor();
+                panelDiv.appendChild(panelName);
+
+                const description = document.createElement('p');
+                description.textContent = panel.description;
+                description.className = 'mb-4 italic';
+                panelDiv.appendChild(description);
+
+                const enhancedPrompt = `Comic book style: ${panel.description}`;
+                try {
+                    const base64Image = await ttiClient.generateImage(enhancedPrompt, '', panel.width, panel.height);
+                    const img = document.createElement('img');
+                    img.src = `data:image/png;base64,${base64Image}`;
+                    img.alt = panel.description;
+                    img.className = 'w-full h-auto rounded-lg';
+                    img.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                    panelDiv.appendChild(img);
+                } catch (error) {
+                    console.error("Error generating image:", error);
+                    const errorMsg = document.createElement('p');
+                    errorMsg.textContent = localizer.translate("failedImage");
+                    errorMsg.className = 'text-red-500 italic';
+                    panelDiv.appendChild(errorMsg);
+                }
+
+                illustrationContent.appendChild(panelDiv);
+            }
+        }
+
+        function getRandomColor() {
+            return '#' + Math.floor(Math.random()*16777215).toString(16);
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        document.getElementById('saveHtmlButton').addEventListener('click', () => {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'comic_page.html';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        });
+
+        document.getElementById('languageSelector').addEventListener('change', (event) => {
+            localizer.setLanguage(event.target.value);
+            localizer.apply();
+        });
+
+        window.addEventListener('load', () => {
+            const savedLanguage = localStorage.getItem('comicBookBuilder_language');
+            if (savedLanguage) {
+                document.getElementById('languageSelector').value = savedLanguage;
+                localizer.setLanguage(savedLanguage);
+                localizer.apply();
+            }
+
+            const savedStoryboard = localStorage.getItem('comicBookBuilder_lastStoryboard');
+            if (savedStoryboard) {
+                displayIllustrations(JSON.parse(savedStoryboard));
+            }
+
+            const savedPanelsPerRow = localStorage.getItem('comicBookBuilder_panelsPerRow');
+            const savedNumRows = localStorage.getItem('comicBookBuilder_numRows');
+            if (savedPanelsPerRow) document.getElementById('panelsPerRow').value = savedPanelsPerRow;
+            if (savedNumRows) document.getElementById('numRows').value = savedNumRows;
+        });
+
+        document.getElementById('languageSelector').addEventListener('change', (event) => {
+            const selectedLanguage = event.target.value;
+            localizer.setLanguage(selectedLanguage);
+            localizer.apply();
+            localStorage.setItem('comicBookBuilder_language', selectedLanguage);
+        });
+    </script>
+</body>
+</html>
