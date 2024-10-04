@@ -17,6 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-batch.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
@@ -24,30 +25,49 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <style>
-        .editor-container { height: 300px; border: 1px solid #ccc; margin-bottom: 10px; }
-        .overlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:none; justify-content:center; align-items:center; }
-        .loading { text-align:center; color:#ff69b4; }
-        .strawberry { font-size:64px; animation:spin 2s linear infinite; }
-        @keyframes spin { 0% { transform:rotate(0deg); } 100% { transform:rotate(-360deg); } }
+        body, html { height: 100%; margin: 0; }
+        .editor-container { height: calc(100vh - 200px); border: 1px solid #ccc; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; }
+        .loading { text-align: center; color: #ff69b4; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        .tabs-scroll-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(79, 70, 229, 0.7);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .tabs-scroll-button:hover { background-color: rgba(79, 70, 229, 1); }
+        .tabs-scroll-button.left { left: 0; }
+        .tabs-scroll-button.right { right: 0; }
+        .tab {
+            cursor: pointer;
+            padding: 5px 10px;
+            margin-right: 5px;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            background-color: #f0f0f0;
+        }
+        .tab.active { background-color: #827ecf; color: white; }
     </style>
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
-    <div class="container mx-auto px-4 py-8">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-4xl font-bold text-indigo-800" data-translate="heading">Multi Codes Analysis Tool</h1>
-            <div class="flex items-center">
-                <select id="languageSelector" class="p-2 border border-indigo-300 rounded-md mr-4">
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans h-screen flex flex-col">
+    <nav class="bg-indigo-800 text-white p-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold" data-translate="heading">AI-Augmented Multi-Code Editor</h1>
+            <div class="flex items-center space-x-4">
+                <select id="languageSelector" class="bg-indigo-700 text-white p-2 rounded">
                     <option value="en">English</option>
                     <option value="fr">Français</option>
                     <option value="es">Español</option>
                 </select>
-                <select id="operationTypeSelector" class="p-2 border border-indigo-300 rounded-md mr-4">
-                    <option value="analysis">Analysis</option>
-                    <option value="documentation">Documentation</option>
-                    <option value="refactoring">Refactoring</option>
-                    <option value="custom">Custom</option>
-                </select>
-                <button id="settingsBtn" class="p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full">
+                <button id="settingsBtn" class="p-2 bg-indigo-600 hover:bg-indigo-700 rounded-full">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -55,29 +75,58 @@
                 </button>
             </div>
         </div>
-        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-            <button id="newBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="new">New</button>
-            <button id="loadProjectBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="loadProject">Load Project</button>
-            <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 ml-2" data-translate="saveProject">Save Project</button>
-            <div id="codeEditors"></div>
-            <button id="addCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="addCode">Add Code</button>
+        <div class="flex space-x-4 mt-4">
+            <button id="newBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="new">New</button>
+            <button id="loadProjectBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="loadProject">Load Project</button>
+            <button id="saveProjectBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveProject">Save Project</button>
         </div>
-        <div class="bg-white shadow-lg rounded-lg p-6">
-            <textarea id="promptInput" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" rows="3" data-translate="promptPlaceholder" placeholder="Enter your prompt here..."></textarea>
+    </nav>
+    
+    <div class="flex-grow flex">
+        <!-- Left side: User Prompt and Output -->
+        <div class="w-1/2 p-4 flex flex-col">
+            <h2 class="text-xl font-bold mb-2">User Input</h2>
+            <div class="mb-4">
+                <select id="operationTypeSelector" class="w-full p-2 border border-indigo-300 rounded-md">
+                    <option value="analysis">Analysis</option>
+                    <option value="documentation">Documentation</option>
+                    <option value="refactoring">Refactoring</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <textarea id="promptInput" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4 flex-grow" data-translate="promptPlaceholder" placeholder="Enter your prompt here..."></textarea>
             <button id="analyzeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4" data-translate="analyze">Process</button>
-            <div id="outputArea" class="bg-gray-100 p-4 rounded-md mb-4"></div>
-            <button id="copyOutputBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copyOutput">Copy Output</button>
-            <button id="saveOutputBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveOutput">Save Output</button>
+            
+            <h2 class="text-xl font-bold mb-2">Output</h2>
+            <div id="outputArea" class="bg-gray-100 p-4 rounded-md flex-grow overflow-y-auto mb-4"></div>
+            <div class="flex justify-end">
+                <button id="copyOutputBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copyOutput">Copy Output</button>
+                <button id="saveOutputBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveOutput">Save Output</button>
+            </div>
+        </div>
+
+        <!-- Right side: Code Editor -->
+        <div class="w-1/2 p-4 flex flex-col w-full h-full">
+            <h2 class="text-xl font-bold mb-2">Code Editor</h2>
+            <div class="tabs-container flex items-center mb-2">
+                <button class="tabs-scroll-button left">&lt;</button>
+                <ul id="codeTabs" class="flex border-b container w-full"></ul>
+                <button id="addCodeTab" class="bg-indigo-500 text-white inline-block py-2 px-4 rounded-t font-semibold hover:bg-indigo-600">+</button>
+                <button class="tabs-scroll-button right">&gt;</button>
+            </div>
+            <div id="codeEditors" class="flex-grow h-full"></div>
         </div>
     </div>
-    <div id="loadingOverlay" class="overlay">
-        <div class="loading">
-            <div class="strawberry">🍓</div>
-            <div style="margin-top:20px" data-translate="loading">Interrogating LOLLMS strawberry...</div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+            <div class="strawberry text-4xl mb-4">🍓</div>
+            <div data-translate="loading">Interrogating LOLLMS strawberry...</div>
         </div>
     </div>
-    <div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+
+    <div id="settingsModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
             <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Settings</h3>
             <div class="mb-4">
                 <label for="userName" class="block text-sm font-medium text-gray-700">Name</label>
@@ -98,6 +147,9 @@
         </div>
     </div>
     <script>
+        let tabCounter = 0;
+        let editors = {};
+        let activeEditor = null;
         const translations = {
             en: {
                 name: "English",
@@ -166,10 +218,14 @@
         const localizer = new WebAppLocalizer(translations, 'multiCodeAnalysis_', document.getElementById('languageSelector'));
         localizer.apply();
         require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs' }});
-        let editors = [];
         let document_output="";
-        const codeEditorsContainer = document.getElementById('codeEditors');
-        const addCodeBtn = document.getElementById('addCodeBtn');
+        const codeTabs = document.getElementById('codeTabs');
+        const codeEditors = document.getElementById('codeEditors');
+        const addCodeTab = document.getElementById('addCodeTab');
+        const leftScrollButton = document.querySelector('.tabs-scroll-button.left');
+        const rightScrollButton = document.querySelector('.tabs-scroll-button.right');
+
+
         const analyzeBtn = document.getElementById('analyzeBtn');
         const promptInput = document.getElementById('promptInput');
         const outputArea = document.getElementById('outputArea');
@@ -185,72 +241,128 @@
         const newBtn = document.getElementById('newBtn');
         const markdownRenderer = new MarkdownRenderer();
         const lc = new LollmsClient();
-let userSettings = {
+        let userSettings = {
             name: '',
             email: '',
             extraInfo: ''
         };
-        function createCodeEditor(fileName = '', content = '') {
-            const editorContainer = document.createElement('div');
-            editorContainer.className = 'mb-4';
-            const fileNameInput = document.createElement('input');
-            fileNameInput.type = 'text';
-            fileNameInput.value = fileName;
-            fileNameInput.placeholder = localizer.translate('fileNamePlaceholder');
-            fileNameInput.className = 'border border-indigo-300 rounded-md p-2 mr-2 focus:outline-none focus:ring-2 focus:ring-indigo-500';
-            editorContainer.appendChild(fileNameInput);
-            const openFileBtn = document.createElement('button');
-            openFileBtn.textContent = localizer.translate('openFile');
-            openFileBtn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-2';
-            editorContainer.appendChild(openFileBtn);
-            const removeFileBtn = document.createElement('button');
-            removeFileBtn.textContent = localizer.translate('removeFile');
-            removeFileBtn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-2 ml-2';
-            editorContainer.appendChild(removeFileBtn);
-            const monacoContainer = document.createElement('div');
-            monacoContainer.className = 'editor-container';
-            editorContainer.appendChild(monacoContainer);
-            codeEditorsContainer.appendChild(editorContainer);
-            require(['vs/editor/editor.main'], function() {
-                const editor = monaco.editor.create(monacoContainer, {
-                    value: content,
-                    language: 'javascript',
-                    theme: 'vs-dark'
-                });
-                editors.push({
-                    editor: editor,
-                    fileNameInput: fileNameInput,
-                    container: editorContainer
-                });
-                openFileBtn.addEventListener('click', () => {
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.onchange = e => {
-                        const file = e.target.files[0];
-                        const reader = new FileReader();
-                        reader.readAsText(file, 'UTF-8');
-                        reader.onload = readerEvent => {
-                            const content = readerEvent.target.result;
-                            editor.setValue(content);
-                            fileNameInput.value = file.name;
-                        }
+        function updateScrollButtons() {
+                const tabsContainer = codeTabs.parentElement;
+                leftScrollButton.style.display = tabsContainer.scrollLeft > 0 ? 'block' : 'none';
+                rightScrollButton.style.display = 
+                    tabsContainer.scrollLeft < tabsContainer.scrollWidth - tabsContainer.clientWidth ? 'block' : 'none';
+            }
+
+        function selectTab(tab, editorContainer, editor) {
+                // Deactivate all tabs and hide all editors
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.editor-container').forEach(e => e.classList.add('hidden'));
+
+                // Activate selected tab and show corresponding editor
+                tab.classList.add('active');
+                editorContainer.classList.remove('hidden');
+                activeEditor = editor;
+
+                // Resize the editor
+                if (editor) {
+                    editor.layout();
+                }
+            }
+        
+            function createCodeTab(fileName = '', content = '') {
+                tabCounter++;
+                const tabId = `codeTab${tabCounter}`;
+                const editorId = `codeEditor${tabCounter}`;
+
+                // Create tab
+                const tab = document.createElement('li');
+                tab.className = 'tab mr-1 flex items-center';
+                tab.innerHTML = `
+                    <span class="tab-name">${fileName || `Code ${tabCounter}`}</span>
+                    <button class="edit-tab-name ml-2 text-blue-600 hover:text-blue-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                    </button>
+                    <button class="load-file ml-2 text-indigo-600 hover:text-indigo-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                    <button class="close-tab ml-2 text-red-600 hover:text-red-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+                `;
+                codeTabs.appendChild(tab);
+
+                // Create editor
+                const editorContainer = document.createElement('div');
+                editorContainer.id = editorId;
+                editorContainer.className = 'editor-container hidden';
+                editorContainer.style.width = '100%';
+                editorContainer.style.height = '500px';
+                codeEditors.appendChild(editorContainer);
+
+                // Initialize Monaco editor
+                require(['vs/editor/editor.main'], function() {
+                    const editor = monaco.editor.create(editorContainer, {
+                        value: content,
+                        language: 'javascript',
+                        theme: 'vs-dark',
+                        automaticLayout: true
+                    });
+
+                    editors[editorId] = editor;
+
+                    function resizeEditor() {
+                        editor.layout();
                     }
-                    input.click();
+
+                    resizeEditor();
+                    window.addEventListener('resize', resizeEditor);
+
+                    // Add event listeners
+                    tab.addEventListener('click', () => selectTab(tab, editorContainer));
+                    
+                    tab.querySelector('.edit-tab-name').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const tabNameElement = tab.querySelector('.tab-name');
+                        const newName = prompt('Enter new tab name:', tabNameElement.textContent);
+                        if (newName !== null && newName.trim() !== '') {
+                            tabNameElement.textContent = newName.trim();
+                        }
+                    });
+
+                    tab.querySelector('.load-file').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        loadFile(editor, tab.querySelector('.tab-name'));
+                    });
+
+                    tab.querySelector('.close-tab').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        closeTab(tab, editorContainer);
+                    });
                 });
-                removeFileBtn.addEventListener('click', () => {
-                    codeEditorsContainer.removeChild(editorContainer);
-                    editors = editors.filter(e => e.container !== editorContainer);
-                });
-            });
-        }
-        addCodeBtn.addEventListener('click', () => createCodeEditor());
+
+                selectTab(tab, editorContainer);
+                updateScrollButtons();
+            }
+
         analyzeBtn.addEventListener('click', async () => {
             showLoader();
             const prompt = promptInput.value;
-            const codes = editors.map(e => ({
-                fileName: e.fileNameInput.value,
-                content: e.editor.getValue()
-            }));
+            const codes = Object.entries(editors).map(([editorId, editor]) => {
+                const tabElement = document.querySelector(`#codeTabs li[data-editor-id="${editorId}"]`);
+                const fileName = tabElement ? tabElement.querySelector('.tab-name').textContent : 'Untitled';
+                return {
+                    fileName: fileName,
+                    content: editor.getValue()
+                };
+            });
+            
+            // Rest of the code remains the same
             const operationType = operationTypeSelector.value;
             let systemPrompt = "";
             switch(operationType) {
@@ -268,6 +380,7 @@ let userSettings = {
                     break;
             }
             const userPrompt = `User: ${userSettings.name}\nEmail: ${userSettings.email}\nOperation Type: ${operationType}\n\nFiles to analyze:\n${codes.map(c => `${c.fileName}:\n${c.content}\n`).join('\n')}\n\nPrompt: ${prompt}\n\nProvide a detailed ${operationType} of the code files based on the given prompt. Include a summary, key findings, and any relevant code snippets.`;
+    
             try {
                 document_output = await lc.generate(lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message());
                 const renderedOutput = await markdownRenderer.renderMarkdown(document_output);
@@ -278,7 +391,9 @@ let userSettings = {
             } finally {
                 hideLoader();
             }
+
         });
+
         copyOutputBtn.addEventListener('click', () => {
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(document_output)
@@ -304,6 +419,7 @@ let userSettings = {
                 document.body.removeChild(textArea);
             }
         });
+
         saveOutputBtn.addEventListener('click', () => {
             const blob = new Blob([document_output], { type: 'text/markdown' });
             const url = URL.createObjectURL(blob);
@@ -315,13 +431,18 @@ let userSettings = {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         });
+
         saveProjectBtn.addEventListener('click', () => {
             const project = {
                 prompt: promptInput.value,
-                files: editors.map(e => ({
-                    fileName: e.fileNameInput.value,
-                    content: e.editor.getValue()
-                })),
+                files: Array.from(codeEditors.children).map(editorContainer => {
+                    const editor = monaco.editor.getEditors().find(e => e.getContainerDomNode() === editorContainer);
+                    const fileName = editorContainer.id.replace('codeEditor', 'Code ');
+                    return {
+                        fileName: fileName,
+                        content: editor.getValue()
+                    };
+                }),
                 output: outputArea.innerHTML,
                 userSettings: userSettings,
                 operationType: operationTypeSelector.value
@@ -336,6 +457,7 @@ let userSettings = {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         });
+
         loadProjectBtn.addEventListener('click', () => {
             const input = document.createElement('input');
             input.type = 'file';
@@ -347,10 +469,10 @@ let userSettings = {
                     const project = JSON.parse(readerEvent.target.result);
                     promptInput.value = project.prompt;
                     outputArea.innerHTML = project.output;
-                    codeEditorsContainer.innerHTML = '';
-                    editors = [];
+                    codeEditors.innerHTML = '';
+                    codeTabs.innerHTML = '';
                     project.files.forEach(file => {
-                        createCodeEditor(file.fileName, file.content);
+                        createCodeTab(file.fileName, file.content);
                     });
                     if (project.userSettings) {
                         userSettings = project.userSettings;
@@ -361,28 +483,35 @@ let userSettings = {
                     if (project.operationType) {
                         operationTypeSelector.value = project.operationType;
                     }
+
                 }
             }
             input.click();
         });
+
         function showLoader() {
             document.getElementById('loadingOverlay').style.display = 'flex';
         }
+
         function hideLoader() {
             document.getElementById('loadingOverlay').style.display = 'none';
         }
+
         settingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('hidden');
         });
+
         closeSettingsBtn.addEventListener('click', () => {
             settingsModal.classList.add('hidden');
         });
+
         saveSettingsBtn.addEventListener('click', () => {
             userSettings.name = document.getElementById('userName').value;
             userSettings.email = document.getElementById('userEmail').value;
             userSettings.extraInfo = document.getElementById('extraInfo').value;
             settingsModal.classList.add('hidden');
         });
+
         function loadSavedState() {
             const savedPrompt = localStorage.getItem('multiCodeAnalysis_prompt');
             if (savedPrompt) {
@@ -394,7 +523,7 @@ let userSettings = {
             }
             const savedFiles = JSON.parse(localStorage.getItem('multiCodeAnalysis_files') || '[]');
             savedFiles.forEach(file => {
-                createCodeEditor(file.fileName, file.content);
+                createCodeTab(file.fileName, file.content);
             });
             const savedSettings = JSON.parse(localStorage.getItem('multiCodeAnalysis_userSettings') || '{}');
             if (savedSettings) {
@@ -408,36 +537,133 @@ let userSettings = {
                 operationTypeSelector.value = savedOperationType;
             }
         }
+
         function saveState() {
             localStorage.setItem('multiCodeAnalysis_prompt', promptInput.value);
             localStorage.setItem('multiCodeAnalysis_output', outputArea.innerHTML);
-            const files = editors.map(e => ({
-                fileName: e.fileNameInput.value,
-                content: e.editor.getValue()
-            }));
+            const files = Array.from(codeEditors.children).map(editorContainer => {
+                const editor = monaco.editor.getEditors().find(e => e.getContainerDomNode() === editorContainer);
+                const fileName = editorContainer.id.replace('codeEditor', 'Code ');
+                return {
+                    fileName: fileName,
+                    content: editor.getValue()
+                };
+            });
             localStorage.setItem('multiCodeAnalysis_files', JSON.stringify(files));
             localStorage.setItem('multiCodeAnalysis_userSettings', JSON.stringify(userSettings));
             localStorage.setItem('multiCodeAnalysis_operationType', operationTypeSelector.value);
         }
+
         window.addEventListener('beforeunload', saveState);
-        loadSavedState();
-        createCodeEditor();
+
+
         document.getElementById('languageSelector').addEventListener('change', function() {
             localizer.setLanguage(this.value);
             localizer.apply();
         });
+
         newBtn.addEventListener('click', () => {
             promptInput.value = '';
             outputArea.innerHTML = '';
-            codeEditorsContainer.innerHTML = '';
-            editors = [];
-            createCodeEditor();
+            codeEditors.innerHTML = '';
+            codeTabs.innerHTML = '';
+            createCodeTab();
             operationTypeSelector.value = 'analysis';
             localStorage.removeItem('multiCodeAnalysis_prompt');
             localStorage.removeItem('multiCodeAnalysis_output');
             localStorage.removeItem('multiCodeAnalysis_files');
             localStorage.removeItem('multiCodeAnalysis_operationType');
         });
+
+        document.addEventListener('DOMContentLoaded', (event) => {
+            function editTabName(tabNameElement) {
+                const currentName = tabNameElement.textContent;
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.value = currentName;
+                input.className = 'border border-indigo-300 rounded px-2 py-1';
+                input.style.width = `${tabNameElement.offsetWidth}px`;
+                
+                tabNameElement.replaceWith(input);
+                input.focus();
+
+                input.addEventListener('blur', function() {
+                    const newName = this.value.trim() || currentName;
+                    tabNameElement.textContent = newName;
+                    this.replaceWith(tabNameElement);
+                });
+
+                input.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        this.blur();
+                    }
+                });
+            }
+
+            function closeTab(tab, editorContainer) {
+                tab.remove();
+                editorContainer.remove();
+                if (codeTabs.children.length > 0) {
+                    const firstTab = codeTabs.children[0];
+                    const firstEditorId = firstTab.id.replace('codeTab', 'codeEditor');
+                    selectTab(firstTab, document.getElementById(firstEditorId));
+                }
+                updateScrollButtons();
+            }
+
+
+            leftScrollButton.addEventListener('click', () => {
+                console.log("scrolling left")
+                codeTabs.parentElement.scrollBy({ left: -100, behavior: 'smooth' });
+            });
+
+            rightScrollButton.addEventListener('click', () => {
+                codeTabs.parentElement.scrollBy({ left: 100, behavior: 'smooth' });
+            });
+
+            codeTabs.parentElement.addEventListener('scroll', updateScrollButtons);
+
+            addCodeTab.addEventListener('click', () => createCodeTab());
+
+            // Create the first tab by default
+            loadSavedState();
+            createCodeTab();
+        });
+        function showEditor(editorId) {
+            Array.from(codeEditors.children).forEach(editor => {
+                editor.classList.add('hidden');
+            });
+            document.getElementById(editorId).classList.remove('hidden');
+        }
+
+        function loadFile(editor, fileNameInput) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.onchange = e => {
+                const file = e.target.files[0];
+                const reader = new FileReader();
+                reader.readAsText(file, 'UTF-8');
+                reader.onload = readerEvent => {
+                    const content = readerEvent.target.result;
+                    editor.setValue(content);
+                    fileNameInput.textContent = file.name;
+                }
+            }
+            input.click();
+        }
+        window.addEventListener('resize', function() {
+            if (activeEditor) {
+                activeEditor.layout();
+            }
+        });
+        function closeTab(tab, editorContainer) {
+            tab.remove();
+            editorContainer.remove();
+            if (codeEditors.children.length > 0) {
+                showEditor(codeEditors.children[0].id);
+            }
+        }
+
     </script>
 </body>
 </html>
