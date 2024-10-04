@@ -1,104 +1,154 @@
-# Multi Codes Analysis Tool Documentation
+Certainly! I'll create a detailed README.md file for this project based on the provided code. Here's the documentation:
 
-## Overview
+# Multi-Code Analysis Tool
 
-The **Multi Codes Analysis Tool** is a web-based application designed to help users analyze multiple code files based on a given prompt. It allows users to add code files, input a prompt, and receive a detailed analysis of the code files. The tool supports multiple languages and provides options to save and load projects.
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Features](#features)
+3. [Installation](#installation)
+4. [Usage](#usage)
+5. [Components](#components)
+6. [Customization](#customization)
+7. [Contributing](#contributing)
+8. [License](#license)
+
+## Introduction
+
+The Multi-Code Analysis Tool is a powerful web-based application designed to analyze, document, and refactor multiple code files simultaneously. It provides an intuitive interface for developers and technical writers to work with various programming languages, generate documentation, and improve code quality.
 
 ## Features
 
-- **Add Code Files**: Add multiple code files for analysis.
-- **Prompt Input**: Enter a prompt to guide the analysis.
-- **Analyze**: Generate a detailed analysis of the code files based on the prompt.
-- **Save/Load Projects**: Save your current project or load a previously saved project.
-- **Copy/Save Output**: Copy the analysis output to the clipboard or save it as a markdown file.
-- **Multi-language Support**: Switch between English, French, and Spanish.
+- Multi-language code editor with syntax highlighting
+- Code analysis, documentation, and refactoring capabilities
+- AI-powered processing using LOLLMS (Language Model as a Service)
+- Project management (save, load, and create new projects)
+- Customizable user settings
+- Internationalization support (English, French, and Spanish)
+- Markdown rendering for output
+- Copy and save analysis results
 
-## Getting Started
+## Installation
 
-### 1. Add Code Files
+To set up the Multi-Code Analysis Tool, follow these steps:
 
-- Click the **Add Code** button to add a new code editor.
-- You can either type your code directly into the editor or upload a file by clicking the **Open File** button.
-- To remove a code editor, click the **Remove File** button.
+1. Clone the repository:
+   ```
+   git clone https://github.com/yourusername/multi-code-analysis-tool.git
+   ```
 
-### 2. Enter a Prompt
+2. Navigate to the project directory:
+   ```
+   cd multi-code-analysis-tool
+   ```
 
-- In the **Prompt Input** area, enter a prompt that will guide the analysis of the code files.
-- Example: "Analyze the performance and security of the following code."
+3. Open the `index.html` file in a modern web browser.
 
-### 3. Analyze the Code
+Note: This tool requires an active internet connection to load external libraries and stylesheets.
 
-- Once you have added your code files and entered a prompt, click the **Analyze** button.
-- The tool will generate a detailed analysis of the code files based on the prompt and display the results in the **Output Area**.
+## Usage
 
-### 4. Copy or Save the Output
+1. Open the tool in your web browser.
+2. Use the "Add Code" button to create new code tabs.
+3. Enter or load your code into the editor tabs.
+4. Select the operation type (Analysis, Documentation, Refactoring, or Custom).
+5. Enter your prompt in the "User Input" section.
+6. Click the "Process" button to generate the analysis.
+7. View the results in the "Output" section.
+8. Copy or save the output as needed.
 
-- After the analysis is complete, you can:
-  - **Copy the Output**: Click the **Copy Output** button to copy the analysis to your clipboard.
-  - **Save the Output**: Click the **Save Output** button to download the analysis as a markdown file.
+## Components
 
-### 5. Save or Load a Project
+### 1. Code Editor
 
-- **Save Project**: Click the **Save Project** button to save your current project, including the code files, prompt, and output.
-- **Load Project**: Click the **Load Project** button to load a previously saved project.
+The tool uses Monaco Editor, providing a powerful code editing experience with features like:
 
-## Multi-language Support
+- Syntax highlighting
+- Multiple language support
+- Tab management
 
-The tool supports English, French, and Spanish. You can switch between languages using the language selector at the top of the page. The interface and messages will be translated accordingly.
+```javascript
+require(['vs/editor/editor.main'], function() {
+    const editor = monaco.editor.create(editorContainer, {
+        value: content,
+        language: 'javascript',
+        theme: 'vs-dark',
+        automaticLayout: true
+    });
+    // ... (editor setup)
+});
+```
 
-### Available Languages
+### 2. AI Processing
 
-- **English**
-- **Français**
-- **Español**
+The tool leverages the LOLLMS client for AI-powered code analysis:
 
-## User Interface
+```javascript
+const lc = new LollmsClient();
+// ... (in the analyzeBtn event listener)
+document_output = await lc.generate(lc.system_message() + systemPrompt + lc.template.separator_template + lc.user_message() + userPrompt + lc.template.separator_template + lc.ai_message());
+```
 
-### Buttons
+### 3. Internationalization
 
-- **Add Code**: Adds a new code editor.
-- **Save Project**: Saves the current project (code files, prompt, and output).
-- **Load Project**: Loads a previously saved project.
-- **Analyze**: Generates an analysis based on the code files and prompt.
-- **Copy Output**: Copies the analysis output to the clipboard.
-- **Save Output**: Saves the analysis output as a markdown file.
+The tool supports multiple languages using a custom WebAppLocalizer:
 
-### Input Fields
+```javascript
+const translations = {
+    en: { /* English translations */ },
+    fr: { /* French translations */ },
+    es: { /* Spanish translations */ }
+};
+const localizer = new WebAppLocalizer(translations, 'multiCodeAnalysis_', document.getElementById('languageSelector'));
+```
 
-- **Prompt Input**: Enter the prompt that will guide the analysis.
-- **Code Editors**: Add and edit code files for analysis.
+### 4. Markdown Rendering
 
-### Output Area
+Output is rendered as Markdown for better readability:
 
-- Displays the analysis results after clicking the **Analyze** button.
+```javascript
+const markdownRenderer = new MarkdownRenderer();
+// ... (in the analyzeBtn event listener)
+const renderedOutput = await markdownRenderer.renderMarkdown(document_output);
+outputArea.innerHTML = renderedOutput;
+```
 
-## Saving and Loading Projects
+## Customization
 
-### Save Project
+### User Settings
 
-- Click the **Save Project** button to download a JSON file containing the current project (code files, prompt, and output).
+Users can customize their experience by setting their name, email, and additional information:
 
-### Load Project
+```javascript
+let userSettings = {
+    name: '',
+    email: '',
+    extraInfo: ''
+};
+```
 
-- Click the **Load Project** button to upload a previously saved JSON file and restore the project.
+### Operation Types
 
-## Local Storage
+The tool supports various operation types:
 
-The tool automatically saves the current state (prompt, code files, and output) in the browser's local storage. This allows you to continue where you left off if you close or refresh the page.
+- Analysis
+- Documentation
+- Refactoring
+- Custom (user-defined)
 
-## Loading and Saving State
+## Contributing
 
-- **Load Saved State**: When the page loads, the tool will automatically load the saved state from local storage (if available).
-- **Save State**: The tool automatically saves the current state to local storage when you leave the page.
+Contributions to the Multi-Code Analysis Tool are welcome! Please follow these steps:
 
-## Error Handling
-
-If an error occurs during the analysis, an error message will be displayed in the **Output Area**.
-
-## Loading Indicator
-
-While the analysis is being generated, a loading overlay with a spinning strawberry icon will be displayed to indicate that the system is busy.
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/your-feature-name`)
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin feature/your-feature-name`)
+5. Create a new Pull Request
 
 ## License
 
-This tool is provided as-is without any warranties.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+---
+
+This README provides a comprehensive overview of the Multi-Code Analysis Tool, its features, and how to use it. You may want to add or modify sections based on specific project requirements or additional functionalities not covered in the provided code snippet.
