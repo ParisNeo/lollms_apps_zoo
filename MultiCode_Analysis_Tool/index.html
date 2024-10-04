@@ -313,7 +313,7 @@
                         automaticLayout: true
                     });
 
-                    editors[editorId] = editor;
+                    editors[editorId] = {editor:editor,tab:tab};
 
                     function resizeEditor() {
                         editor.layout();
@@ -352,7 +352,8 @@
         analyzeBtn.addEventListener('click', async () => {
             showLoader();
             const prompt = promptInput.value;
-            const codes = Object.entries(editors).map(([editorId, editor]) => {
+            const codes = Object.entries(editors).map(([editorId, infos]) => {
+                const editor = infos.editor
                 const tabElement = document.querySelector(`#codeTabs li[data-editor-id="${editorId}"]`);
                 const fileName = tabElement ? tabElement.querySelector('.tab-name').textContent : 'Untitled';
                 return {
@@ -434,9 +435,9 @@
         saveProjectBtn.addEventListener('click', () => {
             const project = {
                 prompt: promptInput.value,
-                files: Array.from(codeEditors.children).map(editorContainer => {
-                    const editor = monaco.editor.getEditors().find(e => e.getContainerDomNode() === editorContainer);
-                    const fileName = editorContainer.id.replace('codeEditor', 'Code ');
+                files: Object.entries(editors).map(([editorId, infos]) => {
+                    const editor = infos.editor
+                    const fileName = infos.tab.querySelector('.tab-name').textContent;
                     return {
                         fileName: fileName,
                         content: editor.getValue()
