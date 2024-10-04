@@ -361,6 +361,22 @@
                 selectTab(tab, editorContainer);
                 updateScrollButtons();
             }
+        function switch2Output() {
+            const codeEditorTab = document.getElementById('codeEditorTab');
+            const outputTab = document.getElementById('outputTab');
+            const codeEditorContent = document.getElementById('codeEditorContent');
+            const outputContent = document.getElementById('outputContent');
+
+            // Activate output tab
+            outputTab.classList.add('active', 'text-blue-600', 'border-blue-600');
+            outputTab.classList.remove('text-gray-500', 'bg-gray-100', 'border-transparent');
+            outputContent.classList.remove('hidden');
+
+            // Deactivate code editor tab
+            codeEditorTab.classList.remove('active', 'text-blue-600', 'border-blue-600');
+            codeEditorTab.classList.add('text-gray-500', 'bg-gray-100', 'border-transparent');
+            codeEditorContent.classList.add('hidden');
+        }
 
         analyzeBtn.addEventListener('click', async () => {
             showLoader();
@@ -402,6 +418,7 @@
                 console.error("Error generating analysis:", error);
                 outputArea.innerHTML = localizer.translate('analysisError');
             } finally {
+                switch2Output();
                 hideLoader();
             }
 
