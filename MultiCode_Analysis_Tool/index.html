@@ -99,24 +99,37 @@
 
         </div>
 
-        <!-- Right side: Code Editor -->
-        <div class="w-1/2 p-4 flex flex-col w-full h-full">
-            <h2 class="text-xl font-bold mb-2">Code Editor</h2>
-            <div class="tabs-container flex items-center mb-2">
-                <button class="tabs-scroll-button left">&lt;</button>
-                <ul id="codeTabs" class="flex border-b container w-full"></ul>
-                <button id="addCodeTab" class="bg-indigo-500 text-white inline-block py-2 px-4 rounded-t font-semibold hover:bg-indigo-600">+</button>
-                <button class="tabs-scroll-button right">&gt;</button>
+        <div class="w-full p-4 flex flex-col">
+            <!-- Tabs -->
+            <div class="flex border-b mb-4">
+                <button id="codeEditorTab" class="py-2 px-4 text-sm font-medium text-center text-gray-500 bg-gray-100 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300 active">Code Editor</button>
+                <button id="outputTab" class="py-2 px-4 text-sm font-medium text-center text-gray-500 bg-gray-100 rounded-t-lg border-b-2 border-transparent hover:text-gray-600 hover:border-gray-300">Output</button>
             </div>
-            <div id="codeEditors" class="flex-grow h-full"></div>
+        
+            <!-- Code Editor Content -->
+            <div id="codeEditorContent" class="tab-content">
+                <div class="tabs-container flex items-center mb-2">
+                    <button class="tabs-scroll-button left">&lt;</button>
+                    <ul id="codeTabs" class="flex border-b container w-full"></ul>
+                    <button id="addCodeTab" class="bg-indigo-500 text-white inline-block py-2 px-4 rounded-t font-semibold hover:bg-indigo-600">+</button>
+                    <button class="tabs-scroll-button right">&gt;</button>
+                </div>
+                <div id="codeEditors" class="flex-grow h-full"></div>
+            </div>
+        
+            <!-- Output Content -->
+            <div id="outputContent" class="tab-content hidden">
+                <h2 class="text-xl font-bold mb-2">Output</h2>
+                <div id="outputArea" class="bg-gray-100 p-4 rounded-md flex-grow overflow-y-auto mb-4"></div>
+                <div class="flex justify-end">
+                    <button id="copyOutputBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copyOutput">Copy Output</button>
+                    <button id="saveOutputBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveOutput">Save Output</button>
+                </div>
+            </div>
         </div>
+        
     </div>
-    <h2 class="text-xl font-bold mb-2">Output</h2>
-    <div id="outputArea" class="bg-gray-100 p-4 rounded-md flex-grow overflow-y-auto mb-4"></div>
-    <div class="flex justify-end">
-        <button id="copyOutputBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copyOutput">Copy Output</button>
-        <button id="saveOutputBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="saveOutput">Save Output</button>
-    </div>
+
     <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
         <div class="bg-white p-6 rounded-lg shadow-xl text-center">
             <div class="strawberry text-4xl mb-4">🍓</div>
@@ -576,6 +589,29 @@
         });
 
         document.addEventListener('DOMContentLoaded', (event) => {
+            const codeEditorTab = document.getElementById('codeEditorTab');
+            const outputTab = document.getElementById('outputTab');
+            const codeEditorContent = document.getElementById('codeEditorContent');
+            const outputContent = document.getElementById('outputContent');
+
+            function switchTab(activeTab, activeContent, inactiveTab, inactiveContent) {
+                activeTab.classList.add('active', 'text-blue-600', 'border-blue-600');
+                activeTab.classList.remove('text-gray-500', 'bg-gray-100', 'border-transparent');
+                activeContent.classList.remove('hidden');
+
+                inactiveTab.classList.remove('active', 'text-blue-600', 'border-blue-600');
+                inactiveTab.classList.add('text-gray-500', 'bg-gray-100', 'border-transparent');
+                inactiveContent.classList.add('hidden');
+            }
+
+            codeEditorTab.addEventListener('click', function() {
+                switchTab(codeEditorTab, codeEditorContent, outputTab, outputContent);
+            });
+
+            outputTab.addEventListener('click', function() {
+                switchTab(outputTab, outputContent, codeEditorTab, codeEditorContent);
+            });
+
             function editTabName(tabNameElement) {
                 const currentName = tabNameElement.textContent;
                 const input = document.createElement('input');
