@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulacra</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8">Simulacra</h1>
+        <div class="flex flex-col md:flex-row gap-8">
+            <div class="flex-grow">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <canvas id="canvas" width="800" height="600" class="border border-indigo-300 rounded-md"></canvas>
+                </div>
+                <div class="flex gap-4 mb-8">
+                    <button id="startBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Start Simulation</button>
+                    <button id="simulateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Simulate</button>
+                    <button id="stopBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">Stop</button>
+                    <button id="saveResultsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Results</button>
+                </div>
+            </div>
+            <div class="md:w-64">
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <h2 class="text-2xl font-bold text-indigo-800 mb-4">Statistics</h2>
+                    <div class="space-y-4">
+                        <div>Population: <span id="populationCount">0</span></div>
+                        <div>Avg Speed: <span id="avgSpeed">0</span></div>
+                        <div>Avg Vision: <span id="avgVision">0</span></div>
+                        <div>Food Count: <span id="foodCount">0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white shadow-lg rounded-lg p-6 mt-8">
+            <canvas id="statsChart"></canvas>
+        </div>
+    </div>
+    <div id="settingsOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden"></div>
+    <div id="settingsPopup" class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white shadow-lg rounded-lg p-6 hidden">
+        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Simulation Settings</h2>
+        <div class="mb-4">
+            <label for="populationSize" class="block text-sm font-medium text-gray-700">Initial Population Size:</label>
+            <input type="number" id="populationSize" min="1" max="200" value="50" class="mt-1 block w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="foodAmount" class="block text-sm font-medium text-gray-700">Initial Food Amount:</label>
+            <input type="number" id="foodAmount" min="1" max="100" value="20" class="mt-1 block w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="foodSpawnRate" class="block text-sm font-medium text-gray-700">Food Spawn Rate (0-1):</label>
+            <input type="number" id="foodSpawnRate" min="0" max="1" step="0.01" value="0.1" class="mt-1 block w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="energyDepletionSpeed" class="block text-sm font-medium text-gray-700">Energy Depletion Speed:</label>
+            <input type="number" id="energyDepletionSpeed" min="0.01" max="1" step="0.01" value="0.1" class="mt-1 block w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-4">
+            <label for="randomMutations" class="flex items-center">
+                <input type="checkbox" id="randomMutations" class="form-checkbox h-5 w-5 text-indigo-600">
+                <span class="ml-2 text-sm text-gray-700">Enable Random Mutations</span>
+            </label>
+        </div>
+        <div class="mb-4">
+            <label for="searchPattern" class="block text-sm font-medium text-gray-700">Search Pattern:</label>
+            <select id="searchPattern" class="mt-1 block w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="nearest">Nearest Food</option>
+                <option value="random">Random Movement</option>
+                <option value="zigzag">Zigzag Pattern</option>
+            </select>
+        </div>
+        <button id="applySettings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Apply and Start</button>
+    </div>
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const startBtn = document.getElementById('startBtn');
+        const simulateBtn = document.getElementById('simulateBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const applySettingsBtn = document.getElementById('applySettings');
+        const populationSizeInput = document.getElementById('populationSize');
+        const foodAmountInput = document.getElementById('foodAmount');
+        const foodSpawnRateInput = document.getElementById('foodSpawnRate');
+        const energyDepletionSpeedInput = document.getElementById('energyDepletionSpeed');
+        const randomMutationsCheckbox = document.getElementById('randomMutations');
+        const searchPatternSelect = document.getElementById('searchPattern');
+        const populationCountEl = document.getElementById('populationCount');
+        const avgSpeedEl = document.getElementById('avgSpeed');
+        const avgVisionEl = document.getElementById('avgVision');
+        const foodCountEl = document.getElementById('foodCount');
+        const saveResultsBtn = document.getElementById('saveResultsBtn');
+        let organisms = [];
+        let food = [];
+        let simulationRunning = false;
+        let foodSpawnRate = 0.1;
+        let energyDepletionSpeed = 0.1;
+        let enableRandomMutations = false;
+        let searchPattern = 'nearest';
+        let generationCount = 0;
+        let statsData = {
+            generations: [],
+            population: [],
+            avgSpeed: [],
+            avgVision: [],
+            foodCount: []
+        };
+        const statsChart = new Chart(document.getElementById('statsChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    { label: 'Population', data: [], borderColor: 'rgb(75, 192, 192)', tension: 0.1 },
+                    { label: 'Avg Speed', data: [], borderColor: 'rgb(255, 99, 132)', tension: 0.1 },
+                    { label: 'Avg Vision', data: [], borderColor: 'rgb(54, 162, 235)', tension: 0.1 },
+                    { label: 'Food Count', data: [], borderColor: 'rgb(255, 206, 86)', tension: 0.1 }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Generation' } },
+                    y: { beginAtZero: true }
+                }
+            }
+        });
+        class Organism {
+            constructor(x, y, speed, vision) {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.vision = vision;
+                this.energy = 100;
+                this.size = 10;
+                this.updateColor();
+                this.zigzagDirection = 1;
+                this.zigzagCounter = 0;
+            }
+            updateColor() {
+                const hue = (this.speed - 1) / 3 * 120;
+                const saturation = 50 + (this.vision - 50) / 100 * 50;
+                this.color = `hsl(${hue}, ${saturation}%, 50%)`;
+            }
+            move() {
+                switch (searchPattern) {
+                    case 'nearest':
+                        this.moveToNearestFood();
+                        break;
+                    case 'random':
+                        this.moveRandomly();
+                        break;
+                    case 'zigzag':
+                        this.moveZigzag();
+                        break;
+                }
+                this.x = Math.max(0, Math.min(canvas.width, this.x));
+                this.y = Math.max(0, Math.min(canvas.height, this.y));
+                this.energy -= energyDepletionSpeed;
+            }
+            moveToNearestFood() {
+                const nearestFood = this.findNearestFood();
+                if (nearestFood) {
+                    const dx = nearestFood.x - this.x;
+                    const dy = nearestFood.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance > this.speed) {
+                        this.x += (dx / distance) * this.speed;
+                        this.y += (dy / distance) * this.speed;
+                    } else {
+                        this.x = nearestFood.x;
+                        this.y = nearestFood.y;
+                        this.eat(nearestFood);
+                    }
+                } else {
+                    this.moveRandomly();
+                }
+            }
+            moveRandomly() {
+                this.x += (Math.random() - 0.5) * this.speed * 2;
+                this.y += (Math.random() - 0.5) * this.speed * 2;
+            }
+            moveZigzag() {
+                this.zigzagCounter += this.speed;
+                if (this.zigzagCounter > 20) {
+                    this.zigzagDirection *= -1;
+                    this.zigzagCounter = 0;
+                }
+                this.x += this.speed;
+                this.y += this.zigzagDirection * this.speed * 0.4;
+            }
+            findNearestFood() {
+                let nearestFood = null;
+                let minDistance = Infinity;
+                for (const f of food) {
+                    const dx = f.x - this.x;
+                    const dy = f.y - this.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < this.vision && distance < minDistance) {
+                        nearestFood = f;
+                        minDistance = distance;
+                    }
+                }
+                return nearestFood;
+            }
+            eat(foodItem) {
+                this.energy += 20;
+                food = food.filter(f => f !== foodItem);
+            }
+            reproduce() {
+                if (this.energy >= 180) {
+                    this.energy /= 2;
+                    let offspringSpeed = this.speed;
+                    let offspringVision = this.vision;
+                    if (enableRandomMutations) {
+                        offspringSpeed += (Math.random() - 0.5) * 0.2;
+                        offspringVision += (Math.random() - 0.5) * 5;
+                    }
+                    const offspring = new Organism(
+                        this.x + (Math.random() - 0.5) * 20,
+                        this.y + (Math.random() - 0.5) * 20,
+                        offspringSpeed,
+                        offspringVision
+                    );
+                    offspring.energy = this.energy;
+                    return offspring;
+                }
+                return null;
+            }
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.vision, 0, Math.PI * 2);
+                const rgbColor = this.hslToRgb(this.color);
+                ctx.fillStyle = `rgba(${rgbColor.r}, ${rgbColor.g}, ${rgbColor.b}, 0.1)`;
+                ctx.fill();
+                ctx.closePath();
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                ctx.strokeStyle = '#000';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                ctx.closePath();
+                const barWidth = 20;
+                const barHeight = 4;
+                ctx.fillStyle = '#0f0';
+                ctx.fillRect(this.x - barWidth / 2, this.y - this.size - 10, barWidth * (this.energy / 180), barHeight);
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(this.x - barWidth / 2, this.y - this.size - 10, barWidth, barHeight);
+            }
+            hslToRgb(hslColor) {
+                const hslMatch = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/);
+                if (hslMatch) {
+                    const h = parseInt(hslMatch[1]) / 360;
+                    const s = parseInt(hslMatch[2]) / 100;
+                    const l = parseInt(hslMatch[3]) / 100;
+                    let r, g, b;
+                    if (s === 0) {
+                        r = g = b = l;
+                    } else {
+                        const hue2rgb = (p, q, t) => {
+                            if (t < 0) t += 1;
+                            if (t > 1) t -= 1;
+                            if (t < 1/6) return p + (q - p) * 6 * t;
+                            if (t < 1/2) return q;
+if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                            return p;
+                        };
+                        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                        const p = 2 * l - q;
+                        r = hue2rgb(p, q, h + 1/3);
+                        g = hue2rgb(p, q, h);
+                        b = hue2rgb(p, q, h - 1/3);
+                    }
+                    return {
+                        r: Math.round(r * 255),
+                        g: Math.round(g * 255),
+                        b: Math.round(b * 255)
+                    };
+                }
+                return {r: 0, g: 0, b: 0};
+            }
+        }
+        function createFood() {
+            const x = Math.random() * canvas.width;
+            const y = Math.random() * canvas.height;
+            food.push({ x, y });
+        }
+        function drawFood() {
+            ctx.fillStyle = '#00a86b';
+            for (const f of food) {
+                ctx.beginPath();
+                ctx.arc(f.x, f.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+        function updateStats() {
+            populationCountEl.textContent = organisms.length;
+            foodCountEl.textContent = food.length;
+            if (organisms.length > 0) {
+                const totalSpeed = organisms.reduce((sum, org) => sum + org.speed, 0);
+                const totalVision = organisms.reduce((sum, org) => sum + org.vision, 0);
+                const avgSpeed = totalSpeed / organisms.length;
+                const avgVision = totalVision / organisms.length;
+                avgSpeedEl.textContent = avgSpeed.toFixed(2);
+                avgVisionEl.textContent = avgVision.toFixed(2);
+                statsData.generations.push(generationCount);
+                statsData.population.push(organisms.length);
+                statsData.avgSpeed.push(avgSpeed);
+                statsData.avgVision.push(avgVision);
+                statsData.foodCount.push(food.length);
+                updateStatsChart();
+            } else {
+                avgSpeedEl.textContent = "0";
+                avgVisionEl.textContent = "0";
+            }
+        }
+        function updateStatsChart() {
+            statsChart.data.labels = statsData.generations;
+            statsChart.data.datasets[0].data = statsData.population;
+            statsChart.data.datasets[1].data = statsData.avgSpeed;
+            statsChart.data.datasets[2].data = statsData.avgVision;
+            statsChart.data.datasets[3].data = statsData.foodCount;
+            statsChart.update();
+        }
+        function simulate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawFood();
+            let newOrganisms = [];
+            organisms = organisms.filter(organism => {
+                organism.move();
+                organism.draw();
+                if (organism.energy <= 0) {
+                    return false;
+                } else {
+                    const offspring = organism.reproduce();
+                    if (offspring) {
+                        newOrganisms.push(offspring);
+                    }
+                    return true;
+                }
+            });
+            organisms = organisms.concat(newOrganisms);
+            if (Math.random() < foodSpawnRate) {
+                createFood();
+            }
+            updateStats();
+            generationCount++;
+            if (simulationRunning) {
+                requestAnimationFrame(simulate);
+            }
+        }
+        function startSimulation() {
+            if (simulationRunning) return;
+            const populationSize = parseInt(populationSizeInput.value);
+            const foodAmount = parseInt(foodAmountInput.value);
+            foodSpawnRate = parseFloat(foodSpawnRateInput.value);
+            energyDepletionSpeed = parseFloat(energyDepletionSpeedInput.value);
+            enableRandomMutations = randomMutationsCheckbox.checked;
+            searchPattern = searchPatternSelect.value;
+            organisms = [];
+            food = [];
+            statsData = {
+                generations: [],
+                population: [],
+                avgSpeed: [],
+                avgVision: [],
+                foodCount: []
+            };
+            for (let i = 0; i < populationSize; i++) {
+                organisms.push(new Organism(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    Math.random() * 3 + 1,
+                    Math.random() * 50 + 50
+                ));
+            }
+            for (let i = 0; i < foodAmount; i++) {
+                createFood();
+            }
+            simulationRunning = true;
+            settingsPopup.classList.add('hidden');
+            settingsOverlay.classList.add('hidden');
+            generationCount = 0;
+            simulate();
+        }
+        function stopSimulation() {
+            simulationRunning = false;
+        }
+        startBtn.addEventListener('click', () => {
+            settingsPopup.classList.remove('hidden');
+            settingsOverlay.classList.remove('hidden');
+        });
+        simulateBtn.addEventListener('click', () => {
+            if (!simulationRunning) {
+                simulationRunning = true;
+                simulate();
+            }
+        });
+        stopBtn.addEventListener('click', stopSimulation);
+        applySettingsBtn.addEventListener('click', startSimulation);
+        settingsPopup.classList.remove('hidden');
+        settingsOverlay.classList.remove('hidden');
+        saveResultsBtn.addEventListener('click', saveResults);
+        function saveResults() {
+            const currentSettings = {
+                populationSize: parseInt(populationSizeInput.value),
+                foodAmount: parseInt(foodAmountInput.value),
+                foodSpawnRate: parseFloat(foodSpawnRateInput.value),
+                energyDepletionSpeed: parseFloat(energyDepletionSpeedInput.value),
+                randomMutations: randomMutationsCheckbox.checked,
+                searchPattern: searchPatternSelect.value
+            };
+            const csvData = Papa.unparse({
+                fields: ['Generation', 'Population', 'Avg Speed', 'Avg Vision', 'Food Count'],
+                data: statsData.generations.map((gen, i) => [
+                    gen,
+                    statsData.population[i],
+                    statsData.avgSpeed[i],
+                    statsData.avgVision[i],
+                    statsData.foodCount[i]
+                ])
+            });
+            const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `simulation_results_${Date.now()}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+            organisms.forEach(organism => {
+                const dx = organism.x - mouseX;
+                const dy = organism.y - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance < organism.size) {
+                    const tooltip = `Speed: ${organism.speed.toFixed(2)}, Vision: ${organism.vision.toFixed(2)}, Energy: ${organism.energy.toFixed(2)}`;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(mouseX + 10, mouseY + 10, ctx.measureText(tooltip).width + 20, 30);
+                    ctx.fillStyle = 'white';
+                    ctx.fillText(tooltip, mouseX + 20, mouseY + 30);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
