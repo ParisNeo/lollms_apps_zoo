@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-Enhanced Presentation Creator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex justify-center items-center hidden">
+        <div class="text-center text-pink-500">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4">Interrogating LOLLMS strawberry...</div>
+        </div>
+    </div>
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">AI-Enhanced Presentation Creator</h1>
+            <p class="text-lg text-indigo-600">Create stunning presentations with AI-generated content and images</p>
+        </header>
+        <main class="flex flex-col gap-8">
+            <section id="input-section" class="bg-white shadow-lg rounded-lg p-6">
+                <textarea id="user-prompt" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Describe your presentation..."></textarea>
+                <button id="generate-btn" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Presentation</button>
+            </section>
+            <section id="preview-section" class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Presentation Preview</h2>
+                <div id="slides-carousel" class="flex overflow-x-auto gap-4 pb-4"></div>
+            </section>
+            <section id="image-section" class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Image Management</h2>
+                <div id="image-management" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+            </section>
+            <section id="final-actions" class="flex justify-center gap-4">
+                <button id="download-btn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300" disabled>Download Presentation</button>
+                <button id="start-over-btn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">Start Over</button>
+            </section>
+        </main>
+        <footer class="text-center mt-8 text-indigo-600">
+            <p>Powered by LoLLMs - Version 1.0</p>
+        </footer>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
+        const userPrompt = document.getElementById('user-prompt');
+        const generateBtn = document.getElementById('generate-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const startOverBtn = document.getElementById('start-over-btn');
+        const slidesCarousel = document.getElementById('slides-carousel');
+        const imageManagement = document.getElementById('image-management');
+        let presentationData = null;
+        let jsonStructure = "";
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+        async function generatePresentation() {
+            showLoader();
+            const prompt = userPrompt.value;
+            try {
+                jsonStructure = await lc.generateCode(`Generate a JSON structure for a PowerPoint presentation based on this prompt: 
+${prompt}
+Use the following json format:
+\`\`\`json
+{
+  "presentation": {
+    "title": "AI-Enhanced Presentation",
+    "author": "ParisNeo",
+    "slides": [
+      {
+        "layout": "content_with_image",
+        "title": "AI in Action",
+        "content": [
+          "AI can now generate images",
+          "User can provide custom images",
+          "Seamless integration with presentations"
+        ],
+        "image": {
+          "type": "request",
+          "description": "A futuristic robot creating art on a digital canvas",
+          "prompt": "Generate an image of a sleek, metallic robot with glowing blue eyes, sitting at an easel, painting on a holographic canvas floating in front of it. The background should be a futuristic lab with soft, ambient lighting."
+        }
+      },
+      {
+        "layout": "two_content",
+        "title": "User Provided vs AI Generated",
+        "left_content": {
+          "title": "User Provided Image",
+          "image": {
+            "type": "user_provided",
+            "description": "Please provide an image of a natural landscape"
+          }
+        },
+        "right_content": {
+          "title": "AI Generated Image",
+          "image": {
+            "type": "generate",
+            "prompt": "Create a photorealistic image of a serene mountain lake at sunset, with snow-capped peaks reflected in the calm water. Include a small wooden dock in the foreground."
+          }
+        }
+      }
+    ]
+  }
+}
+\`\`\`
+`);
+                presentationData = JSON.parse(jsonStructure);
+                await displayPresentationPreview();
+                downloadBtn.disabled = false;
+            } catch (error) {
+                console.error('Error generating presentation:', error);
+                alert('Failed to generate presentation. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+        async function displayPresentationPreview() {
+            slidesCarousel.innerHTML = '';
+            imageManagement.innerHTML = '';
+            presentationData.presentation.slides.forEach((slide, index) => {
+                const slidePreview = document.createElement('div');
+                slidePreview.className = 'flex-shrink-0 w-64 bg-gray-100 p-4 rounded';
+                slidePreview.innerHTML = `
+                    <h3 class="font-bold">${slide.title}</h3>
+                    <p>${Array.isArray(slide.content) ? slide.content.join(', ') : slide.content}</p>
+                `;
+                slidesCarousel.appendChild(slidePreview);
+                if (slide.image) {
+                    const imageSection = document.createElement('div');
+                    imageSection.innerHTML = `
+                        <h4 class="font-semibold">Slide ${index + 1} Image</h4>
+                        <p>${slide.image.description || slide.image.prompt}</p>
+                        ${slide.image.type === 'user_provided' 
+                            ? `<input type="file" data-slide="${index}" class="image-upload mt-2">` 
+                            : `<button data-slide="${index}" class="generate-image-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded mt-2">Generate Image</button>`
+                        }
+                        <div class="image-preview mt-2"></div>
+                    `;
+                    imageManagement.appendChild(imageSection);
+                }
+            });
+            setupImageHandlers();
+        }
+        function setupImageHandlers() {
+            document.querySelectorAll('.image-upload').forEach(input => {
+                input.addEventListener('change', handleImageUpload);
+            });
+            document.querySelectorAll('.generate-image-btn').forEach(button => {
+                button.addEventListener('click', handleImageGeneration);
+            });
+        }
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            const slideIndex = event.target.dataset.slide;
+            if (file) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('slide_id', slideIndex);
+                try {
+                    const response = await axios.post('/upload_image', formData);
+                    updateImagePreview(slideIndex, URL.createObjectURL(file));
+                } catch (error) {
+                    console.error('Error uploading image:', error);
+                    alert('Failed to upload image. Please try again.');
+                }
+            }
+        }
+        async function handleImageGeneration(event) {
+            const slideIndex = event.target.dataset.slide;
+            const prompt = presentationData.presentation.slides[slideIndex].image.prompt;
+            showLoader();
+            try {
+                const imageContainer = event.target.nextElementSibling;
+                await ttiClient.generateAndDisplayImage(prompt, '', 512, 512, imageContainer);
+            } catch (error) {
+                console.error('Error generating image:', error);
+                alert('Failed to generate image. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+        function updateImagePreview(slideIndex, imageUrl) {
+            const previewDiv = document.querySelector(`[data-slide="${slideIndex}"]`).nextElementSibling;
+            previewDiv.innerHTML = `<img src="${imageUrl}" alt="Slide ${parseInt(slideIndex) + 1} Image" class="max-w-full h-auto">`;
+        }
+        async function downloadPresentation() {
+            showLoader();
+            try {
+                const response = await axios.post('http://localhost:8000/generate_presentation', { json_structure: jsonStructure });
+                const link = document.createElement('a');
+                link.href = response.data.path;
+                link.download = 'AI_Generated_Presentation.pptx';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (error) {
+                console.error('Error downloading presentation:', error);
+                alert('Failed to download presentation. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+        function startOver() {
+            userPrompt.value = '';
+            slidesCarousel.innerHTML = '';
+            imageManagement.innerHTML = '';
+            presentationData = null;
+            downloadBtn.disabled = true;
+        }
+        generateBtn.addEventListener('click', generatePresentation);
+        downloadBtn.addEventListener('click', downloadPresentation);
+        startOverBtn.addEventListener('click', startOver);
+    </script>
+</body>
+</html>

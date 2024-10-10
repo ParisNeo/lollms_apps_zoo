@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Symbolic Derivative Function Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">Symbolic Derivative Function Generator</h1>
+        
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <form id="derivativeForm" class="space-y-4">
+                <div>
+                    <label for="function" class="block text-sm font-medium text-gray-700">Function:</label>
+                    <input type="text" id="function" name="function" required class="mt-1 block w-full border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., x**2 + y**2">
+                </div>
+                <div>
+                    <label for="parameters" class="block text-sm font-medium text-gray-700">Parameters (comma-separated):</label>
+                    <input type="text" id="parameters" name="parameters" required class="mt-1 block w-full border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., x,y">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Generate Derivatives
+                </button>
+            </form>
+        </div>
+        
+        <div id="output" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-4">Generated Derivative Functions:</h2>
+            <pre id="derivativesOutput" class="bg-gray-100 p-4 rounded-md overflow-x-auto"></pre>
+            <button id="saveButton" class="mt-4 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Save Code
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden justify-center items-center">
+        <div class="bg-white p-5 rounded-lg flex items-center">
+            <svg class="animate-spin h-5 w-5 mr-3 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Processing...</span>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const derivativeForm = document.getElementById('derivativeForm');
+        const output = document.getElementById('output');
+        const derivativesOutput = document.getElementById('derivativesOutput');
+        const saveButton = document.getElementById('saveButton');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        derivativeForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const functionInput = document.getElementById('function').value;
+            const parametersInput = document.getElementById('parameters').value;
+
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+
+            try {
+                const response = await axios.post("http://localhost:8000/generate_derivatives",{function:functionInput, parameters:parametersInput.split(',').map(param => param.trim())})
+                const generatedCode = response.data;
+                console.log(generatedCode);
+                if (generatedCode) {
+                    const pythonCode = buildString(generatedCode.derivatives);
+                    derivativesOutput.textContent = pythonCode;
+                    output.classList.remove('hidden');
+                } else {
+                    alert('Failed to generate derivatives. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+                loadingOverlay.classList.remove('flex');
+            }
+        });
+        function buildString(derivatives) {
+            let result = "";
+            for (let derivative of derivatives) {
+                result += derivative + "\n\n";
+            }
+            return result;
+        }
+        saveButton.addEventListener('click', async () => {
+            const code = derivativesOutput.textContent;
+            try {
+                const response = await fetch('/save_code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ code }),
+                });
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Failed to save the code. Please try again.');
+            }
+        });
+    </script>
+</body>
+</html>
