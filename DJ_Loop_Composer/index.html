@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DJ Loop Composer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .loop-element {
+            cursor: grab;
+        }
+        .loop-element:active {
+            cursor: grabbing;
+        }
+        .time-ruler {
+            position: absolute;
+            top: -25px;
+            left: 0;
+            width: 100%;
+            height: 25px;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #555;
+        }
+        .channel-container {
+            position: relative;
+            overflow: hidden;
+        }
+        .blurred-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: none;
+        }
+        .settings-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        }
+        .delete-button {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: red;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .track-label {
+            position: absolute;
+            top: 50%;
+            left: -60px;
+            transform: translateY(-50%);
+            font-weight: bold;
+            text-align: right;
+            width: 50px;
+            padding-right: 10px;
+        }
+        .selected-track {
+            ring: 2px;
+            ring-offset-2px;
+            ring-indigo-500;
+        }
+        .selected {
+            ring: 2px;
+            ring-offset-2px;
+            ring-indigo-500;
+        }
+        .sequencer-container {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">DJ Loop Composer</h1>
+        </header>
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 w-min-900">
+                <h2 class="text-3xl font-bold text-indigo-800 mb-4">Music Elements</h2>
+                <div id="musicElements" class="space-y-4">
+                    <div id="loopList" class="space-y-2">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <input type="file" id="fileInput" accept="audio/*" multiple class="hidden">
+                    <label for="fileInput" class="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1M16 10l-4-4m0 0l-4 4m4-4v12"/>
+                        </svg>
+                        <span>Choose Files</span>
+                    </label>
+                    <div id="trackList" class="mt-4 grid grid-cols-2 gap-4"></div>
+                </div>
+            </div>
+            <div class="flex-1 flex flex-col gap-8">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-3xl font-bold text-indigo-800 mb-4">Timeline Sequencer</h2>
+                    <div class="sequencer-container">
+                        <div class="relative">
+                            <div class="time-ruler" id="timeRuler">
+                                <span>0s</span>
+                                <span id="totalTime">10s</span>
+                            </div>
+                            <div id="sequencer" class="border border-indigo-300 rounded-md h-64 overflow-auto bg-gray-100 relative channel-container">
+                                <div id="channels" class="w-full h-full flex flex-col">
+                                </div>
+                                <div id="cursor" class="absolute top-0 bg-red-500" style="width:2px; height:100%; left:0; cursor: pointer;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4 mt-4">
+                        <button id="zoomInButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Zoom In
+                        </button>
+                        <button id="zoomOutButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Zoom Out
+                        </button>
+                        <button id="panLeftButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Pan Left
+                        </button>
+                        <button id="panRightButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Pan Right
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                    <h2 class="text-3xl font-bold text-indigo-800 mb-4">Playback Controls</h2>
+                    <div class="flex items-center space-x-4">
+                        <button id="playButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 4l10 6-10 6V4z"/>
+                            </svg>
+                            <span>Play</span>
+                        </button>
+                        <button id="pauseButton" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 4h4v12H6V4zm4 0h4v12h-4V4z"/>
+                            </svg>
+                            <span>Pause</span>
+                        </button>
+                        <button id="stopButton" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6 6h8v8H6z"/>
+                            </svg>
+                            <span>Stop</span>
+                        </button>
+                        <button id="restartButton" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M4 4v5h.582l3.85-3.85a4 4 0 115.656 5.656l-4.242 4.242a4 4 0 01-5.656-5.656l3.85-3.85H4z"/>
+                            </svg>
+                            <span>Restart</span>
+                        </button>
+                        <button id="cutButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v8m4-4H8"/>
+                            </svg>
+                            <span>Cut</span>
+                        </button>
+                        <button id="deleteSelectedButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Delete Selected Track
+                        </button>
+                    </div>
+                </div>
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex space-x-4">
+                    <button id="saveProjectButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        <span>Save Project</span>
+                    </button>
+                    <button id="loadProjectButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        <span>Load Project</span>
+                    </button>
+                </div>
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <button id="exportButton" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center space-x-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19V6m0 13l-7-7m7 0l7-7"/>
+                        </svg>
+                        <span>Export to WAV</span>
+                    </button>
+                    <div id="exportProgress" class="mt-4"></div>
+                </div>
+            </div>
+        </main>
+        <footer class="text-center mt-8">
+            <p class="text-gray-500">© 2024 ParisNeo - DJ Loop Composer</p>
+        </footer>
+    </div>
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <!-- Settings content -->
+    </div>
+    <script src="https://unpkg.com/wavesurfer.js"></script>
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let tracks = [];
+        let loops = [];
+        let isPlaying = false;
+        let startTime = 0;
+        let pauseTime = 0;
+        let sourceNodes = [];
+        let channelAssignments = {};
+        let animationFrameId = null;
+        const trackColors = ['bg-indigo-600', 'bg-green-600', 'bg-blue-600', 'bg-yellow-600', 'bg-purple-600', 'bg-pink-600', 'bg-red-600', 'bg-teal-600'];
+        let selectedLoop = null;
+        let selectedTrackElement = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const trackList = document.getElementById('trackList');
+        const timeRuler = document.getElementById('timeRuler');
+        const totalTimeSpan = document.getElementById('totalTime');
+        const exportProgress = document.getElementById('exportProgress');
+        const deleteSelectedButton = document.getElementById('deleteSelectedButton');
+        fileInput.addEventListener('change', handleFileUpload);
+        deleteSelectedButton.addEventListener('click', deleteSelectedTrack);
+
+        function handleFileUpload(event) {
+            const files = event.target.files;
+            for (let file of files) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    audioContext.decodeAudioData(e.target.result).then(buffer => {
+                        if (tracks.some(t => t.name === file.name)) {
+                            alert(`Track "${file.name}" already exists.`);
+                            return;
+                        }
+                        const color = trackColors[tracks.length % trackColors.length];
+                        tracks.push({ name: file.name, buffer: buffer, color: color });
+                        const trackElement = document.createElement('div');
+                        trackElement.classList.add('bg-white', 'shadow', 'rounded-lg', 'p-4', 'flex', 'flex-col', 'items-center', 'cursor-pointer', 'border', 'border-transparent', 'transition', 'duration-300', 'hover:shadow-md');
+                        trackElement.innerHTML = `
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-indigo-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6h6v13m-3-6h3m-6 0H6" />
+                            </svg>
+                            <span class="text-center text-indigo-700 font-semibold">${file.name}</span>
+                        `;
+                        trackElement.addEventListener('click', () => {
+                            if (selectedTrackElement) {
+                                selectedTrackElement.classList.remove('selected-track');
+                            }
+                            if (selectedTrackElement === trackElement) {
+                                selectedTrackElement = null;
+                            } else {
+                                trackElement.classList.add('selected-track');
+                                selectedTrackElement = trackElement;
+                            }
+                        });
+                        trackElement.draggable = true;
+                        trackElement.addEventListener('dragstart', (ev) => {
+                            ev.dataTransfer.setData('loopName', file.name);
+                            ev.dataTransfer.setData('origin', 'trackList');
+                        });
+                        trackList.appendChild(trackElement);
+                        updateTimeRuler();
+                    }).catch(() => {
+                        alert(`Failed to load track "${file.name}".`);
+                    });
+                };
+                reader.readAsArrayBuffer(file);
+            }
+        }
+
+        const sequencer = document.getElementById('sequencer');
+        const channelsContainer = document.getElementById('channels');
+        const cursor = document.getElementById('cursor');
+        const cutButton = document.getElementById('cutButton');
+
+        const NUM_CHANNELS = 8;
+        for (let i = 0; i < NUM_CHANNELS; i++) {
+            const channel = document.createElement('div');
+            channel.classList.add('channel', 'h-16', 'border-b', 'border-gray-300', 'relative', 'channel-container', 'flex', 'items-center');
+            channel.dataset.channel = i;
+            channel.loopElements = [];
+            const trackLabel = document.createElement('div');
+            trackLabel.classList.add('track-label', 'text-indigo-800');
+            trackLabel.textContent = `Ch ${i + 1}`;
+            channel.appendChild(trackLabel);
+            channel.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            channel.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const loopName = e.dataTransfer.getData('loopName');
+                const origin = e.dataTransfer.getData('origin');
+                if (!loopName) return;
+                let sourceChannel = null;
+                if (origin === 'channels') {
+                    sourceChannel = parseInt(e.dataTransfer.getData('originalChannel'));
+                }
+                const track = tracks.find(t => t.name === loopName);
+                if (!track) return;
+                const dropX = e.offsetX;
+                const duration = track.buffer.duration * 100 * zoomLevel;
+                if (isOverlap(channel, dropX, duration)) {
+                    alert('Cannot place overlapping tracks in the same channel.');
+                    return;
+                }
+                addLoopToSequencer(track, dropX, i);
+                if (origin === 'channels' && !isNaN(sourceChannel)) {
+                    const source = channelsContainer.children[sourceChannel];
+                    const loopToRemove = Array.from(source.loopElements).find(le => le.dataset.loopName === loopName && parseFloat(le.style.left) === dropX);
+                    if (loopToRemove) {
+                        removeLoop(sourceChannel, loopToRemove);
+                    }
+                }
+            });
+            channelsContainer.appendChild(channel);
+        }
+
+        function isOverlap(channel, x, width) {
+            return channel.loopElements.some(loop => {
+                const loopStart = parseFloat(loop.style.left);
+                const loopEnd = loopStart + parseFloat(loop.style.width);
+                const newStart = x;
+                const newEnd = x + width;
+                return (newStart < loopEnd && newEnd > loopStart);
+            });
+        }
+
+        function addLoopToSequencer(loop, x, channelIndex) {
+            const channel = channelsContainer.children[channelIndex];
+            const loopElement = document.createElement('div');
+            const colorClass = loop.color || 'bg-indigo-600';
+            loopElement.classList.add('absolute', colorClass, 'text-white', 'py-1', 'px-2', 'rounded', 'loop-element', 'flex', 'items-center', 'justify-between', 'text-sm');
+            loopElement.style.left = `${x}px`;
+            loopElement.style.top = `4px`;
+            loopElement.style.width = `${loop.buffer.duration * 100 * zoomLevel}px`;
+            loopElement.draggable = true;
+            loopElement.dataset.loopName = loop.name;
+            loopElement.addEventListener('dragstart', (ev) => {
+                ev.dataTransfer.setData('loopName', loop.name);
+                ev.dataTransfer.setData('originalChannel', channelIndex);
+                ev.dataTransfer.setData('origin', 'channels');
+            });
+            loopElement.addEventListener('dblclick', () => {
+                removeLoop(channelIndex, loopElement);
+            });
+            loopElement.addEventListener('contextmenu', (ev) => {
+                ev.preventDefault();
+                splitLoop(channelIndex, loopElement);
+            });
+            loopElement.addEventListener('mousedown', initDrag);
+            loopElement.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (selectedLoop) {
+                    selectedLoop.classList.remove('selected');
+                }
+                if (selectedLoop === loopElement) {
+                    selectedLoop = null;
+                } else {
+                    selectedLoop = loopElement;
+                    loopElement.classList.add('selected');
+                }
+            });
+
+            const trackName = document.createElement('span');
+            trackName.textContent = loop.name;
+            trackName.classList.add('mr-2');
+            loopElement.appendChild(trackName);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.textContent = '×';
+            deleteBtn.classList.add('delete-button');
+            deleteBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeLoop(channelIndex, loopElement);
+                if (selectedLoop === loopElement) {
+                    selectedLoop = null;
+                }
+            });
+            loopElement.appendChild(deleteBtn);
+
+            channel.loopElements.push(loopElement);
+            channel.appendChild(loopElement);
+            return loopElement;
+        }
+
+        function removeLoop(channelIndex, loopElement) {
+            const channel = channelsContainer.children[channelIndex];
+            channel.removeChild(loopElement);
+            channel.loopElements = channel.loopElements.filter(le => le !== loopElement);
+            if (selectedLoop === loopElement) {
+                selectedLoop = null;
+            }
+        }
+
+        function splitLoop(channelIndex, loopElement, splitTime = null) {
+            const loopName = loopElement.dataset.loopName;
+            const loop = tracks.find(t => t.name === loopName);
+            if (!loop || !loop.buffer) return;
+            let splitSeconds;
+            if (splitTime === null) {
+                splitSeconds = prompt('Enter split time in seconds:', '0');
+                if (splitSeconds === null) return;
+                splitSeconds = parseFloat(splitSeconds);
+            } else {
+                splitSeconds = splitTime;
+            }
+            if (isNaN(splitSeconds) || splitSeconds <= 0 || splitSeconds >= loop.buffer.duration) {
+                alert('Invalid split time.');
+                return;
+            }
+            const newBuffer1 = audioContext.createBuffer(loop.buffer.numberOfChannels, Math.floor(loop.buffer.sampleRate * splitSeconds), loop.buffer.sampleRate);
+            const newBuffer2 = audioContext.createBuffer(loop.buffer.numberOfChannels, Math.floor(loop.buffer.sampleRate * (loop.buffer.duration - splitSeconds)), loop.buffer.sampleRate);
+            for (let channel = 0; channel < loop.buffer.numberOfChannels; channel++) {
+                newBuffer1.copyToChannel(loop.buffer.getChannelData(channel).slice(0, Math.floor(splitSeconds * loop.buffer.sampleRate)), channel);
+                newBuffer2.copyToChannel(loop.buffer.getChannelData(channel).slice(Math.floor(splitSeconds * loop.buffer.sampleRate)), channel);
+            }
+            const newLoop1 = { name: `${loop.name}_part1`, buffer: newBuffer1, color: loop.color };
+            const newLoop2 = { name: `${loop.name}_part2`, buffer: newBuffer2, color: loop.color };
+            tracks.push(newLoop1, newLoop2);
+            removeLoop(channelIndex, loopElement);
+            addLoopToSequencer(newLoop1, parseFloat(loopElement.style.left), channelIndex);
+            addLoopToSequencer(newLoop2, parseFloat(loopElement.style.left) + newBuffer1.duration * 100 * zoomLevel, channelIndex);
+        }
+
+        let zoomLevel = 1;
+        let panOffset = 0;
+
+        sequencer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                zoomLevel = Math.min(zoomLevel * 1.1, 5);
+            } else {
+                zoomLevel = Math.max(zoomLevel / 1.1, 0.2);
+            }
+            applyTransform();
+        });
+
+        document.getElementById('zoomInButton').addEventListener('click', () => {
+            zoomLevel = Math.min(zoomLevel * 1.2, 5);
+            applyTransform();
+        });
+
+        document.getElementById('zoomOutButton').addEventListener('click', () => {
+            zoomLevel = Math.max(zoomLevel / 1.2, 0.2);
+            applyTransform();
+        });
+
+        document.getElementById('panLeftButton').addEventListener('click', () => {
+            panOffset += 20;
+            applyTransform();
+        });
+
+        document.getElementById('panRightButton').addEventListener('click', () => {
+            panOffset -= 20;
+            applyTransform();
+        });
+
+        function applyTransform() {
+            channelsContainer.style.transform = `scaleX(${zoomLevel}) translateX(${panOffset}px)`;
+            updateTimeRuler();
+            if (isPlaying) {
+                const elapsed = audioContext.currentTime - startTime;
+                cursor.style.left = `${elapsed * 100 * zoomLevel + panOffset}px`;
+            }
+            Array.from(channelsContainer.children).forEach(channel => {
+                Array.from(channel.loopElements).forEach(loop => {
+                    const loopTrack = tracks.find(t => t.name === loop.dataset.loopName);
+                    if (loopTrack) {
+                        loop.style.width = `${loopTrack.buffer.duration * 100 * zoomLevel}px`;
+                    }
+                });
+            });
+        }
+
+        document.getElementById('playButton').addEventListener('click', playSequencer);
+        document.getElementById('pauseButton').addEventListener('click', pauseSequencer);
+        document.getElementById('stopButton').addEventListener('click', stopSequencer);
+        document.getElementById('restartButton').addEventListener('click', restartSequencer);
+        cutButton.addEventListener('click', cutLoop);
+
+        function playSequencer() {
+            if (!isPlaying) {
+                startTime = audioContext.currentTime - pauseTime;
+                sourceNodes = [];
+                for (let i = 0; i < NUM_CHANNELS; i++) {
+                    const channel = channelsContainer.children[i];
+                    channel.loopElements.forEach(loopElement => {
+                        const loop = tracks.find(t => t.name === loopElement.dataset.loopName);
+                        if (loop && loop.buffer) {
+                            const loopStart = parseFloat(loopElement.style.left) / (100 * zoomLevel);
+                            if (loopStart >= pauseTime) {
+                                const source = audioContext.createBufferSource();
+                                source.buffer = loop.buffer;
+                                source.connect(audioContext.destination);
+                                source.start(0, 0, loop.buffer.duration);
+                                sourceNodes.push(source);
+                            }
+                        }
+                    });
+                }
+                isPlaying = true;
+                animateCursor();
+            }
+        }
+
+        function pauseSequencer() {
+            if (isPlaying) {
+                sourceNodes.forEach(source => source.stop());
+                sourceNodes = [];
+                pauseTime = audioContext.currentTime - startTime;
+                isPlaying = false;
+                cancelAnimationFrame(animationFrameId);
+            }
+        }
+
+        function stopSequencer() {
+            if (isPlaying) {
+                sourceNodes.forEach(source => source.stop());
+                sourceNodes = [];
+            }
+            isPlaying = false;
+            pauseTime = 0;
+            cursor.style.left = '0px';
+            cancelAnimationFrame(animationFrameId);
+        }
+
+        function restartSequencer() {
+            stopSequencer();
+            pauseTime = 0;
+            cursor.style.left = '0px';
+        }
+
+        function animateCursor() {
+            function moveCursor() {
+                const elapsed = audioContext.currentTime - startTime;
+                cursor.style.left = `${elapsed * 100 * zoomLevel + panOffset}px`;
+                if (elapsed * 100 * zoomLevel + panOffset < sequencer.clientWidth) {
+                    animationFrameId = requestAnimationFrame(moveCursor);
+                } else {
+                    stopSequencer();
+                }
+            }
+            moveCursor();
+        }
+
+        document.getElementById('saveProjectButton').addEventListener('click', saveProject);
+        document.getElementById('loadProjectButton').addEventListener('click', loadProject);
+
+        function saveProject() {
+            const projectData = {
+                tracks: tracks.map(track => ({ name: track.name, color: track.color })),
+                channels: Array.from(channelsContainer.children).map(channel => ({
+                    channel: channel.dataset.channel,
+                    loops: Array.from(channel.loopElements).map(loop => ({
+                        name: loop.dataset.loopName,
+                        position: parseFloat(loop.style.left)
+                    }))
+                })),
+                zoomLevel: zoomLevel,
+                panOffset: panOffset,
+            };
+            try {
+                localStorage.setItem('djProject', JSON.stringify(projectData));
+                alert('Project saved!');
+            } catch (e) {
+                alert('Failed to save project.');
+            }
+        }
+
+        function loadProject() {
+            try {
+                const projectData = JSON.parse(localStorage.getItem('djProject'));
+                if (projectData) {
+                    tracks = projectData.tracks.map(pt => {
+                        const original = tracks.find(t => t.name === pt.name);
+                        return original ? original : { name: pt.name, buffer: null, color: pt.color };
+                    });
+                    Array.from(channelsContainer.children).forEach(channel => {
+                        Array.from(channel.loopElements).forEach(loop => channel.removeChild(loop));
+                        channel.loopElements = [];
+                    });
+                    projectData.channels.forEach(item => {
+                        const channelIndex = parseInt(item.channel);
+                        item.loops.forEach(loopData => {
+                            const track = tracks.find(t => t.name === loopData.name);
+                            if (track && track.buffer) {
+                                addLoopToSequencer(track, loopData.position, channelIndex);
+                            }
+                        });
+                    });
+                    zoomLevel = projectData.zoomLevel;
+                    panOffset = projectData.panOffset;
+                    applyTransform();
+                    alert('Project loaded!');
+                } else {
+                    alert('No saved project found.');
+                }
+            } catch (e) {
+                alert('Failed to load project.');
+            }
+        }
+
+        document.getElementById('exportButton').addEventListener('click', exportToWAV);
+
+        async function exportToWAV() {
+            exportProgress.textContent = 'Exporting...';
+            const duration = Math.max(...tracks.map(t => t.buffer ? t.buffer.duration + getLoopPosition(t.name) : 0)) || 10;
+            const offlineContext = new OfflineAudioContext(2, audioContext.sampleRate * duration, audioContext.sampleRate);
+            for (let i = 0; i < NUM_CHANNELS; i++) {
+                const channel = channelsContainer.children[i];
+                channel.loopElements.forEach(loopElement => {
+                    const loop = tracks.find(t => t.name === loopElement.dataset.loopName);
+                    if (loop && loop.buffer) {
+                        const source = offlineContext.createBufferSource();
+                        source.buffer = loop.buffer;
+                        const gainNode = offlineContext.createGain();
+                        source.connect(gainNode).connect(offlineContext.destination);
+                        const startTimeSec = (parseFloat(loopElement.style.left) / 100) / zoomLevel;
+                        source.start(startTimeSec);
+                    }
+                });
+            }
+            try {
+                const renderedBuffer = await offlineContext.startRendering();
+                const wav = bufferToWav(renderedBuffer);
+                const blob = new Blob([wav], { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'exported_project.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                exportProgress.textContent = 'Export completed!';
+            } catch (e) {
+                exportProgress.textContent = 'Export failed!';
+            }
+        }
+
+        function bufferToWav(buffer) {
+            const numOfChan = buffer.numberOfChannels;
+            const length = buffer.length * numOfChan * 2 + 44;
+            const bufferArray = new ArrayBuffer(length);
+            const view = new DataView(bufferArray);
+            let offset = 0;
+
+            function writeString(str) {
+                for (let i = 0; i < str.length; i++) {
+                    view.setUint8(offset++, str.charCodeAt(i));
+                }
+            }
+
+            writeString('RIFF');
+            view.setUint32(offset, 36 + buffer.length * numOfChan * 2, true);
+            offset += 4;
+            writeString('WAVE');
+            writeString('fmt ');
+            view.setUint32(offset, 16, true);
+            offset += 4;
+            view.setUint16(offset, 1, true);
+            offset += 2;
+            view.setUint16(offset, numOfChan, true);
+            offset += 2;
+            view.setUint32(offset, buffer.sampleRate, true);
+            offset += 4;
+            view.setUint32(offset, buffer.sampleRate * numOfChan * 2, true);
+            offset += 4;
+            view.setUint16(offset, numOfChan * 2, true);
+            offset += 2;
+            view.setUint16(offset, 16, true);
+            offset += 2;
+            writeString('data');
+            view.setUint32(offset, buffer.length * numOfChan * 2, true);
+            offset += 4;
+
+            for (let i = 0; i < buffer.length; i++) {
+                for (let channel = 0; channel < numOfChan; channel++) {
+                    let sample = buffer.getChannelData(channel)[i] * 32767;
+                    sample = Math.max(-32768, Math.min(32767, sample));
+                    view.setInt16(offset, sample, true);
+                    offset += 2;
+                }
+            }
+            return bufferArray;
+        }
+
+        function updateTimeRuler() {
+            timeRuler.innerHTML = '';
+            let maxDuration = 10;
+            Array.from(channelsContainer.children).forEach(channel => {
+                channel.loopElements.forEach(loopElement => {
+                    const loop = tracks.find(t => t.name === loopElement.dataset.loopName);
+                    if (loop && loop.buffer && (loop.buffer.duration + getLoopPosition(loop.name)) > maxDuration) {
+                        maxDuration = loop.buffer.duration + getLoopPosition(loop.name);
+                    }
+                });
+            });
+            for (let i = 0; i <= Math.ceil(maxDuration); i++) {
+                const marker = document.createElement('span');
+                marker.textContent = `${i}s`;
+                timeRuler.appendChild(marker);
+            }
+            totalTimeSpan.textContent = `${Math.ceil(maxDuration)}s`;
+            timeRuler.style.width = `${maxDuration * 100}px`;
+            sequencer.style.width = `${maxDuration * 100}px`;
+        }
+
+        function getLoopPosition(loopName) {
+            let position = 0;
+            Array.from(channelsContainer.children).forEach(channel => {
+                channel.loopElements.forEach(loopElement => {
+                    if (loopElement.dataset.loopName === loopName) {
+                        position = Math.max(position, parseFloat(loopElement.style.left) / 100);
+                    }
+                });
+            });
+            return position;
+        }
+
+        let dragging = false;
+        let currentElement = null;
+        let startX = 0;
+        let initialLeft = 0;
+
+        function initDrag(e) {
+            if (e.target.classList.contains('delete-button')) return;
+            dragging = true;
+            currentElement = e.currentTarget;
+            startX = e.clientX;
+            initialLeft = parseFloat(currentElement.style.left);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', stopDrag);
+        }
+
+        function drag(e) {
+            if (dragging && currentElement) {
+                const deltaX = (e.clientX - startX) / zoomLevel;
+                let newLeft = initialLeft + deltaX;
+                const channelIndex = parseInt(currentElement.parentElement.dataset.channel);
+                const channel = channelsContainer.children[channelIndex];
+                const duration = parseFloat(currentElement.style.width) / (100 * zoomLevel);
+                const maxLeft = sequencer.clientWidth / zoomLevel - duration;
+                newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+                if (isOverlap(channel, newLeft * zoomLevel, parseFloat(currentElement.style.width))) return;
+                currentElement.style.left = `${newLeft * zoomLevel}px`;
+            }
+        }
+
+        function stopDrag(e) {
+            if (dragging) {
+                dragging = false;
+                const channelIndex = parseInt(currentElement.parentElement.dataset.channel);
+                pauseTime = parseFloat(cursor.style.left) / (100 * zoomLevel);
+                document.removeEventListener('mousemove', drag);
+                document.removeEventListener('mouseup', stopDrag);
+            }
+        }
+
+        cursor.addEventListener('mousedown', startCursorDrag);
+
+        function startCursorDrag(e) {
+            dragging = true;
+            currentElement = cursor;
+            startX = e.clientX;
+            initialLeft = parseFloat(cursor.style.left);
+            document.addEventListener('mousemove', dragCursor);
+            document.addEventListener('mouseup', stopCursorDrag);
+        }
+
+        function dragCursor(e) {
+            if (dragging && currentElement === cursor) {
+                let deltaX = e.clientX - startX;
+                let newLeft = initialLeft + deltaX;
+                newLeft = Math.max(0, Math.min(newLeft, sequencer.clientWidth));
+                cursor.style.left = `${newLeft}px`;
+                pauseTime = (newLeft - panOffset) / (100 * zoomLevel);
+                if (isPlaying) {
+                    sourceNodes.forEach(source => source.stop());
+                    sourceNodes = [];
+                    startTime = audioContext.currentTime - pauseTime;
+                    for (let i = 0; i < NUM_CHANNELS; i++) {
+                        const channel = channelsContainer.children[i];
+                        channel.loopElements.forEach(loopElement => {
+                            const loop = tracks.find(t => t.name === loopElement.dataset.loopName);
+                            if (loop && loop.buffer) {
+                                const source = audioContext.createBufferSource();
+                                source.buffer = loop.buffer;
+                                source.connect(audioContext.destination);
+                                const startOffset = pauseTime;
+                                source.start(0, Math.max(startOffset, 0));
+                                sourceNodes.push(source);
+                            }
+                        });
+                    }
+                }
+            }
+        }
+
+        function stopCursorDrag(e) {
+            if (dragging && currentElement === cursor) {
+                dragging = false;
+                document.removeEventListener('mousemove', dragCursor);
+                document.removeEventListener('mouseup', stopCursorDrag);
+            }
+        }
+
+        function cutLoop() {
+            const cursorPosition = (parseFloat(cursor.style.left) - panOffset) / (100 * zoomLevel);
+            Array.from(channelsContainer.children).forEach((channel, channelIndex) => {
+                channel.loopElements.forEach(loopElement => {
+                    const loop = tracks.find(t => t.name === loopElement.dataset.loopName);
+                    if (loop && loop.buffer) {
+                        const loopStart = parseFloat(loopElement.style.left) / 100 / zoomLevel;
+                        const loopEnd = loopStart + loop.buffer.duration;
+                        if (cursorPosition > loopStart && cursorPosition < loopEnd) {
+                            const splitTime = cursorPosition - loopStart;
+                            splitLoop(channelIndex, loopElement, splitTime);
+                        }
+                    }
+                });
+            });
+        }
+
+        function deleteSelectedTrack() {
+            if (selectedLoop) {
+                const channelIndex = parseInt(selectedLoop.parentElement.dataset.channel);
+                removeLoop(channelIndex, selectedLoop);
+                selectedLoop = null;
+            } else if (selectedTrackElement) {
+                const trackName = selectedTrackElement.querySelector('span').textContent;
+                tracks = tracks.filter(t => t.name !== trackName);
+                trackList.removeChild(selectedTrackElement);
+                Array.from(channelsContainer.children).forEach(channel => {
+                    Array.from(channel.loopElements).forEach(loopElement => {
+                        if (loopElement.dataset.loopName === trackName) {
+                            removeLoop(parseInt(channel.dataset.channel), loopElement);
+                        }
+                    });
+                });
+                selectedTrackElement = null;
+            } else {
+                alert('No track selected.');
+            }
+        }
+    </script>
+</body>
+</html>
