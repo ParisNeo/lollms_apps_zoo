@@ -7,6 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
+        /* Theme Styles */
         .theme-default {
             --bg-color: #f3f4f6;
             --text-color: #1f2937;
@@ -36,6 +37,10 @@
         .btn {
             background-color: var(--accent-color);
             color: var(--bg-color);
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            transition: all 0.3s ease;
         }
         .btn:hover {
             filter: brightness(110%);
@@ -97,19 +102,36 @@
             background-color: var(--accent-color);
             color: var(--bg-color);
         }
+        /* Modal Styles */
+        body.modal-open {
+            overflow: hidden;
+        }
+        body.modal-open > *:not(#createPlaylistModal) {
+            filter: blur(5px);
+            transition: filter 0.3s ease;
+        }
+        #createPlaylistModal {
+            z-index: 1000;
+        }
+        /* Adjusted modal styles */
+        #createPlaylistModal .modal-content {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
     </style>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans theme-default">
     <div class="container mx-auto px-4 py-8 flex h-screen">
+        <!-- Sidebar -->
         <div class="w-64 sidebar p-4 flex flex-col">
             <div class="flex-grow overflow-y-auto">
                 <h2 class="text-xl font-bold mb-4 text-indigo-800">Playlists</h2>
                 <ul id="playlistsList" class="space-y-2"></ul>
-                <button id="createPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-4 w-full">
+                <button id="createPlaylistBtn" class="btn mt-4 w-full">
                     <i class="fas fa-plus mr-2"></i>Create Playlist
                 </button>
                 <input type="file" id="importPlaylistBtn" accept=".json" class="hidden">
-                <label for="importPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mt-2 w-full inline-block text-center cursor-pointer">
+                <label for="importPlaylistBtn" class="btn mt-2 w-full inline-block text-center cursor-pointer">
                     <i class="fas fa-file-import mr-2"></i>Import Playlist
                 </label>
             </div>
@@ -117,28 +139,23 @@
                 <h3 class="text-lg font-semibold mb-2 text-indigo-800">Visualizer</h3>
                 <div id="animationToolbar" class="flex justify-around items-center">
                     <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="none">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
-                        </svg>
+                        <i class="fas fa-times-circle fa-lg"></i>
                     </button>
                     <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="time">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
+                        <i class="fas fa-wave-square fa-lg"></i>
                     </button>
                     <button class="animation-btn p-2 rounded-full hover:bg-opacity-20 hover:bg-gray-500" data-type="spectrum">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        </svg>
+                        <i class="fas fa-chart-bar fa-lg"></i>
                     </button>
                 </div>
             </div>
         </div>        
+        <!-- Main Content -->
         <div class="flex-1 flex flex-col p-6 bg-white shadow-lg rounded-lg">
             <h1 class="text-4xl font-bold text-indigo-800 text-center mb-4">Groovy Tunes Player</h1>
             <div class="mb-4 flex justify-between items-center">
                 <input type="file" id="audioUpload" accept="audio/*" class="hidden" multiple>
-                <label for="audioUpload" id="uploadTracksLabel" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 cursor-pointer hidden">
+                <label for="audioUpload" id="uploadTracksLabel" class="btn cursor-pointer hidden">
                     <i class="fas fa-upload mr-2"></i>Upload Tracks
                 </label>
                 <select id="themeSelect" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 px-3 py-2">
@@ -149,7 +166,7 @@
             </div>
             <ul id="audioList" class="flex-grow overflow-y-auto mb-4"></ul>
             <div class="flex justify-end mb-4">
-                <button id="exportPlaylistBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="exportPlaylistBtn" class="btn">
                     <i class="fas fa-file-export mr-2"></i>Export Playlist
                 </button>
             </div>
@@ -169,6 +186,23 @@
         </div>
     </div>
     <audio id="audioPlayer" class="hidden"></audio>
+
+    <!-- Modal for creating playlist -->
+    <div id="createPlaylistModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 hidden">
+        <div class="modal-content bg-white p-6 rounded-lg shadow-lg w-96 relative">
+            <button id="closeModalBtn" class="absolute top-2 right-2 text-gray-600 hover:text-gray-800">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-2xl font-bold mb-4 text-indigo-800">Create Playlist</h2>
+            <input type="text" id="playlistNameInput" class="w-full border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 px-3 py-2 mb-4" placeholder="Playlist Name">
+            <div class="flex justify-end">
+                <button id="savePlaylistBtn" class="btn">
+                    Save Playlist
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let audioSource;
         const audioUpload = document.getElementById('audioUpload');
@@ -197,9 +231,25 @@
         request.onerror = function(event) {
             console.error("IndexedDB error:", event.target.error);
         };
+
+
+        function loadAllTracksFromDB() {
+            const transaction = db.transaction(["tracks"], "readonly");
+            const objectStore = transaction.objectStore("tracks");
+            const request = objectStore.getAll();
+            request.onsuccess = function(event) {
+                audioFiles = event.target.result;
+                updateAudioList();
+            };
+        }
+
+        // Modify request.onsuccess to load all tracks initially
         request.onsuccess = function(event) {
             db = event.target.result;
-            loadTracksFromDB();
+            loadAllTracksFromDB();
+            updatePlaylistsList();
+            loadSavedTheme();
+            initializeVisualizer();
         };
         request.onupgradeneeded = function(event) {
             db = event.target.result;
@@ -223,13 +273,17 @@
         }
         audioUpload.addEventListener('change', (event) => {
             const files = Array.from(event.target.files);
+            let remaining = files.length;
             files.forEach(file => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const track = { name: file.name, data: e.target.result };
                     audioFiles.push(track);
-                    saveTracksToDB();
-                    updateAudioList();
+                    remaining--;
+                    if (remaining === 0) {
+                        saveTracksToDB();
+                        updateAudioList();
+                    }
                 };
                 reader.readAsArrayBuffer(file);
             });
@@ -271,7 +325,7 @@
         }
         function drop(e) {
             e.preventDefault();
-const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const toIndex = parseInt(e.target.closest('.track-item').dataset.index);
             const movedItem = audioFiles.splice(fromIndex, 1)[0];
             audioFiles.splice(toIndex, 0, movedItem);
@@ -302,7 +356,12 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 audioPlayer.pause();
                 playBtn.innerHTML = '<i class="fas fa-play"></i>';
             } else {
-                playTrack();
+                if (audioPlayer.src) {
+                    audioPlayer.play();
+                } else {
+                    playTrack();
+                }
+                playBtn.innerHTML = '<i class="fas fa-pause"></i>';
             }
             isPlaying = !isPlaying;
         }
@@ -326,7 +385,11 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             updateTrackHighlight();
         }
         function playNext() {
-            currentIndex = (currentIndex + 1) % audioFiles.length;
+            if (isShuffled) {
+                currentIndex = Math.floor(Math.random() * audioFiles.length);
+            } else {
+                currentIndex = (currentIndex + 1) % audioFiles.length;
+            }
             playTrack();
             updateTrackHighlight();
         }
@@ -345,13 +408,29 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             progressBar.style.width = `${progress}%`;
         });
         audioPlayer.addEventListener('ended', playNext);
+        audioPlayer.addEventListener('pause', () => {
+            isPlaying = false;
+            playBtn.innerHTML = '<i class="fas fa-play"></i>';
+            cancelAnimationFrame(animationFrame);
+        });
+        audioPlayer.addEventListener('play', () => {
+            isPlaying = true;
+            playBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            onPlayTrack();
+        });
         exportPlaylistBtn.addEventListener('click', () => {
-            const playlistData = JSON.stringify(audioFiles.map(track => track.name), null, 2);
-            const blob = new Blob([playlistData], { type: 'application/json' });
+            const playlistName = prompt('Enter a name for the exported playlist:');
+            if (!playlistName) return;
+            const playlist = {
+                name: playlistName,
+                tracks: audioFiles
+            };
+            const dataStr = JSON.stringify(playlist);
+            const blob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'playlist.json';
+            a.download = `${playlistName}.json`;
             a.click();
             URL.revokeObjectURL(url);
         });
@@ -362,10 +441,11 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 reader.onload = function(e) {
                     try {
                         const importedPlaylist = JSON.parse(e.target.result);
-                        const filteredAudioFiles = audioFiles.filter(track => importedPlaylist.includes(track.name));
-                        audioFiles = filteredAudioFiles;
-                        updateAudioList();
-                        saveTracksToDB();
+                        const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
+                        playlists.push({ name: importedPlaylist.name, tracks: importedPlaylist.tracks.map(track => track.name) });
+                        localStorage.setItem('playlists', JSON.stringify(playlists));
+                        saveImportedTracks(importedPlaylist.tracks);
+                        updatePlaylistsList();
                         alert('Playlist imported successfully!');
                     } catch (error) {
                         console.error('Error importing playlist:', error);
@@ -374,13 +454,34 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 };
                 reader.readAsText(file);
             }
+            importPlaylistBtn.value = '';
         });
+        function saveImportedTracks(tracks) {
+            const transaction = db.transaction(["tracks"], "readwrite");
+            const objectStore = transaction.objectStore("tracks");
+            tracks.forEach(track => {
+                objectStore.put(track);
+            });
+        }
         themeSelect.addEventListener('change', (event) => {
-            document.body.className = `theme-${event.target.value}`;
+            setTheme(event.target.value);
         });
         function updatePlaylistsList() {
             const playlistsList = document.getElementById('playlistsList');
             playlistsList.innerHTML = '';
+
+            // Add 'All Tracks' option
+            const allTracksItem = document.createElement('li');
+            allTracksItem.className = 'playlist-item flex justify-between items-center p-2 bg-white rounded shadow cursor-pointer';
+            allTracksItem.innerHTML = `<span>All Tracks</span>`;
+            allTracksItem.addEventListener('click', () => {
+                loadAllTracksFromDB();
+                document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('selected'));
+                allTracksItem.classList.add('selected');
+                uploadTracksLabel.classList.remove('hidden');
+            });
+            playlistsList.appendChild(allTracksItem);
+
             const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
             playlists.forEach((playlist, index) => {
                 const listItem = document.createElement('li');
@@ -391,17 +492,19 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                         <i class="fas fa-trash"></i>
                     </button>
                 `;
-                listItem.addEventListener('click', () => {
-                    audioFiles = playlist.tracks.map(trackName => {
-                        return audioFiles.find(file => file.name === trackName);
-                    }).filter(Boolean);
-                    updateAudioList();
-                    document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('selected'));
-                    listItem.classList.add('selected');
-                    uploadTracksLabel.classList.remove('hidden');
+                listItem.addEventListener('click', (event) => {
+                    if (event.target.closest('.remove-playlist-btn')) return;
+                    loadTracksByNames(playlist.tracks, function(tracks) {
+                        audioFiles = tracks;
+                        updateAudioList();
+                        document.querySelectorAll('.playlist-item').forEach(item => item.classList.remove('selected'));
+                        listItem.classList.add('selected');
+                        uploadTracksLabel.classList.add('hidden');
+                    });
                 });
                 playlistsList.appendChild(listItem);
             });
+
             uploadTracksLabel.classList.toggle('hidden', playlistsList.children.length === 0);
         }
         document.getElementById('playlistsList').addEventListener('click', (event) => {
@@ -414,24 +517,58 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 updatePlaylistsList();
             }
         });
+
+        // Update event listener for 'Create Playlist' button to open modal
         createPlaylistBtn.addEventListener('click', () => {
-            const playlistName = prompt('Enter playlist name:');
+            openCreatePlaylistModal();
+        });
+
+        // Functions to open and close the modal
+        function openCreatePlaylistModal() {
+            document.getElementById('createPlaylistModal').classList.remove('hidden');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeCreatePlaylistModal() {
+            document.getElementById('createPlaylistModal').classList.add('hidden');
+            document.body.classList.remove('modal-open');
+            document.getElementById('playlistNameInput').value = '';
+        }
+
+        // Event listeners for modal buttons
+        document.getElementById('closeModalBtn').addEventListener('click', closeCreatePlaylistModal);
+
+        document.getElementById('savePlaylistBtn').addEventListener('click', () => {
+            const playlistName = document.getElementById('playlistNameInput').value.trim();
             if (playlistName) {
                 const playlist = { name: playlistName, tracks: audioFiles.map(track => track.name) };
                 const playlists = JSON.parse(localStorage.getItem('playlists')) || [];
                 playlists.push(playlist);
                 localStorage.setItem('playlists', JSON.stringify(playlists));
                 updatePlaylistsList();
+                closeCreatePlaylistModal();
                 alert('Playlist created successfully!');
+            } else {
+                alert('Please enter a playlist name.');
             }
         });
+
+        // Modify loadSavedTheme function to ensure default theme is used if none is selected
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme) {
+                setTheme(savedTheme);
+            } else {
+                setTheme('default');
+            }
+        }        
         function highlightPlayingTrack(index) {
             document.querySelectorAll('.track-item').forEach(item => {
                 item.classList.remove('playing');
             });
-            const currentTrack = document.querySelector(`.track-item[data-index="${index}"]`);
-            if (currentTrack) {
-                currentTrack.classList.add('playing');
+            const currentTrackItem = document.querySelector(`.track-item[data-index="${index}"]`);
+            if (currentTrackItem) {
+                currentTrackItem.classList.add('playing');
             }
         }
         function updateTrackHighlight() {
@@ -441,6 +578,8 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             document.body.className = `theme-${themeName}`;
             localStorage.setItem('theme', themeName);
             themeSelect.value = themeName;
+            // Update visualizer colors
+            if (currentAnimationType !== 'none') onPlayTrack();
         }
         function loadSavedTheme() {
             const savedTheme = localStorage.getItem('theme');
@@ -450,11 +589,31 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 setTheme('default');
             }
         }
-        themeSelect.addEventListener('change', (event) => {
-            setTheme(event.target.value);
-        });
-        loadSavedTheme();
-        updatePlaylistsList();
+        function loadTracksByNames(trackNames, callback) {
+            const transaction = db.transaction(["tracks"], "readonly");
+            const objectStore = transaction.objectStore("tracks");
+            const tracks = [];
+            let remaining = trackNames.length;
+            trackNames.forEach(trackName => {
+                const request = objectStore.get(trackName);
+                request.onsuccess = function(event) {
+                    if (event.target.result) {
+                        tracks.push(event.target.result);
+                    }
+                    remaining--;
+                    if (remaining === 0) {
+                        callback(tracks);
+                    }
+                };
+                request.onerror = function(event) {
+                    console.error('Error loading track:', trackName);
+                    remaining--;
+                    if (remaining === 0) {
+                        callback(tracks);
+                    }
+                };
+            });
+        }
         const visualizerContainer = document.getElementById('visualizerContainer');
         const visualizer = document.getElementById('visualizer');
         let animationFrame;
@@ -480,11 +639,13 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 cancelAnimationFrame(animationFrame);
             } else {
                 visualizerContainer.classList.remove('hidden');
-                setupAudioContext();
-                if (type === 'time') {
-                    animateWaveform();
-                } else if (type === 'spectrum') {
-                    animateSpectrum();
+                if (isPlaying) {
+                    setupAudioContext();
+                    if (type === 'time') {
+                        animateWaveform();
+                    } else if (type === 'spectrum') {
+                        animateSpectrum();
+                    }
                 }
             }
             saveVisualizerStatus(type);
@@ -502,6 +663,7 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             }
         }
         function animateWaveform() {
+            cancelAnimationFrame(animationFrame);
             const ctx = visualizer.getContext('2d');
             const width = visualizer.width;
             const height = visualizer.height;
@@ -531,6 +693,7 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             draw();
         }
         function animateSpectrum() {
+            cancelAnimationFrame(animationFrame);
             const ctx = visualizer.getContext('2d');
             const width = visualizer.width;
             const height = visualizer.height;
@@ -538,11 +701,13 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
                 animationFrame = requestAnimationFrame(draw);
                 analyser.getByteFrequencyData(dataArray);
                 ctx.clearRect(0, 0, width, height);
-                const barWidth = width / dataArray.length;
+                const barWidth = (width / dataArray.length) * 2.5;
+                let x = 0;
                 ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--accent-color');
                 for (let i = 0; i < dataArray.length; i++) {
-                    const barHeight = (dataArray[i] / 255) * height;
-                    ctx.fillRect(i * barWidth, height - barHeight, barWidth, barHeight);
+                    const barHeight = dataArray[i] / 255 * height;
+                    ctx.fillRect(x, height - barHeight, barWidth, barHeight);
+                    x += barWidth + 1;
                 }
             }
             draw();
@@ -563,7 +728,7 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
         function resizeCanvas() {
             visualizer.width = visualizer.offsetWidth;
             visualizer.height = visualizer.offsetHeight;
-            if (currentAnimationType !== 'none') onPlayTrack();
+            if (currentAnimationType !== 'none' && isPlaying) onPlayTrack();
         }
         function saveVisualizerStatus(type) {
             localStorage.setItem('visualizerType', type);
@@ -575,7 +740,6 @@ const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
             const savedType = loadVisualizerStatus();
             setAnimationType(savedType);
         }
-        document.addEventListener('DOMContentLoaded', initializeVisualizer);
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
     </script>
