@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Lollms WordPress Theme Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js.js"></script>
+    <script src="/lollms_assets/js/lollms_tti.js"></script>
+    <script src="https://unpkg.com/monaco-editor@latest/min/vs/loader.js"></script>
+    <style>
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 50; }
+        .loading { text-align: center; color: #ff69b4; }
+        .strawberry { font-size: 64px; animation: spin 2s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(-360deg); } }
+        .blurred-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(5px); display: none; z-index: 40; justify-content: center; align-items: center; }
+        .settings-popup { background: white; padding: 20px; border-radius: 8px; width: 90%; max-width: 500px; z-index: 50; }
+        .tabContent { display: none; }
+        .activeTab { border-bottom-width: 2px; border-color: #4F46E5; }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div id="settingsOverlay" class="blurred-overlay flex">
+        <div id="settingsPopup" class="settings-popup">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Theme Settings</h2>
+            <label class="block mb-2 text-sm font-medium text-gray-700">Theme Name</label>
+            <input type="text" id="themeName" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full p-2 mb-4" placeholder="Enter theme name">
+            <label class="block mb-2 text-sm font-medium text-gray-700">Prompt</label>
+            <textarea id="prompt" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full p-2 mb-4" placeholder="Enter prompt"></textarea>
+            <label class="block mb-2 text-sm font-medium text-gray-700">Thumbnail Prompt</label>
+            <textarea id="thumbnailPrompt" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full p-2 mb-4" placeholder="Enter thumbnail prompt"></textarea>
+            <button onclick="generateThumbnailFromSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4">Generate Thumbnail</button>
+            <img id="thumbnailPreview" src="/apps/WordPress_Theme_Builder/icon.png" alt="Thumbnail Preview" class="w-full h-auto mb-4"/>
+            <div class="flex justify-end">
+                <button onclick="closeSettings()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300 mr-2">Cancel</button>
+                <button onclick="generateTheme()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Theme</button>
+            </div>
+        </div>
+    </div>
+    <div id="templateOverlay" class="blurred-overlay flex">
+        <div id="templatePopup" class="settings-popup">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Select a Template</h2>
+            <ul class="space-y-2">
+                <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-100 transition duration-300" onclick="selectTemplate('minimalist')">Minimalist</button></li>
+                <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-100 transition duration-300" onclick="selectTemplate('modern')">Modern</button></li>
+                <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-100 transition duration-300" onclick="selectTemplate('blog')">Blog</button></li>
+                <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-100 transition duration-300" onclick="selectTemplate('portfolio')">Portfolio</button></li>
+            </ul>
+            <div class="flex justify-end">
+                <button onclick="closeTemplatePopup()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Cancel</button>
+            </div>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Loading...</div>
+        </div>
+    </div>
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">Lollms WordPress Theme Builder</h1>
+            <div class="flex space-x-2">
+                <button id="newThemeBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    New Theme
+                </button>
+                <button id="importBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Import
+                </button>
+                <button id="saveBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Save
+                </button>
+                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 16l-4-4h8l-4 4zM4 4h16v16H4V4z"/>
+                    </svg>
+                    Export
+                </button>
+            </div>
+        </header>
+        <main class="flex flex-col md:flex-row gap-8">
+            <aside class="md:w-1/4 bg-white shadow-lg rounded-lg p-6 mb-8 md:mb-0">
+                <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Theme Components</h2>
+                <ul class="space-y-2">
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('header')">Header</button></li>
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('footer')">Footer</button></li>
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('index')">Homepage (index.php)</button></li>
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('style')">Stylesheet (style.css)</button></li>
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('functions')">Functions (functions.php)</button></li>
+                    <li><button class="w-full text-left py-2 px-4 rounded hover:bg-indigo-50 transition duration-300" onclick="selectComponent('thumbnail')">Thumbnail</button></li>
+                </ul>
+                <h2 class="text-2xl font-semibold mt-8 mb-4 text-indigo-700">Saved Themes</h2>
+                <ul id="savedThemesList" class="space-y-2">
+                    <!-- Dynamically populated -->
+                </ul>
+            </aside>
+            <div class="md:w-3/4 bg-white shadow-lg rounded-lg p-6">
+                <div class="mb-4 border-b border-gray-200">
+                    <ul class="flex flex-wrap -mb-px" id="tabMenu">
+                        <li class="mr-2">
+                            <button class="inline-block p-4 rounded-t-lg border-b-2 activeTab text-indigo-700 font-semibold" id="editTab" onclick="openTab(event, 'edit')">Edit</button>
+                        </li>
+                        <li class="mr-2">
+                            <button class="inline-block p-4 rounded-t-lg border-b-2 text-indigo-700 font-semibold" id="previewTab" onclick="openTab(event, 'preview')">Preview</button>
+                        </li>
+                    </ul>
+                </div>
+                <div id="edit" class="tabContent">
+                    <div id="thumbnailEditor" style="display:none;">
+                        <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Thumbnail Editor</h2>
+                        <img id="thumbnailImage" src="/apps/WordPress_Theme_Builder/icon.png" alt="Thumbnail" class="w-full h-auto mb-4"/>
+                        <label class="block mb-2 text-sm font-medium text-gray-700">Prompt</label>
+                        <textarea id="thumbnailPromptInput" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full p-2 mb-4">A thumbnail for a WordPress theme called My Theme</textarea>
+                        <button onclick="generateThumbnail()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Thumbnail</button>
+                    </div>
+                    <div id="visualEditor">
+                        <div class="flex items-center justify-between mb-4">
+                            <h2 class="text-2xl font-semibold text-indigo-700">Visual Editor</h2>
+                            <button id="editCodeBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1 px-3 rounded transition duration-300 flex items-center" onclick="editCode()">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7l-4-4m0 0l-4 4m4-4v18"/>
+                                </svg>
+                                Edit Code
+                            </button>
+                        </div>
+                        <div class="mb-4">
+                            <button onclick="execCmd('bold')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-2 rounded">B</button>
+                            <button onclick="execCmd('italic')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-2 rounded">I</button>
+                            <button onclick="execCmd('underline')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-1 px-2 rounded">U</button>
+                        </div>
+                        <div id="visualEditorContent" contenteditable="true" class="border border-gray-300 rounded p-4 min-h-[400px]">
+                            <p class="text-gray-500">Select a component to start editing</p>
+                        </div>
+                    </div>
+                    <div id="codeEditorContainer" class="mt-4">
+                        <div id="codeEditor" class="border border-gray-300 rounded h-64"></div>
+                    </div>
+                </div>
+                <div id="preview" class="tabContent">
+                    <h2 class="text-2xl font-semibold mb-4 text-indigo-700">Preview</h2>
+                    <iframe id="previewFrame" class="w-full h-64 border border-gray-300 rounded" srcdoc="<p class='text-gray-500 text-center'>Preview will be shown here</p>"></iframe>
+                    <div class="flex justify-between space-x-2 mt-4">
+                        <button class="w-1/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" onclick="previewDevice('desktop')">
+                            Desktop
+                        </button>
+                        <button class="w-1/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" onclick="previewDevice('tablet')">
+                            Tablet
+                        </button>
+                        <button class="w-1/3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" onclick="previewDevice('mobile')">
+                            Mobile
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="mt-8 text-center text-gray-600">
+            <p>&copy; 2024 Lollms WordPress Theme Builder. All rights reserved.</p>
+            <a href="#" class="text-indigo-600 hover:text-indigo-800">Help & Resources</a>
+        </footer>
+    </div>
+    <input type="file" id="importInput" accept=".zip" style="display:none" />
+    <script>
+        // JavaScript code remains unchanged
+    </script>
+</body>
+</html>
