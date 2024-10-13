@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoLLMS Writer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/lollms_tasks_library.js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">LoLLMS Writer</h1>
+            <p class="text-xl text-gray-600">Your AI assistant for creating complex and coherent stories or books</p>
+        </header>
+
+        <div class="flex flex-wrap -mx-4">
+            <div class="w-full px-4 mb-8">
+                <div class="bg-white shadow-lg rounded-lg p-6">
+                    <div class="mb-6">
+                        <label for="writing-type" class="block text-sm font-medium text-gray-700 mb-2">Writing Type</label>
+                        <select id="writing-type" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="">Select writing type</option>
+                            <optgroup label="Academic">
+                                <option value="argumentative">Argumentative</option>
+                                <option value="expository">Expository</option>
+                                <option value="analytical">Analytical</option>
+                            </optgroup>
+                            <optgroup label="Creative">
+                                <option value="fiction">Fiction</option>
+                                <option value="non-fiction">Non-Fiction</option>
+                                <option value="poetry">Poetry</option>
+                            </optgroup>
+                            <optgroup label="Technical">
+                                <option value="documentation">Documentation</option>
+                                <option value="report">Report</option>
+                                <option value="manual">Manual</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                    <div class="mb-6">
+                        <label for="json-content" class="block text-sm font-medium text-gray-700 mb-2">Story Structure (JSON)</label>
+                        <textarea id="json-content" class="w-full h-40 px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Edit the structure of your story here..."></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label for="user-instructions" class="block text-sm font-medium text-gray-700 mb-2">User Instructions</label>
+                        <textarea id="user-instructions" class="w-full h-24 px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Add any specific instructions to steer the generation..."></textarea>
+                    </div>
+                    <div class="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="text-style" class="block text-sm font-medium text-gray-700 mb-2">Text Style</label>
+                            <select id="text-style" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select text style</option>
+                                <option value="formal">Formal</option>
+                                <option value="informal">Informal</option>
+                                <option value="narrative">Narrative</option>
+                                <option value="descriptive">Descriptive</option>
+                                <option value="persuasive">Persuasive</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="text-tone" class="block text-sm font-medium text-gray-700 mb-2">Tone</label>
+                            <select id="text-tone" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="">Select tone</option>
+                                <option value="serious">Serious</option>
+                                <option value="humorous">Humorous</option>
+                                <option value="optimistic">Optimistic</option>
+                                <option value="pessimistic">Pessimistic</option>
+                                <option value="neutral">Neutral</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex space-x-4">
+                        <button id="generate-content" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Generate Content</button>
+                        <button id="convert-chapter" class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">Convert to Chapter</button>
+                        <button id="expand-paragraph" class="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2">Expand Paragraph</button>
+                        <button id="clear-content" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">Clear</button>
+                        <button id="update-structure" class="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2">Update Structure</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Generated Content</h2>
+            <textarea id="content-output" class="w-full h-96 px-3 py-2 text-gray-700 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Your essay and generated content will appear here..."></textarea>
+            <div class="flex space-x-4 mt-4">
+                <button id="save-md" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">Save as MD</button>
+                <button id="save-html" class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">Save as HTML</button>
+                <button id="save-docx" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">Save as DOCX</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex justify-center items-center">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-32 w-32 border-t-4 border-b-4 border-indigo-500"></div>
+            <div class="mt-4 text-white text-xl font-semibold">Processing...</div>
+        </div>
+    </div>
+
+    <div id="helpPopup" class="fixed inset-0 bg-white bg-opacity-80 backdrop-blur-sm flex justify-center items-center hidden">
+        <div class="bg-white shadow-lg rounded-lg p-6 max-w-lg mx-auto">
+            <h3 class="text-lg font-semibold mb-2">Help</h3>
+            <p class="text-sm text-gray-700 mb-4">Use this tool to generate and manage your writing projects. Select the type of writing and build a structured story or book. You can convert paragraphs into full chapters to enhance your content.</p>
+            <h4 class="text-md font-semibold mb-2">Writing Tips</h4>
+            <ul class="list-disc list-inside text-sm text-gray-700 mb-4">
+                <li>Start with a clear outline</li>
+                <li>Develop well-rounded characters</li>
+                <li>Maintain a logical flow of ideas</li>
+                <li>Use descriptive language</li>
+                <li>Revise and edit thoroughly</li>
+            </ul>
+            <h4 class="text-md font-semibold mb-2">User Instructions</h4>
+            <p class="text-sm text-gray-700">If the User Instructions textarea is not empty when the "Expand Paragraph" or "Convert to Chapter" buttons are pressed, their content will be added to the prompt so that you can steer the enhancement of the paragraph or chapter.</p>
+            <button id="closeHelp" class="mt-4 px-3 py-1 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Close</button>
+        </div>
+    </div>
+
+    <button id="helpButton" class="fixed bottom-4 right-4 bg-indigo-600 text-white rounded-full p-3 shadow-lg hover:bg-indigo-700 focus:outline-none">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 18a9 9 0 100-18 9 9 0 000 18z"/>
+        </svg>
+    </button>
+
+    <script>
+        let jsonCode ="";
+        let generatedContent ="";
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        const generateContentBtn = document.getElementById('generate-content');
+        const convertChapterBtn = document.getElementById('convert-chapter');
+        const expandParagraphBtn = document.getElementById('expand-paragraph');
+        const clearContentBtn = document.getElementById('clear-content');
+        const saveMdBtn = document.getElementById('save-md');
+        const saveHtmlBtn = document.getElementById('save-html');
+        const saveDocxBtn = document.getElementById('save-docx');
+        const contentOutput = document.getElementById('content-output');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const helpPopup = document.getElementById('helpPopup');
+        const helpButton = document.getElementById('helpButton');
+        const closeHelpBtn = document.getElementById('closeHelp');
+        const updateStructureBtn = document.getElementById('update-structure');
+
+        const jsonContentInput = document.getElementById('json-content');
+        const userInstructionsInput = document.getElementById('user-instructions');
+        const textStyleSelect = document.getElementById('text-style');
+        const textToneSelect = document.getElementById('text-tone');
+
+        function showLoader() {
+            loadingOverlay.classList.remove('hidden');
+            loadingOverlay.classList.add('flex');
+        }
+
+        function hideLoader() {
+            loadingOverlay.classList.remove('flex');
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function saveContent(content, fileType, fileExtension) {
+            const blob = new Blob([content], { type: fileType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `content.${fileExtension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function buildjson(){
+            const existingContent = contentOutput.value.trim();
+            generatedContent = contentOutput.value.trim();
+            let prompt = "";
+            const userJson = jsonContentInput.value.trim();
+            if (userJson) {
+                jsonCode = userJson;
+            } else {
+                if (existingContent) {
+                    // Get token count of existingContent
+                    const tokens = await lc.tokenize(existingContent);
+                    const tokenCount = tokens.length;
+                    const contextSize = lc.ctx_size || 4096;
+                    const threshold = Math.floor(0.7 * contextSize);
+                    let textToUse = existingContent;
+
+                    if (tokenCount > threshold) {
+                        // Use tasks library to summarize content
+                        const summarizationInstruction = "Summarize the text while keeping chapter titles and key points.";
+                        textToUse = await tl.summarizeText({
+                            text: existingContent,
+                            summaryInstruction: summarizationInstruction
+                        });
+                    }
+
+                    prompt = `
+Build a structure of the following text:
+\`\`\`plaintext
+${textToUse}
+\`\`\`
+The structure must keep the content idea and enhance it.
+Use json format in this form:
+\`\`\`json
+{
+"title": "the text title",
+"chapters":[
+{"title": "chapter 1 title", "content": "description of the content"},
+...
+{"title": "chapter n title", "content": "description of the content"}
+]
+}
+\`\`\`
+Answer with json code inside a json markdown.
+`;
+                } else {
+                    const writingType = document.getElementById('writing-type').value;
+                    prompt = `
+Build the structure of a story in ${writingType} style:
+Be creative and make the story interesting.
+Use json format in this form:
+\`\`\`json
+{
+"title": "the text title",
+"chapters":[
+{"title": "chapter 1 title", "content": "description of the content"},
+...
+{"title": "chapter n title", "content": "description of the content"}
+]
+}
+\`\`\`
+Answer with json code inside a json markdown.
+`;
+                }
+                console.log(prompt)
+                jsonCode = await lc.generateCode(prompt);            
+                console.log(jsonCode)
+                jsonContentInput.value = jsonCode;
+            }
+        }
+
+        generateContentBtn.addEventListener('click', async () => {
+            const writingType = document.getElementById('writing-type').value;
+            const existingContent = contentOutput.value.trim();
+            generatedContent = contentOutput.value.trim();
+            const userInstructions = userInstructionsInput.value.trim();
+            const textStyle = textStyleSelect.value;
+            const textTone = textToneSelect.value;
+            let prompt = '';
+            let structureJson = JSON.stringify({ writingType: writingType });
+            await buildjson();
+            showLoader();
+            try {
+                prompt = `${lc.system_message()}You are a versatile writer. Generate a ${writingType} piece`;
+                if (userInstructions) {
+                    prompt += ` following these instructions: ${userInstructions}`;
+                }
+                prompt += ` based on the provided structure: 
+\`\`\`json
+${jsonCode}
+\`\`\`
+`;
+                if (textStyle || textTone) {
+                    prompt += `Write the text in a${textStyle ? ' ' + textStyle : ''}${textTone ? ', ' + textTone : ''} tone.`;
+                }
+                prompt += `${lc.template.separator_template}${lc.ai_message()}`;
+                generatedContent = await lc.generateCode(prompt);
+                contentOutput.value = existingContent ? `${existingContent}\n\n${generatedContent}` : generatedContent;
+            } catch (error) {
+                console.error('Error generating content:', error);
+                alert('An error occurred while generating content. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        convertChapterBtn.addEventListener('click', async () => {
+            const selectedText = contentOutput.value.substring(contentOutput.selectionStart, contentOutput.selectionEnd);
+            if (!selectedText) {
+                alert('Please select paragraphs to convert into a chapter.');
+                return;
+            }
+            const userInstructions = userInstructionsInput.value.trim();
+            const textStyle = textStyleSelect.value;
+            const textTone = textToneSelect.value;
+            if(jsonCode==""){
+                await buildjson();
+            }
+            let prompt = `${lc.system_message()}We are writing a book that with the following structure:
+\`\`\`json
+${jsonCode}
+\`\`\`
+We have already written the full text, but we need to convert this paragraph into a chapter adding more details and depth:
+\`\`\`plaintext
+${selectedText}
+\`\`\`
+`;
+            if (userInstructions) {
+                prompt += `Please follow these instructions: ${userInstructions}\n`;
+            }
+            if (textStyle || textTone) {
+                prompt += `Write the text in a${textStyle ? ' ' + textStyle : ''}${textTone ? ', ' + textTone : ''} tone.\n`;
+            }
+            prompt += `The chapter should stick to the paragraph content and add more depth without adding elements that will be written in next paragraphs.
+Only answer with the enhanced paragraph inside a plaintext markdown tag.
+${lc.template.separator_template}${lc.ai_message()}`;
+            showLoader();
+            try {
+                const chapter = await lc.generateCode(prompt);
+                const newContent = contentOutput.value.replace(selectedText, chapter);
+                contentOutput.value = newContent;
+            } catch (error) {
+                console.error('Error converting to chapter:', error);
+                alert('An error occurred while converting to chapter. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        expandParagraphBtn.addEventListener('click', async () => {
+            const selectedText = contentOutput.value.substring(contentOutput.selectionStart, contentOutput.selectionEnd);
+            if (!selectedText) {
+                alert('Please select a paragraph to expand.');
+                return;
+            }
+            const userInstructions = userInstructionsInput.value.trim();
+            const textStyle = textStyleSelect.value;
+            const textTone = textToneSelect.value;
+            if(jsonCode==""){
+                await buildjson();
+            }
+            let prompt = `${lc.system_message()}We are writing a book that with the following structure:
+\`\`\`json
+${jsonCode}
+\`\`\`
+We have already written the full text, but we need to enhance one paragraph.
+We want to expand on the following paragraph, adding more details and depth:
+\`\`\`plaintext
+${selectedText}
+\`\`\`
+`;
+            if (userInstructions) {
+                prompt += `Please follow these instructions: ${userInstructions}\n`;
+            }
+            if (textStyle || textTone) {
+                prompt += `Write the text in a${textStyle ? ' ' + textStyle : ''}${textTone ? ', ' + textTone : ''} tone.\n`;
+            }
+            prompt += `The expanded paragraph should stick to the paragraph content and add more depth without adding elements that will be written in next paragraphs.
+Only answer with the enhanced paragraph inside a plaintext markdown tag.
+${lc.template.separator_template}${lc.ai_message()}`;
+            showLoader();
+            try {
+                const expanded = await lc.generateCode(prompt);
+                const newContent = contentOutput.value.replace(selectedText, expanded);
+                contentOutput.value = newContent;
+            } catch (error) {
+                console.error('Error expanding paragraph:', error);
+                alert('An error occurred while expanding the paragraph. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        updateStructureBtn.addEventListener('click', async () => {
+            showLoader();
+            try {
+                await buildjson();
+            } catch (error) {
+                console.error('Error updating structure:', error);
+                alert('An error occurred while updating the structure. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        });
+
+        clearContentBtn.addEventListener('click', () => {
+            contentOutput.value = '';
+        });
+
+        saveMdBtn.addEventListener('click', () => {
+            saveContent(contentOutput.value, 'text/markdown', 'md');
+        });
+
+        saveHtmlBtn.addEventListener('click', () => {
+            const htmlContent = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Content</title></head><body>${contentOutput.value.replace(/\n/g, '<br>')}</body></html>`;
+            saveContent(htmlContent, 'text/html', 'html');
+        });
+
+        saveDocxBtn.addEventListener('click', () => {
+            alert('Saving as DOCX is not implemented. Please integrate a DOCX library.');
+        });
+
+        helpButton.addEventListener('click', () => {
+            helpPopup.classList.remove('hidden');
+        });
+
+        closeHelpBtn.addEventListener('click', () => {
+            helpPopup.classList.add('hidden');
+        });
+
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('savedContent', contentOutput.value);
+            localStorage.setItem('savedJsonContent', jsonContentInput.value);
+            localStorage.setItem('savedUserInstructions', userInstructionsInput.value);
+            localStorage.setItem('savedTextStyle', textStyleSelect.value);
+            localStorage.setItem('savedTextTone', textToneSelect.value);
+        });
+
+        window.addEventListener('load', () => {
+            const savedContent = localStorage.getItem('savedContent');
+            if (savedContent) {
+                contentOutput.value = savedContent;
+            }
+            const savedJsonContent = localStorage.getItem('savedJsonContent');
+            if (savedJsonContent) {
+                jsonContentInput.value = savedJsonContent;
+            }
+            const savedUserInstructions = localStorage.getItem('savedUserInstructions');
+            if (savedUserInstructions) {
+                userInstructionsInput.value = savedUserInstructions;
+            }
+            const savedTextStyle = localStorage.getItem('savedTextStyle');
+            if (savedTextStyle) {
+                textStyleSelect.value = savedTextStyle;
+            }
+            const savedTextTone = localStorage.getItem('savedTextTone');
+            if (savedTextTone) {
+                textToneSelect.value = savedTextTone;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
-# Academic Writer Web App Plan
+# LoLLMS Writer Web App Plan
 
 ## Application Name
-Academic Writer
+LoLLMS Writer
 
 ## User Requirements
 - Create a web-based AI assistant for writing university-level essays
