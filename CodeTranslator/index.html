@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.30.1/min/vs/loader.min.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -283,6 +283,82 @@
             });
             loadSavedData();
         });
+        function openDatabase() {
+            return new Promise((resolve, reject) => {
+                var request = indexedDB.open('codeTranslatorDB', 1);
+                request.onupgradeneeded = function(event) {
+                    var db = event.target.result;
+                    db.createObjectStore('dataStore');
+                };
+                request.onsuccess = function(event) {
+                    var db = event.target.result;
+                    resolve(db);
+                };
+                request.onerror = function(event) {
+                    reject(event.target.errorCode);
+                };
+            });
+        }
+        async function saveData() {
+            const data = {
+                inputCode: inputEditor.getValue(),
+                inputLang: document.getElementById('inputLang').value,
+                customInputLang: document.getElementById('customInputLang').value,
+                outputCode: outputEditor.getValue(),
+                sideOutputCode: sideOutputEditor.getValue(),
+                outputLang: document.getElementById('outputLang').value,
+                customOutputLang: document.getElementById('customOutputLang').value,
+                additionalInstructions: document.getElementById('additionalInstructions').value
+            };
+            try {
+                var db = await openDatabase();
+                var transaction = db.transaction(['dataStore'], 'readwrite');
+                var objectStore = transaction.objectStore('dataStore');
+                var request = objectStore.put(data, 'codeTranslatorData');
+                request.onsuccess = function(event) {
+                    console.log('Data saved successfully.');
+                };
+                request.onerror = function(event) {
+                    console.error('Error saving data:', event.target.errorCode);
+                };
+            } catch (error) {
+                console.error('Save data error:', error);
+            }
+        }
+        async function loadSavedData() {
+            try {
+                var db = await openDatabase();
+                var transaction = db.transaction(['dataStore'], 'readonly');
+                var objectStore = transaction.objectStore('dataStore');
+                var request = objectStore.get('codeTranslatorData');
+                request.onsuccess = function(event) {
+                    const data = event.target.result;
+                    if (data) {
+                        inputEditor.setValue(data.inputCode);
+                        document.getElementById('inputLang').value = data.inputLang;
+                        document.getElementById('customInputLang').value = data.customInputLang;
+                        outputEditor.setValue(data.outputCode);
+                        if (data.sideOutputCode && (data.outputLang === 'c' || data.outputLang === 'cpp')) {
+                            sideOutputEditor.setValue(data.sideOutputCode);
+                            sideOutputEditorContainer.classList.remove("hidden");
+                            sideOutputEditor.layout();
+                        } else {
+                            sideOutputEditorContainer.classList.add("hidden");
+                        }
+                        document.getElementById('outputLang').value = data.outputLang;
+                        document.getElementById('customOutputLang').value = data.customOutputLang;
+                        document.getElementById('additionalInstructions').value = data.additionalInstructions;
+                        monaco.editor.setModelLanguage(inputEditor.getModel(), data.inputLang);
+                        monaco.editor.setModelLanguage(outputEditor.getModel(), data.outputLang);
+                    }
+                };
+                request.onerror = function(event) {
+                    console.error('Error loading data:', event.target.errorCode);
+                };
+            } catch (error) {
+                console.error('Load data error:', error);
+            }
+        }
         document.getElementById('translateBtn').addEventListener('click', async () => {
             const inputCode = inputEditor.getValue();
             const inputLang = document.getElementById('inputLang').value === 'custom' ? document.getElementById('customInputLang').value : document.getElementById('inputLang').value;
@@ -372,39 +448,6 @@
             };
             input.click();
         });
-        function saveData() {
-            const data = {
-                inputCode: inputEditor.getValue(),
-                inputLang: document.getElementById('inputLang').value,
-                customInputLang: document.getElementById('customInputLang').value,
-                outputCode: outputEditor.getValue(),
-                sideOutputCode: sideOutputEditor.getValue(),
-                outputLang: document.getElementById('outputLang').value,
-                customOutputLang: document.getElementById('customOutputLang').value,
-                additionalInstructions: document.getElementById('additionalInstructions').value
-            };
-            localStorage.setItem('codeTranslatorData', JSON.stringify(data));
-        }
-        function loadSavedData() {
-            const savedData = localStorage.getItem('codeTranslatorData');
-            if (savedData) {
-                const data = JSON.parse(savedData);
-                inputEditor.setValue(data.inputCode);
-                document.getElementById('inputLang').value = data.inputLang;
-                document.getElementById('customInputLang').value = data.customInputLang;
-                outputEditor.setValue(data.outputCode);
-                if (data.sideOutputCode && (data.outputLang === 'c' || data.outputLang === 'cpp')) {
-                    sideOutputEditor.setValue(data.sideOutputCode);
-                    sideOutputEditorContainer.classList.remove("hidden");
-                    sideOutputEditor.layout();
-                }
-                document.getElementById('outputLang').value = data.outputLang;
-                document.getElementById('customOutputLang').value = data.customOutputLang;
-                document.getElementById('additionalInstructions').value = data.additionalInstructions;
-                monaco.editor.setModelLanguage(inputEditor.getModel(), data.inputLang);
-                monaco.editor.setModelLanguage(outputEditor.getModel(), data.outputLang);
-            }
-        }
         document.getElementById('saveOutputBtn').addEventListener('click', () => {
             const outputLang = document.getElementById('outputLang').value === 'custom' ? document.getElementById('customOutputLang').value : document.getElementById('outputLang').value;
             let content = outputEditor.getValue();
