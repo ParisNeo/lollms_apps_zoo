@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Image Cropping App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    <style>
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left:0;
+            width:100%;
+            height:100%;
+            background: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8">Image Cropping App</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">Upload Image:</label>
+                <input id="imageInput" type="file" accept="image/*" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 w-full">
+            </div>
+            <div class="flex flex-col gap-8">
+                <div class="w-full">
+                    <div class="relative">
+                        <img id="imageElement" class="w-full max-w-full h-auto" style="display:none;">
+                    </div>
+                </div>
+                <div class="w-full">
+                    <div class="mb-4">
+                        <button id="cropButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Crop Image</button>
+                    </div>
+                    <div class="mb-4">
+                        <canvas id="previewCanvas" class="border border-gray-300 rounded-md w-full"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="progressOverlay" class="fixed top-0 left-0 w-full h-full bg-white bg-opacity-70 flex items-center justify-center z-50" style="display:none;">
+            <div class="w-1/2 max-w-md">
+                <div class="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-center mt-2">0%</p>
+            </div>
+        </div>
+    </div>
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const imageElement = document.getElementById('imageElement');
+        const cropButton = document.getElementById('cropButton');
+        const previewCanvas = document.getElementById('previewCanvas');
+        let cropper;
+
+        imageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                imageElement.src = url;
+                imageElement.style.display = 'block';
+                initializeCropper();
+            }
+        });
+
+        function initializeCropper() {
+            if (cropper) {
+                cropper.destroy();
+            }
+            cropper = new Cropper(imageElement, {
+                viewMode: 1,
+                responsive: true,
+                zoomable: true,
+                background: false,
+                ready() {
+                    updatePreview();
+                },
+                crop() {
+                    updatePreview();
+                }
+            });
+        }
+
+        function updatePreview() {
+            const canvas = cropper.getCroppedCanvas();
+            if (canvas) {
+                previewCanvas.width = canvas.width;
+                previewCanvas.height = canvas.height;
+                const ctx = previewCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, 0);
+            }
+        }
+
+        cropButton.addEventListener('click', function() {
+            if (!cropper) return;
+            const croppedCanvas = cropper.getCroppedCanvas();
+            const dataURL = croppedCanvas.toDataURL('image/png');
+            const a = document.createElement('a');
+            a.href = dataURL;
+            a.download = 'cropped_image.png';
+            a.click();
+        });
+    </script>
+</body>
+</html>

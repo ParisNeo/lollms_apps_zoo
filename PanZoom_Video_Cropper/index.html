@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PanZoom Video Cropper</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    
+    <style>
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left:0;
+            width:100%;
+            height:100%;
+            background: rgba(255,255,255,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8">PanZoom Video Cropper</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">Upload Video:</label>
+                <input id="videoInput" type="file" accept="video/*" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 w-full">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2">Select Aspect Ratio:</label>
+                <select id="aspectRatioSelect" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 w-full">
+                    <option value="16/9">16:9</option>
+                    <option value="4/3">4:3</option>
+                    <option value="1/1">1:1</option>
+                    <option value="custom">Custom</option>
+                </select>
+                <div id="customAspectRatioInputs" class="mt-2 hidden">
+                    <input id="customWidth" type="number" placeholder="Width" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 mr-2">
+                    <input id="customHeight" type="number" placeholder="Height" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2">
+                </div>
+            </div>
+            <div class="flex flex-col gap-8">
+                <div class="w-full">
+                    <div class="relative">
+                        <video id="videoElement" controls class="w-full max-w-full h-auto"></video>
+                    </div>
+                </div>
+                <div class="w-full">
+                    <div class="mb-4">
+                        <button id="captureButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Capture Frame</button>
+                        <button id="exportButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 ml-2">Export Cropped Video</button>
+                    </div>
+                    <div class="mb-4">
+                        <img id="capturedImage" class="border border-gray-300 rounded-md w-full" style="display:none;">
+                    </div>
+                    <div class="mb-4" id="cropControls" style="display:none;">
+                        <label class="block text-gray-700 font-bold mb-2">Pan and Zoom Controls:</label>
+                        <div>
+                            <button id="zoomInButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2">Zoom In</button>
+                            <button id="zoomOutButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Zoom Out</button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 font-bold mb-2">Preview Cropped Area:</label>
+                        <canvas id="previewCanvas" class="border border-gray-300 rounded-md w-full"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="progressOverlay" class="fixed top-0 left-0 w-full h-full bg-white bg-opacity-70 flex items-center justify-center z-50" style="display:none;">
+            <div class="w-1/2 max-w-md">
+                <div class="bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
+                    <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-center mt-2">0%</p>
+            </div>
+        </div>
+        
+    </div>
+    <script>    
+        const videoInput = document.getElementById('videoInput');
+        const videoElement = document.getElementById('videoElement');
+        const aspectRatioSelect = document.getElementById('aspectRatioSelect');
+        const customAspectRatioInputs = document.getElementById('customAspectRatioInputs');
+        const customWidthInput = document.getElementById('customWidth');
+        const customHeightInput = document.getElementById('customHeight');
+        const captureButton = document.getElementById('captureButton');
+        const capturedImage = document.getElementById('capturedImage');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const zoomInButton = document.getElementById('zoomInButton');
+        const zoomOutButton = document.getElementById('zoomOutButton');
+        const cropControls = document.getElementById('cropControls');
+        const exportButton = document.getElementById('exportButton');
+
+        let cropper;
+        let aspectRatio = 16 / 9;
+
+        videoInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                videoElement.src = url;
+                videoElement.load();
+            }
+        });
+
+        aspectRatioSelect.addEventListener('change', function() {
+            const value = this.value;
+            if (value === 'custom') {
+                customAspectRatioInputs.classList.remove('hidden');
+            } else {
+                customAspectRatioInputs.classList.add('hidden');
+                aspectRatio = eval(value);
+                if (cropper) {
+                    cropper.setAspectRatio(aspectRatio);
+                }
+            }
+        });
+
+        customWidthInput.addEventListener('input', updateCustomAspectRatio);
+        customHeightInput.addEventListener('input', updateCustomAspectRatio);
+
+        function updateCustomAspectRatio() {
+            const width = parseInt(customWidthInput.value);
+            const height = parseInt(customHeightInput.value);
+            if (width > 0 && height > 0) {
+                aspectRatio = width / height;
+                if (cropper) {
+                    cropper.setAspectRatio(aspectRatio);
+                }
+            }
+        }
+
+        captureButton.addEventListener('click', function() {
+            if (videoElement.readyState >= 2) {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                const dataURL = canvas.toDataURL('image/png');
+                capturedImage.src = dataURL;
+                capturedImage.style.display = 'block';
+                initializeCropper();
+            }
+        });
+
+        function initializeCropper() {
+            if (cropper) {
+                cropper.destroy();
+            }
+            cropper = new Cropper(capturedImage, {
+                viewMode: 1,
+                aspectRatio: aspectRatio,
+                responsive: true,
+                zoomable: true,
+                background: false,
+                zoomOnTouch: false,
+                zoomOnWheel: false,
+                ready() {
+                    cropControls.style.display = 'block';
+                    updatePreview();
+                },
+                crop() {
+                    updatePreview();
+                }
+            });
+        }
+
+        zoomInButton.addEventListener('click', function() {
+            if (cropper) {
+                cropper.zoom(0.1);
+            }
+        });
+
+        zoomOutButton.addEventListener('click', function() {
+            if (cropper) {
+                cropper.zoom(-0.1);
+            }
+        });
+
+        function updatePreview() {
+            const canvas = cropper.getCroppedCanvas();
+            if (canvas) {
+                previewCanvas.width = canvas.width;
+                previewCanvas.height = canvas.height;
+                const ctx = previewCanvas.getContext('2d');
+                ctx.drawImage(canvas, 0, 0);
+            }
+        }
+
+        exportButton.addEventListener('click', function() {
+            if (!cropper) return;
+            processVideo(videoInput.files[0]);
+        });
+
+        async function processVideo(file) {
+            const progressOverlay = document.getElementById('progressOverlay');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressOverlay.style.display = 'flex';
+            
+            const videoElement = document.createElement('video');
+            videoElement.src = URL.createObjectURL(file);
+            await new Promise(resolve => videoElement.onloadedmetadata = resolve);
+            
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            const cropData = cropper.getData();
+            canvas.width = cropData.width;
+            canvas.height = cropData.height;
+            
+            const stream = canvas.captureStream();
+            const recorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+            
+            const chunks = [];
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'cropped_video.webm';
+                a.click();
+                progressOverlay.style.display = 'none';
+            };
+            
+            recorder.start();
+            
+            const duration = videoElement.duration;
+            const fps = 30;
+            const totalFrames = Math.floor(duration * fps);
+            
+            for (let i = 0; i < totalFrames; i++) {
+                videoElement.currentTime = i / fps;
+                await new Promise(resolve => videoElement.oncanplay = resolve);
+                ctx.drawImage(videoElement, cropData.x, cropData.y, cropData.width, cropData.height, 0, 0, cropData.width, cropData.height);
+                
+                // Update progress
+                const progress = Math.round((i / totalFrames) * 100);
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `${progress}%`;
+            }
+            
+            recorder.stop();
+        }
+
+
+    </script>
+</body>
+</html>
