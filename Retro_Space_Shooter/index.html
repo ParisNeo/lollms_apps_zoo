@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Retro Space Shooter</title>
+    <meta name="description" content="A fully-fledged classic-style space shooter game inspired by the Commodore 64 era.">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: black;
+            color: #00FF00;
+            font-family: 'Press Start 2P', cursive;
+        }
+        canvas {
+            background-color: black;
+            display: block;
+            margin: 0 auto;
+        }
+        .screen {
+            display: none;
+        }
+        .active {
+            display: flex;
+        }
+        .menu-button {
+            background-color: #00FF00;
+            color: black;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .menu-button:hover {
+            background-color: #00CC00;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .leaderboard-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .leaderboard-list li {
+            margin: 5px 0;
+        }
+        input {
+            background-color: black;
+            border: 1px solid #00FF00;
+            color: #00FF00;
+            padding: 5px;
+            font-family: 'Press Start 2P', cursive;
+        }
+        select {
+            background-color: black;
+            border: 1px solid #00FF00;
+            color: #00FF00;
+            padding: 5px;
+            font-family: 'Press Start 2P', cursive;
+        }
+        label {
+            margin-bottom: 10px;
+        }
+        #pause-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #00FF00;
+            color: black;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #pause-button:hover {
+            background-color: #00CC00;
+        }
+        #pause-menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: #00FF00;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        #pause-menu.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+    <audio id="background-music" src="background-music.mp3" loop></audio>
+    <div id="main-menu" class="screen active flex flex-col items-center justify-center h-screen">
+        <h1 class="text-4xl mb-8">Retro Space Shooter</h1>
+        <button id="start-game" class="menu-button w-48 md:w-64">Start Game</button>
+        <button id="show-instructions" class="menu-button w-48 md:w-64">Instructions</button>
+        <button id="show-leaderboard" class="menu-button w-48 md:w-64">Leaderboard</button>
+        <button id="show-settings" class="menu-button w-48 md:w-64">Settings</button>
+    </div>
+    <div id="game-container" class="screen relative hidden">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        <button id="pause-button">Pause</button>
+        <div id="pause-menu" class="flex flex-col items-center">
+            <h2 class="text-2xl mb-4">Paused</h2>
+            <button id="resume-game" class="menu-button w-48 md:w-64">Continue</button>
+            <button id="restart-game" class="menu-button w-48 md:w-64">Restart</button>
+            <button id="show-settings-pause" class="menu-button w-48 md:w-64">Settings</button>
+            <button id="back-to-menu-pause" class="menu-button w-48 md:w-64">Main Menu</button>
+        </div>
+    </div>
+    <div id="instructions-screen" class="screen flex flex-col items-center justify-center h-screen text-center hidden">
+        <h2 class="text-2xl mb-4">Instructions</h2>
+        <p class="mb-4">
+            Use the <strong>Arrow Keys</strong> to move your ship.<br>
+            Press the <strong>Spacebar</strong> to fire.
+        </p>
+        <p class="mb-4">Defeat all enemy invaders and advance through levels!</p>
+        <button id="back-to-menu-instructions" class="menu-button w-48 md:w-64">Back to Menu</button>
+    </div>
+    <div id="leaderboard-screen" class="screen flex flex-col items-center justify-center h-screen  hidden">
+        <h2 class="text-2xl mb-4">Leaderboard</h2>
+        <ul id="leaderboard-list" class="leaderboard-list mb-4"></ul>
+        <button id="back-to-menu-leaderboard" class="menu-button w-48 md:w-64">Back to Menu</button>
+    </div>
+    <div id="settings-screen" class="screen flex flex-col items-center justify-center h-screen  hidden">
+        <h2 class="text-2xl mb-4">Settings</h2>
+        <label class="mb-4">
+            <input type="checkbox" id="sound-toggle" checked> Sound
+        </label>
+        <label class="mb-4">
+            Difficulty:
+            <select id="difficulty-select">
+                <option value="easy">Easy</option>
+                <option value="medium" selected>Medium</option>
+                <option value="hard">Hard</option>
+            </select>
+        </label>
+        <button id="back-to-menu-settings" class="menu-button w-48 md:w-64">Back to Menu</button>
+    </div>
+    <div id="game-over-screen" class="screen flex flex-col items-center justify-center h-screen text-center  hidden">
+        <h2 class="text-2xl mb-4">Game Over</h2>
+        <p class="mb-4">Your score: <span id="final-score"></span></p>
+        <label class="mb-4">
+            Enter your initials:
+            <input type="text" id="player-initials" maxlength="3">
+        </label>
+        <button id="submit-score" class="menu-button w-48 md:w-64 mt-4">Submit Score</button>
+    </div>
+    <script>
+        let currentScreen = 'main-menu';
+        let canvas, ctx;
+        let player, enemies, bullets, enemyBullets, powerUps;
+        let keys = {};
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let gameInterval;
+        let canShoot = true;
+        let shootCooldown = 500;
+        let isPaused = false;
+        let backgroundMusic = document.getElementById('background-music');
+        let soundEnabled = true;
+        let hitTimeout = null;
+
+        document.addEventListener('keydown', function(event) {
+            keys[event.code] = true;
+        });
+        document.addEventListener('keyup', function(event) {
+            keys[event.code] = false;
+        });
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+                screen.classList.add('hidden');
+            });
+            document.getElementById(screenId).classList.add('active');
+            document.getElementById(screenId).classList.remove('hidden');
+            currentScreen = screenId;
+        }
+
+        function showMainMenu() {
+            showScreen('main-menu');
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+
+        function showInstructions() {
+            showScreen('instructions-screen');
+        }
+
+        function showLeaderboard() {
+            showScreen('leaderboard-screen');
+            displayLeaderboard();
+        }
+
+        function showSettings() {
+            showScreen('settings-screen');
+        }
+
+        function startGame() {
+            showScreen('game-container');
+            canvas = document.getElementById('game-canvas');
+            ctx = canvas.getContext('2d');
+            resetGame();
+            if (soundEnabled) {
+                backgroundMusic.play();
+            }
+            gameInterval = setInterval(gameLoop, 1000 / 60);
+        }
+
+        function resetGame() {
+            player = {
+                x: canvas.width / 2 - 15,
+                y: canvas.height - 50,
+                width: 30,
+                height: 30,
+                speed: 5,
+                poweredUp: false,
+                hit: false
+            };
+            enemies = [];
+            bullets = [];
+            enemyBullets = [];
+            powerUps = [];
+            score = 0;
+            level = 1;
+            lives = 3;
+            spawnEnemies();
+        }
+
+        function spawnEnemies() {
+            let rows = 3 + level;
+            let cols = 8;
+            let enemyWidth = 40;
+            let enemyHeight = 30;
+            let xOffset = (canvas.width - (cols * (enemyWidth + 10))) / 2;
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    let enemy = {
+                        x: xOffset + col * (enemyWidth + 10),
+                        y: 50 + row * (enemyHeight + 10),
+                        width: enemyWidth,
+                        height: enemyHeight,
+                        dx: 1 + level * 0.5,
+                        dy: 0,
+                        direction: 1
+                    };
+                    enemies.push(enemy);
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (!isPaused) {
+                update();
+            }
+            render();
+        }
+
+        function update() {
+            if (keys['ArrowLeft'] && player.x > 0) {
+                player.x -= player.speed;
+            }
+            if (keys['ArrowRight'] && player.x < canvas.width - player.width) {
+                player.x += player.speed;
+            }
+            if (keys['Space'] && canShoot) {
+                shoot();
+                canShoot = false;
+                setTimeout(() => { canShoot = true; }, shootCooldown);
+            }
+            bullets.forEach((bullet, index) => {
+                bullet.y -= bullet.speed;
+                if (bullet.y < 0) {
+                    bullets.splice(index, 1);
+                }
+            });
+            enemyBullets.forEach((bullet, index) => {
+                bullet.y += bullet.speed;
+                if (bullet.y > canvas.height) {
+                    enemyBullets.splice(index, 1);
+                }
+            });
+            powerUps.forEach((powerUp, index) => {
+                powerUp.y += powerUp.speed;
+                if (powerUp.y > canvas.height) {
+                    powerUps.splice(index, 1);
+                }
+            });
+            let edgeReached = false;
+            enemies.forEach(enemy => {
+                enemy.x += enemy.dx * enemy.direction;
+                if (enemy.x <= 0 || enemy.x + enemy.width >= canvas.width) {
+                    edgeReached = true;
+                }
+            });
+            if (edgeReached) {
+                enemies.forEach(enemy => {
+                    enemy.direction *= -1;
+                    enemy.y += 10;
+                });
+            }
+            if (Math.random() < 0.02 * level) {
+                let shooter = enemies[Math.floor(Math.random() * enemies.length)];
+                if (shooter) {
+                    enemyBullets.push({
+                        x: shooter.x + shooter.width / 2,
+                        y: shooter.y + shooter.height,
+                        width: 5,
+                        height: 10,
+                        speed: 3 + level * 0.5
+                    });
+                }
+            }
+            if (Math.random() < 0.005) {
+                spawnPowerUp();
+            }
+            checkCollisions();
+            checkGameOver();
+        }
+
+        function render() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (player.hit) {
+                ctx.fillStyle = '#FF0000';
+                ctx.font = '30px "Press Start 2P"';
+                ctx.fillText('X', player.x, player.y);
+            } else {
+                ctx.fillStyle = '#00FF00';
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText('A', player.x, player.y);
+            }
+
+            bullets.forEach(bullet => {
+                ctx.fillStyle = '#FFFF00';
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+
+            enemyBullets.forEach(bullet => {
+                ctx.fillStyle = '#FF0000';
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+
+            enemies.forEach(enemy => {
+                ctx.fillStyle = '#FF0000';
+                ctx.font = '20px "Press Start 2P"';
+                ctx.fillText('V', enemy.x, enemy.y);
+            });
+
+            powerUps.forEach(powerUp => {
+                ctx.fillStyle = '#00FFFF';
+                ctx.font = '20px "Press Start 2P"';
+                if (powerUp.type === 'power') {
+                    ctx.fillText('P', powerUp.x, powerUp.y);
+                } else if (powerUp.type === 'life') {
+                    ctx.fillText('L', powerUp.x, powerUp.y);
+                }
+            });
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '16px "Press Start 2P"';
+            ctx.fillText('Score: ' + score, 10, 20);
+            ctx.fillText('Lives: ' + lives, 10, 40);
+            ctx.fillText('Level: ' + level, 10, 60);
+        }
+
+        function shoot() {
+            bullets.push({
+                x: player.x + player.width / 2 - 2.5,
+                y: player.y,
+                width: 5,
+                height: 10,
+                speed: 7
+            });
+        }
+
+        function checkCollisions() {
+            bullets.forEach((bullet, bIndex) => {
+                enemies.forEach((enemy, eIndex) => {
+                    if (isColliding(bullet, enemy)) {
+                        bullets.splice(bIndex, 1);
+                        enemies.splice(eIndex, 1);
+                        score += 10;
+                    }
+                });
+            });
+            enemyBullets.forEach((bullet, index) => {
+                if (isColliding(bullet, player)) {
+                    enemyBullets.splice(index, 1);
+                    lives--;
+                    player.hit = true;
+                    isPaused = true;
+                    hitTimeout = setTimeout(() => {
+                        player.hit = false;
+                        isPaused = false;
+                    }, 1000);
+                }
+            });
+            enemies.forEach(enemy => {
+                if (isColliding(enemy, player)) {
+                    lives = 0;
+                }
+            });
+            powerUps.forEach((powerUp, index) => {
+                if (isColliding(powerUp, player)) {
+                    powerUps.splice(index, 1);
+                    if (powerUp.type === 'power') {
+                        player.poweredUp = true;
+                        setTimeout(() => { player.poweredUp = false; }, 10000);
+                    } else if (powerUp.type === 'life') {
+                        lives++;
+                    }
+                }
+            });
+            if (enemies.length === 0) {
+                level++;
+                spawnEnemies();
+            }
+        }
+
+        function isColliding(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function checkGameOver() {
+            if (lives <= 0) {
+                clearInterval(gameInterval);
+                showGameOver();
+            }
+        }
+
+        function showGameOver() {
+            document.getElementById('final-score').innerText = score;
+            showScreen('game-over-screen');
+            backgroundMusic.pause();
+            backgroundMusic.currentTime = 0;
+        }
+
+        function submitScore() {
+            let initials = document.getElementById('player-initials').value.toUpperCase() || 'AAA';
+            let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboard.push({ initials: initials, score: score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            showLeaderboard();
+        }
+
+        function displayLeaderboard() {
+            let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            let leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+            leaderboard.forEach(entry => {
+                let li = document.createElement('li');
+                li.textContent = `${entry.initials} - ${entry.score}`;
+                leaderboardList.appendChild(li);
+            });
+        }
+
+        function spawnPowerUp() {
+            let powerUpType = Math.random() < 0.95 ? 'power' : 'life';
+            powerUps.push({
+                x: Math.random() * (canvas.width - 20),
+                y: 0,
+                width: 20,
+                height: 20,
+                speed: 2,
+                type: powerUpType
+            });
+        }
+
+        function pauseGame() {
+            isPaused = true;
+            document.getElementById('pause-menu').classList.add('active');
+            backgroundMusic.pause();
+        }
+
+        function resumeGame() {
+            isPaused = false;
+            document.getElementById('pause-menu').classList.remove('active');
+            if (soundEnabled) {
+                backgroundMusic.play();
+            }
+        }
+
+        function restartGame() {
+            clearInterval(gameInterval);
+            resetGame();
+            gameInterval = setInterval(gameLoop, 1000 / 60);
+            document.getElementById('pause-menu').classList.remove('active');
+            isPaused = false;
+            if (soundEnabled) {
+                backgroundMusic.play();
+            }
+        }
+
+        document.getElementById('start-game').addEventListener('click', startGame);
+        document.getElementById('show-instructions').addEventListener('click', showInstructions);
+        document.getElementById('show-leaderboard').addEventListener('click', showLeaderboard);
+        document.getElementById('show-settings').addEventListener('click', showSettings);
+        document.getElementById('back-to-menu-instructions').addEventListener('click', showMainMenu);
+        document.getElementById('back-to-menu-leaderboard').addEventListener('click', showMainMenu);
+        document.getElementById('back-to-menu-settings').addEventListener('click', showMainMenu);
+        document.getElementById('submit-score').addEventListener('click', submitScore);
+        document.getElementById('pause-button').addEventListener('click', pauseGame);
+        document.getElementById('resume-game').addEventListener('click', resumeGame);
+        document.getElementById('restart-game').addEventListener('click', restartGame);
+        document.getElementById('back-to-menu-pause').addEventListener('click', () => {
+            clearInterval(gameInterval);
+            showMainMenu();
+        });
+        document.getElementById('show-settings-pause').addEventListener('click', showSettings);
+
+        document.getElementById('sound-toggle').addEventListener('change', function() {
+            soundEnabled = this.checked;
+            if (soundEnabled && !isPaused) {
+                backgroundMusic.play();
+            } else {
+                backgroundMusic.pause();
+            }
+        });
+        document.getElementById('difficulty-select').addEventListener('change', function() {
+            let difficulty = this.value;
+            if (difficulty === 'easy') {
+                player.speed = 7;
+                shootCooldown = 400;
+            } else if (difficulty === 'medium') {
+                player.speed = 5;
+                shootCooldown = 500;
+            } else if (difficulty === 'hard') {
+                player.speed = 3;
+                shootCooldown = 600;
+            }
+        });
+    </script>
+</body>
+</html>
