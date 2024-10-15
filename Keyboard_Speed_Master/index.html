@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KeySpeed Master</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        .modal, .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8 relative">
+            <h1 class="text-4xl font-bold text-indigo-800">KeySpeed Master</h1>
+            <div class="mt-4">
+                <button id="trainingMode" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2">Training Mode</button>
+                <button id="testMode" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Test Mode</button>
+            </div>
+            <button id="settingsBtn" class="absolute top-0 right-0 mt-4 mr-4">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-400 hover:text-indigo-300 transition duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path d="M12 15l9-5-9-5-9 5 9 5z" />
+                    <path d="M12 15v11" />
+                    <path d="M12 3v4" />
+                </svg>
+            </button>
+        </header>
+
+        <main class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div id="textDisplay" class="text-lg mb-4 h-32 overflow-y-auto"></div>
+            <textarea id="userInput" class="w-full h-32 p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900" placeholder="Start typing here..."></textarea>
+            <div class="flex justify-between mt-4">
+                <div>
+                    <p class="text-gray-700">Current Speed: <span id="currentSpeed">0</span> WPM</p>
+                    <p class="text-gray-700">Average Speed: <span id="averageSpeed">0</span> WPM</p>
+                    <p class="text-gray-700">Variance: <span id="variance">0</span></p>
+                </div>
+                <div class="flex items-center">
+                    <button id="startReset" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Start</button>
+                    <select id="textSelector" class="ml-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900">
+                        <option value="text1">Text 1</option>
+                        <option value="text2">Text 2</option>
+                        <option value="text3">Text 3</option>
+                    </select>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="resultsModal" class="modal bg-white shadow-lg rounded-lg p-6 w-4/5 max-w-lg">
+        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Results</h2>
+        <div id="statistics" class="mb-4 text-gray-700"></div>
+        <canvas id="speedChart" width="400" height="200"></canvas>
+        <button id="closeModal" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Close</button>
+    </div>
+
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup w-4/5 max-w-sm bg-white p-5 rounded-lg">
+        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Settings</h2>
+        <div class="mb-4">
+            <label class="block text-gray-700">Theme:</label>
+            <select id="themeSelector" class="w-full mt-1 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white text-gray-900">
+                <option value="theme1">Default</option>
+                <option value="theme2">Dark</option>
+                <option value="theme3">Light</option>
+            </select>
+        </div>
+        <div class="mb-4">
+            <label class="block text-gray-700">Font Size:</label>
+            <input type="range" id="fontSizeSlider" min="14" max="24" value="16" class="w-full">
+        </div>
+        <button id="saveSettings" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save</button>
+    </div>
+
+    <script>
+        const textDisplay = document.getElementById('textDisplay');
+        const userInput = document.getElementById('userInput');
+        const currentSpeed = document.getElementById('currentSpeed');
+        const averageSpeed = document.getElementById('averageSpeed');
+        const variance = document.getElementById('variance');
+        const startResetBtn = document.getElementById('startReset');
+        const textSelector = document.getElementById('textSelector');
+        const trainingModeBtn = document.getElementById('trainingMode');
+        const testModeBtn = document.getElementById('testMode');
+        const resultsModal = document.getElementById('resultsModal');
+        const closeModalBtn = document.getElementById('closeModal');
+        const statistics = document.getElementById('statistics');
+        const speedChartCtx = document.getElementById('speedChart').getContext('2d');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const saveSettingsBtn = document.getElementById('saveSettings');
+        const themeSelector = document.getElementById('themeSelector');
+        const fontSizeSlider = document.getElementById('fontSizeSlider');
+
+        let mode = 'training';
+        let startTime;
+        let intervalId;
+        let speedData = [];
+        let chart;
+        let typingStarted = false;
+        let originalText = '';
+
+        const texts = {
+            text1: "The quick brown fox jumps over the lazy dog. This sentence is often used to demonstrate the font and typing speed. It contains every letter of the English alphabet, making it a perfect choice for typing practice.",
+            text2: "To be or not to be, that is the question. This famous line from Shakespeare's Hamlet reflects the existential dilemma faced by the protagonist. It invites deep contemplation about life, death, and the choices we make.",
+            text3: "In a hole in the ground there lived a hobbit. This line opens J.R.R. Tolkien's beloved novel, 'The Hobbit.' It introduces readers to a world of adventure, courage, and the unexpected, as Bilbo Baggins embarks on a journey that will change his life forever."
+        };
+
+        function updateMetrics() {
+            const elapsedTime = (Date.now() - startTime) / 60000;
+            const typedWords = userInput.value.trim().split(/\s+/).length;
+            const currentWPM = Math.round(typedWords / elapsedTime);
+
+            currentSpeed.textContent = currentWPM;
+            speedData.push(currentWPM);
+
+            const avg = Math.round(speedData.reduce((a, b) => a + b) / speedData.length);
+            averageSpeed.textContent = avg;
+
+            const squaredDifferences = speedData.map(x => Math.pow(x - avg, 2));
+            const avgSquaredDifference = squaredDifferences.reduce((a, b) => a + b) / speedData.length;
+            variance.textContent = Math.round(avgSquaredDifference);
+        }
+
+        function startTest() {
+            originalText = texts[textSelector.value];
+            textDisplay.textContent = originalText;
+            userInput.value = '';
+            typingStarted = false;
+            speedData = [];
+            startResetBtn.textContent = 'Reset';
+            userInput.focus();
+        }
+
+        function endTest() {
+            clearInterval(intervalId);
+            showResults();
+        }
+
+        function showResults() {
+            resultsModal.style.display = 'block';
+
+            statistics.innerHTML = `
+                <p>Final Speed: ${currentSpeed.textContent} WPM</p>
+                <p>Average Speed: ${averageSpeed.textContent} WPM</p>
+                <p>Variance: ${variance.textContent}</p>
+            `;
+
+            if (chart) chart.destroy();
+            chart = new Chart(speedChartCtx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: speedData.length}, (_, i) => i + 1),
+                    datasets: [{
+                        label: 'Typing Speed (WPM)',
+                        data: speedData,
+                        borderColor: 'rgb(79, 70, 229)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        userInput.addEventListener('input', () => {
+            if (!typingStarted) {
+                startTime = Date.now();
+                intervalId = setInterval(updateMetrics, 1000);
+                typingStarted = true;
+            }
+
+            const userText = userInput.value;
+            let updatedHTML = '';
+
+            for (let i = 0; i < originalText.length; i++) {
+                const originalChar = originalText[i];
+                const typedChar = userText[i];
+
+                if (typedChar == null) {
+                    updatedHTML += '<span>' + originalText.slice(i) + '</span>';
+                    break;
+                } else if (typedChar === originalChar) {
+                    updatedHTML += '<span class="text-green-500">' + originalChar + '</span>';
+                } else {
+                    updatedHTML += '<span class="text-red-500">' + originalChar + '</span>';
+                }
+            }
+
+            textDisplay.innerHTML = updatedHTML;
+
+            if (mode === 'test' && userInput.value === originalText) {
+                endTest();
+            }
+        });
+
+        startResetBtn.addEventListener('click', () => {
+            if (startResetBtn.textContent === 'Start') {
+                startTest();
+            } else {
+                endTest();
+                startResetBtn.textContent = 'Start';
+            }
+        });
+
+        trainingModeBtn.addEventListener('click', () => {
+            mode = 'training';
+            trainingModeBtn.classList.add('bg-indigo-800');
+            testModeBtn.classList.remove('bg-indigo-800');
+        });
+
+        testModeBtn.addEventListener('click', () => {
+            mode = 'test';
+            testModeBtn.classList.add('bg-indigo-800');
+            trainingModeBtn.classList.remove('bg-indigo-800');
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            resultsModal.style.display = 'none';
+        });
+
+        textSelector.addEventListener('change', () => {
+            if (startResetBtn.textContent === 'Start') {
+                originalText = texts[textSelector.value];
+                textDisplay.textContent = originalText;
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            settingsPopup.style.display = 'block';
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+            applySettings();
+        });
+
+        settingsOverlay.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+        });
+
+        function applySettings() {
+            const fontSize = fontSizeSlider.value + 'px';
+            userInput.style.fontSize = fontSize;
+            textDisplay.style.fontSize = fontSize;
+
+            const theme = themeSelector.value;
+            if (theme === 'theme1') {
+                document.body.classList = 'bg-gradient-to-r from-blue-100 to-purple-100 font-sans';
+            } else if (theme === 'theme2') {
+                document.body.classList = 'bg-gray-900 text-white font-sans';
+            } else if (theme === 'theme3') {
+                document.body.classList = 'bg-white text-gray-900 font-sans';
+            }
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                if (startResetBtn.textContent === 'Start') {
+                    startTest();
+                } else {
+                    endTest();
+                    startResetBtn.textContent = 'Start';
+                }
+            }
+        });
+
+        originalText = texts[textSelector.value];
+        textDisplay.textContent = originalText;
+    </script>
+</body>
+</html>
