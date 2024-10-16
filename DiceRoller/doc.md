@@ -1,4 +1,4 @@
-# Strawberry Dice Roller 🍓
+# Strawberry Dice Roller 🌟
 
 ## Overview
 
