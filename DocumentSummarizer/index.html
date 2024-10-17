@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Summarizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">Document Summarizer</h1>
+        
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-4">
+                <label for="fileInput" class="block text-sm font-medium text-gray-700 mb-2">Upload Document (PDF, DOCX, TXT)</label>
+                <input type="file" id="fileInput" accept=".pdf,.docx,.txt" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            <button id="summarizeBtn" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Summarize
+            </button>
+        </div>
+
+        <div id="summaryContainer" class="bg-white shadow-lg rounded-lg p-6 hidden">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Summary</h2>
+            <div id="summaryContent" class="text-gray-700"></div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mb-4"></div>
+            <p class="text-indigo-800 font-semibold">Generating summary...</p>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+
+        const fileInput = document.getElementById('fileInput');
+        const summarizeBtn = document.getElementById('summarizeBtn');
+        const summaryContainer = document.getElementById('summaryContainer');
+        const summaryContent = document.getElementById('summaryContent');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        summarizeBtn.addEventListener('click', async () => {
+            const file = fileInput.files[0];
+            if (!file) {
+                alert('Please select a file to summarize.');
+                return;
+            }
+
+            loadingOverlay.classList.remove('hidden');
+            
+            try {
+                const text = await readFileContent(file);
+                const summary = await summarizeDocument(text);
+                summaryContent.textContent = summary;
+                summaryContainer.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while summarizing the document.');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+
+        async function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => resolve(event.target.result);
+                reader.onerror = (error) => reject(error);
+                reader.readAsText(file);
+            });
+        }
+
+        async function summarizeDocument(text) {
+            const summaryInstruction = "Provide a concise summary of the following document, highlighting the main points and key information:";
+            console.log(`text: ${text}`)
+            const summary = await tl.summarizeText({
+                text: text,
+                summaryInstruction: summaryInstruction,
+                docName: "document",
+                maxGenerationSize: 3000,
+                maxSummarySize: 1000
+            });
+            return summary;
+        }
+    </script>
+</body>
+</html>

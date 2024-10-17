@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeTalk AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+
+    <style>
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 999;
+        }
+        .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            z-index: 1000;
+        }
+        #editor {
+            height: 400px;
+            width: 100%;
+            margin-bottom: 1rem;
+        }
+        .message {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .user-message {
+            background-color: #e0e7ff;
+        }
+        .ai-message {
+            background-color: #fff;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">CodeTalk AI</h1>
+            <button id="settingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Settings
+            </button>
+        </header>
+
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                <h2 class="text-2xl font-bold text-indigo-800 mb-4">Code Editor</h2>
+                <div id="editor"></div>
+                <div class="flex justify-between items-center mt-4">
+                    <div>
+                        <button id="undoBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-300 mr-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M7.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l2.293 2.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Undo
+                        </button>
+                        <button id="redoBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                            Redo
+                        </button>
+                    </div>
+                    <span id="stepCounter" class="text-gray-600">Step: 0 / 0</span>
+                </div>
+                <div class="mt-4">
+                    <button id="saveBtn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                        </svg>
+                        Save
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                <h2 class="text-2xl font-bold text-indigo-800 mb-4">Chat</h2>
+                <div id="chatMessages" class="h-96 overflow-y-auto mb-4"></div>
+                <div class="flex">
+                    <input type="text" id="userInput" class="flex-grow border border-indigo-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500 px-4 py-2" placeholder="Type your message...">
+                    <button id="sendBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-r-md transition duration-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="settingsOverlay" class="blurred-overlay"></div>
+    <div id="settingsPopup" class="settings-popup">
+        <h2 class="text-2xl font-bold text-indigo-800 mb-4">Settings</h2>
+        <div class="mb-4">
+            <label for="undoSteps" class="block text-sm font-medium text-gray-700">Number of Undo Steps</label>
+            <input type="number" id="undoSteps" min="1" max="100" value="10" class="mt-1 block w-full border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+        </div>
+        <div class="mb-4">
+            <label for="languageSelect" class="block text-sm font-medium text-gray-700">Programming Language</label>
+            <select id="languageSelect" class="mt-1 block w-full border border-indigo-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="csharp">C#</option>
+                <option value="cpp">C++</option>
+            </select>
+        </div>
+        <div class="flex justify-end">
+            <button id="saveSettingsBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2">Save</button>
+            <button id="cancelSettingsBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded transition duration-300">Cancel</button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Interrogating L🍓LLMS ...</div>
+        </div>
+    </div>
+
+    <script>
+        const editor = ace.edit("editor");
+        editor.setTheme("ace/theme/monokai");
+        editor.session.setMode("ace/mode/javascript");
+
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        const chatMessages = document.getElementById('chatMessages');
+        const userInput = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const undoBtn = document.getElementById('undoBtn');
+        const redoBtn = document.getElementById('redoBtn');
+        const stepCounter = document.getElementById('stepCounter');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const cancelSettingsBtn = document.getElementById('cancelSettingsBtn');
+        const undoStepsInput = document.getElementById('undoStepsInput');
+        const languageSelect = document.getElementById('languageSelect');
+        const saveBtn = document.getElementById('saveBtn');
+
+        let codeHistory = [];
+        let currentStep = 0;
+        let maxUndoSteps = 10;
+
+        function updateStepCounter() {
+            stepCounter.textContent = `Step: ${currentStep} / ${codeHistory.length}`;
+        }
+
+        async function addMessage(content, isUser) {
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', isUser ? 'user-message' : 'ai-message');
+            messageDiv.innerHTML = content;
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const userMessage = userInput.value.trim();
+            if (userMessage) {
+                addMessage(userMessage, true);
+                userInput.value = '';
+
+                showLoader();
+
+                try {
+                    const prompt = `${lc.system_message()}You are a coding assistant. The current code is:
+
+\`\`\`
+${editor.getValue()}
+\`\`\`
+
+The user's request is: "${userMessage}"
+
+Please provide a response and, if necessary, the updated code. Always provide the full updated code, not just the changes.${lc.ai_message()}`;
+
+                    const response = await lc.generate(prompt);
+                    const codes = await tc.extractCodeBlocks(response);
+
+                    addMessage(response, false);
+
+                    if (codes.length === 1) {
+                        const newCode = codes[0].content;
+                        codeHistory = codeHistory.slice(0, currentStep + 1);
+                        codeHistory.push(newCode);
+                        currentStep = codeHistory.length - 1;
+                        editor.setValue(newCode, -1);
+                        updateStepCounter();
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    addMessage('An error occurred while processing your request.', false);
+                } finally {
+                    hideLoader();
+                }
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        undoBtn.addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                editor.setValue(codeHistory[currentStep], -1);
+                updateStepCounter();
+            }
+        });
+
+        redoBtn.addEventListener('click', () => {
+            if (currentStep < codeHistory.length - 1) {
+                currentStep++;
+                editor.setValue(codeHistory[currentStep], -1);
+                updateStepCounter();
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'block';
+            settingsPopup.style.display = 'block';
+            undoStepsInput.value = maxUndoSteps;
+        });
+
+        saveSettingsBtn.addEventListener('click', () => {
+            maxUndoSteps = parseInt(undoStepsInput.value, 10);
+            codeHistory = codeHistory.slice(-maxUndoSteps);
+            currentStep = codeHistory.length - 1;
+            updateStepCounter();
+            const selectedLanguage = languageSelect.value;
+            editor.session.setMode(`ace/mode/${selectedLanguage}`);
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+        });
+
+        cancelSettingsBtn.addEventListener('click', () => {
+            settingsOverlay.style.display = 'none';
+            settingsPopup.style.display = 'none';
+        });
+
+        editor.on('change', () => {
+            const currentCode = editor.getValue();
+            if (currentCode !== codeHistory[currentStep]) {
+                codeHistory = codeHistory.slice(0, currentStep + 1);
+                codeHistory.push(currentCode);
+                if (codeHistory.length > maxUndoSteps) {
+                    codeHistory.shift();
+                }
+                currentStep = codeHistory.length - 1;
+                updateStepCounter();
+            }
+        });
+
+        saveBtn.addEventListener('click', () => {
+            const code = editor.getValue();
+            const blob = new Blob([code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `code.${languageSelect.value}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        languageSelect.addEventListener('change', (e) => {
+            const selectedLanguage = e.target.value;
+            editor.session.setMode(`ace/mode/${selectedLanguage}`);
+        });
+
+        // Initial setup
+        codeHistory.push(editor.getValue());
+        updateStepCounter();
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        hideLoader();
+    </script>
+</body>
+</html>
