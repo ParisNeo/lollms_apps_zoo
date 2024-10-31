@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lollmamp - The Ultimate MP3 Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="flex items-center justify-between mb-8">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10 text-indigo-800 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19l12-3-12-3v6" />
+                </svg>
+                <h1 class="text-4xl font-bold text-indigo-800">Lollmamp</h1>
+            </div>
+            <button id="settingsButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" title="Settings">
+                Settings
+            </button>
+        </header>
+        <main class="flex flex-col md:flex-row gap-8">
+            <div class="w-full md:w-1/3 bg-white shadow-lg rounded-lg p-6">
+                <div class="flex justify-between mb-4">
+                    <button id="addFilesButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center" title="Add Files">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Files
+                    </button>
+                    <button id="addFolderButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex items-center" title="Add Folder">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7a2 2 0 012-2h4l2 3h8a2 2 0 012 2v7a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+                        </svg>
+                        Add Folder
+                    </button>
+                </div>
+                <ul id="playlist" class="space-y-2 overflow-y-auto max-h-96">
+                </ul>
+            </div>
+            <div class="w-full md:w-2/3 bg-white shadow-lg rounded-lg p-6 flex flex-col">
+                <div class="flex items-center mb-4">
+                    <img id="albumArt" src="/apps/lollmamp/icon.png" alt="Album Art" class="w-24 h-24 mr-4 rounded">
+                    <div>
+                        <h2 id="trackTitle" class="text-2xl font-semibold text-indigo-800">No Track Playing</h2>
+                        <p id="trackArtist" class="text-gray-600">Artist</p>
+                    </div>
+                </div>
+                <div id="visualizer" class="w-full h-40 mb-4 bg-gray-100 rounded"></div>
+                <div class="flex items-center justify-center space-x-4 mb-4">
+                    <button id="prevButton" class="playback-button" title="Previous">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7M5 12h18" />
+                        </svg>
+                    </button>
+                    <button id="playPauseButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full transition duration-300" title="Play/Pause">
+                        <svg id="playIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-5.197-3.036A1 1 0 008 9.964v4.072a1 1 0 001.555.832l5.197-3.036a1 1 0 000-1.664z" />
+                        </svg>
+                        <svg id="pauseIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6" />
+                        </svg>
+                    </button>
+                    <button id="nextButton" class="playback-button" title="Next">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex items-center mb-4">
+                    <span id="currentTime" class="text-sm text-gray-600">0:00</span>
+                    <input type="range" id="seekBar" min="0" max="100" value="0" class="flex-grow mx-2">
+                    <span id="totalTime" class="text-sm text-gray-600">0:00</span>
+                </div>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center space-x-4">
+                        <button id="shuffleButton" class="hover:bg-indigo-200 p-2 rounded" title="Shuffle">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                        <button id="repeatButton" class="hover:bg-indigo-200 p-2 rounded" title="Repeat">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button id="muteButton" class="hover:bg-indigo-200 p-2 rounded" title="Mute/Unmute">
+                            <svg id="muteIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                            </svg>
+                            <svg id="unmuteIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-600 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+                            </svg>
+                        </button>
+                        <input type="range" id="volumeBar" min="0" max="100" value="100" class="w-24">
+                    </div>
+                </div>
+            </div>
+        </main>
+        <footer class="mt-8">
+            <div class="bg-white shadow-lg rounded-lg p-4 flex justify-between items-center">
+                <span id="statusIndicator" class="text-gray-600">Paused</span>
+                <div class="w-full mx-4">
+                    <div class="h-2 bg-indigo-200 rounded-full overflow-hidden">
+                        <div id="footerProgress" class="h-full bg-indigo-600 w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+                <span id="footerTime" class="text-gray-600">0:00 / 0:00</span>
+            </div>
+        </footer>
+    </div>
+    <input type="file" id="fileInput" multiple accept="audio/mpeg" class="hidden">
+    <input type="file" id="folderInput" multiple webkitdirectory directory class="hidden">
+    <div id="settingsOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden"></div>
+    <div id="settingsPopup" class="fixed inset-0 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+            <h2 class="text-xl font-bold mb-4">Settings</h2>
+            <input type="file" id="albumArtInput" accept="image/*" class="mb-4">
+            <button id="closeSettings" class="mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded" title="Close Settings">
+                Close
+            </button>
+        </div>
+    </div>
+    <audio id="audioPlayer"></audio>
+    <script>
+        const addFilesButton = document.getElementById('addFilesButton');
+        const addFolderButton = document.getElementById('addFolderButton');
+        const fileInput = document.getElementById('fileInput');
+        const folderInput = document.getElementById('folderInput');
+        const playlist = document.getElementById('playlist');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseButton = document.getElementById('playPauseButton');
+        const playIcon = document.getElementById('playIcon');
+        const pauseIcon = document.getElementById('pauseIcon');
+        const nextButton = document.getElementById('nextButton');
+        const prevButton = document.getElementById('prevButton');
+        const shuffleButton = document.getElementById('shuffleButton');
+        const repeatButton = document.getElementById('repeatButton');
+        const seekBar = document.getElementById('seekBar');
+        const currentTimeElem = document.getElementById('currentTime');
+        const totalTimeElem = document.getElementById('totalTime');
+        const volumeBar = document.getElementById('volumeBar');
+        const muteButton = document.getElementById('muteButton');
+        const muteIcon = document.getElementById('muteIcon');
+        const unmuteIcon = document.getElementById('unmuteIcon');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const footerProgress = document.getElementById('footerProgress');
+        const footerTime = document.getElementById('footerTime');
+        const albumArt = document.getElementById('albumArt');
+        const trackTitle = document.getElementById('trackTitle');
+        const trackArtist = document.getElementById('trackArtist');
+        const settingsButton = document.getElementById('settingsButton');
+        const settingsOverlay = document.getElementById('settingsOverlay');
+        const settingsPopup = document.getElementById('settingsPopup');
+        const closeSettings = document.getElementById('closeSettings');
+        const albumArtInput = document.getElementById('albumArtInput');
+
+        let playlistData = [];
+        let currentTrackIndex = 0;
+        let isShuffle = false;
+        let isRepeat = false;
+        let isMuted = false;
+        let db;
+
+        const request = indexedDB.open('lollmampDB', 1);
+
+        request.onerror = () => {
+            console.error('Database failed to open');
+        };
+
+        request.onsuccess = () => {
+            db = request.result;
+            loadPlaylistFromDB();
+        };
+
+        request.onupgradeneeded = (e) => {
+            db = e.target.result;
+db.createObjectStore('playlist', { keyPath: 'id', autoIncrement: true });
+        };
+
+        const loadPlaylistFromDB = () => {
+            const transaction = db.transaction(['playlist'], 'readonly');
+            const store = transaction.objectStore('playlist');
+            const getAll = store.getAll();
+            getAll.onsuccess = () => {
+                playlistData = getAll.result.map(track => ({
+                    name: track.name,
+                    file: track.file,
+                    albumArt: track.albumArt || '/apps/lollmamp/icon.png',
+                    url: URL.createObjectURL(track.file)
+                }));
+                renderPlaylist();
+                if (playlistData.length > 0) {
+                    loadTrack(0);
+                }
+            };
+        };
+
+        const savePlaylist = () => {
+            const transaction = db.transaction(['playlist'], 'readwrite');
+            const store = transaction.objectStore('playlist');
+            store.clear();
+            playlistData.forEach(track => {
+                store.add({
+                    name: track.name,
+                    file: track.file,
+                    albumArt: track.albumArt
+                });
+            });
+        };
+
+        addFilesButton.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if (file.type === 'audio/mpeg') {
+                    playlistData.push({
+                        name: file.name,
+                        url: URL.createObjectURL(file),
+                        file: file,
+                        albumArt: '/apps/lollmamp/icon.png'
+                    });
+                }
+            });
+            renderPlaylist();
+            savePlaylist();
+        });
+
+        addFolderButton.addEventListener('click', () => {
+            folderInput.click();
+        });
+
+        folderInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                if (file.type === 'audio/mpeg') {
+                    playlistData.push({
+                        name: file.name,
+                        url: URL.createObjectURL(file),
+                        file: file,
+                        albumArt: '/apps/lollmamp/icon.png'
+                    });
+                }
+            });
+            renderPlaylist();
+            savePlaylist();
+        });
+
+        const renderPlaylist = () => {
+            playlist.innerHTML = '';
+            playlistData.forEach((track, index) => {
+                const li = document.createElement('li');
+                li.classList.add('flex', 'justify-between', 'items-center', 'p-2', 'border-b', 'border-gray-200', 'hover:bg-indigo-50', 'cursor-pointer');
+                li.dataset.index = index;
+
+                const info = document.createElement('div');
+                info.classList.add('flex', 'flex-col');
+                info.innerHTML = `<span class="font-medium text-indigo-700">${track.name}</span>`;
+
+                const actions = document.createElement('div');
+                actions.classList.add('flex', 'space-x-2');
+                const deleteBtn = document.createElement('button');
+                deleteBtn.innerHTML = `
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                `;
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    playlistData.splice(index, 1);
+                    renderPlaylist();
+                    savePlaylist();
+                });
+                actions.appendChild(deleteBtn);
+
+                li.appendChild(info);
+                li.appendChild(actions);
+
+                li.addEventListener('click', () => {
+                    loadTrack(index);
+                    playTrack();
+                });
+
+                playlist.appendChild(li);
+            });
+        };
+
+        const loadTrack = (index) => {
+            if (index < 0 || index >= playlistData.length) return;
+            currentTrackIndex = index;
+            audioPlayer.src = playlistData[index].url;
+            trackTitle.textContent = playlistData[index].name;
+            trackArtist.textContent = 'Artist';
+            albumArt.src = playlistData[index].albumArt || '/apps/lollmamp/icon.png';
+            updateActiveTrack();
+        };
+
+        const updateActiveTrack = () => {
+            const items = playlist.querySelectorAll('li');
+            items.forEach(item => item.classList.remove('bg-indigo-100'));
+            const activeItem = playlist.querySelector(`li[data-index="${currentTrackIndex}"]`);
+            if (activeItem) {
+                activeItem.classList.add('bg-indigo-100');
+            }
+        };
+
+        const playTrack = () => {
+            audioPlayer.play();
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            statusIndicator.textContent = 'Playing';
+        };
+
+        const pauseTrack = () => {
+            audioPlayer.pause();
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            statusIndicator.textContent = 'Paused';
+        };
+
+        playPauseButton.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                playTrack();
+            } else {
+                pauseTrack();
+            }
+        });
+
+        nextButton.addEventListener('click', () => {
+            if (isShuffle) {
+                const shuffledIndex = Math.floor(Math.random() * (playlistData.length - 1));
+                currentTrackIndex = shuffledIndex >= currentTrackIndex ? shuffledIndex + 1 : shuffledIndex;
+            } else {
+                currentTrackIndex = (currentTrackIndex + 1) % playlistData.length;
+            }
+            loadTrack(currentTrackIndex);
+            playTrack();
+        });
+
+        prevButton.addEventListener('click', () => {
+            if (isShuffle) {
+                const shuffledIndex = Math.floor(Math.random() * (playlistData.length - 1));
+                currentTrackIndex = shuffledIndex >= currentTrackIndex ? shuffledIndex + 1 : shuffledIndex;
+            } else {
+                currentTrackIndex = (currentTrackIndex - 1 + playlistData.length) % playlistData.length;
+            }
+            loadTrack(currentTrackIndex);
+            playTrack();
+        });
+
+        shuffleButton.addEventListener('click', () => {
+            isShuffle = !isShuffle;
+            shuffleButton.classList.toggle('bg-indigo-200', isShuffle);
+        });
+
+        repeatButton.addEventListener('click', () => {
+            isRepeat = !isRepeat;
+            repeatButton.classList.toggle('bg-indigo-200', isRepeat);
+        });
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const progressPercent = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+            seekBar.value = progressPercent || 0;
+            footerProgress.style.width = `${progressPercent || 0}%`;
+            currentTimeElem.textContent = formatTime(audioPlayer.currentTime);
+            footerTime.textContent = `${formatTime(audioPlayer.currentTime)} / ${formatTime(audioPlayer.duration)}`;
+        });
+
+        seekBar.addEventListener('input', () => {
+            const seekTime = (seekBar.value / 100) * audioPlayer.duration;
+            audioPlayer.currentTime = seekTime;
+        });
+
+        volumeBar.addEventListener('input', () => {
+            audioPlayer.volume = volumeBar.value / 100;
+            if (audioPlayer.volume === 0) {
+                isMuted = true;
+                updateMuteIcon();
+            } else {
+                isMuted = false;
+                updateMuteIcon();
+            }
+        });
+
+        muteButton.addEventListener('click', () => {
+            isMuted = !isMuted;
+            audioPlayer.muted = isMuted;
+            updateMuteIcon();
+        });
+
+        const updateMuteIcon = () => {
+            if (isMuted) {
+                muteIcon.classList.add('hidden');
+                unmuteIcon.classList.remove('hidden');
+            } else {
+                muteIcon.classList.remove('hidden');
+                unmuteIcon.classList.add('hidden');
+            }
+        };
+
+        audioPlayer.addEventListener('ended', () => {
+            if (isRepeat) {
+                playTrack();
+            } else {
+                nextButton.click();
+            }
+        });
+
+        const formatTime = (time) => {
+            if (isNaN(time)) return '0:00';
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60);
+            return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+        };
+
+        audioPlayer.addEventListener('play', () => {
+            statusIndicator.textContent = 'Playing';
+        });
+
+        audioPlayer.addEventListener('pause', () => {
+            statusIndicator.textContent = 'Paused';
+        });
+
+        settingsButton.addEventListener('click', () => {
+            settingsOverlay.classList.remove('hidden');
+            settingsPopup.classList.remove('hidden');
+        });
+
+        closeSettings.addEventListener('click', () => {
+            settingsOverlay.classList.add('hidden');
+            settingsPopup.classList.add('hidden');
+        });
+
+        settingsOverlay.addEventListener('click', () => {
+            settingsOverlay.classList.add('hidden');
+            settingsPopup.classList.add('hidden');
+        });
+
+        albumArtInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    albumArt.src = event.target.result;
+                    if (currentTrackIndex >= 0 && currentTrackIndex < playlistData.length) {
+                        playlistData[currentTrackIndex].albumArt = event.target.result;
+                        savePlaylist();
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        let audioContext, analyser, source, dataArray;
+
+        function setupAudioContext() {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioContext.createAnalyser();
+            source = audioContext.createMediaElementSource(audioPlayer);
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            dataArray = new Uint8Array(bufferLength);
+        }
+
+        function sketch(p) {
+            p.setup = function() {
+                const canvas = p.createCanvas(300, 150);
+                canvas.parent('visualizer');
+            };
+
+            p.draw = function() {
+                p.background(240);
+                if (audioContext && analyser) {
+                    analyser.getByteFrequencyData(dataArray);
+                    const barWidth = p.width / dataArray.length;
+                    p.noStroke();
+                    for (let i = 0; i < dataArray.length; i++) {
+                        const barHeight = p.map(dataArray[i], 0, 255, 0, p.height);
+                        const hue = p.map(i, 0, dataArray.length, 0, 360);
+                        p.fill(hue, 100, 100);
+                        p.rect(i * barWidth, p.height - barHeight, barWidth, barHeight);
+                    }
+                }
+            };
+        }
+
+        new p5(sketch);
+
+        playPauseButton.addEventListener('click', () => {
+            if (!audioContext) {
+                setupAudioContext();
+            }
+        });
+    </script>
+</body>
+</html>
