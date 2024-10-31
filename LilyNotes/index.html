@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Instrument LilyPond Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-6">Interactive Score Editor</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="flex items-center gap-4 mb-4 overflow-x-auto">
+                <div id="instrumentsContainer" class="flex flex-col gap-4">
+                    <div class="flex items-center gap-4">
+                        <button onclick="addInstrument()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4 overflow-x-auto">
+                    <select id="noteDuration" class="border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0">
+                        <option value="1">Whole Note (1)</option>
+                        <option value="2">Half Note (2)</option>
+                        <option value="4">Quarter Note (4)</option>
+                        <option value="8">Eighth Note (8)</option>
+                        <option value="16">Sixteenth Note (16)</option>
+                        <option value="r">Rest</option>
+                    </select>
+                    <button onclick="clearScore()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">Clear</button>
+                    <button onclick="removeLastNote()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">Remove Last Note</button>
+                    <input type="file" id="lilypondFile" accept=".ly" class="hidden" onchange="loadLilypondFile(event)">
+                    <button onclick="document.getElementById('lilypondFile').click()" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">Load File</button>
+                    <button onclick="saveLilypondFile()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">Save File</button>
+                    <button onclick="playMidi()" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div id="canvasContainer" class="flex flex-col gap-4 overflow-x-auto">
+                <div class="overflow-x-auto whitespace-nowrap" style="max-width: 100%;">
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <textarea id="lilyOutput" rows="4" class="w-full p-3 border border-indigo-300 rounded-md font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 mt-4"></textarea>
+            </div>
+            <div id="debug" class="mt-2 font-mono text-gray-600 overflow-x-auto"></div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js"></script>
+    <script>
+        let instruments = [];
+        let activeInstrument = null;
+        async function playMidi() {
+            Tone.Transport.cancel();
+            scheduledNotes = [];
+            
+            const synths = instruments.map(({select}) => {
+                let synth;
+                switch(select.value) {
+                    case 'piano': synth = new Tone.PolySynth(Tone.Synth); break;
+                    case 'violin': case 'viola': case 'cello':
+                        synth = new Tone.Synth({oscillator:{type:'sawtooth'}, envelope:{attack:0.1,decay:0.2,sustain:0.6,release:0.4}}); break;
+                    case 'flute': case 'clarinet': case 'oboe': 
+                        synth = new Tone.Synth({oscillator:{type:'sine'}, envelope:{attack:0.05,decay:0.1,sustain:0.8,release:0.2}}); break;
+                    case 'trumpet': case 'trombone': case 'french-horn':
+                        synth = new Tone.Synth({oscillator:{type:'square'}, envelope:{attack:0.05,decay:0.2,sustain:0.7,release:0.3}}); break;
+                    default: synth = new Tone.Synth();
+                }
+                synth.toDestination();
+                return synth;
+            });
+
+            let time = 0;
+            instruments.forEach(({editor}, index) => {
+                editor.notes.forEach(note => {
+                    if (!note.isRest) {
+                        const duration = 4/note.duration;
+                        const noteTime = time;
+                        scheduledNotes.push({
+                            synth: synths[index],
+                            pitch: note.name.toUpperCase(),
+                            duration: duration + "n",
+                            time: noteTime
+                        });
+                    }
+                    time += 0.25;
+                });
+            });
+
+            await Tone.start();
+            scheduledNotes.forEach(({synth, pitch, duration, time}) => {
+                synth.triggerAttackRelease(pitch, duration, Tone.now() + time);
+            });
+        }
+        
+        function createInstrumentDiv() {
+            const instrumentDiv = document.createElement('div');
+            instrumentDiv.className = 'flex items-center gap-4 overflow-x-auto';
+            
+            const select = document.createElement('select');
+            select.className = 'border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 flex-shrink-0';
+            
+            // Organized instrument list by categories
+            const instrumentCategories = {
+                'Strings': ['violin', 'viola', 'cello', 'double bass', 'guitar', 'harp'],
+                'Woodwinds': ['flute', 'piccolo', 'clarinet', 'oboe', 'bassoon', 'saxophone'],
+                'Brass': ['trumpet', 'trombone', 'french horn', 'tuba'],
+                'Keyboard': ['piano', 'harpsichord', 'organ'],
+                'Percussion': ['drums', 'timpani', 'xylophone', 'marimba', 'vibraphone'],
+                'Voice': ['soprano', 'alto', 'tenor', 'bass']
+            };
+
+            // Create option groups and options
+            Object.entries(instrumentCategories).forEach(([category, instruments]) => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = category;
+                
+                instruments.forEach(inst => {
+                    const option = document.createElement('option');
+                    option.value = inst.toLowerCase().replace(/\s+/g, '-');
+                    option.textContent = inst.split(' ').map(word => 
+                        word.charAt(0).toUpperCase() + word.slice(1)
+                    ).join(' ');
+                    optgroup.appendChild(option);
+                });
+                
+                select.appendChild(optgroup);
+            });
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 2000;
+            canvas.height = 100;
+            canvas.className = 'bg-white cursor-crosshair border border-indigo-200 rounded-lg flex-shrink-0';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 flex-shrink-0';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove Instrument';
+            removeBtn.onclick = () => removeInstrument(instrumentDiv);
+
+            // Add a label for accessibility
+            const label = document.createElement('label');
+            label.className = 'sr-only';
+            label.htmlFor = `instrument-select-${Date.now()}`;
+            label.textContent = 'Select Instrument';
+            select.id = label.htmlFor;
+
+            instrumentDiv.appendChild(label);
+            instrumentDiv.appendChild(select);
+            instrumentDiv.appendChild(canvas);
+            instrumentDiv.appendChild(removeBtn);
+
+            const editor = new InteractiveLilypondEditor(canvas);
+            editor.drawStaff();
+            instruments.push({div: instrumentDiv, editor: editor, select: select});
+
+            return instrumentDiv;
+        }
+
+
+        function addInstrument() {
+            const container = document.getElementById('canvasContainer');
+            const instrumentDiv = createInstrumentDiv();
+            container.appendChild(instrumentDiv);
+        }
+
+        function removeInstrument(div) {
+            if (instruments.length > 1) {
+                const idx = instruments.findIndex(i => i.div === div);
+                if (idx !== -1) {
+                    instruments.splice(idx, 1);
+                    div.remove();
+                }
+            }
+        }
+
+        function saveLilypondFile() {
+            const content = document.getElementById('lilyOutput').value;
+            const blob = new Blob([content], { type: 'text/plain' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'score.ly';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        class InteractiveLilypondEditor {
+            constructor(canvas) {
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.staffLineSpacing = 10;
+                this.noteSpacing = 50;
+                this.startX = 50;
+                this.startY = 50;
+                this.notes = [];
+                this.setupEventListeners();
+                this.currentX = this.startX;
+            }
+
+            setupEventListeners() {
+                this.canvas.addEventListener('click', (e) => this.handleClick(e));
+                this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+                this.canvas.addEventListener('mousedown', () => {
+                    activeInstrument = this;
+                });
+            }
+            renderFromCode(code) {
+                console.log("rendering")
+                this.clear();
+                
+                // Extract the musical content between curly braces
+                const extractNotes = (text) => {
+                    const notePattern = /([a-g]'*,*)[1248]|r[1248]/g;
+                    const notes = [];
+                    let match;
+                    
+                    while ((match = notePattern.exec(text)) !== null) {
+                        notes.push(match[0]);
+                    }
+                    return notes;
+                };
+
+                // Find music content within curly braces
+                const findMusicContent = (code) => {
+                    const parts = [];
+                    const regex = /\{([^{}]*)\}/g;
+                    let match;
+                    
+                    while ((match = regex.exec(code)) !== null) {
+                        parts.push(match[1]);
+                    }
+                    return parts;
+                };
+
+                // Convert Lilypond note to internal format
+                const convertNote = (lilyNote) => {
+                    if (lilyNote.startsWith('r')) {
+                        return {
+                            isRest: true,
+                            duration: parseInt(lilyNote.slice(-1))
+                        };
+                    }
+
+                    let noteName = lilyNote[0];
+                    let octave = 4; // Default octave
+                    let i = 1;
+                    
+                    // Handle octave markers
+                    while (i < lilyNote.length && (lilyNote[i] === "'" || lilyNote[i] === ",")) {
+                        if (lilyNote[i] === "'") octave++;
+                        if (lilyNote[i] === ",") octave--;
+                        i++;
+                    }
+                    
+                    const duration = parseInt(lilyNote.slice(i));
+                    
+                    return {
+                        name: `${noteName}${octave}`,
+                        duration: duration
+                    };
+                };
+
+                // Process the code
+                const musicParts = findMusicContent(code);
+                
+                for (const part of musicParts) {
+                    // Skip if part contains drummode or other non-melody content
+                    if (part.includes('\\drummode') || part.trim().startsWith('\\')) continue;
+                    
+                    const notes = extractNotes(part);
+                    
+                    for (const note of notes) {
+                        const convertedNote = convertNote(note);
+                        
+                        if (convertedNote.isRest) {
+                            this.notes.push({
+                                x: this.currentX,
+                                isRest: true,
+                                duration: convertedNote.duration
+                            });
+                        } else {
+                            const y = this.getYPositionFromNoteName(convertedNote.name);
+                            this.notes.push({
+                                x: this.currentX,
+                                y: y,
+                                duration: convertedNote.duration,
+                                name: convertedNote.name
+                            });
+                        }
+                        this.currentX += this.noteSpacing;
+                    }
+                }
+                
+                this.redraw();
+            }
+
+
+            getYPositionFromNoteName(noteName) {
+                const noteMap = {
+                    'f5': this.startY - 5 * this.staffLineSpacing,
+                    'e5': this.startY - 4.5 * this.staffLineSpacing,
+                    'd5': this.startY - 4 * this.staffLineSpacing,
+                    'c5': this.startY - 3.5 * this.staffLineSpacing,
+                    'b4': this.startY - 3 * this.staffLineSpacing,
+                    'a4': this.startY - 2.5 * this.staffLineSpacing,
+                    'g4': this.startY - 2 * this.staffLineSpacing,
+                    'f4': this.startY - 1.5 * this.staffLineSpacing,
+                    'e4': this.startY - this.staffLineSpacing,
+                    'd4': this.startY - 0.5 * this.staffLineSpacing,
+                    'c4': this.startY
+                };
+                return noteMap[noteName] || this.startY;
+            }
+
+            clear() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.notes = [];
+                this.currentX = this.startX;
+                this.drawStaff();
+            }
+
+            drawStaff() {
+                this.ctx.lineWidth = 1;
+                this.ctx.fillStyle = '#ddd';
+                this.ctx.fillRect(15, this.startY - 20, 30, 60);
+                
+                for (let i = 0; i < 5; i++) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(10, this.startY + i * this.staffLineSpacing);
+                    this.ctx.lineTo(this.canvas.width - 10, this.startY + i * this.staffLineSpacing);
+                    this.ctx.strokeStyle = 'black';
+                    this.ctx.stroke();
+                }
+            }
+
+            getNoteNameFromPosition(y) {
+                const notePositions = ['f5', 'e5', 'd5', 'c5', 'b4', 'a4', 'g4', 'f4', 'e4', 'd4', 'c4'];
+                const relativeY = y - (this.startY - 2 * this.staffLineSpacing);
+                const index = Math.round(relativeY / (this.staffLineSpacing / 2));
+                return notePositions[Math.max(0, Math.min(notePositions.length - 1, index))] || 'c4';
+            }
+
+            getMousePosition(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                return {
+                    x: e.clientX - rect.left + this.canvas.parentElement.scrollLeft,
+                    y: e.clientY - rect.top
+                };
+            }
+
+            handleClick(e) {
+                if (activeInstrument !== this) return;
+                
+                const pos = this.getMousePosition(e);
+                const duration = document.getElementById('noteDuration').value;
+                
+                if (duration === 'r') {
+                    this.notes.push({
+                        x: this.currentX,
+                        isRest: true,
+                        duration: 4
+                    });
+                } else {
+                    const snappedY = Math.round((pos.y - this.startY) / (this.staffLineSpacing / 2)) * 
+                                    (this.staffLineSpacing / 2) + this.startY;
+                    const maxY = this.startY + 6 * this.staffLineSpacing;
+                    const minY = this.startY - 6 * this.staffLineSpacing;
+                    const boundedY = Math.min(Math.max(snappedY, minY), maxY);
+
+                    if (pos.x >= this.startX && pos.x <= this.canvas.width - this.noteSpacing) {
+                        this.notes.push({
+                            x: this.currentX,
+                            y: boundedY,
+                            duration: parseInt(duration),
+                            name: this.getNoteNameFromPosition(boundedY)
+                        });
+                    }
+                }
+
+                this.currentX += this.noteSpacing;
+                this.redraw();
+                updateLilypondCode();
+            }
+
+            handleMouseMove(e) {
+                if (activeInstrument !== this) return;
+                
+                this.redraw();
+                const pos = this.getMousePosition(e);
+                if (pos.x >= this.startX && pos.x <= this.canvas.width - this.noteSpacing) {
+                    const duration = document.getElementById('noteDuration').value;
+                    if (duration !== 'r') {
+                        const snappedY = Math.round((pos.y - this.startY) / (this.staffLineSpacing / 2)) * 
+                                        (this.staffLineSpacing / 2) + this.startY;
+                        const maxY = this.startY + 6 * this.staffLineSpacing;
+                        const minY = this.startY - 6 * this.staffLineSpacing;
+                        const boundedY = Math.min(Math.max(snappedY, minY), maxY);
+                        this.drawNote(this.currentX, boundedY, parseInt(duration), true);
+                    }
+                }
+            }
+
+            redraw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.drawStaff();
+                
+                this.notes.forEach(note => {
+                    if (note.isRest) {
+                        this.drawRest(note.x, note.duration);
+                    } else {
+                        this.drawNote(note.x, note.y, note.duration);
+                    }
+                });
+            }
+
+            drawRest(x, duration) {
+                this.ctx.save();
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillRect(x - 5, this.startY - 5, 10, 10);
+                this.ctx.restore();
+            }
+
+            drawNote(x, y, duration, isPreview = false) {
+                this.ctx.save();
+                this.ctx.lineWidth = 1;
+                
+                if (isPreview) {
+                    this.ctx.globalAlpha = 0.5;
+                }
+        
+                this.ctx.beginPath();
+                this.ctx.ellipse(x, y, 6, 4, 0, 0, 2 * Math.PI);
+        
+                if (duration === 1) {
+                    this.ctx.stroke();
+                } else {
+                    this.ctx.fill();
+                }
+
+                if (duration > 1) {
+                    this.ctx.beginPath();
+                    const stemDirection = y > this.startY + 2 * this.staffLineSpacing ? -1 : 1;
+                    const stemHeight = 30 * stemDirection;
+                    this.ctx.moveTo(x + 6, y);
+                    this.ctx.lineTo(x + 6, y + stemHeight);
+                    this.ctx.stroke();
+
+                    if (duration >= 8) {
+                        const flagCount = duration === 16 ? 2 : 1;
+                        const flagDirection = stemDirection;
+                        for (let i = 0; i < flagCount; i++) {
+                            this.ctx.beginPath();
+                            const flagY = y + stemHeight - (flagDirection * i * 5);
+                            this.ctx.moveTo(x + 6, flagY);
+                            this.ctx.bezierCurveTo(
+                                x + 12, flagY - 5 * flagDirection,
+                                x + 12, flagY - 10 * flagDirection,
+                                x + 6, flagY - 15 * flagDirection
+                            );
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+
+                this.ctx.restore();
+            }
+        }
+
+        function updateLilypondCode() {
+            let lilypondCode = '\\version "2.20.0"\n\n';
+            
+            instruments.forEach(({editor, select}) => {
+                const instrumentName = select.value;
+                lilypondCode += `${instrumentName} = \\relative c' {\n  `;
+                lilypondCode += editor.notes
+                    .map(note => note.isRest ? `r${note.duration}` : `${note.name}${note.duration}`)
+                    .join(' ');
+                lilypondCode += '\n}\n\n';
+            });
+
+            lilypondCode += '\\score {\n  <<\n';
+            instruments.forEach(({select}) => {
+                lilypondCode += `    \\new Staff \\${select.value}\n`;
+            });
+            lilypondCode += '  >>\n}\n';
+
+            document.getElementById('lilyOutput').value = lilypondCode;
+        }
+
+        function clearScore() {
+            instruments.forEach(({editor}) => editor.clear());
+            updateLilypondCode();
+        }
+
+        function removeLastNote() {
+            if (activeInstrument) {
+                activeInstrument.notes.pop();
+                activeInstrument.currentX -= activeInstrument.noteSpacing;
+                activeInstrument.redraw();
+                updateLilypondCode();
+            }
+        }
+
+        function loadLilypondFile(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const content = e.target.result;
+                    
+                    // Clear existing score and instruments
+                    clearScore();
+                    while (instruments.length > 1) {
+                        removeInstrument(instruments[0].div);
+                    }
+
+                    // Parse different types of instrument definitions
+                    const patterns = [
+                        // Pattern for relative notation
+                        /([a-zA-Z]+(?:Part|Voice)?)\s*=\s*(?:\\relative\s+[a-g]'?\s*)?\{([^}]+)\}/g,
+                        // Pattern for \new Staff sections
+                        /\\new\s+Staff\s*\\with\s*{\s*instrumentName\s*=\s*"([^"]+)"\s*}\s*\{([^}]+)\}/g,
+                        // Pattern for drummode
+                        /\\drummode\s*\{([^}]+)\}/g
+                    ];
+
+                    let instrumentsFound = false;
+
+                    // Process each pattern
+                    patterns.forEach(pattern => {
+                        let match;
+                        while ((match = pattern.exec(content)) !== null) {
+                            instrumentsFound = true;
+                            
+                            // Extract instrument name and notes
+                            let instrumentName, notes;
+                            if (pattern.toString().includes("drummode")) {
+                                instrumentName = "drums";
+                                notes = match[1];
+                            } else {
+                                [_, instrumentName, notes] = match;
+                                // Clean up instrument name
+                                instrumentName = instrumentName
+                                    .replace(/Part|Voice/g, '')
+                                    .toLowerCase()
+                                    .trim();
+                            }
+
+                            // Add new instrument if needed
+                            if (instruments.length === 0) {
+                                addInstrument();
+                            } else if (instruments[instruments.length - 1].select.value !== instrumentName) {
+                                addInstrument();
+                            }
+
+                            // Get current instrument and update it
+                            const currentInstrument = instruments[instruments.length - 1];
+                            
+                            // Set instrument type
+                            if (currentInstrument.select.querySelector(`option[value="${instrumentName}"]`)) {
+                                currentInstrument.select.value = instrumentName;
+                            } else {
+                                // Default to piano if instrument not found
+                                currentInstrument.select.value = "piano";
+                            }
+
+                            // Clean up notes
+                            notes = notes
+                                .replace(/\\time\s+\d+\/\d+\s*/g, '') // Remove time signatures
+                                .replace(/\\clef\s+[a-zA-Z]+\s*/g, '') // Remove clef declarations
+                                .replace(/\\key\s+[a-zA-Z]+\s+\\[a-zA-Z]+\s*/g, '') // Remove key signatures
+                                .replace(/\\bar\s+["|.]*\s*/g, '') // Remove bar lines
+                                .replace(/\|\s*/g, '') // Remove measure bars
+                                .trim();
+
+                            // Render the notes
+                            currentInstrument.editor.renderFromCode(notes);
+                        }
+                    });
+
+                    // If no instruments were found, add a default one
+                    if (!instrumentsFound) {
+                        addInstrument();
+                    }
+
+                    // Update the Lilypond output
+                    document.getElementById('lilyOutput').value = content;
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        window.onload = function() {
+            addInstrument();
+        }
+    </script>
+</body>
+</html>
