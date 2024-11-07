@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Finetuning App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8 text-center text-blue-600" data-translate="title">LLM Finetuning App</h1>
+        
+        <form id="finetuneForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="modelName" data-translate="modelNameLabel">Model Name (Hugging Face path)</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="modelName" type="text" placeholder="e.g., bert-base-uncased" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="datasetSourceLabel">Dataset Source</label>
+                <div class="mt-2">
+                    <label class="inline-flex items-center">
+                        <input type="radio" class="form-radio" name="datasetSource" value="huggingface" checked>
+                        <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
+                    </label>
+                    <label class="inline-flex items-center ml-6">
+                        <input type="radio" class="form-radio" name="datasetSource" value="local">
+                        <span class="ml-2" data-translate="localOption">Local</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetName" data-translate="datasetNameLabel">Dataset Name/Path</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="datasetName" type="text" placeholder="Dataset name or local path" required>
+            </div>
+            <div class="form-group">
+                <label for="dataset-format">Dataset Format:</label>
+                <select id="dataset-format" name="dataset-format" class="form-control" onchange="toggleCustomFormat()">
+                  <option value="single_text">Single Text</option>
+                  <option value="instruction_input_output">Instruction-Input-Output</option>
+                  <option value="question_answer">Question-Answer</option>
+                  <option value="custom">Custom</option>
+                </select>
+            </div>
+            <div id="custom-format-group" class="form-group" style="display: none;">
+                    <label for="custom-format">Custom Format:</label>
+                    <input type="text" id="custom-format" name="custom-format" class="form-control" placeholder="e.g. {field1} {field2}: {field3}">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="outputModelPath" data-translate="datasetNameLabel">Output Model Path</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="outputModelPath" type="text" placeholder=">Output Model Path" required>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="learningRate" data-translate="learningRateLabel">Learning Rate</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="learningRate" type="number" step="0.0001" value="3e-4" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="numEpochs" data-translate="numEpochsLabel">Number of Epochs</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="numEpochs" type="number" value="3" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="batchSize" data-translate="batchSizeLabel">Batch Size</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="batchSize" type="number" value="4" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="gradAccumSteps" data-translate="gradAccumStepsLabel">Gradient Accumulation Steps</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gradAccumSteps" type="number" value="4" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="maxGradNorm" data-translate="maxGradNormLabel">Max Gradient Norm</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxGradNorm" type="number" step="0.1" value="0.3" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="weightDecay" data-translate="weightDecayLabel">Weight Decay</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="weightDecay" type="number" step="0.001" value="0.001" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="loraAlpha" data-translate="loraAlphaLabel">LoRA Alpha</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraAlpha" type="number" value="16" required>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="loraDropout" data-translate="loraDropoutLabel">LoRA Dropout</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraDropout" type="number" step="0.01" value="0.1" required>
+            </div>
+            
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="loraR" data-translate="loraRLabel">LoRA R</label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraR" type="number" value="8" required>
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startTrainingButton">Start Training</button>
+            </div>
+        </form>
+        
+        <div id="progressContainer" class="hidden bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 class="text-xl font-semibold mb-4" data-translate="trainingProgressTitle">Training Progress</h2>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mb-4">
+                <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+            </div>
+            <pre id="logOutput" class="bg-gray-100 p-4 rounded-lg text-sm h-64 overflow-auto"></pre>
+        </div>
+
+        <div id="progressContainer" class="hidden">
+            <h2>Progress</h2>
+            <div id="messages"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('finetuneForm');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const logOutput = document.getElementById('logOutput');
+
+        let socket;
+        function toggleCustomFormat() {
+            var formatSelect = document.getElementById('dataset-format');
+            var customFormatGroup = document.getElementById('custom-format-group');
+            
+            if (formatSelect.value === 'custom') {
+                customFormatGroup.style.display = 'block';
+            } else {
+                customFormatGroup.style.display = 'none';
+            }
+        }
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const modelName = document.getElementById('modelName').value;
+            const datasetSource = form.datasetSource.value;
+            const datasetName = document.getElementById('datasetName').value;
+            const outputModelPath = document.getElementById('outputModelPath').value;
+            const learningRate = parseFloat(document.getElementById('learningRate').value);
+            const numTrainEpochs = parseInt(document.getElementById('numEpochs').value);
+            const perDeviceTrainBatchSize = parseInt(document.getElementById('batchSize').value);
+            const gradientAccumulationSteps = parseInt(document.getElementById('gradAccumSteps').value);
+            const maxGradNorm = parseFloat(document.getElementById('maxGradNorm').value);
+            const weightDecay = parseFloat(document.getElementById('weightDecay').value);
+            const loraAlpha = parseInt(document.getElementById('loraAlpha').value);
+            const loraDropout = parseFloat(document.getElementById('loraDropout').value);
+            const loraR = parseInt(document.getElementById('loraR').value);
+            const datasetFormat = document.getElementById('dataset-format').value;
+            const customFormat = document.getElementById('custom-format').value;
+
+            const jsonData = {
+                model_name: modelName,
+                dataset_source: datasetSource,
+                dataset_name: datasetName,
+                dataset_format: datasetFormat,
+                custom_format: customFormat,
+
+                output_model_path: outputModelPath,
+                learning_rate: learningRate,
+                num_train_epochs: numTrainEpochs,
+                per_device_train_batch_size: perDeviceTrainBatchSize,
+                gradient_accumulation_steps: gradientAccumulationSteps,
+                max_grad_norm: maxGradNorm,
+                weight_decay: weightDecay,
+                lora_alpha: loraAlpha,
+                lora_dropout: loraDropout,
+                lora_r: loraR
+            };
+            console.log(jsonData)
+            try {
+                const response = await fetch('http://localhost:8000/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(jsonData),
+                });
+                
+                if (response.ok) {
+                    progressContainer.classList.remove('hidden');
+                    form.classList.add('hidden');
+                    initWebSocket();
+                } else {
+                    throw new Error('Training initialization failed');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while starting the training process.');
+            }
+        });
+
+        function initWebSocket() {
+            socket = new WebSocket('ws://localhost:8000/ws');
+            
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                updateProgress(data);
+            };
+            socket.onclose = () => {
+                console.log('WebSocket connection closed');
+            };
+        }
+
+        function updateProgress(data) {
+            if (data.progress !== undefined) {
+                progressBar.style.width = `${data.progress}%`;
+            }
+            if (data.log) {
+                logOutput.textContent += data.log + '\n';
+                logOutput.scrollTop = logOutput.scrollHeight;
+            }
+        }
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "title": "LLM Finetuning App",
+                    "modelNameLabel": "Model Name (Hugging Face path)",
+                    "datasetSourceLabel": "Dataset Source",
+                    "huggingFaceOption": "Hugging Face",
+                    "localOption": "Local",
+                    "datasetNameLabel": "Dataset Name/Path",
+                    "learningRateLabel": "Learning Rate",
+                    "numEpochsLabel": "Number of Epochs",
+                    "batchSizeLabel": "Batch Size",
+                    "gradAccumStepsLabel": "Gradient Accumulation Steps",
+                    "maxGradNormLabel": "Max Gradient Norm",
+                    "weightDecayLabel": "Weight Decay",
+                    "loraAlphaLabel": "LoRA Alpha",
+                    "loraDropoutLabel": "LoRA Dropout",
+                    "loraRLabel": "LoRA R",
+                    "startTrainingButton": "Start Training",
+                    "trainingProgressTitle": "Training Progress"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "title": "Application de Fine-tuning LLM",
+                    "modelNameLabel": "Nom du modèle (chemin Hugging Face)",
+                    "datasetSourceLabel": "Source du jeu de données",
+                    "huggingFaceOption": "Hugging Face",
+                    "localOption": "Local",
+                    "datasetNameLabel": "Nom/Chemin du jeu de données",
+                    "learningRateLabel": "Taux d'apprentissage",
+                    "numEpochsLabel": "Nombre d'époques",
+                    "batchSizeLabel": "Taille du lot",
+                    "gradAccumStepsLabel": "Étapes d'accumulation du gradient",
+                    "maxGradNormLabel": "Norme de gradient maximale",
+                    "weightDecayLabel": "Décroissance des poids",
+                    "loraAlphaLabel": "LoRA Alpha",
+                    "loraDropoutLabel": "LoRA Dropout",
+                    "loraRLabel": "LoRA R",
+                    "startTrainingButton": "Commencer l'entraînement",
+                    "trainingProgressTitle": "Progression de l'entraînement"
+                }
+            }
+        };
+
+        const languageSelector = document.createElement('select');
+        languageSelector.id = 'languageSelector';
+        languageSelector.className = 'absolute top-4 right-4 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500';
+        document.body.appendChild(languageSelector);
+
+        const localizer = new WebAppLocalizer(translations, 'llm_finetuning_app_', languageSelector);
+        localizer.apply();
+    </script>
+</body>
+</html>
