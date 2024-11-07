@@ -1,5 +1,8 @@
 from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from pydantic import BaseModel
 from typing import Optional
 import asyncio
@@ -43,7 +46,28 @@ from huggingface_hub import hf_hub_download
 
 from ascii_colors import ASCIIColors, trace_exception
 
+
 app = FastAPI()
+
+# Create static folders if they don't exist
+static_dir = Path("static")
+static_dir.mkdir(exist_ok=True)
+(static_dir / "css").mkdir(exist_ok=True)
+(static_dir / "js").mkdir(exist_ok=True)
+(static_dir / "images").mkdir(exist_ok=True)
+
+# Mount static files directory under /static path
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Add a root route to serve index.html
+@app.get("/")
+async def read_root():
+    return FileResponse("index.html")
+
+
+from pathlib import Path
+
+
 
 # Configure CORS
 app.add_middleware(
@@ -59,6 +83,7 @@ class DatasetFormat(str, Enum):
     INSTRUCTION_INPUT_OUTPUT = "instruction_input_output"
     QUESTION_ANSWER = "question_answer"
     CUSTOM = "custom"
+    LOLLMS = "lollms"  # New format for LoLLMs conversations
 
 class TrainingConfig(BaseModel):
     model_name: str
@@ -220,6 +245,69 @@ async def train_model(config: TrainingConfig):
 
     except Exception as e:
         trace_exception(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+from peft import PeftModel
+from typing import List
+
+class FusionConfig(BaseModel):
+    base_model_path: str
+    lora_model_path: str
+    output_path: str
+
+@app.post("/fuse")
+async def fuse_model(config: FusionConfig):
+    try:
+        ASCIIColors.green("Starting model fusion process")
+        
+        # Load the base model
+        ASCIIColors.green("1 - Loading base model")
+        base_model = transformers.AutoModelForCausalLM.from_pretrained(
+            config.base_model_path,
+            device_map="auto",
+            torch_dtype="auto"
+        )
+        
+        # Load the LoRA model
+        ASCIIColors.green("2 - Loading LoRA model")
+        model = PeftModel.from_pretrained(
+            base_model,
+            config.lora_model_path
+        )
+        
+        # Merge LoRA weights with base model
+        ASCIIColors.green("3 - Merging weights")
+        model = model.merge_and_unload()
+        
+        # Save the merged model
+        ASCIIColors.green("4 - Saving merged model")
+        output_path = Path(config.output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+        model.save_pretrained(output_path)
+        
+        # Save the tokenizer
+        ASCIIColors.green("5 - Saving tokenizer")
+        tokenizer = transformers.AutoTokenizer.from_pretrained(config.base_model_path)
+        tokenizer.save_pretrained(output_path)
+        
+        # Send success message through WebSocket
+        for websocket in active_websockets:
+            await websocket.send_text(json.dumps({
+                "status": "success",
+                "message": "Model fusion completed successfully"
+            }))
+        
+        return {"message": "Model fusion completed successfully", "output_path": str(output_path)}
+    
+    except Exception as e:
+        trace_exception(e)
+        # Send error message through WebSocket
+        for websocket in active_websockets:
+            await websocket.send_text(json.dumps({
+                "status": "error",
+                "message": str(e)
+            }))
         raise HTTPException(status_code=500, detail=str(e))
 
 
