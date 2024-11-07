@@ -6,6 +6,7 @@ import asyncio
 import os
 import pipmaster as pm
 import json
+from pathlib import Path
 
 if not pm.is_installed("torch"):
     pm.install_multiple(["torch","torchvision","torchaudio"], "https://download.pytorch.org/whl/cu121")
@@ -187,7 +188,7 @@ async def train_model(config: TrainingConfig):
 
         # Prepare training arguments
         training_args = transformers.TrainingArguments(
-            output_dir="./results",
+            output_dir=Path(config.output_model_path).parent,
             learning_rate=config.learning_rate,
             num_train_epochs=config.num_train_epochs,
             per_device_train_batch_size=config.per_device_train_batch_size,
