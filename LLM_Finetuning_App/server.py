@@ -32,6 +32,10 @@ if not pm.is_installed("threadpoolctl"):
     pm.install("threadpoolctl")
 
 
+import torch
+from transformers import AutoModelForCausalLM, BitsAndBytesConfig
+
+quantization_config = BitsAndBytesConfig(load_in_8bit=True)
 
 from enum import Enum
 
@@ -310,6 +314,58 @@ async def fuse_model(config: FusionConfig):
             }))
         raise HTTPException(status_code=500, detail=str(e))
 
+
+class QuantizationConfig(BaseModel):
+    model_path: str
+    output_path: str
+    quantization_bits: int = 8  # Default to 8-bit quantization
+
+@app.post("/quantize")
+async def quantize_model_endpoint(config: QuantizationConfig):
+    try:
+        ASCIIColors.green("Starting model quantization process")
+        
+        # Load the model
+        ASCIIColors.green("1 - Loading model")
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            config.model_path,
+            device_map="auto",
+            torch_dtype=torch.float16  # Load in float16 for quantization
+        )
+        
+        # Quantize the model
+        ASCIIColors.green(f"2 - Quantizing model to {config.quantization_bits} bits")
+        quantized_model = quantize_model(model, bits=config.quantization_bits)
+        
+        # Save the quantized model
+        ASCIIColors.green("3 - Saving quantized model")
+        output_path = Path(config.output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
+        quantized_model.save_pretrained(output_path)
+        
+        # Save the tokenizer
+        ASCIIColors.green("4 - Saving tokenizer")
+        tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_path)
+        tokenizer.save_pretrained(output_path)
+        
+        # Send success message through WebSocket
+        for websocket in active_websockets:
+            await websocket.send_text(json.dumps({
+                "status": "success",
+                "message": f"Model quantization to {config.quantization_bits} bits completed successfully"
+            }))
+        
+        return {"message": f"Model quantization to {config.quantization_bits} bits completed successfully", "output_path": str(output_path)}
+    
+    except Exception as e:
+        trace_exception(e)
+        # Send error message through WebSocket
+        for websocket in active_websockets:
+            await websocket.send_text(json.dumps({
+                "status": "error",
+                "message": str(e)
+            }))
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
