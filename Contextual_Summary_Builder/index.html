@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contextual Summary Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">Contextual Summary Builder</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-4">
+                <label for="file-upload" class="block text-sm font-medium text-gray-700 mb-2" data-translate="upload_file">Upload File</label>
+                <input id="file-upload" type="file" accept=".pdf,.docx,.txt" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+            </div>
+            <div class="mb-4">
+                <label for="context-select" class="block text-sm font-medium text-gray-700 mb-2" data-translate="context_example">Choose Example Context or Enter Your Own</label>
+                <select id="context-select" class="block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="custom" data-translate="custom_context">Custom Context</option>
+                    <option value="generic" data-translate="generic_context">Generic Summary</option>
+                    <option value="business" data-translate="business_context">Business Analysis</option>
+                    <option value="technical" data-translate="technical_context">Technical Review</option>
+                    <option value="academic" data-translate="academic_context">Academic Research</option>
+                    <option value="medical" data-translate="medical_context">Medical Report</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="context-input" class="block text-sm font-medium text-gray-700 mb-2" data-translate="context_info">Context Information</label>
+                <textarea id="context-input" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Enter context for summary..." data-translate="context_placeholder"></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="format-select" class="block text-sm font-medium text-gray-700 mb-2" data-translate="output_format">Choose Output Format or Enter Your Own</label>
+                <select id="format-select" class="block w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="custom" data-translate="custom_format">Custom Format</option>
+                    <option value="markdown" data-translate="markdown_format">Markdown</option>
+                    <option value="latex" data-translate="latex_format">LaTeX</option>
+                    <option value="graphviz" data-translate="graphviz_format">Graphviz</option>
+                    <option value="mermaid" data-translate="mermaid_format">Mermaid</option>
+                    <option value="code" data-translate="code_format">Code (Python)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label for="format-input" class="block text-sm font-medium text-gray-700 mb-2" data-translate="format_info">Format Specification</label>
+                <textarea id="format-input" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Enter output format specification..." data-translate="format_placeholder"></textarea>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+                <button id="generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="generate_summary">Generate Summary</button>
+                <select id="language-select" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                    <option value="en" data-translate="english">English</option>
+                    <option value="fr" data-translate="french">French</option>
+                    <option value="es" data-translate="spanish">Spanish</option>
+                </select>
+            </div>
+        </div>
+        <div id="summary-output" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-4" data-translate="generated_summary">Generated Summary</h2>
+            <div id="markdown-content" class="prose max-w-none"></div>
+            <div class="flex justify-end mt-4">
+                <button id="copy-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-2" data-translate="copy_to_clipboard">Copy to Clipboard</button>
+                <button id="export-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="export_summary">Export Summary</button>
+            </div>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-indigo-600 mx-auto"></div>
+            <p class="mt-4 text-center text-lg font-semibold text-indigo-800" data-translate="generating_summary">Generating Summary...</p>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        const tl = new TasksLibrary(lc);
+        const mr = new MarkdownRenderer();
+        const lollmsFileLoader = new LollmsFileLoader();
+        const contextExamples = {
+            generic: "Provide a concise summary of the document, highlighting its main points and key takeaways.",
+            business: "Analyze the document from a business perspective, focusing on market trends, financial implications, and strategic recommendations.",
+            technical: "Review the document with a technical lens, highlighting key technologies, methodologies, and potential implementation challenges.",
+            academic: "Examine the document from an academic standpoint, emphasizing research methodology, theoretical frameworks, and contributions to the field.",
+            medical: "Summarize the document with a focus on medical findings, treatment options, and patient care implications."
+        };   
+        const formatExamples = {
+            markdown: "Provide the summary in Markdown format with headings, bullet points, and emphasis where appropriate.",
+            latex: "Format the summary using LaTeX, including appropriate mathematical notations and structure commands.",
+            graphviz: "Create a Graphviz diagram representing the main concepts and their relationships from the summary. Put the output inside a graphviz markdown code tag.",
+            mermaid: "Generate a Mermaid diagram (flowchart or sequence diagram) to visualize the key points of the summary. Put the output inside a mermaid markdown code tag.",
+            code: "Present the summary as a Python code structure, using classes and functions to represent main ideas and their relationships. Put the output inside a python markdown code tag."
+        };
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    upload_file: "Upload File",
+                    context_info: "Context Information",
+                    context_placeholder: "Enter context for summary...",
+                    generate_summary: "Generate Summary",
+                    english: "English",
+                    french: "French",
+                    spanish: "Spanish",
+                    generated_summary: "Generated Summary",
+                    copy_to_clipboard: "Copy to Clipboard",
+                    export_summary: "Export Summary",
+                    generating_summary: "Generating Summary...",
+                    context_example: "Choose Example Context or Enter Your Own",
+                    custom_context: "Custom Context",
+                    generic_context: "Generic Summary",
+                    business_context: "Business Analysis",
+                    technical_context: "Technical Review",
+                    academic_context: "Academic Research",
+                    medical_context: "Medical Report",
+                    output_format: "Choose Output Format or Enter Your Own",
+                    custom_format: "Custom Format",
+                    markdown_format: "Markdown",
+                    latex_format: "LaTeX",
+                    graphviz_format: "Graphviz",
+                    mermaid_format: "Mermaid",
+                    code_format: "Code (Python)",
+                    format_info: "Format Specification",
+                    format_placeholder: "Enter output format specification..."                  
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    upload_file: "Télécharger le fichier",
+                    context_info: "Informations contextuelles",
+                    context_placeholder: "Entrez le contexte pour le résumé...",
+                    generate_summary: "Générer le résumé",
+                    english: "Anglais",
+                    french: "Français",
+                    spanish: "Espagnol",
+                    generated_summary: "Résumé généré",
+                    copy_to_clipboard: "Copier dans le presse-papiers",
+                    export_summary: "Exporter le résumé",
+                    generating_summary: "Génération du résumé...",
+                    context_example: "Choisissez un exemple de contexte ou entrez le vôtre",
+                    custom_context: "Contexte personnalisé",
+                    generic_context: "Résumé générique",
+                    business_context: "Analyse commerciale",
+                    technical_context: "Revue technique",
+                    academic_context: "Recherche académique",
+                    medical_context: "Rapport médical",
+                    output_format: "Choisissez le format de sortie ou entrez le vôtre",
+                    custom_format: "Format personnalisé",
+                    markdown_format: "Markdown",
+                    latex_format: "LaTeX",
+                    graphviz_format: "Graphviz",
+                    mermaid_format: "Mermaid",
+                    code_format: "Code (Python)",
+                    format_info: "Spécification du format",
+                    format_placeholder: "Entrez la spécification du format de sortie..."
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    upload_file: "Subir archivo",
+                    context_info: "Información de contexto",
+                    context_placeholder: "Ingrese el contexto para el resumen...",
+                    generate_summary: "Generar resumen",
+                    english: "Inglés",
+                    french: "Francés",
+                    spanish: "Español",
+                    generated_summary: "Resumen generado",
+                    copy_to_clipboard: "Copiar al portapapeles",
+                    export_summary: "Exportar resumen",
+                    generating_summary: "Generando resumen...",
+                    context_example: "Elija un contexto de ejemplo o ingrese el suyo propio",
+                    custom_context: "Contexto personalizado",
+                    generic_context: "Resumen Genérico",
+                    business_context: "Análisis de negocios",
+                    technical_context: "Revisión técnica",
+                    academic_context: "Investigación académica",
+                    medical_context: "Informe médico",
+                    output_format: "Elija el formato de salida o ingrese el suyo propio",
+                    custom_format: "Formato personalizado",
+                    markdown_format: "Markdown",
+                    latex_format: "LaTeX",
+                    graphviz_format: "Graphviz",
+                    mermaid_format: "Mermaid",
+                    code_format: "Código (Python)",
+                    format_info: "Especificación del formato",
+                    format_placeholder: "Ingrese la especificación del formato de salida..."
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, "contextual_summary_", document.getElementById('language-select'));
+        document.addEventListener('DOMContentLoaded', function() {
+            localizer.apply();
+            const fileUpload = document.getElementById('file-upload');
+            const contextInput = document.getElementById('context-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const summaryOutput = document.getElementById('summary-output');
+            const markdownContent = document.getElementById('markdown-content');
+            const copyBtn = document.getElementById('copy-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            const formatSelect = document.getElementById('format-select');
+            const formatInput = document.getElementById('format-input');
+
+            formatSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    formatInput.value = '';
+                    formatInput.placeholder = localizer.translate('format_placeholder');
+                } else {
+                    formatInput.value = formatExamples[this.value];
+                }
+            });
+
+            generateBtn.addEventListener('click', async function() {
+                const file = fileUpload.files[0];
+                const context = contextInput.value;
+                const format = formatInput.value;
+                if (!file || !context || !format) {
+                    alert('Please upload a file, provide context information, and specify an output format.');
+                    return;
+                }
+                loadingOverlay.classList.remove('hidden');
+                try {
+                    const fileContent = await lollmsFileLoader.loadFile(file);
+                    const prompt = `Given the following context: "${context}", please provide a summary of the document content using the following output format: ${format}\n\nDocument content:\n${fileContent}`;
+                    const summary = await tl.summarizeText(
+                        text= prompt,
+                        summaryInstruction= "Provide a contextual summary based on the given instructions and format",
+                        maxSummarySize= 1000
+                    );
+                    const renderedSummary = await mr.renderMarkdown(summary);
+                    markdownContent.innerHTML = renderedSummary;
+                    summaryOutput.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error generating summary:', error);
+                    alert('An error occurred while generating the summary. Please try again.');
+                } finally {
+                    loadingOverlay.classList.add('hidden');
+                }
+            });
+
+            const contextSelect = document.getElementById('context-select');
+
+            contextSelect.addEventListener('change', function() {
+                if (this.value === 'custom') {
+                    contextInput.value = '';
+                    contextInput.placeholder = localizer.translate('context_placeholder');
+                } else {
+                    contextInput.value = contextExamples[this.value];
+                }
+            });
+
+            copyBtn.addEventListener('click', function() {
+                const summaryText = markdownContent.innerText;
+                navigator.clipboard.writeText(summaryText).then(() => {
+                    alert('Summary copied to clipboard!');
+                });
+            });
+            exportBtn.addEventListener('click', function() {
+                const summaryText = markdownContent.innerText;
+                const blob = new Blob([summaryText], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'summary.txt';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            document.getElementById('language-select').addEventListener('change', function() {
+                localizer.setLanguage(this.value);
+                localizer.apply();
+            });
+        });
+    </script>
+</body>
+</html>
