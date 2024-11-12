@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Finetuning App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/web.app.localizer.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -107,6 +107,10 @@
                 <div class="mb-6">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="loraR" data-translate="loraRLabel">LoRA R</label>
                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraR" type="number" value="8" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxSeqLength" data-translate="loraRLabel">Max sequence length</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxSeqLength" type="number" value="128000" required>
                 </div>
                 
                 <div class="flex items-center justify-between">
@@ -230,11 +234,12 @@
                 weight_decay: parseFloat(document.getElementById('weightDecay').value),
                 lora_alpha: parseInt(document.getElementById('loraAlpha').value),
                 lora_dropout: parseFloat(document.getElementById('loraDropout').value),
-                lora_r: parseInt(document.getElementById('loraR').value)
+                lora_r: parseInt(document.getElementById('loraR').value),
+                max_seq_length: parseInt(document.getElementById('maxSeqLength').value),
             };
 
             try {
-                const response = await fetch('http://localhost:8000/train', {
+                const response = await fetch('/train', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -265,7 +270,7 @@
             };
 
             try {
-                const response = await fetch('http://localhost:8000/fuse', {
+                const response = await fetch('/fuse', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -296,7 +301,7 @@
             };
 
             try {
-                const response = await fetch('http://localhost:8000/quantize', {
+                const response = await fetch('/quantize', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

@@ -2,6 +2,7 @@ from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+import uvicorn
 
 from pydantic import BaseModel
 from typing import Optional
@@ -10,6 +11,7 @@ import os
 import pipmaster as pm
 import json
 from pathlib import Path
+import argparse
 
 if not pm.is_installed("torch"):
     pm.install_multiple(["torch","torchvision","torchaudio"], "https://download.pytorch.org/whl/cu121")
@@ -368,5 +370,13 @@ async def quantize_model_endpoint(config: QuantizationConfig):
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="localhost", port=8000)
+    # Create an argument parser
+    parser = argparse.ArgumentParser(description="Run a Uvicorn server with configurable host and port.")
+    
+    # Add arguments for host and port with default values
+    parser.add_argument('--host', type=str, default='localhost', help='Host to run the server on (default: localhost)')
+    parser.add_argument('--port', type=int, default=8000, help='Port to run the server on (default: 8000)')
+    
+    # Parse the arguments
+    args = parser.parse_args()
+    uvicorn.run(app, host=args.host, port=args.port)
