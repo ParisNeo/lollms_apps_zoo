@@ -11,10 +11,30 @@
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-8 text-center text-blue-600" data-translate="title">LLM Finetuning App</h1>
         
+        <!-- Tab Navigation -->
         <div class="flex justify-center mb-8">
-            <button id="trainBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="trainButton">Train</button>
+            <button id="downloadBtn" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="downloadButton">Download Model</button>
+            <button id="trainBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="trainButton">Train</button>
             <button id="fuseBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="fuseButton">Fuse</button>
             <button id="quantizeBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="quantizeButton">Quantize</button>
+        </div>
+
+        <!-- Download Model Form -->
+        <div id="downloadForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+            <h2 class="text-2xl font-bold mb-4" data-translate="downloadTitle">Download Model</h2>
+            <form id="downloadModelForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadModelName" data-translate="downloadModelNameLabel">Model Name (Hugging Face path)</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="downloadModelName" type="text" placeholder="e.g., bert-base-uncased" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadTargetDir" data-translate="downloadTargetDirLabel">Target Directory</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="downloadTargetDir" type="text" placeholder="e.g., /path/to/save/model" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startDownloadButton">Download Model</button>
+                </div>
+            </form>
         </div>
 
         <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
@@ -214,6 +234,45 @@
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'block';
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            document.getElementById('downloadForm').style.display = 'block';
+            document.getElementById('trainForm').style.display = 'none';
+            document.getElementById('fuseForm').style.display = 'none';
+            document.getElementById('quantizeForm').style.display = 'none';
+        });
+
+        // Form submission logic for downloading the model
+        document.getElementById('downloadModelForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const modelName = document.getElementById('downloadModelName').value;
+            const targetDir = document.getElementById('downloadTargetDir').value;
+
+            try {
+                const response = await fetch('/download_model/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        model_name: modelName,
+                        target_dir: targetDir,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                } else {
+                    alert(`Error: ${result.detail}`);
+                }
+            } catch (error) {
+                console.error('Error downloading model:', error);
+                alert('An error occurred while downloading the model.');
+            }
         });
 
         document.getElementById('finetuneForm').addEventListener('submit', async (e) => {
