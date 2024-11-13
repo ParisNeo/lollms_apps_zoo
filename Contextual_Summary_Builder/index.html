@@ -62,15 +62,15 @@
                 </select>
             </div>
             <div class="mb-4">
-                <label for="summary-size" class="block text-sm font-medium text-gray-700 mb-2" data-translate="context_info">Maximum Summary Size</label>
-                <input id="summary-size" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"  data-translate="summary_size"></textarea>
-            </div>
-
-            
-            <div class="mb-4">
                 <label for="format-input" class="block text-sm font-medium text-gray-700 mb-2" data-translate="format_info">Format Specification</label>
                 <textarea id="format-input" rows="4" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" placeholder="Enter output format specification..." data-translate="format_placeholder"></textarea>
             </div>
+            <div class="mb-4">
+                <label for="summary-size" class="block text-sm font-medium text-gray-700 mb-2" data-translate="max_summary_size">Maximum Summary Size</label>
+                <input id="summary-size" type="number" value="1024" min="1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" data-translate="summary_size">
+            </div>
+            
+            
             <div class="flex justify-between items-center mb-4">
                 <button id="generate-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="generate_summary">Generate Summary</button>
                 <select id="language-select" class="block rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
@@ -133,6 +133,7 @@
                     context_example: "Choose Example Context or Enter Your Own",
                     custom_context: "Custom Context",
                     generic_context: "Generic Summary",
+                    max_summary_size: "Maximum Summary Size",
                     business_context: "Business Analysis",
                     technical_context: "Technical Review",
                     academic_context: "Academic Research",
@@ -165,6 +166,7 @@
                     context_example: "Choisissez un exemple de contexte ou entrez le vôtre",
                     custom_context: "Contexte personnalisé",
                     generic_context: "Résumé générique",
+                    max_summary_size: "Taille Maximale du Résumé",
                     business_context: "Analyse commerciale",
                     technical_context: "Revue technique",
                     academic_context: "Recherche académique",
@@ -197,6 +199,7 @@
                     context_example: "Elija un contexto de ejemplo o ingrese el suyo propio",
                     custom_context: "Contexto personalizado",
                     generic_context: "Resumen Genérico",
+                    max_summary_size: "Tamaño Máximo del Resumen",
                     business_context: "Análisis de negocios",
                     technical_context: "Revisión técnica",
                     academic_context: "Investigación académica",
@@ -226,7 +229,8 @@
             const loadingOverlay = document.getElementById('loadingOverlay');
             const formatSelect = document.getElementById('format-select');
             const formatInput = document.getElementById('format-input');
-            const maxSummarySize = document.getElementById('summary-size').value;
+            const maxSummarySize_ = document.getElementById('summary-size').value;
+            console.log("maxSummarySize", maxSummarySize_)
 
             formatSelect.addEventListener('change', function() {
                 if (this.value === 'custom') {
@@ -252,7 +256,7 @@
                     const summary = await tl.summarizeText(
                         text= prompt,
                         summaryInstruction= "Provide a contextual summary based on the given instructions and format",
-                        maxSummarySize= maxSummarySize
+                        maxSummarySize= maxSummarySize_
                     );
                     const renderedSummary = await mr.renderMarkdown(summary);
                     markdownContent.innerHTML = renderedSummary;
