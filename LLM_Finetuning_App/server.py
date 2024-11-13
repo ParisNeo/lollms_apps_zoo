@@ -2,7 +2,6 @@ from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import uvicorn
 
 from pydantic import BaseModel
 from typing import Optional
@@ -12,7 +11,7 @@ import pipmaster as pm
 import json
 from pathlib import Path
 import argparse
-
+import uvicorn
 if not pm.is_installed("torch"):
     pm.install_multiple(["torch","torchvision","torchaudio"], "https://download.pytorch.org/whl/cu121")
 if not pm.is_installed("transformers"):
@@ -107,6 +106,7 @@ class TrainingConfig(BaseModel):
     lora_alpha: int = 16
     lora_dropout: float = 0.1
     lora_r: int = 8
+    max_seq_length: int = 128000
 
 class CustomCallback(transformers.TrainerCallback):
     def __init__(self, websocket: WebSocket):
@@ -167,6 +167,7 @@ def preprocess_dataset(dataset, format: DatasetFormat, custom_format: Optional[s
     return dataset.map(process_example)
 
 
+
 @app.post("/train")
 async def train_model(config: TrainingConfig):
     ASCIIColors.green("Training a model requested")
@@ -191,7 +192,7 @@ async def train_model(config: TrainingConfig):
             dataset = datasets.load_dataset(config.dataset_name)
         elif config.dataset_source == "local":
             ASCIIColors.green("3 - Loading data from local storage")
-            dataset = datasets.load_from_disk(config.dataset_name)
+            dataset = datasets.load_dataset('json', data_files=str(config.dataset_name))
         else:
             raise HTTPException(status_code=400, detail="Invalid dataset source")
         
@@ -225,7 +226,7 @@ async def train_model(config: TrainingConfig):
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
             max_grad_norm=config.max_grad_norm,
-            weight_decay=config.weight_decay,
+            weight_decay=config.weight_decay
         )
 
         # Prepare the trainer
@@ -235,6 +236,7 @@ async def train_model(config: TrainingConfig):
             peft_config=peft_config,
             dataset_text_field="text",
             args=training_args,
+            max_seq_length = config.max_seq_length,
             callbacks=callbacks  # Ajouter le callback personnalisé
         )
 
@@ -328,16 +330,13 @@ async def quantize_model_endpoint(config: QuantizationConfig):
         ASCIIColors.green("Starting model quantization process")
         
         # Load the model
-        ASCIIColors.green("1 - Loading model")
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            config.model_path,
-            device_map="auto",
-            torch_dtype=torch.float16  # Load in float16 for quantization
+        ASCIIColors.green("1 - Loading and quantizing model")
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True if config.quantization_bits==8 else False, load_in_4bit=True if config.quantization_bits==4 else False)
+
+        quantized_model = AutoModelForCausalLM.from_pretrained(
+            config.model_path, 
+            quantization_config=quantization_config
         )
-        
-        # Quantize the model
-        ASCIIColors.green(f"2 - Quantizing model to {config.quantization_bits} bits")
-        quantized_model = quantize_model(model, bits=config.quantization_bits)
         
         # Save the quantized model
         ASCIIColors.green("3 - Saving quantized model")
