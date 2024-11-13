@@ -165,7 +165,6 @@ def preprocess_dataset(dataset, format: DatasetFormat, custom_format: Optional[s
 
     return dataset.map(process_example)
 
-
 @app.post("/train")
 async def train_model(config: TrainingConfig):
     ASCIIColors.green("Training a model requested")
@@ -190,7 +189,7 @@ async def train_model(config: TrainingConfig):
             dataset = datasets.load_dataset(config.dataset_name)
         elif config.dataset_source == "local":
             ASCIIColors.green("3 - Loading data from local storage")
-            dataset = datasets.load_from_disk(config.dataset_name)
+            dataset = datasets.load_dataset('json', data_files=str(config.dataset_name))
         else:
             raise HTTPException(status_code=400, detail="Invalid dataset source")
         
@@ -224,7 +223,7 @@ async def train_model(config: TrainingConfig):
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
             max_grad_norm=config.max_grad_norm,
-            weight_decay=config.weight_decay,
+            weight_decay=config.weight_decay
         )
 
         # Prepare the trainer
@@ -234,6 +233,7 @@ async def train_model(config: TrainingConfig):
             peft_config=peft_config,
             dataset_text_field="text",
             args=training_args,
+            max_seq_length = config.max_seq_length,
             callbacks=callbacks  # Ajouter le callback personnalisé
         )
 
