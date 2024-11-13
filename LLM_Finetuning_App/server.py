@@ -37,7 +37,6 @@ if not pm.is_installed("threadpoolctl"):
 import torch
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
-quantization_config = BitsAndBytesConfig(load_in_8bit=True)
 
 from enum import Enum
 
@@ -328,16 +327,13 @@ async def quantize_model_endpoint(config: QuantizationConfig):
         ASCIIColors.green("Starting model quantization process")
         
         # Load the model
-        ASCIIColors.green("1 - Loading model")
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            config.model_path,
-            device_map="auto",
-            torch_dtype=torch.float16  # Load in float16 for quantization
+        ASCIIColors.green("1 - Loading and quantizing model")
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True if config.quantization_bits==8 else False, load_in_4bit=True if config.quantization_bits==4 else False)
+
+        quantized_model = AutoModelForCausalLM.from_pretrained(
+            config.model_path, 
+            quantization_config=quantization_config
         )
-        
-        # Quantize the model
-        ASCIIColors.green(f"2 - Quantizing model to {config.quantization_bits} bits")
-        quantized_model = quantize_model(model, bits=config.quantization_bits)
         
         # Save the quantized model
         ASCIIColors.green("3 - Saving quantized model")
