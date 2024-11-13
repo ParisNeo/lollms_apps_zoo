@@ -2,7 +2,6 @@ from fastapi import FastAPI, WebSocket, HTTPException, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-import uvicorn
 
 from pydantic import BaseModel
 from typing import Optional
@@ -12,7 +11,7 @@ import pipmaster as pm
 import json
 from pathlib import Path
 import argparse
-
+import uvicorn
 if not pm.is_installed("torch"):
     pm.install_multiple(["torch","torchvision","torchaudio"], "https://download.pytorch.org/whl/cu121")
 if not pm.is_installed("transformers"):
@@ -37,6 +36,7 @@ if not pm.is_installed("threadpoolctl"):
 import torch
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
+quantization_config = BitsAndBytesConfig(load_in_8bit=True)
 
 from enum import Enum
 
@@ -106,6 +106,7 @@ class TrainingConfig(BaseModel):
     lora_alpha: int = 16
     lora_dropout: float = 0.1
     lora_r: int = 8
+    max_seq_length: int = 128000
 
 class CustomCallback(transformers.TrainerCallback):
     def __init__(self, websocket: WebSocket):
@@ -164,6 +165,8 @@ def preprocess_dataset(dataset, format: DatasetFormat, custom_format: Optional[s
             raise ValueError(f"Unsupported format: {format}")
 
     return dataset.map(process_example)
+
+
 
 @app.post("/train")
 async def train_model(config: TrainingConfig):
