@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import asyncio
 import os
@@ -165,6 +165,41 @@ def preprocess_dataset(dataset, format: DatasetFormat, custom_format: Optional[s
             raise ValueError(f"Unsupported format: {format}")
 
     return dataset.map(process_example)
+
+
+
+# Define a Pydantic model for the request body
+class ModelDownloadRequest(BaseModel):
+    model_name: str = Field(..., description="The Hugging Face model name in the format 'user/model_name'.")
+    target_dir: str = Field(..., description="The directory where the model should be saved.")
+
+@app.post("/download_model/")
+async def download_model(request: ModelDownloadRequest):
+    """
+    Endpoint to download a Hugging Face model and store it in a specific directory.
+    
+    Args:
+        request (ModelDownloadRequest): The request body containing model_name and target_dir.
+    
+    Returns:
+        dict: A message indicating success or failure.
+    """
+    try:
+        # Convert target_dir to a Path object
+        target_path = Path(request.target_dir)
+        
+        # Ensure the target directory exists
+        if not target_path.exists():
+            target_path.mkdir(parents=True, exist_ok=True)
+        
+        # Download the model and tokenizer
+        model = transformers.AutoModel.from_pretrained(request.model_name, cache_dir=target_path)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(request.model_name, cache_dir=target_path)
+        
+        return {"message": f"Model '{request.model_name}' downloaded successfully to '{request.target_dir}'."}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading model: {str(e)}")
 
 
 
