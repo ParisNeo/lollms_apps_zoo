@@ -32,6 +32,8 @@ if not pm.is_installed("scipy"):
 if not pm.is_installed("threadpoolctl"):
     pm.install("threadpoolctl")
 
+if not pm.is_installed("protobuf"):
+    pm.install("protobuf")
 
 from peft import PeftModel
 from typing import List
