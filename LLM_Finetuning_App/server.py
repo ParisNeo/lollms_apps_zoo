@@ -3,8 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, Dict
 import asyncio
 import os
 import pipmaster as pm
@@ -33,6 +33,8 @@ if not pm.is_installed("threadpoolctl"):
     pm.install("threadpoolctl")
 
 
+from peft import PeftModel
+from typing import List
 import torch
 from transformers import AutoModelForCausalLM, BitsAndBytesConfig
 
@@ -90,23 +92,6 @@ class DatasetFormat(str, Enum):
     CUSTOM = "custom"
     LOLLMS = "lollms"  # New format for LoLLMs conversations
 
-class TrainingConfig(BaseModel):
-    model_name: str
-    dataset_source: str
-    dataset_name: str
-    output_model_path: str  # Ajout du chemin de sortie du modèle
-    dataset_format: DatasetFormat
-    custom_format: str
-    learning_rate: float = 3e-4
-    num_train_epochs: int = 3
-    per_device_train_batch_size: int = 4
-    gradient_accumulation_steps: int = 4
-    max_grad_norm: float = 0.3
-    weight_decay: float = 0.001
-    lora_alpha: int = 16
-    lora_dropout: float = 0.1
-    lora_r: int = 8
-    max_seq_length: int = 128000
 
 class CustomCallback(transformers.TrainerCallback):
     def __init__(self, websocket: WebSocket):
@@ -203,17 +188,59 @@ async def download_model(request: ModelDownloadRequest):
 
 
 
+class TrainingConfig(BaseModel):
+    model_name: str
+    dataset_source: str
+    dataset_name: str
+    dataset_format: str
+    custom_format: Optional[str] = None
+    output_model_path: str
+    learning_rate: float = 3e-4
+    num_train_epochs: int = 3
+    per_device_train_batch_size: int = 4
+    gradient_accumulation_steps: int = 4
+    max_grad_norm: float = 0.3
+    weight_decay: float = 0.001
+    lora_alpha: int = 16
+    lora_dropout: float = 0.1
+    lora_r: int = 8
+    max_seq_length: int = 128000
+    gpu_ids: Optional[List[int]] = None
+    max_memory_per_gpu: Optional[Dict[int, str]] = None
+    max_cpu_memory: Optional[str] = None
+    fp16: bool = False
+    @field_validator('gpu_ids', mode='before')
+    @classmethod
+    def validate_gpu_ids(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, list):
+            return [int(id) for id in v if id is not None and id != '']
+        return None
+
 @app.post("/train")
 async def train_model(config: TrainingConfig):
     ASCIIColors.green("Training a model requested")
     try:
         ASCIIColors.green("1 - Loading model:")
-        # Load the model
+        # Prepare device map and max memory settings
+        device_map = "auto"
+        max_memory = None
+        if config.gpu_ids is not None and len(config.gpu_ids)>0:
+            device_map = {i: i for i in config.gpu_ids}
+        if config.max_memory_per_gpu is not None or config.max_cpu_memory is not None:
+            max_memory = config.max_memory_per_gpu or {}
+            if config.max_cpu_memory and config.max_cpu_memory != '':
+                max_memory["cpu"] = config.max_cpu_memory
+
+        # Load the model with GPU and memory configurations
         model = transformers.AutoModelForCausalLM.from_pretrained(
             config.model_name,
-            device_map="auto",
+            device_map=device_map,
+            max_memory=max_memory,
             torch_dtype="auto"
         )
+        
         # Create a CustomCallback instance for each active WebSocket
         callbacks = [CustomCallback(ws) for ws in active_websockets]
 
@@ -242,7 +269,6 @@ async def train_model(config: TrainingConfig):
         ASCIIColors.green("5 - Tokenizing the data")
         tokenized_dataset = preprocessed_dataset.map(tokenize_function, batched=True)
 
-
         ASCIIColors.green("5 - Building trainer")
         # Prepare PEFT config
         peft_config = peft.LoraConfig(
@@ -261,7 +287,10 @@ async def train_model(config: TrainingConfig):
             per_device_train_batch_size=config.per_device_train_batch_size,
             gradient_accumulation_steps=config.gradient_accumulation_steps,
             max_grad_norm=config.max_grad_norm,
-            weight_decay=config.weight_decay
+            weight_decay=config.weight_decay,
+            # Add GPU-related arguments
+            no_cuda=len(config.gpu_ids) == 0 if config.gpu_ids is not None else False,
+            fp16=True  # Enable mixed precision training
         )
 
         # Prepare the trainer
@@ -271,10 +300,9 @@ async def train_model(config: TrainingConfig):
             peft_config=peft_config,
             dataset_text_field="text",
             args=training_args,
-            max_seq_length = config.max_seq_length,
-            callbacks=callbacks  # Ajouter le callback personnalisé
+            max_seq_length=config.max_seq_length,
+            callbacks=callbacks
         )
-
 
         ASCIIColors.green("6 - Starting training")
         # Start training
@@ -290,9 +318,6 @@ async def train_model(config: TrainingConfig):
         trace_exception(e)
         raise HTTPException(status_code=500, detail=str(e))
 
-
-from peft import PeftModel
-from typing import List
 
 class FusionConfig(BaseModel):
     base_model_path: str

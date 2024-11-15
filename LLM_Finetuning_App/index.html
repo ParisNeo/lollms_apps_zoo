@@ -37,7 +37,7 @@
             </form>
         </div>
 
-        <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+        <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
             <h2 class="text-2xl font-bold mb-4" data-translate="trainTitle">Train</h2>
             <form id="finetuneForm">
                 <div class="mb-4">
@@ -132,7 +132,31 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="maxSeqLength" data-translate="loraRLabel">Max sequence length</label>
                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxSeqLength" type="number" value="128000" required>
                 </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxSeqLength" data-translate="maxSeqLengthLabel">Max sequence length</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxSeqLength" type="number" value="128000" required>
+                </div>
                 
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="gpuIds" data-translate="gpuIdsLabel">GPU IDs (comma-separated)</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gpuIds" type="text" placeholder="e.g., 0,1,2">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxMemoryPerGpu" data-translate="maxMemoryPerGpuLabel">Max memory per GPU (e.g., 10GiB)</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxMemoryPerGpu" type="text" placeholder="e.g., 10GiB,8GiB">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxCpuMemory" data-translate="maxCpuMemoryLabel">Max CPU memory</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxCpuMemory" type="text" placeholder="e.g., 30GiB">
+                </div>
+                
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="fp16" data-translate="fp16Label">Enable FP16 (Mixed Precision)</label>
+                    <input class="mr-2 leading-tight" type="checkbox" id="fp16" checked>
+                </div>
+                                
                 <div class="flex items-center justify-between">
                     <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startTrainingButton">Start Training</button>
                 </div>
@@ -194,6 +218,7 @@
     </div>
 
     <script>
+        const downloadForm = document.getElementById('downloadForm');
         const trainForm = document.getElementById('trainForm');
         const fuseForm = document.getElementById('fuseForm');
         const quantizeForm = document.getElementById('quantizeForm');
@@ -218,19 +243,29 @@
             }
         }
 
+        downloadForm.addEventListener('click', () => {
+            downloadForm.style.display = 'block';
+            trainForm.style.display = 'none';
+            fuseForm.style.display = 'none';
+            quantizeForm.style.display = 'none';
+        });
+
         trainBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
             trainForm.style.display = 'block';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
 
         fuseBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'block';
             quantizeForm.style.display = 'none';
         });
 
         quantizeBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'block';
@@ -295,6 +330,21 @@
                 lora_dropout: parseFloat(document.getElementById('loraDropout').value),
                 lora_r: parseInt(document.getElementById('loraR').value),
                 max_seq_length: parseInt(document.getElementById('maxSeqLength').value),
+                gpu_ids: document.getElementById('gpuIds').value.trim() !== '' ? document.getElementById('gpuIds').value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)): undefined,
+                max_memory_per_gpu: document.getElementById('maxMemoryPerGpu').value.trim() !== '' 
+                ? document.getElementById('maxMemoryPerGpu').value.split(',').reduce((obj, val, index) => {
+                    const trimmedVal = val.trim();
+                    if (trimmedVal !== '') {
+                        obj[index] = trimmedVal;
+                    }
+                    return obj;
+                }, {})
+                : undefined,
+                max_cpu_memory: document.getElementById('maxCpuMemory').value.trim() !== '' 
+                ? document.getElementById('maxCpuMemory').value.trim()
+                : undefined,
+                fp16: document.getElementById('fp16').checked
+
             };
 
             try {
