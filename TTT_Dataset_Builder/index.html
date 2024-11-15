@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test-Time Training Dataset Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">Test-Time Training Dataset Generator</h1>
+            <p class="text-lg text-gray-600 mt-2">Generate a dataset for test-time training using Lollms</p>
+        </header>
+
+        <main class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-6">
+                <label for="taskDescription" class="block text-sm font-medium text-gray-700 mb-2">Task Description</label>
+                <textarea id="taskDescription" rows="4" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:border-indigo-500" placeholder="Enter the initial task description..."></textarea>
+            </div>
+            <div class="mb-4">
+                <label for="numSamples" class="block text-sm font-medium text-gray-700 mb-2">Number of Samples</label>
+                <input type="number" id="numSamples" min="1" value="3" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:border-indigo-500">
+            </div>
+            <div class="flex justify-between flex-wrap gap-2">
+                <button id="generateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Examples</button>
+                <button id="clearBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">Clear All</button>
+                <button id="exportBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">Export JSON</button>
+                <button id="reloadBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">Reload from JSON</button>
+                <button id="saveTaskBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">Save Task</button>
+                <button id="loadTaskBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">Load Task</button>
+            </div>
+        </main>
+
+        <section id="examplesContainer" class="bg-white shadow-lg rounded-lg p-6">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Generated Examples</h2>
+            <div id="examplesList" class="space-y-4"></div>
+        </section>
+
+        <section id="savedTasksContainer" class="bg-white shadow-lg rounded-lg p-6 mt-8 hidden">
+            <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Saved Tasks</h2>
+            <div id="savedTasksList" class="space-y-4"></div>
+        </section>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="text-center bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-lg font-semibold text-indigo-800">Generating examples...</p>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient(null, null, 4096, -1, 4096, 0.7, 50, 0.95, 0.8, 40, null, 8);
+        let examples = [];
+        let savedTasks = JSON.parse(localStorage.getItem('savedTasks')) || [];
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('flex');
+        }
+
+        async function generateExamples() {
+            const taskDescription = document.getElementById('taskDescription').value;
+            const numSamples = parseInt(document.getElementById('numSamples').value);
+            if (!taskDescription) {
+                alert('Please enter a task description.');
+                return;
+            }
+            if (isNaN(numSamples) || numSamples < 1) {
+                alert('Please enter a valid number of samples (minimum 1).');
+                return;
+            }
+
+            showLoader();
+
+            const prompt = `${lc.system_message()}You are an AI assistant tasked with generating examples for test-time training. Create ${numSamples} examples based on the following task description: "${taskDescription}". Each example should include a task prompt that provides an example problem resolution and asks the AI to solve a similar problem using the same logic, followed by the expected solution output. Format each example as a JSON object with "task_prompt" and "task_solution" keys.
+\`\`\`json
+[
+        {"task_prompt":"a task prompt that gives an example of how to solve a similar problem","task_solution":"the solution to the task in form of a text (may contain code in markdown code tag or equations in $$ $$ environment, or other forms of solution representation)"},
+        ...
+]
+\`\`\`
+            ${lc.template.separator_template}${lc.ai_message()}`;
+
+            try {
+                const generatedText = await lc.generateCode(prompt);
+                if (generatedText != null) {
+                    const newExamples = JSON.parse(generatedText);
+                    examples = examples.concat(newExamples);
+                    displayExamples();
+                }
+            } catch (error) {
+                console.error('Error generating examples:', error);
+                alert('An error occurred while generating examples. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function displayExamples() {
+            const examplesList = document.getElementById('examplesList');
+            examplesList.innerHTML = '';
+            examples.forEach((example, index) => {
+                const exampleDiv = document.createElement('div');
+                exampleDiv.className = 'bg-gray-100 p-4 rounded-lg';
+                exampleDiv.innerHTML = `
+                    <h3 class="font-semibold text-lg mb-2">Example ${index + 1}</h3>
+                    <div class="mb-2"><strong>Task Prompt:</strong> ${example.task_prompt.replace(/\n/g, '<br>')}</div>
+                    <div><strong>Task Solution:</strong> ${example.task_solution.replace(/\n/g, '<br>')}</div>
+                `;
+                examplesList.appendChild(exampleDiv);
+            });
+        }
+
+        function clearExamples() {
+            examples = [];
+            displayExamples();
+        }
+
+        function exportJSON() {
+            if (examples.length === 0) {
+                alert('No examples to export. Generate some examples first.');
+                return;
+            }
+
+            const jsonString = JSON.stringify(examples, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'ttt_dataset.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function reloadFromJSON() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        examples = JSON.parse(e.target.result);
+                        displayExamples();
+                    } catch (error) {
+                        console.error('Error parsing JSON:', error);
+                        alert('Error loading JSON file. Please make sure it\'s a valid JSON file.');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        }
+
+        function saveTask() {
+            const taskDescription = document.getElementById('taskDescription').value;
+            if (!taskDescription) {
+                alert('Please enter a task description to save.');
+                return;
+            }
+            savedTasks.push(taskDescription);
+            localStorage.setItem('savedTasks', JSON.stringify(savedTasks));
+            displaySavedTasks();
+        }
+
+        function loadTask() {
+            document.getElementById('savedTasksContainer').classList.remove('hidden');
+            displaySavedTasks();
+        }
+
+        function displaySavedTasks() {
+            const savedTasksList = document.getElementById('savedTasksList');
+            savedTasksList.innerHTML = '';
+            savedTasks.forEach((task, index) => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = 'bg-gray-100 p-4 rounded-lg flex justify-between items-center';
+                taskDiv.innerHTML = `
+                    <p class="flex-grow">${task}</p>
+                    <div>
+                        <button onclick="editTask(${index})" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-2 rounded mr-2">Edit</button>
+                        <button onclick="removeTask(${index})" class="bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-2 rounded mr-2">Remove</button>
+                        <button onclick="useTask(${index})" class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded">Use</button>
+                    </div>
+                `;
+                savedTasksList.appendChild(taskDiv);
+            });
+        }
+
+        function editTask(index) {
+            const newTask = prompt('Edit task description:', savedTasks[index]);
+            if (newTask !== null) {
+                savedTasks[index] = newTask;
+                localStorage.setItem('savedTasks', JSON.stringify(savedTasks));
+                displaySavedTasks();
+            }
+        }
+
+        function removeTask(index) {
+            if (confirm('Are you sure you want to remove this task?')) {
+                savedTasks.splice(index, 1);
+                localStorage.setItem('savedTasks', JSON.stringify(savedTasks));
+                displaySavedTasks();
+            }
+        }
+
+        function useTask(index) {
+            document.getElementById('taskDescription').value = savedTasks[index];
+            document.getElementById('savedTasksContainer').classList.add('hidden');
+        }
+
+        // Event listeners
+        document.getElementById('generateBtn').addEventListener('click', generateExamples);
+        document.getElementById('clearBtn').addEventListener('click', clearExamples);
+        document.getElementById('exportBtn').addEventListener('click', exportJSON);
+        document.getElementById('reloadBtn').addEventListener('click', reloadFromJSON);
+        document.getElementById('saveTaskBtn').addEventListener('click', saveTask);
+        document.getElementById('loadTaskBtn').addEventListener('click', loadTask);
+
+        // Load the last used task description on page load
+        window.addEventListener('load', () => {
+            const lastTask = localStorage.getItem('lastTask');
+            if (lastTask) {
+                document.getElementById('taskDescription').value = lastTask;
+            }
+        });
+
+        // Save the current task description when it changes
+        document.getElementById('taskDescription').addEventListener('input', (e) => {
+            localStorage.setItem('lastTask', e.target.value);
+        });
+    </script>
+</body>
+</html>
