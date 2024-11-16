@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Validator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">JSON Validator</h1>
+        
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <textarea id="jsonInput" rows="10" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Paste your JSON here..."></textarea>
+            
+            <div class="flex justify-center space-x-4 mt-4">
+                <button id="validateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Validate
+                </button>
+                <button id="formatBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Format
+                </button>
+                <button id="clearBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Clear
+                </button>
+                <input type="file" id="fileInput" accept=".json" class="hidden">
+                <button id="importBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Import JSON
+                </button>
+                <button id="compressBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Compress & Export
+                </button>
+            </div>
+        </div>
+        
+        <div id="resultContainer" class="bg-white shadow-lg rounded-lg p-6 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-indigo-800">Validation Result</h2>
+            <pre id="resultOutput" class="bg-gray-100 p-4 rounded-md overflow-x-auto"></pre>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden flex justify-center items-center">
+        <div class="text-center text-white">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4">Processing JSON...</div>
+        </div>
+    </div>
+
+    <script>
+        const jsonInput = document.getElementById('jsonInput');
+        const validateBtn = document.getElementById('validateBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const importBtn = document.getElementById('importBtn');
+        const compressBtn = document.getElementById('compressBtn');
+        const fileInput = document.getElementById('fileInput');
+        const resultContainer = document.getElementById('resultContainer');
+        const resultOutput = document.getElementById('resultOutput');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        function showLoading() {
+            loadingOverlay.classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.add('hidden');
+        }
+
+        function displayResult(isValid, message) {
+            resultContainer.classList.remove('hidden');
+            resultOutput.textContent = message;
+            resultOutput.className = isValid ? 'bg-green-100 p-4 rounded-md overflow-x-auto text-green-800' : 'bg-red-100 p-4 rounded-md overflow-x-auto text-red-800';
+        }
+
+        validateBtn.addEventListener('click', () => {
+            const jsonString = jsonInput.value.trim();
+            if (!jsonString) {
+                displayResult(false, 'Please enter JSON data.');
+                return;
+            }
+
+            showLoading();
+            setTimeout(() => {
+                try {
+                    const parsedJson = JSON.parse(jsonString);
+                    displayResult(true, 'Valid JSON!\n\n' + JSON.stringify(parsedJson, null, 2));
+                } catch (error) {
+                    displayResult(false, 'Invalid JSON: ' + error.message);
+                }
+                hideLoading();
+            }, 500);
+        });
+
+        formatBtn.addEventListener('click', () => {
+            const jsonString = jsonInput.value.trim();
+            if (!jsonString) {
+                displayResult(false, 'Please enter JSON data to format.');
+                return;
+            }
+
+            showLoading();
+            setTimeout(() => {
+                try {
+                    const parsedJson = JSON.parse(jsonString);
+                    const formattedJson = JSON.stringify(parsedJson, null, 2);
+                    jsonInput.value = formattedJson;
+                    displayResult(true, 'JSON formatted successfully!');
+                } catch (error) {
+                    displayResult(false, 'Unable to format: ' + error.message);
+                }
+                hideLoading();
+            }, 500);
+        });
+
+        clearBtn.addEventListener('click', () => {
+            jsonInput.value = '';
+            resultContainer.classList.add('hidden');
+        });
+
+        importBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    jsonInput.value = e.target.result;
+                    displayResult(true, 'JSON file imported successfully!');
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        compressBtn.addEventListener('click', () => {
+            const jsonString = jsonInput.value.trim();
+            if (!jsonString) {
+                displayResult(false, 'Please enter JSON data to compress.');
+                return;
+            }
+
+            showLoading();
+            setTimeout(() => {
+                try {
+                    const parsedJson = JSON.parse(jsonString);
+                    const compressedJson = JSON.stringify(parsedJson);
+                    const blob = new Blob([compressedJson], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'compressed.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    displayResult(true, 'JSON compressed and exported successfully!');
+                } catch (error) {
+                    displayResult(false, 'Unable to compress and export: ' + error.message);
+                }
+                hideLoading();
+            }, 500);
+        });
+
+        const lc = new LollmsClient();
+    </script>
+</body>
+</html>
