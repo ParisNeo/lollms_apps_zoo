@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anthropic Model usage Statistics Plotter</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1/dist/chartjs-plugin-zoom.min.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">Anthropic Statistics Plotter</h1>
+        
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Upload Anthropic usage CSV File</h2>
+            <input type="file" id="csvFile" accept=".csv" class="mb-4 p-2 border border-indigo-300 rounded-md w-full">
+            <button id="uploadBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Upload and Process
+            </button>
+            <button id="helpBtn" class="ml-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Help
+            </button>
+        </div>
+
+        <div id="dataSummary" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Data Summary</h2>
+            <div id="summaryContent" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div id="chartSection" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Visualizations</h2>
+            <div class="mb-4">
+                <label for="chartType" class="block text-sm font-medium text-gray-700">Select Chart Type:</label>
+                <select id="chartType" class="mt-1 block w-full py-2 px-3 border border-indigo-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="timeSeries">Time Series</option>
+                    <option value="modelComparison">Model Version Comparison</option>
+                    <option value="workspaceUsage">Workspace Usage</option>
+                    <option value="usageTypes">Usage Types</option>
+                    <option value="workspaceUsageOverTime">Workspace Usage Over Time</option>
+                    <option value="apiUsageOverTime">API Usage Over Time</option>
+                </select>
+            </div>
+            <div class="w-full h-96">
+                <canvas id="chartCanvas"></canvas>
+            </div>
+            <div class="mt-4">
+                <button id="resetZoomBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Reset Zoom
+                </button>
+            </div>
+        </div>
+
+        <div id="exportSection" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Export Options</h2>
+            <button id="exportChartBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-4">
+                Export Chart as PNG
+            </button>
+            <button id="exportDataBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Export Data as JSON
+            </button>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-700 mx-auto"></div>
+            <p class="mt-4 text-indigo-700 font-semibold">Processing data...</p>
+        </div>
+    </div>
+
+    <div id="helpModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl">
+            <h2 class="text-2xl font-bold mb-4">How to Use This Tool</h2>
+            <ol class="list-decimal list-inside space-y-2">
+                <li>Export a CSV file from your Anthropic dashboard.</li>
+                <li>Click "Choose File" and select the exported CSV file.</li>
+                <li>Click "Upload and Process" to analyze the data.</li>
+                <li>View the Data Summary for an overview of your usage.</li>
+                <li>Select different chart types to visualize your data.</li>
+                <li>Use mouse wheel or pinch to zoom in/out of charts.</li>
+                <li>Click and drag to pan around zoomed charts.</li>
+                <li>Use the "Reset Zoom" button to return to the original view.</li>
+                <li>Export charts as PNG or data as JSON for further analysis.</li>
+            </ol>
+            <button id="closeHelpBtn" class="mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script>      
+        let csvData = [];
+        let currentChart = null;
+
+        document.getElementById('uploadBtn').addEventListener('click', handleFileUpload);
+        document.getElementById('chartType').addEventListener('change', updateChart);
+        document.getElementById('exportChartBtn').addEventListener('click', exportChart);
+        document.getElementById('exportDataBtn').addEventListener('click', exportData);
+        document.getElementById('helpBtn').addEventListener('click', showHelpModal);
+        document.getElementById('closeHelpBtn').addEventListener('click', hideHelpModal);
+        document.getElementById('resetZoomBtn').addEventListener('click', resetZoom);
+
+        async function handleFileUpload() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            if (file) {
+                showLoader();
+                Papa.parse(file, {
+                    complete: async function(results) {
+                        csvData = results.data;
+                        await processData();
+                        hideLoader();
+                        document.getElementById('dataSummary').classList.remove('hidden');
+                        document.getElementById('chartSection').classList.remove('hidden');
+                        document.getElementById('exportSection').classList.remove('hidden');
+                        updateChart();
+                    },
+                    header: true
+                });
+            }
+        }
+
+        async function processData() {
+            const summary = calculateSummary(csvData);
+            displaySummary(summary);
+            
+            const insights = generateInsights(summary);
+            displayInsights(insights);
+        }
+
+        function calculateSummary(data) {
+            const summary = {
+                totalRecords: data.length,
+                dateRange: {
+                    start: new Date(data[0].usage_date_utc),
+                    end: new Date(data[data.length - 1].usage_date_utc)
+                },
+                uniqueModelVersions: [...new Set(data.map(row => row.model_version))],
+                uniqueWorkspaces: [...new Set(data.map(row => row.workspace))],
+                uniqueUsageTypes: [...new Set(data.map(row => row.usage_type))],
+                totalInputTokens: data.reduce((sum, row) => sum + parseInt(row.usage_input_tokens_no_cache) + parseInt(row.usage_input_tokens_cache_write) + parseInt(row.usage_input_tokens_cache_read), 0),
+                totalOutputTokens: data.reduce((sum, row) => sum + parseInt(row.usage_output_tokens), 0)
+            };
+            return summary;
+        }
+
+        function displaySummary(summary) {
+            const summaryContent = document.getElementById('summaryContent');
+            summaryContent.innerHTML = `
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Total Records: ${summary.totalRecords}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Date Range:</p>
+                    <p>Start: ${summary.dateRange.start.toLocaleDateString()}</p>
+                    <p>End: ${summary.dateRange.end.toLocaleDateString()}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Unique Model Versions: ${summary.uniqueModelVersions.length}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Unique Workspaces: ${summary.uniqueWorkspaces.length}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Unique Usage Types: ${summary.uniqueUsageTypes.length}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Total Input Tokens: ${summary.totalInputTokens}</p>
+                </div>
+                <div class="bg-indigo-100 p-4 rounded-lg">
+                    <p class="font-bold">Total Output Tokens: ${summary.totalOutputTokens}</p>
+                </div>
+            `;
+        }
+
+        function generateInsights(summary) {
+            const insights = [
+                `The dataset contains ${summary.totalRecords} records spanning from ${summary.dateRange.start.toLocaleDateString()} to ${summary.dateRange.end.toLocaleDateString()}.`,
+                `There are ${summary.uniqueModelVersions.length} unique model versions and ${summary.uniqueWorkspaces.length} unique workspaces in use.`,
+                `The total token usage is ${summary.totalInputTokens + summary.totalOutputTokens}, with ${summary.totalInputTokens} input tokens and ${summary.totalOutputTokens} output tokens.`
+            ];
+            return insights.join('\n');
+        }
+
+        function displayInsights(insights) {
+            const summaryContent = document.getElementById('summaryContent');
+            const insightsElement = document.createElement('div');
+            insightsElement.className = 'bg-green-100 p-4 rounded-lg col-span-full mt-4';
+            insightsElement.innerHTML = `
+                <p class="font-bold">AI-Generated Insights:</p>
+                ${insights.split('\n').map(insight => `<p>• ${insight}</p>`).join('')}
+            `;
+            summaryContent.appendChild(insightsElement);
+        }
+
+        function updateChart() {
+            const chartType = document.getElementById('chartType').value;
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            const ctx = document.getElementById('chartCanvas').getContext('2d');
+            let chartData, chartOptions;
+
+            switch (chartType) {
+                case 'timeSeries':
+                    [chartData, chartOptions] = prepareTimeSeriesChart();
+                    break;
+                case 'modelComparison':
+                    [chartData, chartOptions] = prepareModelComparisonChart();
+                    break;
+                case 'workspaceUsage':
+                    [chartData, chartOptions] = prepareWorkspaceUsageChart();
+                    break;
+                case 'usageTypes':
+                    [chartData, chartOptions] = prepareUsageTypesChart();
+                    break;
+                case 'workspaceUsageOverTime':
+                    [chartData, chartOptions] = prepareWorkspaceUsageOverTimeChart();
+                    break;
+                case 'apiUsageOverTime':
+                    [chartData, chartOptions] = prepareApiUsageOverTimeChart();
+                    break;
+            }
+
+            chartOptions.options = chartOptions.options || {};
+            chartOptions.options.plugins = chartOptions.options.plugins || {};
+            chartOptions.options.plugins.zoom = {
+                zoom: {
+                    wheel: {
+                        enabled: true,
+                    },
+                    pinch: {
+                        enabled: true
+                    },
+                    mode: 'xy',
+                },
+                pan: {
+                    enabled: true,
+                    mode: 'xy',
+                }
+            };
+
+            currentChart = new Chart(ctx, {
+                type: chartOptions.type,
+                data: chartData,
+                options: chartOptions.options
+            });
+        }
+
+        function prepareTimeSeriesChart() {
+            const dates = [...new Set(csvData.map(row => row.usage_date_utc))].sort();
+            const inputTokens = dates.map(date => 
+                csvData.filter(row => row.usage_date_utc === date)
+                    .reduce((sum, row) => sum + parseInt(row.usage_input_tokens_no_cache) + parseInt(row.usage_input_tokens_cache_write) + parseInt(row.usage_input_tokens_cache_read), 0)
+            );
+            const outputTokens = dates.map(date => 
+                csvData.filter(row => row.usage_date_utc === date)
+                    .reduce((sum, row) => sum + parseInt(row.usage_output_tokens), 0)
+            );
+
+            return [{
+                labels: dates,
+                datasets: [
+                    {
+                        label: 'Input Tokens',
+                        data: inputTokens,
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1
+                    },
+                    {
+                        label: 'Output Tokens',
+                        data: outputTokens,
+                        borderColor: 'rgb(255, 99, 132)',
+                        tension: 0.1
+                    }
+                ]
+            },
+            {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Token Usage Over Time'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+title: {
+                                display: true,
+                                text: 'Number of Tokens'
+                            }
+                        }
+                    }
+                }
+            }];
+        }
+
+        function prepareModelComparisonChart() {
+            const modelVersions = [...new Set(csvData.map(row => row.model_version))];
+            const inputTokens = modelVersions.map(version =>
+                csvData.filter(row => row.model_version === version)
+                    .reduce((sum, row) => sum + parseInt(row.usage_input_tokens_no_cache) + parseInt(row.usage_input_tokens_cache_write) + parseInt(row.usage_input_tokens_cache_read), 0)
+            );
+            const outputTokens = modelVersions.map(version =>
+                csvData.filter(row => row.model_version === version)
+                    .reduce((sum, row) => sum + parseInt(row.usage_output_tokens), 0)
+            );
+
+            return [{
+                labels: modelVersions,
+                datasets: [
+                    {
+                        label: 'Input Tokens',
+                        data: inputTokens,
+                        backgroundColor: 'rgba(75, 192, 192, 0.6)'
+                    },
+                    {
+                        label: 'Output Tokens',
+                        data: outputTokens,
+                        backgroundColor: 'rgba(255, 99, 132, 0.6)'
+                    }
+                ]
+            },
+            {
+                type: 'bar',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Token Usage by Model Version'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Tokens'
+                            }
+                        }
+                    }
+                }
+            }];
+        }
+
+        function prepareWorkspaceUsageChart() {
+            const workspaces = [...new Set(csvData.map(row => row.workspace))];
+            const totalTokens = workspaces.map(workspace =>
+                csvData.filter(row => row.workspace === workspace)
+                    .reduce((sum, row) => sum + 
+                        parseInt(row.usage_input_tokens_no_cache) + 
+                        parseInt(row.usage_input_tokens_cache_write) + 
+                        parseInt(row.usage_input_tokens_cache_read) + 
+                        parseInt(row.usage_output_tokens), 0)
+            );
+
+            return [{
+                labels: workspaces,
+                datasets: [{
+                    data: totalTokens,
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.6)',
+                        'rgba(54, 162, 235, 0.6)',
+                        'rgba(255, 206, 86, 0.6)',
+                        'rgba(75, 192, 192, 0.6)',
+                        'rgba(153, 102, 255, 0.6)'
+                    ]
+                }]
+            },
+            {
+                type: 'pie',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Workspace Usage Distribution'
+                        },
+                        legend: {
+                            position: 'right'
+                        }
+                    }
+                }
+            }];
+        }
+
+        function prepareUsageTypesChart() {
+            const usageTypes = [...new Set(csvData.map(row => row.usage_type))];
+            const dates = [...new Set(csvData.map(row => row.usage_date_utc))].sort();
+            
+            const datasets = usageTypes.map(type => ({
+                label: type,
+                data: dates.map(date => 
+                    csvData.filter(row => row.usage_date_utc === date && row.usage_type === type)
+                        .reduce((sum, row) => sum + 
+                            parseInt(row.usage_input_tokens_no_cache) + 
+                            parseInt(row.usage_input_tokens_cache_write) + 
+                            parseInt(row.usage_input_tokens_cache_read) + 
+                            parseInt(row.usage_output_tokens), 0)
+                ),
+                backgroundColor: getRandomColor()
+            }));
+
+            return [{
+                labels: dates,
+                datasets: datasets
+            },
+            {
+                type: 'bar',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Usage Types Over Time'
+                        },
+                        legend: {
+                            position: 'right'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            }
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Tokens'
+                            }
+                        }
+                    }
+                }
+            }];
+        }
+
+        function prepareWorkspaceUsageOverTimeChart() {
+            const workspaces = [...new Set(csvData.map(row => row.workspace))];
+            const dates = [...new Set(csvData.map(row => row.usage_date_utc))].sort();
+            
+            const datasets = workspaces.map(workspace => ({
+                label: workspace,
+                data: dates.map(date => 
+                    csvData.filter(row => row.usage_date_utc === date && row.workspace === workspace)
+                        .reduce((sum, row) => sum + 
+                            parseInt(row.usage_input_tokens_no_cache) + 
+                            parseInt(row.usage_input_tokens_cache_write) + 
+                            parseInt(row.usage_input_tokens_cache_read) + 
+                            parseInt(row.usage_output_tokens), 0)
+                ),
+                borderColor: getRandomColor(),
+                fill: false
+            }));
+
+            return [{
+                labels: dates,
+                datasets: datasets
+            },
+            {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Workspace Usage Over Time'
+                        },
+                        legend: {
+                            position: 'right'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Tokens'
+                            }
+                        }
+                    }
+                }
+            }];
+        }
+
+        function prepareApiUsageOverTimeChart() {
+            const dates = [...new Set(csvData.map(row => row.usage_date_utc))].sort();
+            const apiKeys = [...new Set(csvData.map(row => row.api_key))];
+            
+            const datasets = apiKeys.map(apiKey => ({
+                label: apiKey,
+                data: dates.map(date => 
+                    csvData.filter(row => row.usage_date_utc === date && row.api_key === apiKey)
+                        .reduce((sum, row) => sum + 
+                            parseInt(row.usage_input_tokens_no_cache) + 
+                            parseInt(row.usage_input_tokens_cache_write) + 
+                            parseInt(row.usage_input_tokens_cache_read) + 
+                            parseInt(row.usage_output_tokens), 0)
+                ),
+                borderColor: getRandomColor(),
+                fill: false
+            }));
+
+            return [{
+                labels: dates,
+                datasets: datasets
+            },
+            {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'API Usage Over Time'
+                        },
+                        legend: {
+                            position: 'right'
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Number of Tokens'
+                            }
+                        }
+                    }
+                }
+            }];
+        }
+
+        function getRandomColor() {
+            const r = Math.floor(Math.random() * 255);
+            const g = Math.floor(Math.random() * 255);
+            const b = Math.floor(Math.random() * 255);
+            return `rgba(${r}, ${g}, ${b}, 0.6)`;
+        }
+
+        function exportChart() {
+            if (currentChart) {
+                const url = currentChart.toBase64Image();
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'chart.png';
+                link.click();
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(csvData));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "csv_data.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+            document.getElementById('loadingOverlay').classList.remove('flex');
+        }
+
+        function showHelpModal() {
+            document.getElementById('helpModal').classList.remove('hidden');
+            document.getElementById('helpModal').classList.add('flex');
+        }
+
+        function hideHelpModal() {
+            document.getElementById('helpModal').classList.add('hidden');
+            document.getElementById('helpModal').classList.remove('flex');
+        }
+
+        function resetZoom() {
+            if (currentChart) {
+                currentChart.resetZoom();
+            }
+        }
+    </script>
+</body>
+</html>
