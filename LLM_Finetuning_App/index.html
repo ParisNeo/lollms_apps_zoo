@@ -8,6 +8,72 @@
     <script src="/web.app.localizer.js"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
+    <style>
+        .help-button {
+            background-color: #4A5568;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-left: 8px;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .help-button:hover {
+            background-color: #2D3748;
+        }
+        
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+        }
+        
+        .popup-content {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            z-index: 1001;
+        }
+        
+        .popup-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .popup-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #4A5568;
+        }
+        
+        .popup-close:hover {
+            color: #2D3748;
+        }
+        </style>
+        
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-8 text-center text-blue-600" data-translate="title">LLM Finetuning App</h1>
         
@@ -24,7 +90,7 @@
             <h2 class="text-2xl font-bold mb-4" data-translate="downloadTitle">Download Model</h2>
             <form id="downloadModelForm">
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadModelName" data-translate="downloadModelNameLabel">Model Name (Hugging Face path)</label>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadModelName" data-translate="downloadModelNameLabel">Model Name (Hugging Face path or local model path)</label>
                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="downloadModelName" type="text" placeholder="e.g., bert-base-uncased" required>
                 </div>
                 <div class="mb-4">
@@ -38,7 +104,7 @@
         </div>
 
         <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="trainTitle">Train</h2>
+            <h2 class="text-2xl font-bold mb-4" data-translate="trainTitle" id="trainTitle">Train</h2>
             <form id="finetuneForm">
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="modelName" data-translate="modelNameLabel">Model Name (Hugging Face path)</label>
@@ -218,8 +284,386 @@
             <pre id="logOutput" class="bg-gray-100 p-4 rounded-lg text-sm h-64 overflow-auto"></pre>
         </div>
     </div>
+    <!-- Add this just before the closing body tag -->
+    <div id="helpPopup" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-header">
+                <h2 id="helpTitle" class="text-xl font-bold"></h2>
+                <button class="popup-close" onclick="closeHelpPopup()">×</button>
+            </div>
+            <div id="helpContent" class="mt-4"></div>
+        </div>
+    </div>
 
     <script>
+        // Help content dictionary
+        const helpContent = {
+            // Download section
+            "downloadModelName": {
+                title: "Model Name (Hugging Face path)",
+                content: "Enter the name or path of the model from Hugging Face Hub. For example: 'meta-llama/Llama-2-7b-chat-hf' or 'mistralai/Mistral-7B-v0.1'. Make sure you have the necessary permissions to access the model."
+            },
+            "downloadTargetDir": {
+                title: "Target Directory",
+                content: "Specify the local directory where you want to save the downloaded model. Make sure you have sufficient disk space available."
+            },
+
+            // Training parameters
+            "trainForm": {
+                title: "Training Methods Guide",
+                content: `Comprehensive guide to different model training techniques with focus on LoRA.
+                         
+                         LoRA (Low-Rank Adaptation):
+                         -----------------------------
+                         Purpose:
+                         - Efficient fine-tuning of large language models
+                         - Reduces memory requirements significantly
+                         - Creates small, adaptable modules
+                         
+                         Best Use Cases for LoRA:
+                         - Limited computational resources
+                         - Need for multiple specialized adaptations
+                         - Quick iterations and experiments
+                         - Style transfer or specific domain adaptation
+                         - When you want to combine multiple fine-tunes
+                         
+                         Advantages:
+                         - Very memory efficient (typically 2-4GB GPU RAM)
+                         - Small checkpoint sizes (typically <100MB)
+                         - Can be merged with other LoRA adaptations
+                         - Faster training times
+                         - Original model remains unchanged
+                         
+                         Limitations:
+                         - May not capture very complex adaptations
+                         - Limited by base model capabilities
+                         - Not suitable for fundamental architecture changes
+                         
+                         Alternative Training Methods:
+                         -----------------------------
+                         1. Full Fine-tuning:
+                            When to use:
+                            - Have substantial computational resources
+                            - Need deep architectural changes
+                            - Want maximum adaptation capability
+                            - Have large, high-quality datasets
+                            
+                            Drawbacks:
+                            - Requires lots of GPU memory (16GB+)
+                            - Long training times
+                            - Large checkpoint sizes
+                            - Risk of catastrophic forgetting
+                         
+                         2. QLoRA (Quantized LoRA):
+                            When to use:
+                            - Even more limited resources than LoRA
+                            - Want to fine-tune larger models
+                            - Need similar results to full fine-tuning
+                            
+                            Advantages:
+                            - Even lower memory requirements
+                            - Comparable results to full fine-tuning
+                            
+                            Drawbacks:
+                            - Slightly slower training
+                            - Requires specific quantization-aware training
+                         
+                         3. Prefix/Prompt Tuning:
+                            When to use:
+                            - Need extremely lightweight adaptations
+                            - Focus on specific tasks
+                            - Want fastest possible training
+                            
+                            Limitations:
+                            - More limited in adaptation scope
+                            - May not capture complex patterns
+                         
+                         Best Practices for LoRA Training:
+                         --------------------------------
+                         1. Dataset Preparation:
+                            - Clean, high-quality data
+                            - Consistent formatting
+                            - Appropriate size (typically 100-10000 samples)
+                            
+                         2. Hyperparameter Selection:
+                            - Start with standard values (alpha=16, r=8)
+                            - Adjust based on results
+                            - Monitor training loss
+                            
+                         3. Training Duration:
+                            - Start with small epochs (3-5)
+                            - Use early stopping
+                            - Monitor for overfitting
+                         
+                         4. Model Selection:
+                            - Choose appropriate base model
+                            - Consider model size vs task complexity
+                            - Verify token limit requirements
+                         
+                         Common Pitfalls:
+                         ----------------
+                         - Overfitting on small datasets
+                         - Using too high alpha/r for simple tasks
+                         - Insufficient training data quality
+                         - Not validating results properly
+                         - Incorrect learning rate selection
+                         
+                         Optimization Tips:
+                         -----------------
+                         - Use gradient checkpointing for larger models
+                         - Implement proper validation
+                         - Start conservative with hyperparameters
+                         - Test on diverse inputs
+                         - Keep training data well-structured
+                         
+                         When to Switch Methods:
+                         ----------------------
+                         Consider full fine-tuning if:
+                         - LoRA results are insufficient
+                         - Need fundamental behavior changes
+                         - Have adequate computational resources
+                         
+                         Consider QLoRA if:
+                         - Need more adaptation power than LoRA
+                         - Have very limited resources
+                         - Working with larger base models
+                         
+                         Consider Prefix Tuning if:
+                         - Need extremely fast adaptation
+                         - Have very specific, narrow tasks
+                         - Want smallest possible footprint`
+            },
+        
+            "learningRate": {
+                title: "Learning Rate",
+                content: `The learning rate controls how much the model parameters are updated during training.
+                        - Too high: Training may be unstable or fail to converge
+                        - Too low: Training may be too slow
+                        - Recommended range: 1e-5 to 5e-4
+                        - Default: 3e-4 (0.0003)
+                        
+                        Examples:
+                        - 1e-4: Conservative learning rate, stable but slower training
+                        - 5e-4: Faster training but might be less stable
+                        - 2e-5: Very conservative, use for fine-tuning delicate tasks`
+            },
+            "numEpochs": {
+                title: "Number of Epochs",
+                content: `The number of times the model will iterate through the entire dataset.
+                        - Too few: Model might underfit
+                        - Too many: Model might overfit
+                        - Recommended range: 1-10
+                        
+                        Examples:
+                        - 1-2 epochs: Quick adaptation for similar tasks
+                        - 3-5 epochs: Standard fine-tuning
+                        - 5+ epochs: Deep specialization (watch for overfitting)`
+            },
+            "batchSize": {
+                title: "Batch Size",
+                content: `Number of training examples processed in one forward/backward pass.
+                        - Larger: Better training stability, more VRAM required
+                        - Smaller: Less VRAM required, potentially noisier training
+                        
+                        Examples:
+                        - 1: Minimum size, highest noise in gradients
+                        - 4: Good balance for most GPUs
+                        - 8+: For high-end GPUs, more stable training`
+            },
+            "loraAlpha": {
+                title: "LoRA Alpha",
+                content: `Scaling factor for LoRA adaptations.
+                        - Higher values: Stronger adaptation effect
+                        - Lower values: More conservative changes
+                        
+                        Examples:
+                        - 16: Standard value, good for most cases
+                        - 32: Stronger adaptation
+                        - 8: More conservative adaptation`
+            },
+            "loraR": {
+                title: "LoRA R",
+                content: `Rank of LoRA adaptations. Controls the capacity of the adaptation.
+                        - Higher values: More capacity but larger model
+                        - Lower values: More efficient but limited capacity
+                        
+                        Examples:
+                        - 8: Standard value, good balance
+                        - 16: Higher capacity, larger file size
+                        - 4: More efficient, limited capacity`
+            },
+            "weightDecay": {
+                title: "Weight Decay",
+                content: `Weight decay is a regularization technique that prevents model overfitting by adding a penalty for large weights.
+                        
+                        Technical Details:
+                        - Adds L2 regularization to the model's parameters
+                        - Helps prevent extreme parameter values
+                        - Makes the model more generalizable
+                        
+                        Recommended values:
+                        - 0.01: Strong regularization
+                        - 0.001: Standard value for most cases
+                        - 0.0001: Light regularization
+                        
+                        Effects:
+                        - Higher values: More aggressive regularization, simpler model
+                        - Lower values: Less regularization, model can be more expressive
+                        - Zero: No weight decay, maximum model flexibility (risk of overfitting)
+                        
+                        Use cases:
+                        - Small datasets: Use higher values (0.01-0.001)
+                        - Large datasets: Can use lower values (0.001-0.0001)
+                        - When overfitting: Increase the value
+                        - When underfitting: Decrease the value`
+            },
+
+            "loraDropout": {
+                title: "LoRA Dropout",
+                content: `LoRA dropout is a regularization parameter specific to LoRA adapters that helps prevent overfitting.
+                        
+                        Technical Details:
+                        - Randomly drops connections in LoRA layers during training
+                        - Helps create more robust adaptations
+                        - Similar to standard dropout but specific to LoRA matrices
+                        
+                        Recommended values:
+                        - 0.1 (10%): Standard value, good for most cases
+                        - 0.2 (20%): Stronger regularization
+                        - 0.05 (5%): Lighter regularization
+                        
+                        Effects:
+                        - Higher values: More regularization, slower convergence
+                        - Lower values: Less regularization, faster convergence
+                        - Zero: No dropout (not recommended)
+                        
+                        When to adjust:
+                        - Increase if: Model is overfitting or memorizing
+                        - Decrease if: Model is struggling to learn
+                        - For very small datasets: Consider higher values (0.15-0.2)
+                        - For very large datasets: Can use lower values (0.05-0.1)`
+            },
+
+            "maxSeqLength": {
+                title: "Maximum Sequence Length",
+                content: `Defines the maximum number of tokens that can be processed in a single forward pass.
+                        
+                        Technical Details:
+                        - Affects both training and inference
+                        - Longer sequences require more memory
+                        - Must be <= model's architecture limit
+                        
+                        Common values:
+                        - 512: Standard for BERT-like models
+                        - 1024: Common for medium-length tasks
+                        - 2048: Standard for many LLMs
+                        - 4096-32000: Extended context models
+                        
+                        Effects:
+                        - Larger values:
+                        • Can process longer texts
+                        • Requires more GPU memory
+                        • Slower training and inference
+                        
+                        - Smaller values:
+                        • More memory efficient
+                        • Faster training
+                        • May truncate important context
+                        
+                        Considerations:
+                        - Check your GPU memory capacity
+                        - Consider your task's typical input length
+                        - Balance between context length and training efficiency`
+            },
+
+            "fp16": {
+                title: "Enable FP16 (Mixed Precision)",
+                content: `Mixed precision training using 16-bit floating-point numbers alongside 32-bit floating-point.
+                        
+                        Technical Benefits:
+                        - Reduces memory usage (up to 50%)
+                        - Faster training (typically 2-3x)
+                        - Lower memory bandwidth usage
+                        
+                        When to use:
+                        - YES if:
+                        • Using modern NVIDIA GPU (Volta, Turing, Ampere, or newer)
+                        • Need to fit larger batches in memory
+                        • Want faster training
+                        
+                        - NO if:
+                        • Using older GPUs
+                        • Experiencing training instability
+                        • Working with very small or sensitive numbers
+                        
+                        Important Notes:
+                        - Maintains FP32 master weights for stability
+                        - Automatic loss scaling prevents underflow
+                        - May require slight hyperparameter adjustments
+                        - Some operations remain in FP32 for stability
+                        
+                        Debugging Tips:
+                        - If training becomes unstable, check for NaN values
+                        - Consider reducing learning rate slightly
+                        - Monitor loss scaling statistics`
+            }
+        };
+
+        // Function to add help buttons to all form fields
+        function addHelpButtons() {
+            document.querySelectorAll('label[for]').forEach(label => {
+                const forAttribute = label.getAttribute('for');
+                if (helpContent[forAttribute]) {
+                    const helpButton = document.createElement('button');
+                    helpButton.className = 'help-button';
+                    helpButton.innerHTML = '?';
+                    helpButton.onclick = (e) => {
+                        e.preventDefault();
+                        showHelpPopup(forAttribute);
+                    };
+                    label.appendChild(helpButton);
+                }
+            });
+            const train_title = document.getElementById("trainTitle")
+            const helpButton = document.createElement('button');
+            helpButton.className = 'help-button';
+            helpButton.innerHTML = '?';
+            helpButton.onclick = (e) => {
+                e.preventDefault();
+                showHelpPopup("trainForm");
+            };
+            train_title.appendChild(helpButton);
+
+        }
+
+        // Function to show help popup
+        function showHelpPopup(fieldId) {
+            const helpData = helpContent[fieldId];
+            if (helpData) {
+                document.getElementById('helpTitle').textContent = helpData.title;
+                document.getElementById('helpContent').innerHTML = helpData.content.replace(/\n/g, '<br>');
+                document.getElementById('helpPopup').style.display = 'block';
+            }
+        }
+
+        // Function to close help popup
+        function closeHelpPopup() {
+            document.getElementById('helpPopup').style.display = 'none';
+        }
+
+        // Close popup when clicking outside
+        document.getElementById('helpPopup').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeHelpPopup();
+            }
+        });
+
+        // Initialize help buttons when the document is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            addHelpButtons();
+        });
+
+
         // Define the available options for each quantization tool
         const quantizationOptions = {
             bitsandbytes: [
@@ -613,6 +1057,60 @@
 
         const localizer = new WebAppLocalizer(translations, 'llm_finetuning_app_', languageSelector);
         localizer.apply();
+
+
+
+
+        // Save form values to localStorage
+        function saveFormState(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            const formData = {};
+            form.querySelectorAll('input, select, textarea').forEach(element => {
+                const value = element.type === 'checkbox' ? element.checked : element.value;
+                formData[element.id] = value;
+            });
+            localStorage.setItem(formId, JSON.stringify(formData));
+        }
+
+        // Load form values from localStorage
+        function loadFormState(formId) {
+            const form = document.getElementById(formId);
+            if (!form) return;
+
+            const savedData = localStorage.getItem(formId);
+            if (savedData) {
+                const formData = JSON.parse(savedData);
+                Object.entries(formData).forEach(([id, value]) => {
+                    const element = document.getElementById(id);
+                    if (element) {
+                        if (element.type === 'checkbox') {
+                            element.checked = value;
+                        } else {
+                            element.value = value;
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize form persistence
+        document.addEventListener('DOMContentLoaded', () => {
+            const forms = ['downloadModelForm', 'finetuneForm', 'fusionForm', 'quantizationForm'];
+            
+            // Load saved states
+            forms.forEach(formId => loadFormState(formId));
+            
+            // Save states on input change
+            forms.forEach(formId => {
+                const form = document.getElementById(formId);
+                if (form) {
+                    form.addEventListener('input', () => saveFormState(formId));
+                }
+            });
+        });
+
     </script>
 </body>
 </html>
