@@ -268,7 +268,9 @@ async def train_model(config: TrainingConfig):
         # Preprocess the dataset
         ASCIIColors.green("4 - Preprocessing the dataset")
         preprocessed_dataset = preprocess_dataset(dataset, config.dataset_format, config.custom_format)        
-
+        ASCIIColors.green("Training sample for reference: ")
+        print(preprocessed_dataset['train'][0]["text"])
+        ASCIIColors.green("\n\n\n")
         # Prepare the dataset
         def tokenize_function(examples):
             return tokenizer(examples["text"], truncation=True, padding="max_length", max_length=512)
