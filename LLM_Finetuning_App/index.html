@@ -198,8 +198,14 @@
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationBits" data-translate="quantizationBitsLabel">Quantization Bits</label>
                     <select id="quantizationBits" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="8">8-bit</option>
-                        <option value="4">4-bit</option>
+                    <!-- Options will be dynamically populated based on the selected quantization tool -->
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationTool" data-translate="quantizationBitsLabel">Quantization Bits</label>
+                    <select id="quantizationTool" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="bitsandbytes">bitsandbytes</option>
+                        <option value="gguf">GGUF</option>
                     </select>
                 </div>
                 <div class="flex items-center justify-between">
@@ -218,6 +224,67 @@
     </div>
 
     <script>
+        // Define the available options for each quantization tool
+        const quantizationOptions = {
+            bitsandbytes: [
+                { value: 'q8_0', text: 'q8_0' },
+                { value: 'q4_0', text: 'q4_0' }
+            ],
+            gguf: [
+                { value: 'fast_quantized', text: 'fast_quantized' },
+                { value: 'quantized', text: 'quantized' },
+                { value: 'f32', text: 'f32' },
+                { value: 'f16', text: 'f16' },
+                { value: 'q8_0', text: 'q8_0' },
+                { value: 'q4_k_m', text: 'q4_k_m' },
+                { value: 'q5_k_m', text: 'q5_k_m' },
+                { value: 'q2_k', text: 'q2_k' },
+                { value: 'q3_k_l', text: 'q3_k_l' },
+                { value: 'q3_k_m', text: 'q3_k_m' },
+                { value: 'q3_k_s', text: 'q3_k_s' },
+                { value: 'q4_0', text: 'q4_0' },
+                { value: 'q4_1', text: 'q4_1' },
+                { value: 'q4_k_s', text: 'q4_k_s' },
+                { value: 'q4_k', text: 'q4_k' },
+                { value: 'q5_k', text: 'q5_k' },
+                { value: 'q5_0', text: 'q5_0' },
+                { value: 'q5_1', text: 'q5_1' },
+                { value: 'q5_k_s', text: 'q5_k_s' },
+                { value: 'q6_k', text: 'q6_k' },
+                { value: 'iq2_xxs', text: 'iq2_xxs' },
+                { value: 'iq2_xs', text: 'iq2_xs' },
+                { value: 'iq3_xxs', text: 'iq3_xxs' },
+                { value: 'q3_k_xs', text: 'q3_k_xs' }
+            ]
+        };
+
+        // Function to populate the quantization bits dropdown based on the selected tool
+        function updateQuantizationBits() {
+            const quantizationTool = document.getElementById('quantizationTool').value;
+            const quantizationBits = document.getElementById('quantizationBits');
+
+            // Clear existing options
+            quantizationBits.innerHTML = '';
+
+            // Get the relevant options for the selected tool
+            const options = quantizationOptions[quantizationTool];
+
+            // Populate the dropdown with the new options
+            options.forEach(option => {
+                const opt = document.createElement('option');
+                opt.value = option.value;
+                opt.textContent = option.text;
+                quantizationBits.appendChild(opt);
+            });
+        }
+
+        // Add event listener to the quantization tool dropdown
+        document.getElementById('quantizationTool').addEventListener('change', updateQuantizationBits);
+
+        // Initialize the quantization bits dropdown on page load
+        updateQuantizationBits();
+
+
         const downloadForm = document.getElementById('downloadForm');
         const trainForm = document.getElementById('trainForm');
         const fuseForm = document.getElementById('fuseForm');
@@ -406,7 +473,8 @@
             const jsonData = {
                 model_path: document.getElementById('modelPathQuantize').value,
                 output_path: document.getElementById('quantizedOutputPath').value,
-                quantization_bits: parseInt(document.getElementById('quantizationBits').value)
+                quantization_bits: document.getElementById('quantizationBits').value,
+                quantization_tool: document.getElementById('quantizationTool').value
             };
 
             try {
