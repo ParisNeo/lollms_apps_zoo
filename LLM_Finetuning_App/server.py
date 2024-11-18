@@ -12,10 +12,15 @@ import json
 from pathlib import Path
 import argparse
 import uvicorn
+import os
+
+cuda_version = os.getenv("CUDA_VERSION", "cu121")
+cuda_index = f"https://download.pytorch.org/whl/{cuda_version}"
+
 if not pm.is_installed("torch"):
-    pm.install_multiple(["torch","torchvision","torchaudio"], "https://download.pytorch.org/whl/cu121")
+    pm.install_multiple(["torch","torchvision","torchaudio", "xformers"], cuda_index)
 if not pm.is_installed("transformers"):
-    pm.install("transformers")
+    pm.install("transformers", cuda_index)
 if not pm.is_installed("datasets"):
     pm.install("datasets")
 if not pm.is_installed("accelerate"):
@@ -384,42 +389,88 @@ async def fuse_model(config: FusionConfig):
 class QuantizationConfig(BaseModel):
     model_path: str
     output_path: str
-    quantization_bits: int = 8  # Default to 8-bit quantization
+    quantization_bits: str = "q8_0"  # Default to 8-bit quantization
+    quantization_tool: str = "bitsandbytes" # Default is bitsand bytes
 
 @app.post("/quantize")
 async def quantize_model_endpoint(config: QuantizationConfig):
     try:
         ASCIIColors.green("Starting model quantization process")
-        
-        # Load the model
-        ASCIIColors.green("1 - Loading and quantizing model")
-        quantization_config = BitsAndBytesConfig(load_in_8bit=True if config.quantization_bits==8 else False, load_in_4bit=True if config.quantization_bits==4 else False)
+        if config.quantization_tool=="bitsandbytes":
+            # Load the model
+            ASCIIColors.green("1 - Loading and quantizing model")
+            quantization_config = BitsAndBytesConfig(load_in_8bit=True if config.quantization_bits=="q8_0" else False, load_in_4bit=True if config.quantization_bits=="q4_0" else False)
 
-        quantized_model = AutoModelForCausalLM.from_pretrained(
-            config.model_path, 
-            quantization_config=quantization_config
-        )
-        
-        # Save the quantized model
-        ASCIIColors.green("3 - Saving quantized model")
-        output_path = Path(config.output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
-        quantized_model.save_pretrained(output_path)
-        
-        # Save the tokenizer
-        ASCIIColors.green("4 - Saving tokenizer")
-        tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_path)
-        tokenizer.save_pretrained(output_path)
-        
-        # Send success message through WebSocket
-        for websocket in active_websockets:
-            await websocket.send_text(json.dumps({
-                "status": "success",
-                "message": f"Model quantization to {config.quantization_bits} bits completed successfully"
-            }))
-        
-        return {"message": f"Model quantization to {config.quantization_bits} bits completed successfully", "output_path": str(output_path)}
-    
+            quantized_model = AutoModelForCausalLM.from_pretrained(
+                config.model_path, 
+                quantization_config=quantization_config
+            )
+            
+            # Save the quantized model
+            ASCIIColors.green("3 - Saving quantized model")
+            output_path = Path(config.output_path)
+            output_path.mkdir(parents=True, exist_ok=True)
+            quantized_model.save_pretrained(output_path)
+            
+            # Save the tokenizer
+            ASCIIColors.green("4 - Saving tokenizer")
+            tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_path)
+            tokenizer.save_pretrained(output_path)
+            
+            # Send success message through WebSocket
+            for websocket in active_websockets:
+                await websocket.send_text(json.dumps({
+                    "status": "success",
+                    "message": f"Model quantization to {config.quantization_bits} bits completed successfully"
+                }))
+            
+            return {"message": f"Model quantization to {config.quantization_bits} bits completed successfully", "output_path": str(output_path)}
+        elif config.quantization_tool=="gguf":
+            if not pm.is_installed("llama_cpp"):
+                import platform
+                os_name = platform.system()
+                if os_name == 'Windows':
+                    print("This is a windows system")
+                    pm.install("https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.2/llama_cpp_python-0.3.2-cp311-cp311-win_amd64.whl")
+                elif os.name == 'Linux':
+                    print("This is a linux system")
+                    pm.install("https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.2/llama_cpp_python-0.3.2-cp311-cp311-linux_x86_64.whl")
+                    print("Installing the linux version may require you to manually install musl-dev using:\napt install musl-dev\nln -s /usr/lib/x86_64-linux-musl/libc.so /lib/libc.musl-x86_64.so.1")
+                elif os.name == 'Darwin':
+                    print("This is a mac os system")
+                    pm.install("https://github.com/abetlen/llama-cpp-python/releases/download/v0.3.2/llama_cpp_python-0.3.2-cp311-cp311-macosx_10_9_x86_64.whl")
+            import llama_cpp
+            from llama_cpp import llama_model_quantize_params
+            # Define the mapping between quantization_bits and LLAMA_FTYPE
+            quantization_to_ftype = {
+                'f32': 0,
+                'f16': 1,
+                'q4_0': 2,
+                'q4_1': 3,
+                'q8_0': 7,
+                'q5_0': 8,
+                'q5_1': 9,
+                'q2_k': 10,
+                'q3_k_s': 11,
+                'q3_k_m': 12,
+                'q3_k_l': 13,
+                'q4_k_s': 14,
+                'q4_k_m': 15,
+                'q5_k_s': 16,
+                'q5_k_m': 17,
+                'q6_k': 18,
+                'iq2_xxs': 19,
+                'iq2_xs': 20,
+                'q2_k_s': 21,
+                'iq3_xs': 22,
+                'iq3_xxs': 23,
+                'fast_quantized': 1024,  # Assuming 'fast_quantized' is guessed
+                'quantized': 1024,       # Assuming 'quantized' is guessed
+                'q3_k_xs': 11            # Assuming 'q3_k_xs' maps to the same as 'q3_k_s'
+            }
+            result = llama_cpp.llama_model_quantize(config.model_path.encode("utf-8"), output_path.encode("utf-8"), llama_model_quantize_params(0),quantization_to_ftype[config.quantization_bits],True, True, False)
+        else:
+            ASCIIColors.error("Unknown tool!!")
     except Exception as e:
         trace_exception(e)
         # Send error message through WebSocket
