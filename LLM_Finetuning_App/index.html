@@ -80,6 +80,8 @@
         <!-- Tab Navigation -->
         <div class="flex justify-center mb-8">
             <button id="downloadBtn" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="downloadButton">Download Model</button>
+            <button id="preprocessBtn" class="bg-yellow-400 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="preprocessButton">Preprocess dataset</button>
+            <button id="fuseDSBtn" class="bg-yellow-400 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="preprocessButton">Fuse datasets</button>
             <button id="trainBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="trainButton">Train</button>
             <button id="fuseBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="fuseButton">Fuse</button>
             <button id="quantizeBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="quantizeButton">Quantize</button>
@@ -102,6 +104,108 @@
                 </div>
             </form>
         </div>
+
+
+
+        <div id="preprocessForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4" data-translate="preprocessTitle" id="preprocessTitle">Preprocess Dataset</h2>
+            <form id="preprocessForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="preprocess-datasetSourceLabel">Dataset Source</label>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio" name="preprocess-datasetSource" value="huggingface" checked>
+                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
+                        </label>
+                        <label class="inline-flex items-center ml-6">
+                            <input type="radio" class="form-radio" name="preprocess-datasetSource" value="local">
+                            <span class="ml-2" data-translate="localOption">Local</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="preprocess-datasetNameLabel">Dataset in Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-datasetInName" type="text" placeholder="Dataset in name or local path" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetOutName" data-translate="preprocess-datasetNameLabel">Dataset out Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-datasetOutName" type="text" placeholder="Dataset out name or local path" required>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocess-dataset-format" data-translate="datasetFormatLabel">Dataset Format</label>
+                    <select id="preprocess-dataset-format" name="dataset-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" onchange="togglepreprocessCustomFormat()">
+                        <option value="single_text" data-translate="singleTextOption">Single Text</option>
+                        <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
+                        <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
+                        <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
+                        <option value="custom" data-translate="customOption">Custom</option>
+                    </select>
+                </div>
+
+                <div id="preprocess-custom-format-group" class="mb-4" style="display: none;">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocess-custom-format" data-translate="customFormatLabel">Custom Format</label>
+                    <textarea type="text" id="preprocess-custom-format" name="preprocess-custom-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="e.g. {field1} {field2}: {field3}"></textarea>
+                </div>
+                        
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="preprocessButton">Preprocess Database</button>
+                </div>
+            </form>
+        </div>
+
+
+        <div id="fusedbs-Form" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4" data-translate="fusedbs-Title" id="fusedbs-Title">Preprocess Dataset</h2>
+            <form id="fusedbs-Form">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fusedbs-datasetSource1Label">Dataset 1 Source</label>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio" name="fusedbs-dataset1Source" value="huggingface" checked>
+                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
+                        </label>
+                        <label class="inline-flex items-center ml-6">
+                            <input type="radio" class="form-radio" name="fusedbs-dataset1Source" value="local">
+                            <span class="ml-2" data-translate="localOption">Local</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="preprocess-dataset1NameLabel">Dataset 1 Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-dataset1Name" type="text" placeholder="Dataset in name or local path" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fusedbs-dataset2SourceLabel">Dataset 2 Source</label>
+                    <div class="mt-2">
+                        <label class="inline-flex items-center">
+                            <input type="radio" class="form-radio" name="fusedbs-dataset2Source" value="huggingface" checked>
+                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
+                        </label>
+                        <label class="inline-flex items-center ml-6">
+                            <input type="radio" class="form-radio" name="fusedbs-dataset2Source" value="local">
+                            <span class="ml-2" data-translate="localOption">Local</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="fusedbs-dataset2NameLabel">Dataset 2 Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-dataset2Name" type="text" placeholder="Dataset in name or local path" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="fusedbs-datasetOutName" data-translate="fusedbs-datasetNameLabel">Dataset out Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-datasetOutName" type="text" placeholder="Dataset out name or local path" required>
+                </div>
+                        
+                <div class="flex items-center justify-between">
+                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="fusedbsButton">Fuse Databases</button>
+                </div>
+            </form>
+        </div>
+
 
         <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
             <h2 class="text-2xl font-bold mb-4" data-translate="trainTitle" id="trainTitle">Train</h2>
@@ -133,7 +237,7 @@
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="dataset-format" data-translate="datasetFormatLabel">Dataset Format</label>
                     <select id="dataset-format" name="dataset-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" onchange="toggleCustomFormat()">
-                        <option value="single_text" data-translate="singleTextOption">Single Text</option>
+                        <option value="single_text" data-translate="singleTextOption">Single Text (preprocessed datasets have this format)</option>
                         <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
                         <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
                         <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
@@ -219,7 +323,27 @@
                     <label class="block text-gray-700 text-sm font-bold mb-2" for="fp16" data-translate="fp16Label">Enable FP16 (Mixed Precision)</label>
                     <input class="mr-2 leading-tight" type="checkbox" id="fp16" checked>
                 </div>
-                                
+                <!-- Training Method Dropdown -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="training_method" data-translate="trainingMethodLabel">Training Method</label>
+                    <select id="training_method" class="block appearance-none w-full bg-white border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:shadow-outline">
+                        <option value="lora" selected>LoRA Fine-tuning</option>
+                        <option value="full">Full Fine-tuning</option>
+                    </select>
+                </div>
+
+                <!-- Do Validation Checkbox -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="do_validation" data-translate="doValidationLabel">Enable Validation</label>
+                    <input class="mr-2 leading-tight" type="checkbox" id="do_validation">
+                </div>
+
+                <!-- Export Best Model Only Checkbox -->
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="export_best_model_only" data-translate="exportBestModelOnlyLabel">Export Best Model Only</label>
+                    <input class="mr-2 leading-tight" type="checkbox" id="export_best_model_only" checked>
+                </div>
+                        
                 <div class="flex items-center justify-between">
                     <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startTrainingButton">Start Training</button>
                 </div>
@@ -662,7 +786,7 @@
         // Initialize help buttons when the document is loaded
         document.addEventListener('DOMContentLoaded', function() {
             addHelpButtons();
-            const forms = ['downloadModelForm', 'finetuneForm', 'fusionForm', 'quantizationForm'];
+            const forms = ['downloadModelForm', 'preprocessForm', 'fusedbs-Form', 'finetuneForm', 'fusionForm', 'quantizationForm'];
             
             // Load saved states
             forms.forEach(formId => loadFormState(formId));
@@ -741,6 +865,8 @@
 
 
         const downloadForm = document.getElementById('downloadForm');
+        const preprocessForm = document.getElementById('preprocessForm');
+        const fusedbsForm = document.getElementById('fusedbs-Form');
         const trainForm = document.getElementById('trainForm');
         const fuseForm = document.getElementById('fuseForm');
         const quantizeForm = document.getElementById('quantizeForm');
@@ -748,6 +874,9 @@
         const progressBar = document.getElementById('progressBar');
         const logOutput = document.getElementById('logOutput');
 
+        const downloadBtn = document.getElementById('downloadBtn');
+        const preprocessBtn = document.getElementById('preprocessBtn');
+        const fuseDSBtn = document.getElementById('fuseDSBtn');
         const trainBtn = document.getElementById('trainBtn');
         const fuseBtn = document.getElementById('fuseBtn');
         const quantizeBtn = document.getElementById('quantizeBtn');
@@ -765,8 +894,41 @@
             }
         }
 
-        downloadForm.addEventListener('click', () => {
+        function togglepreprocessCustomFormat() {
+            var formatSelect = document.getElementById('preprocess-dataset-format');
+            var customFormatGroup = document.getElementById('preprocess-custom-format-group');
+            
+            if (formatSelect.value === 'custom') {
+                customFormatGroup.style.display = 'block';
+            } else {
+                customFormatGroup.style.display = 'none';
+            }
+        }
+
+        
+
+        downloadBtn.addEventListener('click', () => {
             downloadForm.style.display = 'block';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
+            trainForm.style.display = 'none';
+            fuseForm.style.display = 'none';
+            quantizeForm.style.display = 'none';
+        });
+
+        preprocessBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'block';
+            fusedbsForm.style.display = 'none';
+            trainForm.style.display = 'none';
+            fuseForm.style.display = 'none';
+            quantizeForm.style.display = 'none';
+        });
+
+        fuseDSBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'block';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'none';
@@ -774,13 +936,18 @@
 
         trainBtn.addEventListener('click', () => {
             downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
             trainForm.style.display = 'block';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
+        
 
         fuseBtn.addEventListener('click', () => {
             downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'block';
             quantizeForm.style.display = 'none';
@@ -788,17 +955,13 @@
 
         quantizeBtn.addEventListener('click', () => {
             downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
             quantizeForm.style.display = 'block';
         });
-
-        document.getElementById('downloadBtn').addEventListener('click', function() {
-            document.getElementById('downloadForm').style.display = 'block';
-            document.getElementById('trainForm').style.display = 'none';
-            document.getElementById('fuseForm').style.display = 'none';
-            document.getElementById('quantizeForm').style.display = 'none';
-        });
+        
 
         // Form submission logic for downloading the model
         document.getElementById('downloadModelForm').addEventListener('submit', async function(event) {
@@ -831,6 +994,71 @@
                 alert('An error occurred while downloading the model.');
             }
         });
+
+        // Preprocess a dataset
+        document.getElementById('preprocessForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch('/preprocess/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dataset_source: document.querySelector('input[name="preprocess-datasetSource"]:checked').value,
+                        dataset_name: document.getElementById('preprocess-datasetInName').value,
+                        output_dataset_path: document.getElementById('preprocess-datasetOutName').value,
+                        dataset_format: document.getElementById('preprocess-dataset-format').value,
+                        custom_format: document.getElementById('preprocess-custom-format').value,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                } else {
+                    alert(`Error: ${result.detail}`);
+                }
+            } catch (error) {
+                console.error('Error downloading model:', error);
+                alert('An error occurred while downloading the model.');
+            }
+        });
+
+        // Fuse datasets
+        fusedbsForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch('/fuse_datasets/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        dataset1_source: document.querySelector('input[name="fusedbs-dataset1Source"]:checked').value,
+                        dataset1_path: document.getElementById('fusedbs-dataset1Name').value,
+                        dataset2_source: document.querySelector('input[name="fusedbs-dataset2Source"]:checked').value,
+                        dataset2_path: document.getElementById('fusedbs-dataset2Name').value,
+                        output_dataset_path: document.getElementById('fusedbs-datasetOutName').value,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    alert(result.message);
+                } else {
+                    alert(`Error: ${result.detail}`);
+                }
+            } catch (error) {
+                console.error('Error downloading model:', error);
+                alert('An error occurred while downloading the model.');
+            }
+        });
+        
 
         document.getElementById('finetuneForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -865,8 +1093,10 @@
                 max_cpu_memory: document.getElementById('maxCpuMemory').value.trim() !== '' 
                 ? document.getElementById('maxCpuMemory').value.trim()
                 : undefined,
-                fp16: document.getElementById('fp16').checked
-
+                fp16: document.getElementById('fp16').checked,
+                training_method: str = document.getElementById("training_method").value,
+                do_validation: document.getElementById("do_validation").checked,  
+                export_best_model_only:  document.getElementById("export_best_model_only").checked  
             };
 
             try {
