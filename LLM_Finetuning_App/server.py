@@ -57,7 +57,7 @@ import peft
 import trl
 import bitsandbytes as bnb
 from huggingface_hub import hf_hub_download
-
+from transformers import TrainerCallback
 
 from ascii_colors import ASCIIColors, trace_exception
 
@@ -263,7 +263,9 @@ async def preprocess_dataset_endpoint(config: PreprocessConfig):
 
 
 class FuseDatasetsConfig(BaseModel):
+    dataset1_source: str # the dataset source (hugging face or local)
     dataset1_path: str  # Path to the first preprocessed dataset
+    dataset2_source: str # the dataset source (hugging face or local)
     dataset2_path: str  # Path to the second preprocessed dataset
     output_dataset_path: str  # Path to save the fused dataset
 
@@ -273,8 +275,24 @@ async def fuse_datasets(config: FuseDatasetsConfig):
     try:
         # Load the preprocessed datasets
         ASCIIColors.green("1 - Loading preprocessed datasets")
-        dataset1 = datasets.load_from_disk(config.dataset1_path)
-        dataset2 = datasets.load_from_disk(config.dataset2_path)
+        # Load the dataset 1 
+        if config.dataset1_source == "huggingface":
+            ASCIIColors.green("a - Loading dataset 1 from hugging face:")
+            dataset1 = datasets.load_dataset(config.dataset1_path)
+        elif config.dataset_source == "local":
+            ASCIIColors.green("a - Loading dataset 1 from local storage")
+            dataset1 = datasets.load_dataset('json', data_files=str(config.dataset1_path))
+        else:
+            raise HTTPException(status_code=400, detail="Invalid dataset source")
+        # Load the dataset 2
+        if config.dataset2_source == "huggingface":
+            ASCIIColors.green("a - Loading dataset 2 from hugging face:")
+            dataset2 = datasets.load_dataset(config.dataset2_path)
+        elif config.dataset_source == "local":
+            ASCIIColors.green("a - Loading dataset 2 from local storage")
+            dataset2 = datasets.load_dataset('json', data_files=str(config.dataset2_path))
+        else:
+            raise HTTPException(status_code=400, detail="Invalid dataset source")
 
         # Fuse the datasets
         ASCIIColors.green("2 - Fusing datasets")
@@ -356,10 +374,19 @@ async def train_model(config: TrainingConfig):
         
         # Create a CustomCallback instance for each active WebSocket
         callbacks = [CustomCallback(ws) for ws in active_websockets]
+        class LossLoggerCallback(TrainerCallback):
+            def on_log(self, args, state, control, logs=None, **kwargs):
+                if logs is not None and "loss" in logs:
+                    ASCIIColors.green(f"Step {state.global_step}: Loss = {logs['loss']:.4f}")
+
+        # Add the custom callback to the list of callbacks
+        callbacks.append(LossLoggerCallback())
 
         ASCIIColors.green("2 - Loading tokenizer:")
         # Load the tokenizer
         tokenizer = transformers.AutoTokenizer.from_pretrained(config.model_name)
+        # Set padding side to 'right' to avoid overflow issues in fp16 training
+        tokenizer.padding_side = 'right'
 
         # Load the dataset
         if config.dataset_source == "huggingface":
