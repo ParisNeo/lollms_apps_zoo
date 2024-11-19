@@ -136,6 +136,7 @@
                         <option value="single_text" data-translate="singleTextOption">Single Text</option>
                         <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
                         <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
+                        <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
                         <option value="custom" data-translate="customOption">Custom</option>
                     </select>
                 </div>
@@ -661,6 +662,20 @@
         // Initialize help buttons when the document is loaded
         document.addEventListener('DOMContentLoaded', function() {
             addHelpButtons();
+            const forms = ['downloadModelForm', 'finetuneForm', 'fusionForm', 'quantizationForm'];
+            
+            // Load saved states
+            forms.forEach(formId => loadFormState(formId));
+            
+            // Save states on input change
+            forms.forEach(formId => {
+                const form = document.getElementById(formId);
+                if (form) {
+                    ['input', 'change'].forEach(eventType => {
+                        form.addEventListener(eventType, () => saveFormState(formId));
+                    });
+                }
+            });            
         });
 
 
@@ -1095,21 +1110,6 @@
             }
         }
 
-        // Initialize form persistence
-        document.addEventListener('DOMContentLoaded', () => {
-            const forms = ['downloadModelForm', 'finetuneForm', 'fusionForm', 'quantizationForm'];
-            
-            // Load saved states
-            forms.forEach(formId => loadFormState(formId));
-            
-            // Save states on input change
-            forms.forEach(formId => {
-                const form = document.getElementById(formId);
-                if (form) {
-                    form.addEventListener('input', () => saveFormState(formId));
-                }
-            });
-        });
 
     </script>
 </body>
