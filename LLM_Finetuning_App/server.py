@@ -149,6 +149,11 @@ def preprocess_dataset(dataset, format: DatasetFormat, custom_format: Optional[s
             return {"text": f"Instruction: {example['instruction']}\nInput: {example['input']}\nOutput: {example['output']}"}
         elif format == DatasetFormat.QUESTION_ANSWER:
             return {"text": f"Question: {example['question']}\nAnswer: {example['answer']}"}
+        elif format == DatasetFormat.LOLLMS:
+            discussion = ""
+            for message in example["messages"]:
+                discussion += f"!@>{message['sender']}:{message['content']}\n"
+            return {"text": discussion}
         elif format == DatasetFormat.CUSTOM:
             if custom_format is None:
                 raise ValueError("Custom format string must be provided for CUSTOM format")
