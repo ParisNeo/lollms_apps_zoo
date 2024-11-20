@@ -16,13 +16,19 @@
             <div class="bg-white shadow-lg rounded-lg p-6 col-span-2">
                 <h2 class="text-2xl font-semibold mb-4 text-green-700">Village Map</h2>
                 <div id="villageMap" class="h-96 bg-green-200 rounded-lg relative"></div>
-                <div id="loadingOverlay" class="hidden">
-                    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-green-500 border-solid mx-auto mb-4"></div>
-                    <p class="text-lg font-semibold text-green-700" id="informationParagraph">Simulating village life...</p>
+                <div id="loadingOverlay" class="hidden bg-gray-100 border border-gray-300 rounded-lg p-4 mt-4 w-full">
+                    <div class="flex items-center mb-4">
+                        <div class="animate-spin rounded-full h-8 w-8 border-t-4 border-green-500 border-solid mr-3"></div>
+                        <h3 class="text-lg font-semibold text-gray-700">Processing...</h3>
+                    </div>
+                    <div class="bg-gray-900 p-3 rounded">
+                        <pre id="consoleOutput" class="text-green-500 font-mono text-sm overflow-y-auto max-h-40 whitespace-pre-wrap break-words"></pre>
+                    </div>
                     <button id="pauseBtn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Pause
                     </button>
                 </div>
+                
             </div>
             
             <div class="bg-white shadow-lg rounded-lg p-6">
@@ -84,6 +90,11 @@
         let maxSimulationSteps = 100;
         let currentStep = 0;
         
+        function appendToConsole(text) {
+            const consoleOutput = document.getElementById('consoleOutput');
+            consoleOutput.textContent += (consoleOutput.textContent ? '\n' : '') + text;
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
 
         // Add this function to save parameters to localStorage
         function saveParameters() {
@@ -112,7 +123,7 @@
 
         // Modify the generateVillager function to include relationships
         async function generateVillager(villageContext, existingVillagers) {
-            document.getElementById("informationParagraph").textContent="Generating vilager"
+            appendToConsole('Generating villager ...');
             const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: ${villageContext}. Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${JSON.stringify(existingVillagers, null, 2)}.
 
 Example format:
@@ -158,14 +169,14 @@ ${lc.ai_message()}`;
                         interactions: 0
                     };
                 });
-
+                appendToConsole(`Added ${villager.name}`);
                 return villager;
             }
             return null;
         }
         
         async function generateLocation(villageContext, existingLocations, retryCount = 0) {
-            document.getElementById("informationParagraph").textContent = "Generating location";
+            appendToConsole('Generating location ...');
             const existingLocationNames = existingLocations.map(l => l.name).join(", ");
             const prompt = `${lc.system_message()}Generate a JSON object for a location in our village simulation. The village context is: ${villageContext}. Include fields for name, type (e.g., house, shop, public space), capacity, and a brief description. The location should be unique and fitting for the village setting. 
 
@@ -198,6 +209,7 @@ ${lc.user_message()}Please generate a unique location for our village simulation
                         return null;
                     }
                 }
+                appendToConsole(`Added ${newLocation.name}`);
                 return newLocation;
             }
             return null;
@@ -499,6 +511,7 @@ Example format:
         document.getElementById('buildVillageBtn').addEventListener('click', initializeSimulation);
 
         document.getElementById('startPauseBtn').addEventListener('click', () => {
+            appendToConsole(simulationRunning?"Pausing simulation ...":"Starting simulation ...")
             simulationRunning = !simulationRunning;
             document.getElementById('startPauseBtn').textContent = simulationRunning ? 'Pause Simulation' : 'Start Simulation';
             if (simulationRunning) {
@@ -551,6 +564,7 @@ Example format:
         async function initializeSimulation() {
             saveParameters(); // Save parameters before initializing
             showLoader("Initializing simulation...");
+            appendToConsole('Building village ...');
             
             const numPlaces = parseInt(document.getElementById('numPlaces').value);
             const numPersonas = parseInt(document.getElementById('numPersonas').value);
@@ -579,7 +593,6 @@ Example format:
 
         function showLoader(message) {
             document.getElementById('loadingOverlay').classList.remove('hidden');
-            document.getElementById('informationParagraph').textContent = message;
         }
 
         function hideLoader() {
