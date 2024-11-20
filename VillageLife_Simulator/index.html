@@ -109,28 +109,36 @@
                 document.getElementById('speedControl').value = params.speed;
             }
         }        
+
         // Modify the generateVillager function to include relationships
         async function generateVillager(villageContext, existingVillagers) {
             document.getElementById("informationParagraph").textContent="Generating vilager"
-            const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: ${villageContext}. Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${existingVillagers}.
+            const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: ${villageContext}. Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${JSON.stringify(existingVillagers, null, 2)}.
 
-        Example format:
-        {
-            "name": "Elara Moonwhisper",
-            "age": 28,
-            "occupation": "Herbalist",
-            "personalityTraits": ["curious", "empathetic", "night owl"],
-            "currentStatus": {
-                "location": "Moonlit Grove",
-                "activity": "Gathering herbs",
-                "mood": "Focused"
-            },
-            "backstory": "Elara grew up in a family of healers and discovered her affinity for plants at a young age. She often explores the village outskirts at night, believing the moonlight enhances the potency of her herbs."
-        }
-        
-        ${lc.user_message()}Please generate a unique villager for our simulation, different from: ${existingVillagers}.${lc.ai_message()}`;
+Example format:
+\`\`\`json
+{
+    "name": "Elara Moonwhisper",
+    "age": 28,
+    "occupation": "Herbalist",
+    "personalityTraits": ["curious", "empathetic", "night owl"],
+    "currentStatus": {
+        "location": "Moonlit Grove",
+        "activity": "Gathering herbs",
+        "mood": "Focused"
+    },
+    "backstory": "Elara grew up in a family of healers and discovered her affinity for plants at a young age. She often explores the village outskirts at night, believing the moonlight enhances the potency of her herbs."
+}
+\`\`\`
+${lc.user_message()}Please generate a unique villager for our simulation, different from:
+\`\`\`json
+${JSON.stringify(existingVillagers, null, 2)}
+\`\`\`
+${lc.ai_message()}`;
+
         
             showLoader("Generating villager...");
+            console.log(prompt)
             const villagerJson = await lc.generateCode(prompt);
             hideLoader();
         
@@ -156,44 +164,61 @@
             return null;
         }
         
-        async function generateLocation(villageContext) {
-            document.getElementById("informationParagraph").textContent="Generating location"
-            const existingLocations = locations.map(l => l.name).join(", ");
-            const prompt = `${lc.system_message()}Generate a JSON object for a location in our village simulation. The village context is: ${villageContext}. Include fields for name, type (e.g., house, shop, public space), capacity, and a brief description. The location should be unique and fitting for the village setting. Ensure the name is not one of the following: ${existingLocations}.
+        async function generateLocation(villageContext, existingLocations, retryCount = 0) {
+            document.getElementById("informationParagraph").textContent = "Generating location";
+            const existingLocationNames = existingLocations.map(l => l.name).join(", ");
+            const prompt = `${lc.system_message()}Generate a JSON object for a location in our village simulation. The village context is: ${villageContext}. Include fields for name, type (e.g., house, shop, public space), capacity, and a brief description. The location should be unique and fitting for the village setting. 
 
-        Example format:
-        {
-            "name": "Whispering Willow Inn",
-            "type": "Tavern",
-            "capacity": 30,
-            "description": "A cozy tavern built around an ancient willow tree. Its branches extend through the roof, creating a magical atmosphere. Known for its unique herbal brews and storytelling nights."
-        }
-        
-        ${lc.user_message()}Please generate a unique location for our village simulation, different from: ${existingLocations}.${lc.ai_message()}`;
-        
+IMPORTANT: Ensure the name is not one of the following existing locations: ${existingLocationNames}. Do not repeat any of these names or create very similar names.
+
+Example format:
+\`\`\`json
+{
+    "name": "Whispering Willow Inn",
+    "type": "Tavern",
+    "capacity": 30,
+    "description": "A cozy tavern built around an ancient willow tree. Its branches extend through the roof, creating a magical atmosphere. Known for its unique herbal brews and storytelling nights."
+}
+\`\`\`        
+${lc.user_message()}Please generate a unique location for our village simulation. Remember, it must be different from these existing locations: ${existingLocationNames}.${lc.ai_message()}`;
+
             showLoader("Generating location...");
             const locationJson = await lc.generateCode(prompt);
             hideLoader();
-        
+
             if (locationJson) {
-                return JSON.parse(locationJson);
+                const newLocation = JSON.parse(locationJson);
+                // Double-check that the new location name is unique
+                if (existingLocations.some(loc => loc.name === newLocation.name)) {
+                    if (retryCount === 0) {
+                        console.warn("Generated location name already exists. Retrying once...");
+                        return generateLocation(villageContext, existingLocations, 1);
+                    } else {
+                        console.error("Failed to generate a unique location name after retry.");
+                        return null;
+                    }
+                }
+                return newLocation;
             }
             return null;
         }
+
         
         async function updateVillagerStatus(villager) {
             const prompt = `${lc.system_message()}Given the current state of a villager, generate a JSON object representing their updated status. Include fields for current location, activity, mood, and any new memories or thoughts based on their recent experiences. Consider their personality and backstory when updating their status.
 
-        Example format:
-        {
-            "currentStatus": {
-                "location": "Whispering Willow Inn",
-                "activity": "Sharing herbal tea recipes",
-                "mood": "Excited"
-            },
-            "newMemories": ["Made a new friend who's interested in herbology", "Learned about a rare plant growing near the village"],
-            "thoughts": "I wonder if I could organize a weekly herbalism workshop at the inn..."
-        }
+Example format:
+\`\`\`json
+{
+    "currentStatus": {
+        "location": "Whispering Willow Inn",
+        "activity": "Sharing herbal tea recipes",
+        "mood": "Excited"
+    },
+    "newMemories": ["Made a new friend who's interested in herbology", "Learned about a rare plant growing near the village"],
+    "thoughts": "I wonder if I could organize a weekly herbalism workshop at the inn..."
+}
+\`\`\`
         
         ${lc.user_message()}Current villager state: ${JSON.stringify(villager)}. Please update their status.${lc.ai_message()}`;
         
@@ -234,27 +259,28 @@
             
             const prompt = `${lc.system_message()}Generate a JSON object representing an interaction between two villagers. Their affinity is ${affinity}/100. Include fields for the type of interaction, dialogue snippets, and any resulting changes in mood, affinity, or new memories for both villagers. Consider their personalities, occupations, current statuses, and affinity when creating the interaction.
 
-        Example format:
-        {
-            "type": "Friendly conversation",
-            "dialogue": [
-                {"speaker": "Elara", "text": "I've just discovered a new herb that might help with your father's arthritis."},
-                {"speaker": "Finn", "text": "Really? That's wonderful news! Can you tell me more about it?"}
-            ],
-            "outcomes": {
-                "Elara": {
-                    "moodChange": "More positive",
-                    "affinityChange": 5,
-                    "newMemories": ["Shared knowledge about herbs with Finn", "Felt appreciated for her expertise"]
-                },
-                "Finn": {
-                    "moodChange": "Hopeful",
-                    "affinityChange": 7,
-                    "newMemories": ["Learned about a potential remedy for father's condition", "Gained respect for Elara's knowledge"]
-                }
-            }
+Example format:
+\`\`\`json
+{
+    "type": "Friendly conversation",
+    "dialogue": [
+        {"speaker": "Elara", "text": "I've just discovered a new herb that might help with your father's arthritis."},
+        {"speaker": "Finn", "text": "Really? That's wonderful news! Can you tell me more about it?"}
+    ],
+    "outcomes": {
+        "Elara": {
+            "moodChange": "More positive",
+            "affinityChange": 5,
+            "newMemories": ["Shared knowledge about herbs with Finn", "Felt appreciated for her expertise"]
+        },
+        "Finn": {
+            "moodChange": "Hopeful",
+            "affinityChange": 7,
+            "newMemories": ["Learned about a potential remedy for father's condition", "Gained respect for Elara's knowledge"]
         }
-
+    }
+}
+\`\`\`
         ${lc.user_message()}Villager 1: ${JSON.stringify(villager1)}. Villager 2: ${JSON.stringify(villager2)}. Please generate an interaction between these villagers.${lc.ai_message()}`;
 
             showLoader("Generating interaction...");
@@ -536,7 +562,7 @@
             maxSimulationSteps = parseInt(document.getElementById('maxSteps').value);
 
             for (let i = 0; i < numPlaces; i++) {
-                const location = await generateLocation(villageContext);
+                const location = await generateLocation(villageContext, locations);
                 if (location) locations.push(location);
             }
 
