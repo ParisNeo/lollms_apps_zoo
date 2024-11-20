@@ -47,6 +47,9 @@
             <button id="generate-questions-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-4">
                 Generate Questions
             </button>
+            <button id="generate-tasks-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mr-4">
+                Generate Tasks
+            </button>
             <button id="generate-answers-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                 Generate Answers
             </button>
@@ -92,7 +95,39 @@
         const lc = new LollmsClient();
         const mr = new MarkdownRenderer();
         const tl = new TasksLibrary(lc);
-        let database = [];
+        class Entry {
+            constructor(type, content, answer = '') {
+              this.type = type;
+              this.content = content;
+              this.answer = answer;
+            }
+        }
+        class Database {
+            constructor() {
+              this.entries = [];
+            }
+          
+            addEntry(type, content, answer = '') {
+              this.entries.push(new Entry(type, content, answer));
+            }
+          
+            getEntriesByType(type) {
+              return this.entries.filter(entry => entry.type === type);
+            }
+          
+            getEntryByContent(content) {
+              return this.entries.find(entry => entry.content === content);
+            }
+          
+            updateAnswer(content, answer) {
+              const entry = this.getEntryByContent(content);
+              if (entry) {
+                entry.answer = answer;
+              }
+            }
+        }
+
+        const databases = []
 
         const fileDropArea = document.getElementById('file-drop-area');
         const fileInput = document.getElementById('file-input');
@@ -100,6 +135,8 @@
         const addFilesBtn = document.getElementById('add-files-btn');
         const deleteFilesBtn = document.getElementById('delete-files-btn');
         const generateQuestionsBtn = document.getElementById('generate-questions-btn');
+        const generateTasksBtn = document.getElementById('generate-tasks-btn');
+        
         const generateAnswersBtn = document.getElementById('generate-answers-btn');
         const progressBar = document.getElementById('progress-bar');
         const databaseView = document.getElementById('database-view');
@@ -167,7 +204,8 @@
                     li.appendChild(checkbox);
                     li.appendChild(document.createTextNode(`${file.name} (${file.type})`));
                     fileList.appendChild(li);
-                    database.push({ fileName: file.name, content: e.target.result, questions: [], answers: [] });
+                    const database = new Database(file.name);
+                    databases.push(database);
                 };
                 reader.readAsText(file);
             }
@@ -186,57 +224,121 @@
             hideLoader();
         });
 
-        generateAnswersBtn.addEventListener('click', async () => {
+        generateTasksBtn.addEventListener('click', async () => {
             showLoader();
+            const numTasks = parseInt(questionsPerFile.value);
             for (let i = 0; i < database.length; i++) {
                 const entry = database[i];
-                for (let j = 0; j < entry.questions.length; j++) {
-                    const question = entry.questions[j];
-                    const answer = await generateAnswer(entry.content, question.question);
-                    entry.answers.push(answer);
-                    updateProgress(50 + (i * entry.questions.length + j + 1) / (database.length * entry.questions.length) * 50);
-                }
+                const tasks = await generateTasks(entry.content, numTasks);
+                entry.tasks = tasks;
+                updateProgress((i + 1) / database.length * 50);
             }
             updateDatabaseView();
             hideLoader();
         });
 
-        async function generateQuestions(content, numQuestions) {
-            const prompt = `Generate a list of ${numQuestions} questions about the following content:\n\n${content}\n\nPlease provide the questions in JSON format.`;
-            const questionsJson = await lc.generateCode(prompt);
-            return JSON.parse(questionsJson);
+        generateAnswersBtn.addEventListener('click', async () => {
+            showLoader();
+            for (const entry of database.entries) {
+              if (!entry.answer) {
+                const answer = await generateAnswer(entry.content, entry.type);
+                database.updateAnswer(entry.content, answer);
+              }
+            }
+            updateDatabaseViews();
+            hideLoader();
+          });
+          
+
+        async function generateQuestions(database, content, numQuestions) {
+            const prompt = `Generate a list of ${numQuestions} questions about the following content:\n\n${content}\n\nPlease provide the questions in JSON format inside a json code tag as follows:
+\`\`\`json
+[
+        {"question":"a question about the content"},
+        {"question":"a question about the content"}
+        ...
+]
+\`\`\`
+`;
+            const entries = [];
+            for (let i = 0; i < numQuestions; i++) {
+            const question = await lc.generateCode(prompt);
+            entries.push(new Entry('question', question));
+            }
+            database.entries.push(...entries);
+            updateDatabaseViews();
         }
 
-        async function generateAnswer(content, question) {
-            const prompt = `Based on the following content, answer the question:\n\nContent: ${content}\n\nQuestion: ${question}\n\nPlease provide a detailed and accurate answer.`;
+        async function generateTasks(database, content, numTasks) {
+            const prompt = `Generate a list of ${numTasks} tasks that could be solved using the following content:\n\n${content}\n\nPlease provide the questions in JSON format inside a json code tag as follows:
+\`\`\`json
+[
+        {"task":"a task that could be solved using the content"},
+        {"task":"another that could be solved using the the content"}
+        ...
+]
+\`\`\`
+`;
+            const entries = [];
+            for (let i = 0; i < numTasks; i++) {
+            const task = await lc.generateCode(prompt);
+            entries.push(new Entry('task', task));
+            }
+            database.entries.push(...entries);
+
+            updateDatabaseViews();
+        }        
+
+        async function generateAnswers(database) {
+            showLoader();
+            for (const entry of database.entries) {
+              if (!entry.answer) {
+                const answer = await generateAnswer(entry.content, entry.type);
+                database.updateAnswer(entry.content, answer);
+              }
+            }
+            updateDatabaseView(database);
+            hideLoader();
+        }        
+          
+
+        async function generateAnswer(content, questionOrTask, type) {
+            let prompt;
+            if (type === 'question') {
+              prompt = `Based on the following content, answer the question:\n\nContent: ${content}\n\nQuestion: ${questionOrTask}\n\nPlease provide a detailed and accurate answer.`;
+            } else if (type === 'task') {
+              prompt = `Based on the following content, perform the task:\n\nContent: ${content}\n\nTask: ${questionOrTask}\n\nPlease provide a detailed and accurate solution.`;
+            } else {
+              throw new Error("Invalid type. Use 'question' or 'task'.");
+            }
+          
             const answer = await lc.generate(prompt);
-            return { question, answer };
+            return { questionOrTask, answer, type };
         }
+          
+        function updateDatabaseViews() {
+            databases.forEach(database => updateDatabaseView(database));
+        }
+
 
         function updateProgress(percentage) {
             progressBar.style.width = `${percentage}%`;
             progressBar.textContent = `${Math.round(percentage)}%`;
         }
 
-        function updateDatabaseView() {
+        // In updateDatabaseView function:
+        function updateDatabaseView(database) {
             databaseView.innerHTML = '';
-            for (const entry of database) {
-                const entryDiv = document.createElement('div');
-                console.log(entry.questions)
-                entryDiv.innerHTML = `
-                    <h3 class="font-bold text-lg mt-4">${entry.fileName}</h3>
-                    <ul class="list-disc pl-5">
-                        ${entry.questions.map((q, index) => `
-                            <li>
-                                <strong>Q:</strong> ${q.question}
-                                ${entry.answers[index] ? `<br><strong>A:</strong> ${entry.answers[index].answer}` : ''}
-                            </li>
-                        `).join('')}
-                    </ul>
-                `;
-                databaseView.appendChild(entryDiv);
+            for (const entry of database.entries) {
+            const entryDiv = document.createElement('div');
+            entryDiv.innerHTML = `
+                <h3 class="font-bold text-lg mt-4">${entry.type.toUpperCase()}: ${entry.content}</h3>
+                ${entry.answer ? `<p><strong>Answer:</strong> ${entry.answer}</p>` : ''}
+            `;
+            databaseView.appendChild(entryDiv);
             }
         }
+          
 
         searchInput.addEventListener('input', (e) => {
             const searchTerm = e.target.value.toLowerCase();
