@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Village Life Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-green-100 to-blue-100 font-sans min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-green-800 mb-8 text-center">Village Life Simulator</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="bg-white shadow-lg rounded-lg p-6 col-span-2">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700">Village Map</h2>
+                <div id="villageMap" class="h-96 bg-green-200 rounded-lg relative"></div>
+                <div id="loadingOverlay" class="hidden">
+                    <div class="animate-spin rounded-full h-16 w-16 border-t-4 border-green-500 border-solid mx-auto mb-4"></div>
+                    <p class="text-lg font-semibold text-green-700" id="informationParagraph">Simulating village life...</p>
+                    <button id="pauseBtn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Pause
+                    </button>
+                </div>
+            </div>
+            
+            <div class="bg-white shadow-lg rounded-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4 text-green-700">Controls</h2>
+                <div class="flex flex-col space-y-4">
+                    <div class="flex flex-col space-y-2">
+                        <label for="numPlaces" class="text-sm font-medium text-gray-700">Number of Places:</label>
+                        <input type="number" id="numPlaces" min="1" max="20" value="10" class="border border-gray-300 rounded-md p-2">
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <label for="numPersonas" class="text-sm font-medium text-gray-700">Number of Personas:</label>
+                        <input type="number" id="numPersonas" min="1" max="20" value="5" class="border border-gray-300 rounded-md p-2">
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <label for="villageContext" class="text-sm font-medium text-gray-700">Village Context:</label>
+                        <textarea id="villageContext" rows="3" class="border border-gray-300 rounded-md p-2" placeholder="Describe the village style, era, etc."></textarea>
+                    </div>
+                    <div class="flex flex-col space-y-2">
+                        <label for="maxSteps" class="text-sm font-medium text-gray-700">Maximum Simulation Steps:</label>
+                        <input type="number" id="maxSteps" min="1" max="1000" value="100" class="border border-gray-300 rounded-md p-2">
+                    </div>
+                    <button id="buildVillageBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Build Village
+                    </button>
+                    <button id="startPauseBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Start Simulation
+                    </button>
+                    <div class="flex items-center">
+                        <label for="speedControl" class="mr-2">Speed:</label>
+                        <input type="range" id="speedControl" min="1" max="4" value="1" class="w-full">
+                    </div>
+                    <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Export State
+                    </button>
+                    <button id="importBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Import State
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 bg-white shadow-lg rounded-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-green-700">Character Information</h2>
+            <div id="characterInfo" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+        
+        <div class="mt-8 bg-white shadow-lg rounded-lg p-6">
+            <h2 class="text-2xl font-semibold mb-4 text-green-700">Event Log</h2>
+            <div id="eventLog" class="space-y-2">
+            </div>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        let simulationRunning = false;
+        let villagers = [];
+        let locations = [];
+        let stepMode = false;
+        let maxSimulationSteps = 100;
+        let currentStep = 0;
+        
+
+        // Add this function to save parameters to localStorage
+        function saveParameters() {
+            const params = {
+                numPlaces: document.getElementById('numPlaces').value,
+                numPersonas: document.getElementById('numPersonas').value,
+                villageContext: document.getElementById('villageContext').value,
+                maxSteps: document.getElementById('maxSteps').value,
+                speed: document.getElementById('speedControl').value
+            };
+            localStorage.setItem('villageSimulatorParams', JSON.stringify(params));
+        }
+
+        // Add this function to load parameters from localStorage
+        function loadParameters() {
+            const savedParams = localStorage.getItem('villageSimulatorParams');
+            if (savedParams) {
+                const params = JSON.parse(savedParams);
+                document.getElementById('numPlaces').value = params.numPlaces;
+                document.getElementById('numPersonas').value = params.numPersonas;
+                document.getElementById('villageContext').value = params.villageContext;
+                document.getElementById('maxSteps').value = params.maxSteps;
+                document.getElementById('speedControl').value = params.speed;
+            }
+        }        
+        // Modify the generateVillager function to include relationships
+        async function generateVillager(villageContext, existingVillagers) {
+            document.getElementById("informationParagraph").textContent="Generating vilager"
+            const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: ${villageContext}. Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${existingVillagers}.
+
+        Example format:
+        {
+            "name": "Elara Moonwhisper",
+            "age": 28,
+            "occupation": "Herbalist",
+            "personalityTraits": ["curious", "empathetic", "night owl"],
+            "currentStatus": {
+                "location": "Moonlit Grove",
+                "activity": "Gathering herbs",
+                "mood": "Focused"
+            },
+            "backstory": "Elara grew up in a family of healers and discovered her affinity for plants at a young age. She often explores the village outskirts at night, believing the moonlight enhances the potency of her herbs."
+        }
+        
+        ${lc.user_message()}Please generate a unique villager for our simulation, different from: ${existingVillagers}.${lc.ai_message()}`;
+        
+            showLoader("Generating villager...");
+            const villagerJson = await lc.generateCode(prompt);
+            hideLoader();
+        
+            if (villagerJson) {
+                const villager = JSON.parse(villagerJson);
+                villager.relationships = {};
+                
+                // Initialize relationships with existing villagers
+                existingVillagers.forEach(otherVillager => {
+                    villager.relationships[otherVillager.name] = {
+                        affinity: Math.floor(Math.random() * 100),
+                        interactions: 0
+                    };
+                    // Also add this new villager to the other villager's relationships
+                    otherVillager.relationships[villager.name] = {
+                        affinity: Math.floor(Math.random() * 100),
+                        interactions: 0
+                    };
+                });
+
+                return villager;
+            }
+            return null;
+        }
+        
+        async function generateLocation(villageContext) {
+            document.getElementById("informationParagraph").textContent="Generating location"
+            const existingLocations = locations.map(l => l.name).join(", ");
+            const prompt = `${lc.system_message()}Generate a JSON object for a location in our village simulation. The village context is: ${villageContext}. Include fields for name, type (e.g., house, shop, public space), capacity, and a brief description. The location should be unique and fitting for the village setting. Ensure the name is not one of the following: ${existingLocations}.
+
+        Example format:
+        {
+            "name": "Whispering Willow Inn",
+            "type": "Tavern",
+            "capacity": 30,
+            "description": "A cozy tavern built around an ancient willow tree. Its branches extend through the roof, creating a magical atmosphere. Known for its unique herbal brews and storytelling nights."
+        }
+        
+        ${lc.user_message()}Please generate a unique location for our village simulation, different from: ${existingLocations}.${lc.ai_message()}`;
+        
+            showLoader("Generating location...");
+            const locationJson = await lc.generateCode(prompt);
+            hideLoader();
+        
+            if (locationJson) {
+                return JSON.parse(locationJson);
+            }
+            return null;
+        }
+        
+        async function updateVillagerStatus(villager) {
+            const prompt = `${lc.system_message()}Given the current state of a villager, generate a JSON object representing their updated status. Include fields for current location, activity, mood, and any new memories or thoughts based on their recent experiences. Consider their personality and backstory when updating their status.
+
+        Example format:
+        {
+            "currentStatus": {
+                "location": "Whispering Willow Inn",
+                "activity": "Sharing herbal tea recipes",
+                "mood": "Excited"
+            },
+            "newMemories": ["Made a new friend who's interested in herbology", "Learned about a rare plant growing near the village"],
+            "thoughts": "I wonder if I could organize a weekly herbalism workshop at the inn..."
+        }
+        
+        ${lc.user_message()}Current villager state: ${JSON.stringify(villager)}. Please update their status.${lc.ai_message()}`;
+        
+            showLoader("Updating villager status...");
+            const updatedStatusJson = await lc.generateCode(prompt);
+            hideLoader();
+        
+            if (updatedStatusJson) {
+                const updatedStatus = JSON.parse(updatedStatusJson);
+                return { ...villager, ...updatedStatus };
+            }
+            return villager;
+        }
+        
+        // Add this to the villager generation function
+        function generateRelationships(villager, otherVillagers) {
+            villager.relationships = {};
+            otherVillagers.forEach(other => {
+                if (other.name !== villager.name) {
+                    villager.relationships[other.name] = {
+                        affinity: Math.floor(Math.random() * 100),
+                        interactions: 0
+                    };
+                }
+            });
+        }
+
+        async function generateInteraction(villager1, villager2) {
+            // Ensure relationships exist
+            if (!villager1.relationships[villager2.name]) {
+                villager1.relationships[villager2.name] = { affinity: 50, interactions: 0 };
+            }
+            if (!villager2.relationships[villager1.name]) {
+                villager2.relationships[villager1.name] = { affinity: 50, interactions: 0 };
+            }
+
+            const affinity = (villager1.relationships[villager2.name].affinity + villager2.relationships[villager1.name].affinity) / 2;
+            
+            const prompt = `${lc.system_message()}Generate a JSON object representing an interaction between two villagers. Their affinity is ${affinity}/100. Include fields for the type of interaction, dialogue snippets, and any resulting changes in mood, affinity, or new memories for both villagers. Consider their personalities, occupations, current statuses, and affinity when creating the interaction.
+
+        Example format:
+        {
+            "type": "Friendly conversation",
+            "dialogue": [
+                {"speaker": "Elara", "text": "I've just discovered a new herb that might help with your father's arthritis."},
+                {"speaker": "Finn", "text": "Really? That's wonderful news! Can you tell me more about it?"}
+            ],
+            "outcomes": {
+                "Elara": {
+                    "moodChange": "More positive",
+                    "affinityChange": 5,
+                    "newMemories": ["Shared knowledge about herbs with Finn", "Felt appreciated for her expertise"]
+                },
+                "Finn": {
+                    "moodChange": "Hopeful",
+                    "affinityChange": 7,
+                    "newMemories": ["Learned about a potential remedy for father's condition", "Gained respect for Elara's knowledge"]
+                }
+            }
+        }
+
+        ${lc.user_message()}Villager 1: ${JSON.stringify(villager1)}. Villager 2: ${JSON.stringify(villager2)}. Please generate an interaction between these villagers.${lc.ai_message()}`;
+
+            showLoader("Generating interaction...");
+            const interactionJson = await lc.generateCode(prompt);
+            hideLoader();
+
+            if (interactionJson) {
+                const interaction = JSON.parse(interactionJson);
+                // Update relationships based on the interaction
+                updateRelationships(villager1, villager2, interaction);
+                return interaction;
+            }
+            return null;
+        }
+
+        function updateRelationships(villager1, villager2, interaction) {
+            const outcome1 = interaction.outcomes[villager1.name];
+            const outcome2 = interaction.outcomes[villager2.name];
+            
+            if (outcome1 && outcome2) {
+                villager1.relationships[villager2.name].affinity += outcome1.affinityChange || 0;
+                villager1.relationships[villager2.name].interactions++;
+                villager2.relationships[villager1.name].affinity += outcome2.affinityChange || 0;
+                villager2.relationships[villager1.name].interactions++;
+
+                // Ensure affinity stays within 0-100 range
+                villager1.relationships[villager2.name].affinity = Math.max(0, Math.min(100, villager1.relationships[villager2.name].affinity));
+                villager2.relationships[villager1.name].affinity = Math.max(0, Math.min(100, villager2.relationships[villager1.name].affinity));
+            }
+        }
+
+        
+        function updateVillageMap() {
+            const villageMap = document.getElementById('villageMap');
+            villageMap.innerHTML = '';
+
+            locations.forEach((location, index) => {
+                const locationElement = document.createElement('div');
+                locationElement.className = 'absolute w-16 h-16 bg-yellow-200 rounded-lg flex items-center justify-center text-xs text-center';
+                locationElement.style.left = `${(index % 5) * 20}%`;
+                locationElement.style.top = `${Math.floor(index / 5) * 25}%`;
+                locationElement.textContent = location.name;
+                villageMap.appendChild(locationElement);
+            });
+
+            villagers.forEach((villager, index) => {
+                const villagerElement = document.createElement('div');
+                villagerElement.className = 'absolute w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white cursor-pointer';
+                villagerElement.style.left = `${Math.random() * 80}%`;
+                villagerElement.style.top = `${Math.random() * 80}%`;
+                villagerElement.textContent = villager.name.charAt(0);
+                villagerElement.addEventListener('click', () => showVillagerHistory(villager));
+                villageMap.appendChild(villagerElement);
+            });
+        }
+
+        function updateCharacterInfo() {
+            const characterInfo = document.getElementById('characterInfo');
+            characterInfo.innerHTML = '';
+
+            villagers.forEach(villager => {
+                const villagerCard = document.createElement('div');
+                villagerCard.className = 'bg-gray-100 p-4 rounded-lg';
+                villagerCard.innerHTML = `
+                    <h3 class="font-semibold">${villager.name}</h3>
+                    <p>Age: ${villager.age}</p>
+                    <p>Occupation: ${villager.occupation}</p>
+                    <p>Status: ${villager.currentStatus.activity} at ${villager.currentStatus.location}</p>
+                    <p>Mood: ${villager.currentStatus.mood}</p>
+                    <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs">Show Memories</button>
+                `;
+                const showMemoriesBtn = villagerCard.querySelector('button');
+                showMemoriesBtn.addEventListener('click', () => showVillagerHistory(villager));
+                characterInfo.appendChild(villagerCard);
+            });
+        }
+
+        function addEventToLog(event) {
+            const eventLog = document.getElementById('eventLog');
+            const eventElement = document.createElement('div');
+            eventElement.className = 'bg-white shadow-md rounded-lg p-4 mb-2';
+            
+            let interactionHtml = '';
+            if (event.type === 'interaction') {
+                interactionHtml = `
+                    <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs show-interaction-btn">
+                        Show Interaction
+                    </button>
+                `;
+            }
+            
+            eventElement.innerHTML = `
+                <h3 class="text-lg font-semibold mb-2">${event.title || 'Event'}</h3>
+                <p>${event.description}</p>
+                ${event.details ? `<p class="mt-2 text-sm text-gray-600">${event.details}</p>` : ''}
+                ${interactionHtml}
+            `;
+            
+            if (event.type === 'interaction') {
+                const showInteractionBtn = eventElement.querySelector('.show-interaction-btn');
+                showInteractionBtn.addEventListener('click', () => showInteractionPopup(event.interaction));
+            }
+            
+            eventLog.insertBefore(eventElement, eventLog.firstChild);
+        }
+
+        async function runSimulation() {
+            if (!simulationRunning) return;
+
+            await simulationStep();
+
+            if (!stepMode && currentStep < maxSimulationSteps) {
+                setTimeout(runSimulation, 5000 / parseInt(document.getElementById('speedControl').value));
+            } else if (currentStep >= maxSimulationSteps) {
+                simulationRunning = false;
+                document.getElementById('startPauseBtn').textContent = 'Start Simulation';
+                alert('Simulation has reached the maximum number of steps.');
+            }
+        }
+
+        async function simulationStep() {
+            currentStep++;
+            showLoader(`Simulating step ${currentStep} of ${maxSimulationSteps}...`);
+
+            for (let i = 0; i < villagers.length; i++) {
+                villagers[i] = await updateVillagerStatus(villagers[i]);
+                addEventToLog({
+                    title: `${villagers[i].name}'s Update`,
+                    description: `${villagers[i].name} is ${villagers[i].currentStatus.activity} at ${villagers[i].currentStatus.location}.`,
+                    details: `Mood: ${villagers[i].currentStatus.mood}`
+                });
+            }
+
+            if (villagers.length >= 2) {
+                const villager1 = villagers[Math.floor(Math.random() * villagers.length)];
+                let villager2;
+                do {
+                    villager2 = villagers[Math.floor(Math.random() * villagers.length)];
+                } while (villager1 === villager2);
+
+                const interaction = await generateInteraction(villager1, villager2);
+                if (interaction && interaction.outcomes) {
+                    const outcome1 = interaction.outcomes[villager1.name] || {};
+                    const outcome2 = interaction.outcomes[villager2.name] || {};
+                    addEventToLog({
+                        type: 'interaction',
+                        title: `Interaction: ${interaction.type}`,
+                        description: `${villager1.name} and ${villager2.name} interact: "${interaction.dialogue[0]?.text || 'No dialogue available'}"`,
+                        details: `Outcome: ${outcome1.moodChange || 'No mood change'}, ${outcome2.moodChange || 'No mood change'}`,
+                        interaction: interaction
+                    });
+                }
+            }
+
+            updateVillageMap();
+            updateCharacterInfo();
+            hideLoader();
+        }
+
+        function showInteractionPopup(interaction) {
+            const interactionModal = document.createElement('div');
+            interactionModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
+            interactionModal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                    <h3 class="text-xl font-bold mb-4">Interaction: ${interaction.type}</h3>
+                    <div class="mb-4">
+                        ${interaction.dialogue.map(d => `<p><strong>${d.speaker}:</strong> ${d.text}</p>`).join('')}
+                    </div>
+                    <h4 class="font-bold mb-2">Outcomes:</h4>
+                    <ul class="list-disc pl-5 mb-4">
+                        ${Object.entries(interaction.outcomes).map(([name, outcome]) => `
+                            <li>
+                                <strong>${name}:</strong>
+                                <ul class="list-disc pl-5">
+                                    <li>Mood change: ${outcome.moodChange}</li>
+                                    <li>Affinity change: ${outcome.affinityChange}</li>
+                                    <li>New memories: ${outcome.newMemories.join(', ')}</li>
+                                </ul>
+                            </li>
+                        `).join('')}
+                    </ul>
+                    <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
+                </div>
+            `;
+            document.body.appendChild(interactionModal);
+            interactionModal.querySelector('button').addEventListener('click', () => {
+                document.body.removeChild(interactionModal);
+            });
+        }
+
+
+        function showVillagerHistory(villager) {
+            const memories = villager.newMemories || [];
+            const thoughts = villager.thoughts || '';
+            const historyModal = document.createElement('div');
+            historyModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
+            historyModal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                    <h3 class="text-xl font-bold mb-4">${villager.name}'s History</h3>
+                    <p class="mb-4">${villager.backstory}</p>
+                    <h4 class="font-bold mb-2">Recent Memories:</h4>
+                    <ul class="list-disc pl-5 mb-4">
+                        ${memories.map(memory => `<li>${memory}</li>`).join('')}
+                    </ul>
+                    <h4 class="font-bold mb-2">Current Thoughts:</h4>
+                    <p>${thoughts}</p>
+                    <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
+                </div>
+            `;
+            document.body.appendChild(historyModal);
+            historyModal.querySelector('button').addEventListener('click', () => {
+                document.body.removeChild(historyModal);
+            });
+        }
+
+        document.getElementById('buildVillageBtn').addEventListener('click', initializeSimulation);
+
+        document.getElementById('startPauseBtn').addEventListener('click', () => {
+            simulationRunning = !simulationRunning;
+            document.getElementById('startPauseBtn').textContent = simulationRunning ? 'Pause Simulation' : 'Start Simulation';
+            if (simulationRunning) {
+                stepMode = false;
+                currentStep = 0;
+                maxSimulationSteps = parseInt(document.getElementById('maxSteps').value);
+                runSimulation();
+            }
+        });
+
+        document.getElementById('exportBtn').addEventListener('click', () => {
+            const gameState = { villagers, locations, currentStep };
+            const stateJson = JSON.stringify(gameState);
+            const blob = new Blob([stateJson], {type: "application/json"});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'village_life_simulator_state.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('importBtn').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const gameState = JSON.parse(e.target.result);
+                        villagers = gameState.villagers;
+                        locations = gameState.locations;
+                        currentStep = gameState.currentStep || 0;
+                        updateVillageMap();
+                        updateCharacterInfo();
+                        alert('Game state imported successfully.');
+                    } catch (error) {
+                        alert('Error importing game state: ' + error.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+        });
+
+        async function initializeSimulation() {
+            saveParameters(); // Save parameters before initializing
+            showLoader("Initializing simulation...");
+            
+            const numPlaces = parseInt(document.getElementById('numPlaces').value);
+            const numPersonas = parseInt(document.getElementById('numPersonas').value);
+            const villageContext = document.getElementById('villageContext').value || 'A small medieval village';
+
+            locations = [];
+            villagers = [];
+            currentStep = 0;
+            maxSimulationSteps = parseInt(document.getElementById('maxSteps').value);
+
+            for (let i = 0; i < numPlaces; i++) {
+                const location = await generateLocation(villageContext);
+                if (location) locations.push(location);
+            }
+
+            for (let i = 0; i < numPersonas; i++) {
+                const villager = await generateVillager(villageContext, villagers);
+                if (villager) villagers.push(villager);
+            }
+
+            updateVillageMap();
+            updateCharacterInfo();
+
+            hideLoader();
+        }
+
+        function showLoader(message) {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('informationParagraph').textContent = message;
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        document.getElementById('pauseBtn').addEventListener('click', () => {
+            simulationRunning = false;
+            document.getElementById('startPauseBtn').textContent = 'Start Simulation';
+            hideLoader();
+        });
+        document.getElementById('numPlaces').addEventListener('change', saveParameters);
+        document.getElementById('numPersonas').addEventListener('change', saveParameters);
+        document.getElementById('villageContext').addEventListener('change', saveParameters);
+        document.getElementById('maxSteps').addEventListener('change', saveParameters);
+        document.getElementById('speedControl').addEventListener('change', saveParameters);
+
+        // Load parameters when the page loads
+        document.addEventListener('DOMContentLoaded', loadParameters);
+    </script>
+</body>
+</html>
