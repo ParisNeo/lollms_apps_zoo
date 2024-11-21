@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebScout Intelligence</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <style>
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(5px);
+            z-index: 40;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 50;
+        }
+        .loading {
+            text-align: center;
+            color: #4F46E5;
+        }
+        .spinner {
+            font-size: 64px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg) }
+            100% { transform: rotate(-360deg) }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-indigo-50 to-purple-50 min-h-screen">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading">
+            <div class="spinner">🌟</div>
+            <div class="mt-4 text-lg font-semibold">Processing...</div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-2">WebScout Intelligence</h1>
+            <p class="text-gray-600">Extract, Process & Structure Web Content</p>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Input Section -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Input Configuration</h2>
+                
+                <!-- URL Input -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Add URL</label>
+                    <div class="flex gap-2">
+                        <input type="url" id="urlInput" placeholder="Enter URL" 
+                               class="flex-1 border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="addUrl()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                            Add
+                        </button>
+                    </div>
+                </div>
+
+                <!-- URL List -->
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">URLs to Process</label>
+                    <div id="urlList" class="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2">
+                        <!-- URLs will be added here -->
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Crawling Depth</label>
+                        <input type="number" id="depthInput" value="1" min="1" max="5" 
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Chunk Size</label>
+                        <input type="number" id="chunkSizeInput" value="4096" min="1024" step="1024"
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-4">
+                    <button onclick="startProcessing()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Start Processing
+                    </button>
+                    <button onclick="resetAll()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Reset All
+                    </button>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Processing Status</h2>
+                
+                <!-- Progress Steps -->
+                <div class="space-y-4">
+                    <div id="step1" class="p-3 rounded-md bg-gray-50">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-semibold">1. Web Scraping</span>
+                            <span id="step1Status" class="text-gray-500">Waiting...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="step1Progress" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="step2" class="p-3 rounded-md bg-gray-50">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-semibold">2. Text Processing</span>
+                            <span id="step2Status" class="text-gray-500">Waiting...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="step2Progress" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="step3" class="p-3 rounded-md bg-gray-50">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-semibold">3. Subject Extraction</span>
+                            <span id="step3Status" class="text-gray-500">Waiting...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="step3Progress" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="step4" class="p-3 rounded-md bg-gray-50">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-semibold">4. Content Refinement</span>
+                            <span id="step4Status" class="text-gray-500">Waiting...</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div id="step4Progress" class="bg-indigo-600 h-2 rounded-full" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div class="mt-8 bg-white rounded-lg shadow-lg p-6">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Results</h2>
+            
+            <!-- Subjects List -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="col-span-1">
+                    <h3 class="text-lg font-semibold mb-3">Subjects</h3>
+                    <div id="subjectsList" class="border border-gray-200 rounded-md p-2 max-h-96 overflow-y-auto">
+                        <!-- Subjects will be added here -->
+                    </div>
+                </div>
+
+                <!-- Content Preview -->
+                <div class="lg:col-span-2">
+                    <h3 class="text-lg font-semibold mb-3">Content Preview</h3>
+                    <div id="contentPreview" class="border border-gray-200 rounded-md p-4 max-h-96 overflow-y-auto">
+                        <!-- Content will be shown here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Options -->
+            <div class="mt-6 flex gap-4">
+                <button onclick="exportData('json')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Export JSON
+                </button>
+                <button onclick="exportData('markdown')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Export Markdown
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lollms Client
+        const lc = new LollmsClient();
+        let state = {
+            urls: [],
+            depth: 1,
+            chunkSize: 4096,
+            rawText: '',
+            chunks: [],
+            subjects: [],
+            processedData: {},
+            currentStep: 0,
+            processedChunks: 0
+        };
+
+        // Load state from localStorage if exists
+        function loadState() {
+            const savedState = localStorage.getItem('webscoutState');
+            if (savedState) {
+                state = JSON.parse(savedState);
+                updateUI();
+            }
+        }
+
+        // Save state to localStorage
+        function saveState() {
+            localStorage.setItem('webscoutState', JSON.stringify(state));
+        }
+
+        // Show/Hide loading overlay
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        // URL Management
+        function addUrl() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            
+            if (url && isValidUrl(url) && !state.urls.includes(url)) {
+                state.urls.push(url);
+                urlInput.value = '';
+                updateUrlList();
+                saveState();
+            }
+        }
+
+        function removeUrl(url) {
+            state.urls = state.urls.filter(u => u !== url);
+            updateUrlList();
+            saveState();
+        }
+
+        function isValidUrl(string) {
+            try {
+                new URL(string);
+                return true;
+            } catch (_) {
+                return false;
+            }
+        }
+
+        function updateUrlList() {
+            const urlList = document.getElementById('urlList');
+            urlList.innerHTML = state.urls.map(url => `
+                <div class="flex justify-between items-center p-2 hover:bg-gray-50">
+                    <span class="truncate">${url}</span>
+                    <button onclick="removeUrl('${url}')" class="text-red-600 hover:text-red-800">×</button>
+                </div>
+            `).join('');
+        }
+
+        // Processing Steps
+        async function startProcessing() {
+            if (state.urls.length === 0) return;
+            
+            state.depth = parseInt(document.getElementById('depthInput').value);
+            state.chunkSize = parseInt(document.getElementById('chunkSizeInput').value);
+            
+            try {
+                showLoader();
+                await scrapeUrls();
+                await processText();
+                await extractSubjects();
+                await refineContent();
+                hideLoader();
+            } catch (error) {
+                console.error('Processing error:', error);
+                hideLoader();
+            }
+        }
+
+        async function scrapeUrls() {
+            urls=state.urls
+            depth = state.depth
+            updateStepStatus(1, 'Scraping');
+          
+            try {
+                const response = await axios.post('http://localhost:8000/scrape', {
+                    urls,
+                    depth,
+                });
+                console.log(response.data)
+                if (!response.data.status=="success") {
+                    throw new Error(response.data.error || 'An error occurred');
+                }
+            
+                console.log(response.data.result);
+                updateStepStatus(1, 'Complete');
+                state.rawText =response.data.data
+                console.log("Received data",state.rawText)
+                saveState();
+                renderProcessedData();
+            } catch (error) {
+              console.error('Error:', error);
+              updateStepStatus(1, 'Failed');
+            }
+          }
+          
+          // Placeholder functions
+          function updateStepStatus(step, status) {
+            console.log(`Step ${step} status: ${status}`);
+          }
+          
+          function saveState() {
+            console.log('Saving state...');
+          }
+          
+
+        async function processText() {
+            try {
+                updateStepStatus(2, 'Processing');
+                
+                // Tokenize the input text
+                console.log(state.rawText)
+                const tokens_dict = await lc.tokenize(state.rawText);
+                const tokens = tokens_dict.map(token => token[1]);
+                console.log(tokens)
+                const totalTokens = tokens.length;
+                console.log(`Found ${totalTokens} tokens`)
+                state.chunks = [];
+                
+                // Calculate number of chunks
+                const chunkSize = state.chunkSize;
+                
+                // Process tokens in chunks
+                for (let i = 0; i < totalTokens; i += chunkSize) {
+                    // Get chunk of tokens
+                    const chunkTokens = tokens.slice(i, i + chunkSize);
+                    
+                    // Convert tokens back to text
+                    const chunkText = await lc.detokenize(chunkTokens);
+                    console.log("Adding chunk:")
+                    console.log(chunkText)
+                    
+                    // Add chunk to state
+                    state.chunks.push({
+                        text: chunkText,
+                        tokenCount: chunkTokens.length,
+                        startToken: i,
+                        endToken: i + chunkTokens.length
+                    });
+                }
+        
+                // Update token count in state
+                state.totalTokens = totalTokens;
+                
+                updateStepStatus(2, 'Complete');
+                saveState();
+                renderProcessedData();
+            } catch (error) {
+                console.error('Error processing text:', error);
+                updateStepStatus(2, 'Error');
+                throw error;
+            }
+        }
+        
+
+        async function extractSubjects() {
+            try {
+                updateStepStatus(3, 'Processing');
+                
+                if (!state.chunks || state.chunks.length === 0) {
+                    throw new Error('No chunks available for processing');
+                }
+        
+                // Initialize subjects if not exists
+                if (!state.subjects) {
+                    state.subjects = [];
+                }
+        
+                // Initialize subject contents if not exists
+                if (!state.processedData) {
+                    state.processedData = {};
+                }
+        
+                // Process each chunk
+                for (let i = 0; i < state.chunks.length; i++) {
+                    updateStepStatus(3, `Processing chunk ${i + 1}/${state.chunks.length}`);
+                    
+                    const chunk = state.chunks[i].text;
+                    const result = await processChunkWithLLM(chunk, state.subjects);
+                    
+                    if (result) {
+
+                        const resultSubjects = Object.keys(result.extracted_infos);
+
+                        // Fuse the subject lists
+                        const fusedSubjects = [...state.subjects, ...resultSubjects].filter((subject, index, self) => {
+                          return self.indexOf(subject) === index;
+                        });
+                        state.subjects = fusedSubjects;
+        
+                        // Update subject contents
+                        for (const [subject, content] of Object.entries(result.extracted_infos)) {
+                            if (state.processedData[subject]) {
+                                // If subject exists, append new content
+                                state.processedData[subject] += '\n\n' + content;
+                            } else {
+                                // If new subject, create new entry
+                                state.processedData[subject] = content;
+                            }
+                        }
+                    }
+                }
+        
+                // Refine all subject contents
+                updateStepStatus(3, 'Refining subjects');
+                const refinementPromises = state.subjects.map(async subject => {
+                    const content = state.processedData[subject];
+                    const refinedContent = await refineSubjectContent(subject, content);
+                    state.processedData[subject] = refinedContent;
+                });
+        
+                // Wait for all refinements to complete
+                await Promise.all(refinementPromises);
+        
+                updateStepStatus(3, 'Complete');
+                saveState();
+                renderProcessedData();
+                return {
+                    subjects: state.subjects,
+                    processedData: state.processedData
+                };
+        
+            } catch (error) {
+                console.error('Error in subject extraction:', error);
+                updateStepStatus(3, 'Error');
+                throw error;
+            }
+        }
+        
+
+        async function refineContent() {
+            try {
+                updateStepStatus(4, 'Processing');
+        
+                // Check if subjects and content exist
+                if (!state.subjects || !state.processedData) {
+                    throw new Error('No subjects or content available for refinement');
+                }
+        
+                // Create a copy of the original content for comparison
+                const originalContents = { ...state.processedData };
+        
+                // Process each subject's content
+                const totalSubjects = state.subjects.length;
+                let processedSubjects = 0;
+        
+                // Use Promise.all for parallel processing
+                const refinementPromises = state.subjects.map(async (subject) => {
+                    try {
+                        // Get current content
+                        const currentContent = state.processedData[subject];
+                        
+                        // Skip if content is empty
+                        if (!currentContent || currentContent.trim() === '') {
+                            return;
+                        }
+        
+                        // Refine the content
+                        const refinedContent = await refineSubjectContent(subject, currentContent);
+                        
+                        // Update the state with refined content
+                        state.processedData[subject] = refinedContent;
+        
+                        // Update progress
+                        processedSubjects++;
+                        updateStepStatus(4, `Refined ${processedSubjects}/${totalSubjects} subjects`);
+        
+                    } catch (error) {
+                        console.error(`Error refining content for subject "${subject}":`, error);
+                        // Keep original content in case of error
+                        state.processedData[subject] = originalContents[subject];
+                    }
+                });
+        
+                // Wait for all refinements to complete
+                await Promise.all(refinementPromises);
+        
+                // Calculate statistics
+                const stats = {
+                    totalSubjects: totalSubjects,
+                    refinedSubjects: processedSubjects,
+                    failedSubjects: totalSubjects - processedSubjects,
+                    changes: {}
+                };
+        
+                // Compare original and refined contents
+                for (const subject of state.subjects) {
+                    const originalLength = originalContents[subject]?.length || 0;
+                    const refinedLength = state.processedData[subject]?.length || 0;
+                    
+                    stats.changes[subject] = {
+                        originalLength,
+                        refinedLength,
+                        changeDelta: refinedLength - originalLength
+                    };
+                }
+        
+                // Store refinement statistics in state
+                state.refinementStats = stats;
+        
+                updateStepStatus(4, 'Complete');
+                saveState();
+                renderProcessedData();        
+                return {
+                    processedData: state.processedData,
+                    stats: stats
+                };
+        
+            } catch (error) {
+                console.error('Error in content refinement:', error);
+                updateStepStatus(4, 'Error');
+                throw error;
+            }
+        }
+        
+
+        // UI Updates
+        function updateStepStatus(step, status) {
+            const stepElement = document.getElementById(`step${step}`);
+            const statusElement = document.getElementById(`step${step}Status`);
+            const progressElement = document.getElementById(`step${step}Progress`);
+            
+            statusElement.textContent = status;
+            if (status === 'Complete') {
+                progressElement.style.width = '100%';
+                stepElement.classList.add('bg-green-50');
+            } else if (status === 'Processing') {
+                progressElement.style.width = '50%';
+                stepElement.classList.add('bg-yellow-50');
+            }
+        }
+
+        function updateUI() {
+            updateUrlList();
+            document.getElementById('depthInput').value = state.depth;
+            document.getElementById('chunkSizeInput').value = state.chunkSize;
+            // Update other UI elements based on state
+        }
+
+        function resetAll() {
+            state = {
+                urls: [],
+                depth: 1,
+                chunkSize: 4096,
+                rawText: '',
+                chunks: [],
+                subjects: [],
+                processedData: {},
+                currentStep: 0,
+                processedChunks: 0
+            };
+            localStorage.removeItem('webscoutState');
+            updateUI();
+            location.reload();
+        }
+
+        // Export Functions
+        function exportData(format) {
+            if (format === 'json') {
+                const dataStr = JSON.stringify(state.processedData, null, 2);
+                downloadFile(dataStr, 'webscout-data.json', 'application/json');
+            } else if (format === 'markdown') {
+                let mdContent = '# WebScout Intelligence Report\n\n';
+                for (const [subject, content] of Object.entries(state.processedData)) {
+                    mdContent += `## ${subject}\n\n${content}\n\n`;
+                }
+                downloadFile(mdContent, 'webscout-report.md', 'text/markdown');
+            }
+        }
+
+        function downloadFile(content, filename, contentType) {
+            const blob = new Blob([content], { type: contentType });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        }
+
+        // LLM Processing Functions
+        async function processChunkWithLLM(chunk, currentSubjects) {
+            const prompt = `
+${lc.system_message()}Analyze the following text chunk and update the list of subjects. Extract relevant information for each subject.
+Current subjects list:
+${currentSubjects.join(', ')}
+Text chunk:
+${chunk}
+
+Generate a JSON response in the following format:
+\`\`\`json
+{
+    "extracted_infos": {
+        "subject1": "extracted info",
+        "subject2": "extracted info"
+    }
+}
+\`\`\`
+Make sure to reuse subjects that are already in the list if possible. If you need to create new subjects, then do.
+${lc.template.separator_template}${lc.ai_message()}`;
+
+            try {
+                const response = await lc.generateCode(prompt);
+                return JSON.parse(response);
+            } catch (error) {
+                console.error('Error processing chunk with LLM:', error);
+                return null;
+            }
+        }
+
+        async function refineSubjectContent(subject, content) {
+            const prompt = `
+${lc.system_message()}Rewrite and organize the following content for the subject "${subject}" in a clear and structured format:
+${content}${lc.template.separator_template}${lc.ai_message()}`;
+
+            try {
+                return await lc.generate(prompt);
+            } catch (error) {
+                console.error('Error refining subject content:', error);
+                return content;
+            }
+        }
+
+        async function createChunks(tokens, chunkSize) {
+            const chunks = [];
+            for (let i = 0; i < tokens.length; i += chunkSize) {
+                chunks.push(tokens.slice(i, i + chunkSize));
+            }
+            return chunks;
+        }
+
+        // Web Scraping Functions
+        async function scrapeWebPage(url, depth = 1) {
+            try {
+                const response = await fetch(url);
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                let text = '';
+                
+                // Extract text from relevant elements
+                const elements = doc.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span');
+                elements.forEach(element => {
+                    const content = element.textContent.trim();
+                    if (content) {
+                        text += content + '\n\n';
+                    }
+                });
+
+                // If depth > 1, find and process links
+                if (depth > 1) {
+                    const links = doc.querySelectorAll('a');
+                    for (const link of links) {
+                        const href = link.href;
+                        if (isValidUrl(href) && !state.urls.includes(href)) {
+                            text += await scrapeWebPage(href, depth - 1);
+                        }
+                    }
+                }
+
+                return text;
+            } catch (error) {
+                console.error(`Error scraping ${url}:`, error);
+                return '';
+            }
+        }
+        function renderProcessedData() {
+            // Clear the lists
+            const subjectsList = document.getElementById('subjectsList');
+            subjectsList.innerHTML = '';
+            const contentPreview = document.getElementById('contentPreview');
+            contentPreview.innerHTML = '';
+          
+            // Render subjects list
+            Object.keys(state.processedData).forEach((subject) => {
+              const listItem = document.createElement('div');
+              listItem.classList.add('p-2', 'border-b', 'border-gray-200');
+              listItem.textContent = subject;
+              subjectsList.appendChild(listItem);
+            });
+          
+            // Render content preview
+            Object.entries(state.processedData).forEach(([subject, content]) => {
+              const previewItem = document.createElement('div');
+              previewItem.classList.add('mb-4');
+              previewItem.innerHTML = `
+                <h4 class="text-md font-semibold mb-2">${subject}</h4>
+                <p>${content.substring(0, 200)}...</p>
+                <button onclick="showFullContent('${subject}')">Show full content</button>
+              `;
+              contentPreview.appendChild(previewItem);
+            });
+          }
+          
+          // Add event listener to show full content
+          function showFullContent(subject) {
+            alert(`Full content of "${subject}":\n\n${state.processedData[subject]}`);
+          }
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            hideLoader();
+        });
+    </script>
+</body>
+</html>

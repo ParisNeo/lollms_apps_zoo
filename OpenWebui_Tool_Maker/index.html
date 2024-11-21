@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenWebUI Tool Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/prism.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/9000.0.1/prism.min.js" rel="stylesheet" />
+    <style>
+        .overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.8);display:none;justify-content:center;align-items:center;z-index:1000}
+        .loading{text-align:center;color:#4f46e5}
+        .spinner{font-size:64px;animation:spin 2s linear infinite}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(-360deg)}}
+        pre {max-height: 500px; overflow-y: auto;}
+    </style>
+</head>
+<body class="bg-gradient-to-r from-indigo-50 to-purple-50 min-h-screen">
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="spinner">🌟</div>
+            <div class="mt-4 text-lg font-semibold">Generating Tool Code...</div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">OpenWebUI Tool Maker</h1>
+        
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Tool Description</h2>
+                <textarea id="promptInput" rows="10" class="w-full p-4 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none mb-4" placeholder="Describe your OpenWebUI tool functionality here..."></textarea>
+                
+                <div class="flex gap-4">
+                    <button onclick="generateToolCode()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                        Generate Tool Code
+                    </button>
+                    <button onclick="clearAll()" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-6 rounded-lg transition duration-300">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold text-indigo-700">Generated Code</h2>
+                    <button onclick="copyCode()" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-700 font-semibold py-2 px-4 rounded-lg transition duration-300 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        Copy Code
+                    </button>
+                </div>
+                <pre><code id="codeOutput" class="language-python"></code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lc;
+        let currentCode = "";
+
+        window.onload = async function() {
+            lc = new LollmsClient(null, null, 4096);
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        async function generateToolCode() {
+            const prompt = document.getElementById('promptInput').value;
+            if (!prompt) {
+                alert("Please enter a tool description");
+                return;
+            }
+
+            showLoader();
+            try {
+                const systemPrompt = "You are a Python developer specializing in creating OpenWebUI tools. Generate a well-structured Python class with type hints and Sphinx-style documentation for the following tool description. Follow the example structure and ensure proper error handling.";
+                const userPrompt = prompt;
+                
+                const fullPrompt = `${systemPrompt}\n\nTool Description: ${userPrompt}\n\nExample structure to follow:\n
+The class name must be Tools
+Here is an example:
+\`\`\`python
+import os
+import requests
+from datetime import datetime
+
+
+class Tools:
+    def __init__(self):
+        pass
+
+    def get_user_name_and_email_and_id(self, __user__: dict = {}) -> str:
+        """
+        Get the user name, Email and ID from the user object.
+        """
+        print(__user__)
+        result = ""
+
+        if "name" in __user__:
+            result += f"User: {__user__['name']}"
+        if "id" in __user__:
+            result += f" (ID: {__user__['id']})"
+        if "email" in __user__:
+            result += f" (Email: {__user__['email']})"
+
+        if result == "":
+            result = "User: Unknown"
+
+        return result
+
+    def get_current_time(self) -> str:
+        """
+        Get the current time in a more human-readable format.
+        :return: The current time.
+        """
+        now = datetime.now()
+        current_time = now.strftime("%I:%M:%S %p")
+        current_date = now.strftime("%A, %B %d, %Y")
+        return f"Current Date and Time = {current_date}, {current_time}"
+
+    def calculator(self, equation: str) -> str:
+        """
+        Calculate the result of an equation.
+        :param equation: The equation to calculate.
+        """
+        try:
+            result = eval(equation)
+            return f"{equation} = {result}"
+        except Exception as e:
+            print(e)
+            return "Invalid equation"
+
+    def get_current_weather(self, city: str) -> str:
+        """
+        Get the current weather for a given city.
+        :param city: The name of the city to get the weather for.
+        :return: The current weather information or an error message.
+        """
+        api_key = os.getenv("OPENWEATHER_API_KEY")
+        if not api_key:
+            return "API key is not set in the environment variable 'OPENWEATHER_API_KEY'."
+
+        base_url = "http://api.openweathermap.org/data/2.5/weather"
+        params = {
+            "q": city,
+            "appid": api_key,
+            "units": "metric",
+        }
+
+        try:
+            response = requests.get(base_url, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if data.get("cod") != 200:
+                return f"Error fetching weather data: {data.get('message')}"
+
+            weather_description = data["weather"][0]["description"]
+            temperature = data["main"]["temp"]
+            humidity = data["main"]["humidity"]
+            wind_speed = data["wind"]["speed"]
+
+            return f"Weather in {city}: {temperature}°C"
+        except requests.RequestException as e:
+            return f"Error fetching weather data: {str(e)}"
+\`\`\`
+`;
+                
+                const code = await lc.generateCode(fullPrompt);
+                if (code) {
+                    currentCode = code;
+                    document.getElementById('codeOutput').textContent = code;
+                    Prism.highlightElement(document.getElementById('codeOutput'));
+                }
+            } catch (error) {
+                console.error("Error generating code:", error);
+                alert("Error generating code. Please try again.");
+            }
+            hideLoader();
+        }
+
+        function copyCode() {
+            if (!currentCode) {
+                alert("No code to copy!");
+                return;
+            }
+            navigator.clipboard.writeText(currentCode)
+                .then(() => alert("Code copied to clipboard!"))
+                .catch(err => console.error("Failed to copy code:", err));
+        }
+
+        function clearAll() {
+            document.getElementById('promptInput').value = '';
+            document.getElementById('codeOutput').textContent = '';
+            currentCode = "";
+            Prism.highlightElement(document.getElementById('codeOutput'));
+        }
+    </script>
+</body>
+</html>
