@@ -51,6 +51,7 @@
         <div class="loading">
             <div class="spinner">🌟</div>
             <div class="mt-4 text-lg font-semibold">Processing...</div>
+            <button id="cancelBtn">Cancel</button>
         </div>
     </div>
 
@@ -209,6 +210,15 @@
             currentStep: 0,
             processedChunks: 0
         };
+        // Create an AbortController and an AbortSignal
+        const controller = new AbortController();
+        const signal = controller.signal;        
+        // Cancel button click event listener
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            controller.abort();
+            hideLoader();
+            console.log('All operations cancelled.');
+        });        
 
         // Load state from localStorage if exists
         function loadState() {
