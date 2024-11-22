@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Maze Navigator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .cell { width: 30px; height: 30px; }
+        .robot { font-size: 20px; transition: all 0.5s ease; }
+        .command { width: 25px; height: 25px; }
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+        }
+        .settings-popup {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        @keyframes moveRobot {
+            0% { transform: translate(0, 0) rotate(var(--rotation)); }
+            100% { transform: translate(var(--moveX), var(--moveY)) rotate(var(--rotation)); }
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 text-center mb-8">Robot Maze Navigator</h1>
+        
+        <div id="startScreen" class="bg-white shadow-lg rounded-lg p-6 mb-8 text-center">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">Welcome to Robot Maze Navigator!</h2>
+            <p class="mb-4">Guide your robot through increasingly challenging mazes using directional commands.</p>
+            <button id="startButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Start Game</button>
+            <button id="instructionsButton" class="bg-indigo-200 hover:bg-indigo-300 text-indigo-800 font-bold py-2 px-4 rounded transition duration-300 ml-4">Instructions</button>
+        </div>
+
+        <div id="gameArea" class="hidden">
+            <div class="flex flex-col md:flex-row gap-8">
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Maze</h2>
+                    <div id="grid" class="grid gap-0.5 mb-4"></div>
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <span class="font-bold text-indigo-800">Level: </span>
+                            <span id="levelDisplay">1</span>
+                        </div>
+                        <div>
+                            <span class="font-bold text-indigo-800">Score: </span>
+                            <span id="scoreDisplay">0</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-white shadow-lg rounded-lg p-6 mb-8 flex-1">
+                    <h2 class="text-2xl font-bold text-indigo-700 mb-4">Commands</h2>
+                    <div class="flex space-x-2 mb-4">
+                        <button class="command bg-indigo-200 hover:bg-indigo-300 rounded" onclick="addCommand('F')">⬆️</button>
+                        <button class="command bg-indigo-200 hover:bg-indigo-300 rounded" onclick="addCommand('L')">⬅️</button>
+                        <button class="command bg-indigo-200 hover:bg-indigo-300 rounded" onclick="addCommand('R')">➡️</button>
+                    </div>
+                    <div id="commandSequence" class="bg-gray-100 p-2 rounded mb-4 min-h-[100px]"></div>
+                    <div class="flex space-x-2">
+                        <button id="executeButton" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">Execute</button>
+                        <button id="resetButton" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">Reset</button>
+                        <button id="undoButton" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded transition duration-300">Undo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="leaderboardArea" class="hidden bg-white shadow-lg rounded-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold text-indigo-700 mb-4">Leaderboard</h2>
+            <table class="w-full">
+                <thead>
+                    <tr>
+                        <th class="text-left">Rank</th>
+                        <th class="text-left">Name</th>
+                        <th class="text-left">Score</th>
+                    </tr>
+                </thead>
+                <tbody id="leaderboardBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="levelCompleteOverlay" class="blurred-overlay"></div>
+    <div id="levelCompletePopup" class="settings-popup">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">Level Complete!</h2>
+        <p class="mb-4">Great job! You've completed the level.</p>
+        <button id="nextLevelButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Next Level</button>
+    </div>
+
+    <div id="gameOverOverlay" class="blurred-overlay"></div>
+    <div id="gameOverPopup" class="settings-popup">
+        <h2 class="text-2xl font-bold text-indigo-700 mb-4">Game Over</h2>
+        <p class="mb-4">Oh no! Your robot encountered a hazard.</p>
+        <p class="mb-4">Final Score: <span id="finalScore"></span></p>
+        <input type="text" id="playerName" placeholder="Enter your name" class="border border-indigo-300 rounded-md p-2 mb-4 w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <button id="submitScoreButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Submit Score</button>
+        <button id="restartButton" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300 ml-2">Restart Game</button>
+    </div>
+
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div style="margin-top:20px">Interrogating L🍓LLMS ...</div>
+        </div>
+    </div>
+
+    <script>
+        let gridSize = 10;
+        let currentLevel = 1;
+        let score = 0;
+        let commandSequence = [];
+        let robotPosition = { x: 0, y: 0 };
+        let objectivePosition = { x: 0, y: 0 };
+        let maze = [];
+        let robotDirection = 0;
+
+        function initializeGame() {
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('gameArea').classList.remove('hidden');
+            resetLevel();
+        }
+
+        function resetLevel() {
+            commandSequence = [];
+            updateCommandDisplay();
+            createMaze();
+            updateScoreDisplay();
+            robotDirection = 0;
+            placeRobot();
+        }
+
+        function createMaze() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            maze = [];
+            gridSize = 10 + Math.floor(currentLevel / 2);
+            grid.style.gridTemplateColumns = `repeat(${gridSize}, 30px)`;
+
+            for (let y = 0; y < gridSize; y++) {
+                let row = [];
+                for (let x = 0; x < gridSize; x++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    
+                    let cellType = Math.random() < 0.7 ? 'road' : (Math.random() < 0.5 ? 'water' : 'fire');
+                    if (x === 0 && y === 0) cellType = 'road';
+                    
+                    cell.style.backgroundColor = cellType === 'road' ? 'green' : (cellType === 'water' ? 'blue' : 'red');
+                    grid.appendChild(cell);
+                    row.push(cellType);
+                }
+                maze.push(row);
+            }
+
+            robotPosition = { x: 0, y: 0 };
+
+            do {
+                objectivePosition = {
+                    x: Math.floor(Math.random() * gridSize),
+                    y: Math.floor(Math.random() * gridSize)
+                };
+            } while (maze[objectivePosition.y][objectivePosition.x] !== 'road' || 
+                     (objectivePosition.x === 0 && objectivePosition.y === 0));
+            
+            const objectiveCell = grid.children[objectivePosition.y * gridSize + objectivePosition.x];
+            objectiveCell.innerHTML = '🏁';
+        }
+
+        function placeRobot() {
+            const grid = document.getElementById('grid');
+            Array.from(grid.children).forEach(cell => {
+                if (cell.querySelector('.robot')) {
+                    cell.removeChild(cell.querySelector('.robot'));
+                }
+            });
+            const robotCell = grid.children[robotPosition.y * gridSize + robotPosition.x];
+            const robotElement = document.createElement('div');
+            robotElement.className = 'robot';
+            robotElement.innerHTML = '🤖';
+            robotElement.style.transform = `rotate(${robotDirection * 90}deg)`;
+            robotCell.appendChild(robotElement);
+        }
+
+        function addCommand(command) {
+            commandSequence.push(command);
+            updateCommandDisplay();
+        }
+
+        function updateCommandDisplay() {
+            const display = document.getElementById('commandSequence');
+            display.innerHTML = commandSequence.map(cmd => 
+                `<span class="inline-block bg-indigo-200 rounded p-1 m-1">${cmd === 'F' ? '⬆️' : (cmd === 'L' ? '⬅️' : '➡️')}</span>`
+            ).join('');
+        }
+
+        function executeCommands() {
+            let currentIndex = 0;
+            const interval = setInterval(() => {
+                if (currentIndex < commandSequence.length) {
+                    executeCommand(commandSequence[currentIndex]);
+                    currentIndex++;
+                } else {
+                    clearInterval(interval);
+                    checkLevelComplete();
+                }
+            }, 1000);
+        }
+
+        function executeCommand(command) {
+            let newX = robotPosition.x;
+            let newY = robotPosition.y;
+
+            switch(command) {
+                case 'F':
+                    switch(robotDirection) {
+                        case 0: if (newY > 0) newY--; break;
+                        case 1: if (newX < gridSize - 1) newX++; break;
+                        case 2: if (newY < gridSize - 1) newY++; break;
+                        case 3: if (newX > 0) newX--; break;
+                    }
+                    break;
+                case 'L':
+                    robotDirection = (robotDirection - 1 + 4) % 4;
+                    break;
+                case 'R':
+                    robotDirection = (robotDirection + 1) % 4;
+                    break;
+            }
+
+            const robotElement = document.querySelector('.robot');
+            robotElement.style.transition = 'transform 0.5s ease';
+            robotElement.style.setProperty('--rotation', `${robotDirection * 90}deg`);
+
+            if (newX !== robotPosition.x || newY !== robotPosition.y) {
+                const moveX = (newX - robotPosition.x) * 30;
+                const moveY = (newY - robotPosition.y) * 30;
+                robotElement.style.setProperty('--moveX', `${moveX}px`);
+                robotElement.style.setProperty('--moveY', `${moveY}px`);
+                robotElement.style.animation = 'moveRobot 0.5s forwards';
+
+                setTimeout(() => {
+                    robotPosition.x = newX;
+                    robotPosition.y = newY;
+                    placeRobot();
+                    checkHazard();
+                }, 500);
+            } else {
+                robotElement.style.transform = `rotate(${robotDirection * 90}deg)`;
+                setTimeout(checkHazard, 500);
+            }
+        }
+
+        function checkHazard() {
+            const currentCell = maze[robotPosition.y][robotPosition.x];
+            if (currentCell === 'water' || currentCell === 'fire') {
+                gameOver();
+            }
+        }
+
+        function checkLevelComplete() {
+            if (robotPosition.x === objectivePosition.x && robotPosition.y === objectivePosition.y) {
+                score += currentLevel * 10;
+                currentLevel++;
+                updateScoreDisplay();
+                showLevelCompletePopup();
+            }
+        }
+
+        function showLevelCompletePopup() {
+            document.getElementById('levelCompleteOverlay').style.display = 'block';
+            document.getElementById('levelCompletePopup').style.display = 'block';
+        }
+
+        function hideLevelCompletePopup() {
+            document.getElementById('levelCompleteOverlay').style.display = 'none';
+            document.getElementById('levelCompletePopup').style.display = 'none';
+        }
+
+        function gameOver() {
+            document.getElementById('gameOverOverlay').style.display = 'block';
+            document.getElementById('gameOverPopup').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+        }
+
+        function submitScore() {
+            const playerName = document.getElementById('playerName').value;
+            if (playerName) {
+                updateLeaderboard(playerName, score);
+                hideGameOverPopup();
+                showLeaderboard();
+            }
+        }
+
+        function hideGameOverPopup() {
+            document.getElementById('gameOverOverlay').style.display = 'none';
+            document.getElementById('gameOverPopup').style.display = 'none';
+        }
+
+        function updateScoreDisplay() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('levelDisplay').textContent = currentLevel;
+        }
+
+function updateLeaderboard(name, score) {
+            let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            leaderboard.push({ name, score });
+            leaderboard.sort((a, b) => b.score - a.score);
+            leaderboard = leaderboard.slice(0, 10);
+            localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+            displayLeaderboard();
+        }
+
+        function displayLeaderboard() {
+            const leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+            const leaderboardBody = document.getElementById('leaderboardBody');
+            leaderboardBody.innerHTML = '';
+            leaderboard.forEach((entry, index) => {
+                const row = leaderboardBody.insertRow();
+                row.insertCell(0).textContent = index + 1;
+                row.insertCell(1).textContent = entry.name;
+                row.insertCell(2).textContent = entry.score;
+            });
+        }
+
+        function showLeaderboard() {
+            document.getElementById('gameArea').classList.add('hidden');
+            document.getElementById('leaderboardArea').classList.remove('hidden');
+            displayLeaderboard();
+        }
+
+        function undoLastCommand() {
+            if (commandSequence.length > 0) {
+                commandSequence.pop();
+                updateCommandDisplay();
+            }
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        document.getElementById('startButton').addEventListener('click', initializeGame);
+        document.getElementById('executeButton').addEventListener('click', executeCommands);
+        document.getElementById('resetButton').addEventListener('click', resetLevel);
+        document.getElementById('undoButton').addEventListener('click', undoLastCommand);
+        document.getElementById('nextLevelButton').addEventListener('click', () => {
+            hideLevelCompletePopup();
+            resetLevel();
+        });
+        document.getElementById('submitScoreButton').addEventListener('click', submitScore);
+        document.getElementById('restartButton').addEventListener('click', () => {
+            hideGameOverPopup();
+            currentLevel = 1;
+            score = 0;
+            resetLevel();
+        });
+
+        createMaze();
+        hideLoader();
+    </script>
+</body>
+</html>
