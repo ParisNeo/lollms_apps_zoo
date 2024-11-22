@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailwind CSS Class Tester</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #sample-text {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">Tailwind CSS Class Tester</h1>
+        </header>
+        
+        <main class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <div class="mb-6">
+                <label for="category-select" class="block text-sm font-medium text-gray-700 mb-2">Select Category:</label>
+                <select id="category-select" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select a category</option>
+                    <option value="text">Text</option>
+                    <option value="background">Background</option>
+                    <option value="layout">Layout</option>
+                    <option value="flexbox">Flexbox</option>
+                    <option value="grid">Grid</option>
+                    <option value="border">Border</option>
+                    <option value="shadow">Shadow</option>
+                    <option value="hover">Hover</option>
+                    <option value="transition">Transition</option>
+                    <option value="position">Position</option>
+                    <option value="overflow">Overflow</option>
+                    <option value="cursor">Cursor</option>
+                    <option value="opacity">Opacity</option>
+                    <option value="zIndex">Z-Index</option>
+                    <option value="cursor">Cursor</option>
+                </select>
+            </div>
+            
+            <div class="mb-6">
+                <label for="class-select" class="block text-sm font-medium text-gray-700 mb-2">Select Class:</label>
+                <select id="class-select" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">Select a class</option>
+                </select>
+            </div>
+            
+            <div class="mb-6">
+                <button id="add-class-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Add Class
+                </button>
+            </div>
+            
+            <div class="mb-6">
+                <label for="class-input" class="block text-sm font-medium text-gray-700 mb-2">Applied Classes:</label>
+                <input type="text" id="class-input" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2">Preview:</h2>
+                <div id="sample-text" class="p-4 border border-gray-300 rounded-md min-h-[100px]">
+                    Sample text to demonstrate Tailwind CSS classes
+                </div>
+            </div>
+            
+            <div class="flex justify-end">
+                <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Reset
+                </button>
+            </div>
+        </main>
+        
+        <footer class="text-center text-sm text-gray-600">
+            <p>Select a category and class, then click 'Add Class' to see the effect on the sample text.</p>
+        </footer>
+    </div>
+
+    <script>
+        const categorySelect = document.getElementById('category-select');
+        const classSelect = document.getElementById('class-select');
+        const addClassBtn = document.getElementById('add-class-btn');
+        const classInput = document.getElementById('class-input');
+        const sampleText = document.getElementById('sample-text');
+        const resetButton = document.getElementById('reset-button');
+
+        const classOptions = {
+        text: [
+            // Font size
+            'text-xs', 'text-sm', 'text-base', 'text-lg', 'text-xl', 'text-2xl', 'text-3xl', 'text-4xl', 'text-5xl', 'text-6xl', 'text-7xl', 'text-8xl', 'text-9xl',
+            // Font weight
+            'font-thin', 'font-extralight', 'font-light', 'font-normal', 'font-medium', 'font-semibold', 'font-bold', 'font-extrabold', 'font-black',
+            // Text color
+            'text-black', 'text-white',
+            'text-gray-50', 'text-gray-100', 'text-gray-200', 'text-gray-300', 'text-gray-400', 'text-gray-500', 'text-gray-600', 'text-gray-700', 'text-gray-800', 'text-gray-900',
+            'text-red-50', 'text-red-100', 'text-red-200', 'text-red-300', 'text-red-400', 'text-red-500', 'text-red-600', 'text-red-700', 'text-red-800', 'text-red-900',
+            'text-blue-50', 'text-blue-100', 'text-blue-200', 'text-blue-300', 'text-blue-400', 'text-blue-500', 'text-blue-600', 'text-blue-700', 'text-blue-800', 'text-blue-900',
+            'text-green-50', 'text-green-100', 'text-green-200', 'text-green-300', 'text-green-400', 'text-green-500', 'text-green-600', 'text-green-700', 'text-green-800', 'text-green-900',
+            'text-yellow-50', 'text-yellow-100', 'text-yellow-200', 'text-yellow-300', 'text-yellow-400', 'text-yellow-500', 'text-yellow-600', 'text-yellow-700', 'text-yellow-800', 'text-yellow-900',
+            'text-purple-50', 'text-purple-100', 'text-purple-200', 'text-purple-300', 'text-purple-400', 'text-purple-500', 'text-purple-600', 'text-purple-700', 'text-purple-800', 'text-purple-900',
+            // Text alignment
+            'text-left', 'text-center', 'text-right', 'text-justify',
+            // Text decoration
+            'underline', 'overline', 'line-through', 'no-underline',
+            // Text transform
+            'uppercase', 'lowercase', 'capitalize', 'normal-case',
+            // Font style
+            'italic', 'not-italic'
+        ],
+        background: [
+            'bg-transparent', 'bg-black', 'bg-white',
+            'bg-gray-50', 'bg-gray-100', 'bg-gray-200', 'bg-gray-300', 'bg-gray-400', 'bg-gray-500', 'bg-gray-600', 'bg-gray-700', 'bg-gray-800', 'bg-gray-900',
+            'bg-red-50', 'bg-red-100', 'bg-red-200', 'bg-red-300', 'bg-red-400', 'bg-red-500', 'bg-red-600', 'bg-red-700', 'bg-red-800', 'bg-red-900',
+            'bg-blue-50', 'bg-blue-100', 'bg-blue-200', 'bg-blue-300', 'bg-blue-400', 'bg-blue-500', 'bg-blue-600', 'bg-blue-700', 'bg-blue-800', 'bg-blue-900',
+            'bg-green-50', 'bg-green-100', 'bg-green-200', 'bg-green-300', 'bg-green-400', 'bg-green-500', 'bg-green-600', 'bg-green-700', 'bg-green-800', 'bg-green-900',
+            'bg-yellow-50', 'bg-yellow-100', 'bg-yellow-200', 'bg-yellow-300', 'bg-yellow-400', 'bg-yellow-500', 'bg-yellow-600', 'bg-yellow-700', 'bg-yellow-800', 'bg-yellow-900',
+            'bg-purple-50', 'bg-purple-100', 'bg-purple-200', 'bg-purple-300', 'bg-purple-400', 'bg-purple-500', 'bg-purple-600', 'bg-purple-700', 'bg-purple-800', 'bg-purple-900',
+            'bg-opacity-0', 'bg-opacity-25', 'bg-opacity-50', 'bg-opacity-75', 'bg-opacity-100'
+        ],
+        layout: [
+            // Padding
+            'p-0', 'p-1', 'p-2', 'p-3', 'p-4', 'p-5', 'p-6', 'p-8', 'p-10', 'p-12', 'p-16', 'p-20', 'p-24', 'p-32', 'p-40', 'p-48', 'p-56', 'p-64',
+            'px-0', 'px-1', 'px-2', 'px-3', 'px-4', 'px-5', 'px-6', 'px-8', 'px-10', 'px-12', 'px-16', 'px-20', 'px-24', 'px-32', 'px-40', 'px-48', 'px-56', 'px-64',
+            'py-0', 'py-1', 'py-2', 'py-3', 'py-4', 'py-5', 'py-6', 'py-8', 'py-10', 'py-12', 'py-16', 'py-20', 'py-24', 'py-32', 'py-40', 'py-48', 'py-56', 'py-64',
+            // Margin
+            'm-0', 'm-1', 'm-2', 'm-3', 'm-4', 'm-5', 'm-6', 'm-8', 'm-10', 'm-12', 'm-16', 'm-20', 'm-24', 'm-32', 'm-40', 'm-48', 'm-56', 'm-64',
+            'mx-0', 'mx-1', 'mx-2', 'mx-3', 'mx-4', 'mx-5', 'mx-6', 'mx-8', 'mx-10', 'mx-12', 'mx-16', 'mx-20', 'mx-24', 'mx-32', 'mx-40', 'mx-48', 'mx-56', 'mx-64',
+            'my-0', 'my-1', 'my-2', 'my-3', 'my-4', 'my-5', 'my-6', 'my-8', 'my-10', 'my-12', 'my-16', 'my-20', 'my-24', 'my-32', 'my-40', 'my-48', 'my-56', 'my-64',
+            // Width and Height
+            'w-0', 'w-1', 'w-2', 'w-3', 'w-4', 'w-5', 'w-6', 'w-8', 'w-10', 'w-12', 'w-16', 'w-20', 'w-24', 'w-32', 'w-40', 'w-48', 'w-56', 'w-64', 'w-auto', 'w-full',
+            'h-0', 'h-1', 'h-2', 'h-3', 'h-4', 'h-5', 'h-6', 'h-8', 'h-10', 'h-12', 'h-16', 'h-20', 'h-24', 'h-32', 'h-40', 'h-48', 'h-56', 'h-64', 'h-auto', 'h-full',
+            // Border radius
+            'rounded-none', 'rounded-sm', 'rounded', 'rounded-md', 'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-3xl', 'rounded-full'
+        ],
+        flexbox: [
+            'flex', 'inline-flex',
+            'flex-row', 'flex-row-reverse', 'flex-col', 'flex-col-reverse',
+            'flex-wrap', 'flex-wrap-reverse', 'flex-nowrap',
+            'justify-start', 'justify-end', 'justify-center', 'justify-between', 'justify-around', 'justify-evenly',
+            'items-start', 'items-end', 'items-center', 'items-baseline', 'items-stretch',
+            'content-center', 'content-start', 'content-end', 'content-between', 'content-around', 'content-evenly',
+            'self-auto', 'self-start', 'self-end', 'self-center', 'self-stretch',
+            'flex-1', 'flex-auto', 'flex-initial', 'flex-none'
+        ],
+        grid: [
+            'grid', 'inline-grid',
+            'grid-cols-1', 'grid-cols-2', 'grid-cols-3', 'grid-cols-4', 'grid-cols-5', 'grid-cols-6', 'grid-cols-7', 'grid-cols-8', 'grid-cols-9', 'grid-cols-10', 'grid-cols-11', 'grid-cols-12',
+            'grid-rows-1', 'grid-rows-2', 'grid-rows-3', 'grid-rows-4', 'grid-rows-5', 'grid-rows-6',
+            'gap-0', 'gap-1', 'gap-2', 'gap-3', 'gap-4', 'gap-5', 'gap-6', 'gap-8', 'gap-10', 'gap-12', 'gap-16', 'gap-20', 'gap-24', 'gap-32', 'gap-40', 'gap-48', 'gap-56', 'gap-64',
+            'col-auto', 'col-span-1', 'col-span-2', 'col-span-3', 'col-span-4', 'col-span-5', 'col-span-6', 'col-span-7', 'col-span-8', 'col-span-9', 'col-span-10', 'col-span-11', 'col-span-12',
+            'row-auto', 'row-span-1', 'row-span-2', 'row-span-3', 'row-span-4', 'row-span-5', 'row-span-6'
+        ],
+        border: [
+            // Border widths
+            'border', 'border-0', 'border-2', 'border-4', 'border-8',
+            
+            // Border styles
+            'border-solid', 'border-dashed', 'border-dotted', 'border-double', 'border-hidden', 'border-none',
+            
+            // Border colors (examples, can be extended to all Tailwind colors)
+            'border-transparent',
+            'border-current',
+            'border-black', 'border-white',
+            'border-gray-50', 'border-gray-100', 'border-gray-200', 'border-gray-300', 'border-gray-400', 'border-gray-500', 'border-gray-600', 'border-gray-700', 'border-gray-800', 'border-gray-900',
+            'border-red-50', 'border-red-100', 'border-red-200', 'border-red-300', 'border-red-400', 'border-red-500', 'border-red-600', 'border-red-700', 'border-red-800', 'border-red-900',
+            'border-blue-50', 'border-blue-100', 'border-blue-200', 'border-blue-300', 'border-blue-400', 'border-blue-500', 'border-blue-600', 'border-blue-700', 'border-blue-800', 'border-blue-900',
+            'border-green-50', 'border-green-100', 'border-green-200', 'border-green-300', 'border-green-400', 'border-green-500', 'border-green-600', 'border-green-700', 'border-green-800', 'border-green-900',
+            
+            // Border opacity
+            'border-opacity-0', 'border-opacity-5', 'border-opacity-10', 'border-opacity-20', 'border-opacity-25', 'border-opacity-30', 'border-opacity-40', 'border-opacity-50',
+            'border-opacity-60', 'border-opacity-70', 'border-opacity-75', 'border-opacity-80', 'border-opacity-90', 'border-opacity-95', 'border-opacity-100',
+            
+            // Border radius
+            'rounded-none', 'rounded-sm', 'rounded', 'rounded-md', 'rounded-lg', 'rounded-xl', 'rounded-2xl', 'rounded-3xl', 'rounded-full',
+            
+            // Individual corner radius
+            'rounded-t-none', 'rounded-r-none', 'rounded-b-none', 'rounded-l-none',
+            'rounded-tl-none', 'rounded-tr-none', 'rounded-br-none', 'rounded-bl-none',
+            'rounded-t-sm', 'rounded-r-sm', 'rounded-b-sm', 'rounded-l-sm',
+            'rounded-tl-sm', 'rounded-tr-sm', 'rounded-br-sm', 'rounded-bl-sm',
+            'rounded-t', 'rounded-r', 'rounded-b', 'rounded-l',
+            'rounded-tl', 'rounded-tr', 'rounded-br', 'rounded-bl',
+            'rounded-t-md', 'rounded-r-md', 'rounded-b-md', 'rounded-l-md',
+            'rounded-tl-md', 'rounded-tr-md', 'rounded-br-md', 'rounded-bl-md',
+            'rounded-t-lg', 'rounded-r-lg', 'rounded-b-lg', 'rounded-l-lg',
+            'rounded-tl-lg', 'rounded-tr-lg', 'rounded-br-lg', 'rounded-bl-lg',
+            'rounded-t-xl', 'rounded-r-xl', 'rounded-b-xl', 'rounded-l-xl',
+            'rounded-tl-xl', 'rounded-tr-xl', 'rounded-br-xl', 'rounded-bl-xl',
+            'rounded-t-2xl', 'rounded-r-2xl', 'rounded-b-2xl', 'rounded-l-2xl',
+            'rounded-tl-2xl', 'rounded-tr-2xl', 'rounded-br-2xl', 'rounded-bl-2xl',
+            'rounded-t-3xl', 'rounded-r-3xl', 'rounded-b-3xl', 'rounded-l-3xl',
+            'rounded-tl-3xl', 'rounded-tr-3xl', 'rounded-br-3xl', 'rounded-bl-3xl',
+            'rounded-t-full', 'rounded-r-full', 'rounded-b-full', 'rounded-l-full',
+            'rounded-tl-full', 'rounded-tr-full', 'rounded-br-full', 'rounded-bl-full',
+            
+            // Directional borders
+            'border-t', 'border-r', 'border-b', 'border-l',
+            'border-t-0', 'border-r-0', 'border-b-0', 'border-l-0',
+            'border-t-2', 'border-r-2', 'border-b-2', 'border-l-2',
+            'border-t-4', 'border-r-4', 'border-b-4', 'border-l-4',
+            'border-t-8', 'border-r-8', 'border-b-8', 'border-l-8',
+        ],
+        shadow: [
+        'shadow-sm',
+        'shadow',
+        'shadow-md',
+        'shadow-lg',
+        'shadow-xl',
+        'shadow-2xl',
+        'shadow-inner',
+        'shadow-none',
+        ],
+        hover: ['hover:bg-gray-100', 'hover:text-blue-500', 'hover:underline', 'hover:shadow-lg'],
+        transition: ['transition', 'duration-300', 'ease-in-out'],
+        position: ['relative', 'absolute', 'fixed', 'sticky', 'top-0', 'bottom-0', 'left-0', 'right-0'],
+        overflow: ['overflow-hidden', 'overflow-scroll', 'overflow-x-auto', 'overflow-y-auto'],
+        cursor: ['cursor-pointer', 'cursor-not-allowed', 'cursor-wait', 'cursor-text'],
+        opacity: ['opacity-25', 'opacity-50', 'opacity-75', 'opacity-100'],
+        zIndex: ['z-0', 'z-10', 'z-20', 'z-30', 'z-40', 'z-50'],
+        cursor: [
+                'cursor-auto',
+                'cursor-default',
+                'cursor-pointer',
+                'cursor-wait',
+                'cursor-text',
+                'cursor-move',
+                'cursor-help',
+                'cursor-not-allowed',
+                'cursor-none',
+                'cursor-context-menu',
+                'cursor-progress',
+                'cursor-cell',
+                'cursor-crosshair',
+                'cursor-vertical-text',
+                'cursor-alias',
+                'cursor-copy',
+                'cursor-no-drop',
+                'cursor-grab',
+                'cursor-grabbing',
+                'cursor-all-scroll',
+                'cursor-col-resize',
+                'cursor-row-resize',
+                'cursor-n-resize',
+                'cursor-e-resize',
+                'cursor-s-resize',
+                'cursor-w-resize',
+                'cursor-ne-resize',
+                'cursor-nw-resize',
+                'cursor-se-resize',
+                'cursor-sw-resize',
+                'cursor-ew-resize',
+                'cursor-ns-resize',
+                'cursor-nesw-resize',
+                'cursor-nwse-resize',
+                'cursor-zoom-in',
+                'cursor-zoom-out'
+            ],
+        };
+
+
+        function updateClassOptions() {
+            const category = categorySelect.value;
+            classSelect.innerHTML = '<option value="">Select a class</option>';
+            if (category) {
+                classOptions[category].forEach(cls => {
+                    const option = document.createElement('option');
+                    option.value = cls;
+                    option.textContent = cls;
+                    classSelect.appendChild(option);
+                });
+            }
+        }
+
+        function addClass() {
+            const selectedClass = classSelect.value;
+            if (selectedClass) {
+                const currentClasses = classInput.value.split(' ').filter(Boolean);
+                if (!currentClasses.includes(selectedClass)) {
+                    currentClasses.push(selectedClass);
+                    classInput.value = currentClasses.join(' ');
+                    updateSampleText();
+                }
+            }
+        }
+
+        function updateSampleText() {
+            const classes = classInput.value.trim();
+            sampleText.className = 'p-4 border border-gray-300 rounded-md min-h-[100px] ' + classes;
+        }
+
+        categorySelect.addEventListener('change', updateClassOptions);
+        addClassBtn.addEventListener('click', addClass);
+
+        classInput.addEventListener('input', function() {
+            updateSampleText();
+            updateClassOptions();
+        });
+
+
+        resetButton.addEventListener('click', () => {
+            classInput.value = '';
+            updateSampleText();
+            categorySelect.value = '';
+            updateClassOptions();
+        });
+
+        updateClassOptions();
+    </script>
+</body>
+</html>
