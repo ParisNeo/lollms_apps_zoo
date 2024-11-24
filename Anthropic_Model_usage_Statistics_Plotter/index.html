@@ -111,7 +111,8 @@
                 showLoader();
                 Papa.parse(file, {
                     complete: async function(results) {
-                        csvData = results.data;
+                        // Remove empty rows
+                        csvData = results.data.filter(row => Object.values(row).some(value => value.trim() !== ''));
                         await processData();
                         hideLoader();
                         document.getElementById('dataSummary').classList.remove('hidden');
@@ -123,6 +124,7 @@
                 });
             }
         }
+
 
         async function processData() {
             const summary = calculateSummary(csvData);
