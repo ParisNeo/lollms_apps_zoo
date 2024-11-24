@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Resizer Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-6">Image Resizer Pro</h1>
+        <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <input type="file" id="imageUpload" accept="image/*" class="mb-4">
+            <img id="imagePreview" class="w-full h-auto mb-4 hidden" alt="Image Preview">
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <div class="flex-1">
+                    <label for="width" class="block text-sm font-medium text-gray-700">Width</label>
+                    <input type="number" id="width" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full">
+                </div>
+                <div class="flex-1">
+                    <label for="height" class="block text-sm font-medium text-gray-700">Height</label>
+                    <input type="number" id="height" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full">
+                </div>
+            </div>
+            <div class="flex items-center mb-4">
+                <input type="checkbox" id="aspectRatio" class="mr-2">
+                <label for="aspectRatio" class="text-sm font-medium text-gray-700">Maintain Aspect Ratio</label>
+            </div>
+            <div class="flex flex-col md:flex-row gap-4 mb-4">
+                <div class="flex-1">
+                    <label for="divider" class="block text-sm font-medium text-gray-700">Divider</label>
+                    <input type="number" id="divider" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full">
+                </div>
+                <div class="flex-1">
+                    <label for="multiplier" class="block text-sm font-medium text-gray-700">Multiplier</label>
+                    <input type="number" id="multiplier" class="border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full">
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button id="resizeButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Resize</button>
+                <a id="downloadButton" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 ml-2 hidden">Download</a>
+            </div>
+        </div>
+        <div id="feedback" class="text-center text-red-500"></div>
+    </div>
+
+    <script>
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const widthInput = document.getElementById('width');
+        const heightInput = document.getElementById('height');
+        const aspectRatioCheckbox = document.getElementById('aspectRatio');
+        const dividerInput = document.getElementById('divider');
+        const multiplierInput = document.getElementById('multiplier');
+        const resizeButton = document.getElementById('resizeButton');
+        const downloadButton = document.getElementById('downloadButton');
+        const feedback = document.getElementById('feedback');
+
+        let originalWidth, originalHeight;
+
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imagePreview.classList.remove('hidden');
+                    const img = new Image();
+                    img.onload = () => {
+                        originalWidth = img.width;
+                        originalHeight = img.height;
+                        widthInput.value = originalWidth;
+                        heightInput.value = originalHeight;
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        widthInput.addEventListener('input', () => {
+            if (aspectRatioCheckbox.checked) {
+                heightInput.value = Math.round((widthInput.value / originalWidth) * originalHeight);
+            }
+        });
+
+        heightInput.addEventListener('input', () => {
+            if (aspectRatioCheckbox.checked) {
+                widthInput.value = Math.round((heightInput.value / originalHeight) * originalWidth);
+            }
+        });
+
+        resizeButton.addEventListener('click', () => {
+            const width = parseInt(widthInput.value);
+            const height = parseInt(heightInput.value);
+            const divider = parseFloat(dividerInput.value) || 1;
+            const multiplier = parseFloat(multiplierInput.value) || 1;
+
+            if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+                feedback.textContent = 'Please enter valid dimensions.';
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = (width / divider) * multiplier;
+            canvas.height = (height / divider) * multiplier;
+
+            const img = new Image();
+            img.onload = () => {
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                downloadButton.href = canvas.toDataURL('image/png');
+                downloadButton.download = 'resized-image.png';
+                downloadButton.classList.remove('hidden');
+                feedback.textContent = 'Image resized successfully!';
+            };
+            img.src = imagePreview.src;
+        });
+    </script>
+</body>
+</html>
