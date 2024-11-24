@@ -5,22 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tailwind CSS Class Tester</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         #sample-text {
             transition: all 0.3s ease;
         }
     </style>
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen font-sans">
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 dark:from-gray-800 dark:to-gray-900 min-h-screen font-sans transition-colors duration-300">
     <div class="container mx-auto px-4 py-8">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-indigo-800">Tailwind CSS Class Tester</h1>
+        <header class="text-center mb-8 flex justify-between items-center">
+            <h1 class="text-4xl font-bold text-indigo-800 dark:text-indigo-300">Tailwind CSS Class Tester</h1>
+            <div class="flex items-center">
+                <span class="mr-2 text-gray-700 dark:text-gray-300">Dark Mode</span>
+                <label class="switch">
+                    <input type="checkbox" id="darkModeToggle">
+                    <span class="slider round"></span>
+                </label>
+            </div>
         </header>
         
-        <main class="bg-white shadow-lg rounded-lg p-6 mb-8">
+        <main class="bg-white dark:bg-gray-700 shadow-lg rounded-lg p-6 mb-8">
             <div class="mb-6">
-                <label for="category-select" class="block text-sm font-medium text-gray-700 mb-2">Select Category:</label>
-                <select id="category-select" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label for="category-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Category:</label>
+                <select id="category-select" class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white">
                     <option value="">Select a category</option>
                     <option value="text">Text</option>
                     <option value="background">Background</option>
@@ -41,8 +49,8 @@
             </div>
             
             <div class="mb-6">
-                <label for="class-select" class="block text-sm font-medium text-gray-700 mb-2">Select Class:</label>
-                <select id="class-select" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label for="class-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Class:</label>
+                <select id="class-select" class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white">
                     <option value="">Select a class</option>
                 </select>
             </div>
@@ -54,16 +62,22 @@
             </div>
             
             <div class="mb-6">
-                <label for="class-input" class="block text-sm font-medium text-gray-700 mb-2">Applied Classes:</label>
-                <input type="text" id="class-input" class="w-full px-3 py-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <label for="class-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Applied Classes:</label>
+                <input type="text" id="class-input" class="w-full px-3 py-2 border border-indigo-300 dark:border-indigo-600 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-800 dark:text-white">
+            </div>
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Enter your HTML:</h2>
+                <textarea id="html-input" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200" rows="4"></textarea>
             </div>
             
+            
             <div class="mb-6">
-                <h2 class="text-lg font-semibold mb-2">Preview:</h2>
-                <div id="sample-text" class="p-4 border border-gray-300 rounded-md min-h-[100px]">
-                    Sample text to demonstrate Tailwind CSS classes
+                <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Preview:</h2>
+                <div id="preview" class="p-4 border border-gray-300 dark:border-gray-600 rounded-md min-h-[100px] bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200">
+                    Enter some HTML in the input above to see it rendered here.
                 </div>
             </div>
+            
             
             <div class="flex justify-end">
                 <button id="reset-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
@@ -72,17 +86,27 @@
             </div>
         </main>
         
-        <footer class="text-center text-sm text-gray-600">
+        <footer class="text-center text-sm text-gray-600 dark:text-gray-400">
             <p>Select a category and class, then click 'Add Class' to see the effect on the sample text.</p>
         </footer>
     </div>
 
     <script>
+        tailwind.config = {
+            darkMode: 'class',
+            // ... other configurations
+        }
+        const htmlInput = document.getElementById('html-input');
+        const preview = document.getElementById('preview');
+
+        htmlInput.addEventListener('input', function() {
+            preview.innerHTML = this.value;
+        });        
         const categorySelect = document.getElementById('category-select');
         const classSelect = document.getElementById('class-select');
         const addClassBtn = document.getElementById('add-class-btn');
         const classInput = document.getElementById('class-input');
-        const sampleText = document.getElementById('sample-text');
+        const sampleText = document.getElementById('preview');
         const resetButton = document.getElementById('reset-button');
 
         const classOptions = {
@@ -305,7 +329,131 @@
             updateClassOptions();
         });
 
-        updateClassOptions();
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark')
+        } else {
+            document.documentElement.classList.remove('dark')
+        }
+
+        // Toggle dark mode
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            
+            // Update local storage
+            if (document.documentElement.classList.contains('dark')) {
+            localStorage.theme = 'dark';
+            } else {
+            localStorage.theme = 'light';
+            }
+        });      
     </script>
+    <style>
+
+
+        /* Toggle switch styles */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .slider.round {
+            border-radius: 34px;
+        }
+        .slider.round:before {
+            border-radius: 50%;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+    
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+    
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+        }
+    
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+        }
+    
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+    
+        input:focus + .slider {
+            box-shadow: 0 0 1px #2196F3;
+        }
+    
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    
+        .slider.round {
+            border-radius: 34px;
+        }
+    
+        .slider.round:before {
+            border-radius: 50%;
+        }
+    </style>
+    
 </body>
 </html>
