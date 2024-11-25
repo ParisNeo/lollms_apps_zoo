@@ -8,6 +8,16 @@
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
 </head>
+<style>
+        .scrollable-container {
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+</style>
 <body class="bg-gradient-to-r from-green-100 to-blue-100 font-sans min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-4xl font-bold text-green-800 mb-8 text-center">Village Life Simulator</h1>
@@ -50,6 +60,10 @@
                         <label for="maxSteps" class="text-sm font-medium text-gray-700">Maximum Simulation Steps:</label>
                         <input type="number" id="maxSteps" min="1" max="1000" value="100" class="border border-gray-300 rounded-md p-2">
                     </div>
+                    <div class="flex items-center mt-2">
+                        <input type="checkbox" id="buildImages" class="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out">
+                        <label for="buildImages" class="ml-2 text-sm font-medium text-gray-700">Build images (Coming up soon)</label>
+                    </div>                    
                     <button id="buildVillageBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Build Village
                     </button>
@@ -66,6 +80,9 @@
                     <button id="importBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Import State
                     </button>
+                    <button id="buildStoryBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Build story
+                    </button>                    
                 </div>
             </div>
         </div>
@@ -86,6 +103,7 @@
         let simulationRunning = false;
         let villagers = [];
         let locations = [];
+        let events = [];
         let stepMode = false;
         let maxSimulationSteps = 100;
         let currentStep = 0;
@@ -119,17 +137,75 @@
                 document.getElementById('maxSteps').value = params.maxSteps;
                 document.getElementById('speedControl').value = params.speed;
             }
+            const buildStoryButton = document.getElementById('buildStoryBtn');
+    
+            if (buildStoryButton) {
+                buildStoryButton.addEventListener('click', buildStoryBtn);
+            }
         }        
+        async function buildStoryBtn() {
+            showLoader("Generating story...");
+            appendToConsole("Generating story...")
+            const villageContext = document.getElementById('villageContext').value || 'A small medieval village';
+
+            // Construct a detailed prompt using the available data
+            const prompt = `Generate a captivating story based on the following village information:
+Context:
+${villageContext}
+
+Locations:
+${JSON.stringify(locations, null, 2)}
+
+Villagers:
+${JSON.stringify(villagers, null, 2)}
+
+Events:
+${JSON.stringify(events, null, 2)}
+
+Using the provided information, create a rich and engaging narrative that incorporates the locations, villagers, and events. The story should have a clear beginning, middle, and end, with interesting character interactions and plot developments. Make sure to weave the events into the story naturally, and use the locations as vivid backdrops for the unfolding tale.`;
+
+    // Use lc.generate to create the story
+    const story = await lc.generate(prompt);
+
+    // Format the story as a Markdown document
+    const storyMd = `# Village Story
+
+${story}`;
+
+            // Create a Blob with the Markdown content
+            const blob = new Blob([storyMd], { type: "text/markdown;charset=utf-8" });
+
+            // Create a temporary URL for the Blob
+            const url = URL.createObjectURL(blob);
+
+            // Create a temporary anchor element and trigger the download
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "village_story.md";
+            document.body.appendChild(a);
+            a.click();
+
+            // Clean up
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            console.log("Story exported as village_story.md");
+            hideLoader();
+        }
 
         // Modify the generateVillager function to include relationships
-        async function generateVillager(villageContext, existingVillagers) {
+        async function generateVillager(villageContext, existingVillagers, locations) {
             appendToConsole('Generating villager ...');
-            const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: ${villageContext}. Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${JSON.stringify(existingVillagers, null, 2)}.
+            const prompt = `${lc.system_message()}Generate a JSON object for a villager in our simulation. The village context is: 
+${villageContext}
+
+Include fields for name, age, occupation, personality traits, current status (location, activity, mood), and a brief backstory. The villager should have unique and interesting characteristics. Ensure the name is not one of the following: ${JSON.stringify(existingVillagers, null, 2)}.
 
 Example format:
 \`\`\`json
 {
     "name": "Elara Moonwhisper",
+    "gender": "female",
     "age": 28,
     "occupation": "Herbalist",
     "personalityTraits": ["curious", "empathetic", "night owl"],
@@ -145,9 +221,14 @@ ${lc.user_message()}Please generate a unique villager for our simulation, differ
 \`\`\`json
 ${JSON.stringify(existingVillagers, null, 2)}
 \`\`\`
-${lc.ai_message()}`;
+The village locations are:
+\`\`\`json
+${JSON.stringify(locations, null, 2)}
+\`\`\`
 
-        
+${lc.ai_message()}`;
+            console.log(prompt)
+  
             showLoader("Generating villager...");
             console.log(prompt)
             const villagerJson = await lc.generateCode(prompt);
@@ -217,7 +298,13 @@ ${lc.user_message()}Please generate a unique location for our village simulation
 
         
         async function updateVillagerStatus(villager) {
-            const prompt = `${lc.system_message()}Given the current state of a villager, generate a JSON object representing their updated status. Include fields for current location, activity, mood, and any new memories or thoughts based on their recent experiences. Consider their personality and backstory when updating their status.
+            const villageContext = document.getElementById('villageContext').value || 'A small medieval village';
+            const prompt = `${lc.system_message()}Given the current state of a villager and the context, generate a JSON object representing their updated status. Include fields for current location, activity, mood, and any new memories or thoughts based on their recent experiences. Consider their personality and backstory when updating their status.
+Here is the general village context:
+${JSON.stringify(villageContext, null, 2)}
+
+All villagers information:
+${JSON.stringify(villagers, null, 2)}
 
 Example format:
 \`\`\`json
@@ -231,9 +318,9 @@ Example format:
     "thoughts": "I wonder if I could organize a weekly herbalism workshop at the inn..."
 }
 \`\`\`
-        
-        ${lc.user_message()}Current villager state: ${JSON.stringify(villager)}. Please update their status.${lc.ai_message()}`;
-        
+
+${lc.user_message()}Current villager state: ${JSON.stringify(villager)}. Please update the villager status.${lc.ai_message()}`;
+            console.log(prompt);
             showLoader("Updating villager status...");
             const updatedStatusJson = await lc.generateCode(prompt);
             hideLoader();
@@ -258,54 +345,115 @@ Example format:
             });
         }
 
-        async function generateInteraction(villager1, villager2) {
-            // Ensure relationships exist
-            if (!villager1.relationships[villager2.name]) {
-                villager1.relationships[villager2.name] = { affinity: 50, interactions: 0 };
-            }
-            if (!villager2.relationships[villager1.name]) {
-                villager2.relationships[villager1.name] = { affinity: 50, interactions: 0 };
+        async function generateGroupInteraction(villagers) {
+            if (villagers.length < 2) {
+                console.log("Not enough villagers for an interaction");
+                return null;
             }
 
-            const affinity = (villager1.relationships[villager2.name].affinity + villager2.relationships[villager1.name].affinity) / 2;
-            
-            const prompt = `${lc.system_message()}Generate a JSON object representing an interaction between two villagers. Their affinity is ${affinity}/100. Include fields for the type of interaction, dialogue snippets, and any resulting changes in mood, affinity, or new memories for both villagers. Consider their personalities, occupations, current statuses, and affinity when creating the interaction.
+            // Select a random number of villagers (between 2 and the total number of villagers)
+            const numParticipants = Math.floor(Math.random() * (villagers.length - 1)) + 2;
+            const participants = shuffleArray(villagers).slice(0, numParticipants);
+
+            // Calculate average affinity between all participants
+            let totalAffinity = 0;
+            let affinityCount = 0;
+            for (let i = 0; i < participants.length; i++) {
+                for (let j = i + 1; j < participants.length; j++) {
+                    const villager1 = participants[i];
+                    const villager2 = participants[j];
+                    if (!villager1.relationships[villager2.name]) {
+                        villager1.relationships[villager2.name] = { affinity: 50, interactions: 0 };
+                    }
+                    if (!villager2.relationships[villager1.name]) {
+                        villager2.relationships[villager1.name] = { affinity: 50, interactions: 0 };
+                    }
+                    totalAffinity += villager1.relationships[villager2.name].affinity + villager2.relationships[villager1.name].affinity;
+                    affinityCount += 2;
+                }
+            }
+            const averageAffinity = totalAffinity / affinityCount;
+            const villageContext = document.getElementById('villageContext').value || 'A small medieval village';
+
+            const prompt = `${lc.system_message()}Generate a JSON object representing an interaction between ${numParticipants} villagers. Their average affinity is ${averageAffinity.toFixed(2)}/100. Include fields for the type of interaction, dialogue snippets, and any resulting changes in mood, affinity, or new memories for all villagers involved. Consider their personalities, occupations, current statuses, and affinities when creating the interaction.
+The discussion should take into consideration the village context and villagers status.
+Village context:
+${JSON.stringify(villageContext, null, 2)}
+
 
 Example format:
 \`\`\`json
 {
-    "type": "Friendly conversation",
+    "type": "Group discussion",
     "dialogue": [
-        {"speaker": "Elara", "text": "I've just discovered a new herb that might help with your father's arthritis."},
-        {"speaker": "Finn", "text": "Really? That's wonderful news! Can you tell me more about it?"}
+        {"speaker": "Elara", "text": "I've discovered a new herb that might help with various ailments."},
+        {"speaker": "Finn", "text": "That's fascinating! How does it work?"},
+        {"speaker": "Zara", "text": "Could it help with the village's crop yield?"}
+        ... the discussion can be as long as it is needed
     ],
     "outcomes": {
         "Elara": {
-            "moodChange": "More positive",
-            "affinityChange": 5,
-            "newMemories": ["Shared knowledge about herbs with Finn", "Felt appreciated for her expertise"]
+            "moodChange": "Enthusiastic",
+            "affinityChanges": {"Finn": 5, "Zara": 3},
+            "newMemories": ["Shared knowledge about herbs with the group", "Felt appreciated for her expertise"]
         },
         "Finn": {
-            "moodChange": "Hopeful",
-            "affinityChange": 7,
-            "newMemories": ["Learned about a potential remedy for father's condition", "Gained respect for Elara's knowledge"]
+            "moodChange": "Curious",
+            "affinityChanges": {"Elara": 7, "Zara": 2},
+            "newMemories": ["Learned about a new herb from Elara", "Enjoyed the group discussion"]
+        },
+        "Zara": {
+            "moodChange": "Intrigued",
+            "affinityChanges": {"Elara": 4, "Finn": 1},
+            "newMemories": ["Considered potential agricultural applications of the new herb"]
         }
     }
 }
 \`\`\`
-        ${lc.user_message()}Villager 1: ${JSON.stringify(villager1)}. Villager 2: ${JSON.stringify(villager2)}. Please generate an interaction between these villagers.${lc.ai_message()}`;
+${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate an interaction between these villagers.${lc.ai_message()}`;
 
-            showLoader("Generating interaction...");
+            showLoader("Generating group interaction...");
             const interactionJson = await lc.generateCode(prompt);
             hideLoader();
 
             if (interactionJson) {
                 const interaction = JSON.parse(interactionJson);
                 // Update relationships based on the interaction
-                updateRelationships(villager1, villager2, interaction);
+                updateGroupRelationships(participants, interaction);
                 return interaction;
             }
             return null;
+        }
+
+        function updateGroupRelationships(participants, interaction) {
+            for (const villager of participants) {
+                const outcome = interaction.outcomes[villager.name];
+                if (outcome) {
+                    if (outcome.moodChange) {
+                        villager.mood = outcome.moodChange;
+                    }
+                    if (outcome.affinityChanges) {
+                        for (const [otherVillagerName, affinityChange] of Object.entries(outcome.affinityChanges)) {
+                            if (villager.relationships[otherVillagerName]) {
+                                villager.relationships[otherVillagerName].affinity += affinityChange;
+                                villager.relationships[otherVillagerName].affinity = Math.max(0, Math.min(100, villager.relationships[otherVillagerName].affinity));
+                                villager.relationships[otherVillagerName].interactions++;
+                            }
+                        }
+                    }
+                    if (outcome.newMemories) {
+                        villager.newMemories.push(...outcome.newMemories);
+                    }
+                }
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
         }
 
         function updateRelationships(villager1, villager2, interaction) {
@@ -325,27 +473,74 @@ Example format:
         }
 
         
-        function updateVillageMap() {
+        function updateVillageMap(simulationStep = null) {
             const villageMap = document.getElementById('villageMap');
             villageMap.innerHTML = '';
 
             locations.forEach((location, index) => {
                 const locationElement = document.createElement('div');
-                locationElement.className = 'absolute w-16 h-16 bg-yellow-200 rounded-lg flex items-center justify-center text-xs text-center';
+                locationElement.className = 'absolute w-16 h-16 bg-yellow-200 rounded-lg flex items-center justify-center text-xs text-center cursor-pointer';
                 locationElement.style.left = `${(index % 5) * 20}%`;
                 locationElement.style.top = `${Math.floor(index / 5) * 25}%`;
                 locationElement.textContent = location.name;
+                locationElement.addEventListener('click', () => showLocationDetails(location));
                 villageMap.appendChild(locationElement);
             });
 
             villagers.forEach((villager, index) => {
                 const villagerElement = document.createElement('div');
-                villagerElement.className = 'absolute w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-xs text-white cursor-pointer';
-                villagerElement.style.left = `${Math.random() * 80}%`;
-                villagerElement.style.top = `${Math.random() * 80}%`;
-                villagerElement.textContent = villager.name.charAt(0);
+                villagerElement.className = 'absolute w-8 h-8 rounded-full flex items-center justify-center text-xs text-white cursor-pointer';
+                
+                // Colorization based on age and gender
+                const agePercent = villager.age / 100; // Assuming max age is 100
+                let color;
+                if (villager.gender === 'male') {
+                    color = `rgb(${Math.round(135 + 120 * agePercent)}, ${Math.round(206 + 49 * agePercent)}, ${Math.round(235 + 20 * agePercent)})`;
+                } else {
+                    color = `rgb(${Math.round(255 - 70 * agePercent)}, ${Math.round(192 - 92 * agePercent)}, ${Math.round(203 - 103 * agePercent)})`;
+                }
+                villagerElement.style.backgroundColor = color;
+
+                // Position villager based on simulation step or randomly
+                if (simulationStep !== null && villager.history && villager.history[simulationStep]) {
+                    villagerElement.style.left = `${villager.history[simulationStep].x}%`;
+                    villagerElement.style.top = `${villager.history[simulationStep].y}%`;
+                } else {
+                    villagerElement.style.left = `${Math.random() * 80}%`;
+                    villagerElement.style.top = `${Math.random() * 80}%`;
+                }
+
+                // Display villager's initials
+                const initials = villager.name.split(' ').map(n => n.charAt(0)).join('.');
+                villagerElement.textContent = initials;
+
                 villagerElement.addEventListener('click', () => showVillagerHistory(villager));
                 villageMap.appendChild(villagerElement);
+            });
+        }
+
+        function showLocationDetails(location) {
+            // Create a modal or popup element
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center';
+            
+            // Create content for the modal
+            const content = document.createElement('div');
+            content.className = 'bg-white p-6 rounded-lg max-w-md';
+            content.innerHTML = `
+                <h2 class="text-xl font-bold mb-2">${location.name}</h2>
+                <p><strong>Type:</strong> ${location.type}</p>
+                <p><strong>Capacity:</strong> ${location.capacity}</p>
+                <p><strong>Description:</strong> ${location.description}</p>
+                <button id="closeModal" class="mt-4 bg-blue-500 text-white px-4 py-2 rounded">Close</button>
+            `;
+            
+            modal.appendChild(content);
+            document.body.appendChild(modal);
+            
+            // Add event listener to close the modal
+            document.getElementById('closeModal').addEventListener('click', () => {
+                document.body.removeChild(modal);
             });
         }
 
@@ -353,20 +548,116 @@ Example format:
             const characterInfo = document.getElementById('characterInfo');
             characterInfo.innerHTML = '';
 
-            villagers.forEach(villager => {
+            villagers.forEach((villager, index) => {
                 const villagerCard = document.createElement('div');
-                villagerCard.className = 'bg-gray-100 p-4 rounded-lg';
+                villagerCard.className = 'bg-gray-100 p-4 rounded-lg mb-4';
                 villagerCard.innerHTML = `
                     <h3 class="font-semibold">${villager.name}</h3>
                     <p>Age: ${villager.age}</p>
+                    <p>Gender: ${villager.gender}</p>
                     <p>Occupation: ${villager.occupation}</p>
                     <p>Status: ${villager.currentStatus.activity} at ${villager.currentStatus.location}</p>
                     <p>Mood: ${villager.currentStatus.mood}</p>
-                    <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs">Show Memories</button>
+                    <div class="mt-2">
+                        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs mr-2">Show Memories</button>
+                        <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-xs">Edit</button>
+                    </div>
                 `;
-                const showMemoriesBtn = villagerCard.querySelector('button');
+                const showMemoriesBtn = villagerCard.querySelector('button:first-child');
                 showMemoriesBtn.addEventListener('click', () => showVillagerHistory(villager));
+
+                const editBtn = villagerCard.querySelector('button:last-child');
+                editBtn.addEventListener('click', () => showEditVillagerModal(villager, index));
+
                 characterInfo.appendChild(villagerCard);
+            });
+        }
+
+        function showEditVillagerModal(villager, index) {
+            const editModal = document.createElement('div');
+            editModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
+            editModal.innerHTML = `
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+                    <h3 class="text-xl font-bold mb-4">Edit ${villager.name}</h3>
+                    <form id="editVillagerForm">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Name:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" type="text" value="${villager.name}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="age">Age:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="age" type="number" value="${villager.age}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="gender">Gender:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gender" type="text" value="${villager.gender}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="occupation">Occupation:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="occupation" type="text" value="${villager.occupation}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="activity">Activity:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="activity" type="text" value="${villager.currentStatus.activity}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="location">Location:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="location" type="text" value="${villager.currentStatus.location}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="mood">Mood:</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="mood" type="text" value="${villager.currentStatus.mood}">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="newMemories">New Memories:</label>
+                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="newMemories" rows="4">${villager.newMemories || ''}</textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="thoughts">Thoughts:</label>
+                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="thoughts" rows="4">${villager.thoughts || ''}</textarea>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="backstory">Backstory:</label>
+                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="backstory" rows="4">${villager.backstory || ''}</textarea>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                                Save Changes
+                            </button>
+                            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" id="cancelEdit">
+                                Cancel
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(editModal);
+
+            const form = editModal.querySelector('form');
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                villagers[index] = {
+                    ...villager,
+                    name: form.name.value,
+                    age: parseInt(form.age.value),
+                    gender: form.gender.value,
+                    occupation: form.occupation.value,
+                    currentStatus: {
+                        activity: form.activity.value,
+                        location: form.location.value,
+                        mood: form.mood.value
+                    },
+                    newMemories: form.newMemories.value,
+                    thoughts: form.thoughts.value,
+                    backstory: form.backstory.value
+                };
+                updateCharacterInfo();
+                document.body.removeChild(editModal);
+            });
+
+            const cancelBtn = editModal.querySelector('#cancelEdit');
+            cancelBtn.addEventListener('click', () => {
+                document.body.removeChild(editModal);
             });
         }
 
@@ -374,7 +665,7 @@ Example format:
             const eventLog = document.getElementById('eventLog');
             const eventElement = document.createElement('div');
             eventElement.className = 'bg-white shadow-md rounded-lg p-4 mb-2';
-            
+            events.push(event)
             let interactionHtml = '';
             if (event.type === 'interaction') {
                 interactionHtml = `
@@ -426,22 +717,16 @@ Example format:
                 });
             }
 
+            // Modified main interaction function
             if (villagers.length >= 2) {
-                const villager1 = villagers[Math.floor(Math.random() * villagers.length)];
-                let villager2;
-                do {
-                    villager2 = villagers[Math.floor(Math.random() * villagers.length)];
-                } while (villager1 === villager2);
-
-                const interaction = await generateInteraction(villager1, villager2);
-                if (interaction && interaction.outcomes) {
-                    const outcome1 = interaction.outcomes[villager1.name] || {};
-                    const outcome2 = interaction.outcomes[villager2.name] || {};
+                const interaction = await generateGroupInteraction(villagers);
+                if (interaction) {
+                    const participantNames = Object.keys(interaction.outcomes).join(', ');
                     addEventToLog({
                         type: 'interaction',
-                        title: `Interaction: ${interaction.type}`,
-                        description: `${villager1.name} and ${villager2.name} interact: "${interaction.dialogue[0]?.text || 'No dialogue available'}"`,
-                        details: `Outcome: ${outcome1.moodChange || 'No mood change'}, ${outcome2.moodChange || 'No mood change'}`,
+                        title: `Group Interaction: ${interaction.type}`,
+                        description: `${participantNames} interact: "${interaction.dialogue[0]?.text || 'No dialogue available'}"`,
+                        details: `Outcomes: ${Object.entries(interaction.outcomes).map(([name, outcome]) => `${name}: ${outcome.moodChange || 'No mood change'}`).join(', ')}`,
                         interaction: interaction
                     });
                 }
@@ -456,7 +741,7 @@ Example format:
             const interactionModal = document.createElement('div');
             interactionModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
             interactionModal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                <div class="scrollable-container max-w-md w-full">
                     <h3 class="text-xl font-bold mb-4">Interaction: ${interaction.type}</h3>
                     <div class="mb-4">
                         ${interaction.dialogue.map(d => `<p><strong>${d.speaker}:</strong> ${d.text}</p>`).join('')}
@@ -490,15 +775,21 @@ Example format:
             const historyModal = document.createElement('div');
             historyModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
             historyModal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full">
+                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
                     <h3 class="text-xl font-bold mb-4">${villager.name}'s History</h3>
-                    <p class="mb-4">${villager.backstory}</p>
+                    <div class="overflow-y-auto mb-4 flex-shrink-0" style="max-height: 100px;">
+                        <p>${villager.backstory}</p>
+                    </div>
                     <h4 class="font-bold mb-2">Recent Memories:</h4>
-                    <ul class="list-disc pl-5 mb-4">
-                        ${memories.map(memory => `<li>${memory}</li>`).join('')}
-                    </ul>
+                    <div class="overflow-y-auto mb-4 flex-grow">
+                        <ul class="list-disc pl-5">
+                            ${memories.map(memory => `<li>${memory}</li>`).join('')}
+                        </ul>
+                    </div>
                     <h4 class="font-bold mb-2">Current Thoughts:</h4>
-                    <p>${thoughts}</p>
+                    <div class="overflow-y-auto mb-4 flex-shrink-0" style="max-height: 100px;">
+                        <p>${thoughts}</p>
+                    </div>
                     <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
                 </div>
             `;
@@ -507,6 +798,7 @@ Example format:
                 document.body.removeChild(historyModal);
             });
         }
+
 
         document.getElementById('buildVillageBtn').addEventListener('click', initializeSimulation);
 
@@ -523,7 +815,7 @@ Example format:
         });
 
         document.getElementById('exportBtn').addEventListener('click', () => {
-            const gameState = { villagers, locations, currentStep };
+            const gameState = { villagers, locations, currentStep, events };
             const stateJson = JSON.stringify(gameState);
             const blob = new Blob([stateJson], {type: "application/json"});
             const url = URL.createObjectURL(blob);
@@ -548,6 +840,7 @@ Example format:
                         const gameState = JSON.parse(e.target.result);
                         villagers = gameState.villagers;
                         locations = gameState.locations;
+                        events =  gameState.events || [];
                         currentStep = gameState.currentStep || 0;
                         updateVillageMap();
                         updateCharacterInfo();
@@ -581,7 +874,7 @@ Example format:
             }
 
             for (let i = 0; i < numPersonas; i++) {
-                const villager = await generateVillager(villageContext, villagers);
+                const villager = await generateVillager(villageContext, villagers, locations);
                 if (villager) villagers.push(villager);
             }
 
@@ -604,6 +897,8 @@ Example format:
             document.getElementById('startPauseBtn').textContent = 'Start Simulation';
             hideLoader();
         });
+
+ 
         document.getElementById('numPlaces').addEventListener('change', saveParameters);
         document.getElementById('numPersonas').addEventListener('change', saveParameters);
         document.getElementById('villageContext').addEventListener('change', saveParameters);
