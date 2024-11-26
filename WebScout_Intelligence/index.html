@@ -92,7 +92,7 @@
                 <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2">Crawling Depth</label>
-                        <input type="number" id="depthInput" value="1" min="1" max="5" 
+                        <input type="number" id="depthInput" value="0" min="0" max="5" 
                                class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     <div>
@@ -343,6 +343,8 @@
                 updateStepStatus(2, 'Processing');
                 
                 // Tokenize the input text
+
+                console.log("raw text")
                 console.log(state.rawText)
                 const tokens = await lc.tokenize(state.rawText);
                 console.log(tokens)
@@ -644,10 +646,18 @@ ${lc.template.separator_template}${lc.ai_message()}`;
         async function refineSubjectContent(subject, content) {
             const prompt = `
 ${lc.system_message()}Rewrite and organize the following content for the subject "${subject}" in a clear and structured format:
-${content}${lc.template.separator_template}${lc.ai_message()}`;
+${content}
+put the output inside a markdown markdown code tag like this:
+
+\`\`\`markdown
+here write the content of the section.
+Do not write the section title in this code tag.
+\`\`\`
+${lc.template.separator_template}${lc.ai_message()}`;
 
             try {
-                return await lc.generate(prompt);
+                code = await lc.generateCode(prompt);
+                return code
             } catch (error) {
                 console.error('Error refining subject content:', error);
                 return content;
