@@ -393,133 +393,158 @@
         function generatePrintableForm() {
             const formContent = formContainer.innerHTML;
             const printWindow = window.open('', '_blank');
-            printWindow.document.write(`
-                <!DOCTYPE html>
-                <html lang="en">
-                <head>
+            
+            // Create the HTML structure
+            const createHTML = () => {
+                const head = `
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <title>Professional Form</title>
-                    <script src="/lollms_assets/js/tailwindcss"></script>
+                    <script src="/lollms_assets/js/tailwindcss"><\/script>
                     <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
-                    <style>
-                        @media print {
-                            body {
-                                print-color-adjust: exact;
-                                -webkit-print-color-adjust: exact;
-                            }
-                            .no-print {
-                                display: none !important;
-                            }
-                        }
-                        input[type="text"], input[type="email"], input[type="number"], textarea {
-                            border: 1px solid #e2e8f0;
-                            border-radius: 0.375rem;
-                            padding: 0.5rem;
-                            width: 100%;
-                            transition: border-color 0.15s ease-in-out;
-                        }
-                        input[type="text"]:focus, input[type="email"]:focus, input[type="number"]:focus, textarea:focus {
-                            outline: none;
-                            border-color: #4299e1;
-                            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
-                        }
-                    </style>
-                </head>
-                <body class="bg-gray-100 p-8">
+                    ${createStyles()}
+                `;
+        
+                const body = `
                     <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
-                        <div class="toolbar bg-gray-800 p-4 flex justify-between items-center no-print">
-                            <h1 class="text-white text-xl font-bold">Professional Form</h1>
-                            <div class="flex space-x-4">
-                                <button id="printBtn" class="text-white hover:text-blue-300 transition duration-150 ease-in-out" title="Print Form">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                                    </svg>
-                                </button>
-                                <button id="saveBtn" class="text-white hover:text-green-300 transition duration-150 ease-in-out" title="Save Content">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-                                    </svg>
-                                </button>
-                                <label for="loadFile" class="text-white hover:text-yellow-300 transition duration-150 ease-in-out cursor-pointer" title="Load Content">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                    </svg>
-                                </label>
-                                <input type="file" id="loadFile" accept=".json" class="hidden">
-                            </div>
-                        </div>
+                        ${createToolbar()}
                         <div id="printableForm" class="p-8">
                             ${formContent}
                         </div>
                     </div>
-                    <script>
-                        // Replace non-interactive elements with interactive ones
-                        document.querySelectorAll('#printableForm input, #printableForm textarea').forEach(el => {
-                            if (!el.hasAttribute('type') || (el.getAttribute('type') !== 'submit' && el.getAttribute('type') !== 'button')) {
-                                el.removeAttribute('disabled');
-                                el.removeAttribute('readonly');
-                            }
-                        });
-                        
-                        // Add print functionality
-                        document.getElementById('printBtn').addEventListener('click', function() {
-                            window.print();
-                        });
-
-                        // Save form content to JSON file
-                        document.getElementById('saveBtn').addEventListener('click', function() {
-                            const formData = {};
-                            document.querySelectorAll('#printableForm input, #printableForm textarea, #printableForm select').forEach(el => {
-                                if (el.id) {
-                                    if (el.type === 'checkbox' || el.type === 'radio') {
-                                        formData[el.id] = el.checked;
-                                    } else {
-                                        formData[el.id] = el.value;
-                                    }
+                    ${createScripts()}
+                `;
+        
+                return `<!DOCTYPE html>
+                        <html lang="en">
+                            <head>${head}</head>
+                            <body class="bg-gray-100 p-8">${body}</body>
+                        </html>`;
+            };
+        
+            // Create styles
+            const createStyles = () => `
+                <style>
+                    @media print {
+                        body {
+                            print-color-adjust: exact;
+                            -webkit-print-color-adjust: exact;
+                        }
+                        .no-print {
+                            display: none !important;
+                        }
+                    }
+                    input[type="text"], input[type="email"], input[type="number"], textarea {
+                        border: 1px solid #e2e8f0;
+                        border-radius: 0.375rem;
+                        padding: 0.5rem;
+                        width: 100%;
+                        transition: border-color 0.15s ease-in-out;
+                    }
+                    input[type="text"]:focus, input[type="email"]:focus, input[type="number"]:focus, textarea:focus {
+                        outline: none;
+                        border-color: #4299e1;
+                        box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.5);
+                    }
+                </style>
+            `;
+        
+            // Create toolbar
+            const createToolbar = () => `
+                <div class="toolbar bg-gray-800 p-4 flex justify-between items-center no-print">
+                    <h1 class="text-white text-xl font-bold">Professional Form</h1>
+                    <div class="flex space-x-4">
+                        <button id="printBtn" class="text-white hover:text-blue-300 transition duration-150 ease-in-out" title="Print Form">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                            </svg>
+                        </button>
+                        <button id="saveBtn" class="text-white hover:text-green-300 transition duration-150 ease-in-out" title="Save Content">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                            </svg>
+                        </button>
+                        <label for="loadFile" class="text-white hover:text-yellow-300 transition duration-150 ease-in-out cursor-pointer" title="Load Content">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                        </label>
+                        <input type="file" id="loadFile" accept=".json" class="hidden">
+                    </div>
+                </div>
+            `;
+        
+            // Create scripts
+            const createScripts = () => `
+                <script>
+                    // Enable form elements
+                    document.querySelectorAll('#printableForm input, #printableForm textarea').forEach(el => {
+                        if (!el.hasAttribute('type') || (el.getAttribute('type') !== 'submit' && el.getAttribute('type') !== 'button')) {
+                            el.removeAttribute('disabled');
+                            el.removeAttribute('readonly');
+                        }
+                    });
+        
+                    // Print functionality
+                    document.getElementById('printBtn').addEventListener('click', function() {
+                        window.print();
+                    });
+        
+                    // Save functionality
+                    document.getElementById('saveBtn').addEventListener('click', function() {
+                        const formData = {};
+                        document.querySelectorAll('#printableForm input, #printableForm textarea, #printableForm select').forEach(el => {
+                            if (el.id) {
+                                if (el.type === 'checkbox' || el.type === 'radio') {
+                                    formData[el.id] = el.checked;
+                                } else {
+                                    formData[el.id] = el.value;
                                 }
-                            });
-                            const jsonContent = JSON.stringify(formData, null, 2);
-                            const blob = new Blob([jsonContent], { type: 'application/json' });
-                            const a = document.createElement('a');
-                            a.href = URL.createObjectURL(blob);
-                            a.download = 'form_content.json';
-                            a.click();
-                            URL.revokeObjectURL(a.href);
-                        });
-
-                        // Load form content from JSON file
-                        document.getElementById('loadFile').addEventListener('change', function(event) {
-                            const file = event.target.files[0];
-                            if (file) {
-                                const reader = new FileReader();
-                                reader.onload = function(e) {
-                                    try {
-                                        const formData = JSON.parse(e.target.result);
-                                        Object.keys(formData).forEach(key => {
-                                            const el = document.getElementById(key);
-                                            if (el) {
-                                                if (el.type === 'checkbox' || el.type === 'radio') {
-                                                    el.checked = formData[key];
-                                                } else {
-                                                    el.value = formData[key];
-                                                }
-                                            }
-                                        });
-                                        alert('Form content loaded successfully!');
-                                    } catch (error) {
-                                        alert('Error loading form content. Please make sure you selected a valid JSON file.');
-                                    }
-                                };
-                                reader.readAsText(file);
                             }
                         });
-                    <\/script>
-                </body>
-                </html>
-            `);
+                        const jsonContent = JSON.stringify(formData, null, 2);
+                        const blob = new Blob([jsonContent], { type: 'application/json' });
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = 'form_content.json';
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                    });
+        
+                    // Load functionality
+                    document.getElementById('loadFile').addEventListener('change', function(event) {
+                        const file = event.target.files[0];
+                        if (file) {
+                            const reader = new FileReader();
+                            reader.onload = function(e) {
+                                try {
+                                    const formData = JSON.parse(e.target.result);
+                                    Object.keys(formData).forEach(key => {
+                                        const el = document.getElementById(key);
+                                        if (el) {
+                                            if (el.type === 'checkbox' || el.type === 'radio') {
+                                                el.checked = formData[key];
+                                            } else {
+                                                el.value = formData[key];
+                                            }
+                                        }
+                                    });
+                                    alert('Form content loaded successfully!');
+                                } catch (error) {
+                                    alert('Error loading form content. Please make sure you selected a valid JSON file.');
+                                }
+                            };
+                            reader.readAsText(file);
+                        }
+                    });
+                <\/script>
+            `;
+        
+            // Write the complete HTML to the new window
+            printWindow.document.write(createHTML());
             printWindow.document.close();
         }
+        
 
 
 
