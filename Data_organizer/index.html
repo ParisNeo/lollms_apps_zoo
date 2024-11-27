@@ -196,12 +196,11 @@
     </div>
 
     <script>
-        let files = [];
         const lollmsFileLoader = new LollmsFileLoader();        
         // Initialize Lollms Client
         const lc = new LollmsClient();
         let state = {
-            urls: [],
+            files: [],
             depth: 1,
             chunkSize: 4096,
             rawText: '',
@@ -307,8 +306,8 @@
             const fileList = document.getElementById('fileList');
 
             for (let file of fileInput.files) {
-                if (!files.some(f => f.name === file.name)) {
-                    files.push(file);
+                if (!state.files.some(f => f.name === file.name)) {
+                    state.files.push(file);
                     const fileItem = document.createElement('div');
                     fileItem.textContent = file.name;
                     fileList.appendChild(fileItem);
@@ -321,12 +320,12 @@
             let allContent = '';
             let filesProcessed = 0;
 
-            if (files.length === 0) {
+            if (state.files.length === 0) {
                 reject('No files uploaded');
                 return;
             }
 
-            files.forEach(file => async function (){
+            state.files.forEach(file => async function (){
                 const reader = new FileReader();
 
                 reader.onload = async function(e) {
