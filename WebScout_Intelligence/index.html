@@ -408,6 +408,7 @@
         
                 // Process each chunk
                 for (let i = 0; i < state.chunks.length; i++) {
+                    console.log(`Processing chunk ${i + 1}/${state.chunks.length}`)
                     updateStepStatus(3, `Processing chunk ${i + 1}/${state.chunks.length}`);
                     
                     const chunk = state.chunks[i].text;
@@ -416,7 +417,8 @@
                     if (result) {
 
                         const resultSubjects = Object.keys(result.extracted_infos);
-
+                        console.log("resultSubjects");
+                        console.log(resultSubjects);
                         // Fuse the subject lists
                         const fusedSubjects = [...state.subjects, ...resultSubjects].filter((subject, index, self) => {
                           return self.indexOf(subject) === index;
@@ -437,6 +439,7 @@
                 }
         
                 // Refine all subject contents
+                console.log("Refining the subjects")
                 updateStepStatus(3, 'Refining subjects');
                 const refinementPromises = state.subjects.map(async subject => {
                     const content = state.processedData[subject];
@@ -616,7 +619,7 @@
         // LLM Processing Functions
         async function processChunkWithLLM(chunk, currentSubjects) {
             const prompt = `
-${lc.system_message()}Analyze the following text chunk and update the list of subjects. Extract relevant information for each subject.
+${lc.system_message()}Analyze the following text chunk and update the list of subjects. Extract relevant information for each subject. Make sure to extract enough information about each subject. If the text chunk is not related to any subject in the list, then create a new subject and add relevant information from the text chunk.
 Current subjects list:
 ${currentSubjects.join(', ')}
 Text chunk:
@@ -626,12 +629,12 @@ Generate a JSON response in the following format:
 \`\`\`json
 {
     "extracted_infos": {
-        "subject1": "extracted info",
-        "subject2": "extracted info"
+        "subject1": "extracted info in form of comprehensive paragraph and if applicable code and explanation in form of bullet points. Make sure you extract as much data as possible.",
+        ...
     }
 }
 \`\`\`
-Make sure to reuse subjects that are already in the list if possible. If you need to create new subjects, then do.
+The subhject content must be detailed.
 ${lc.template.separator_template}${lc.ai_message()}`;
 
             try {
@@ -650,13 +653,16 @@ ${content}
 put the output inside a markdown markdown code tag like this:
 
 \`\`\`markdown
-here write the content of the section.
+here write the content of the section with details and enhance the wording.
 Do not write the section title in this code tag.
+Write the content in an organized manner using markdown.
+You can write multiple paragraphs to detail the content.
 \`\`\`
 ${lc.template.separator_template}${lc.ai_message()}`;
-
+            console.log(prompt)
             try {
                 code = await lc.generateCode(prompt);
+                console.log(code)
                 return code
             } catch (error) {
                 console.error('Error refining subject content:', error);
