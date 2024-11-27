@@ -4,6 +4,23 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import subprocess
 import uuid
+import sys
+
+def ensure_ffmpeg_installed():
+    try:
+        print("Checking FFmpeg installation.")
+        subprocess.run(['ffmpeg', '-version'], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print("FFmpeg is already installed.")
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        print("FFmpeg not found. Attempting to install...")
+        import ffmpeg_installer
+        if ffmpeg_installer.install_ffmpeg_if_needed():
+            print("FFmpeg installation completed.")
+        else:
+            print("FFmpeg installation failed or requires restart. Please run the script again.")
+            sys.exit(1)
+
+ensure_ffmpeg_installed()
 
 app = FastAPI()
 
