@@ -7,98 +7,166 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
 </head>
-<style>
-        .scrollable-container {
-            max-height: 80vh;
-            overflow-y: auto;
-            padding: 20px;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-</style>
-<body class="bg-gradient-to-r from-green-100 to-blue-100 font-sans min-h-screen">
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-green-800 mb-8 text-center">Village Life Simulator</h1>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="bg-white shadow-lg rounded-lg p-6 col-span-2">
-                <h2 class="text-2xl font-semibold mb-4 text-green-700">Village Map</h2>
-                <div id="villageMap" class="h-96 bg-green-200 rounded-lg relative"></div>
-                <div id="loadingOverlay" class="hidden bg-gray-100 border border-gray-300 rounded-lg p-4 mt-4 w-full">
-                    <div class="flex items-center mb-4">
-                        <div class="animate-spin rounded-full h-8 w-8 border-t-4 border-green-500 border-solid mr-3"></div>
-                        <h3 class="text-lg font-semibold text-gray-700">Processing...</h3>
-                    </div>
-                    <div class="bg-gray-900 p-3 rounded">
-                        <pre id="consoleOutput" class="text-green-500 font-mono text-sm overflow-y-auto max-h-40 whitespace-pre-wrap break-words"></pre>
-                    </div>
-                    <button id="pauseBtn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Pause
-                    </button>
+<body class="bg-gray-900 text-white font-sans">
+    <div id="gameContainer" class="w-full h-screen relative overflow-hidden flex">
+        <!-- Left-side control panel -->
+        <div id="controlPanel" class="w-64 bg-gray-800 bg-opacity-90 p-4 overflow-y-auto transform -translate-x-full transition-transform duration-300 ease-in-out absolute left-0 top-0 bottom-0 z-10">
+            <h2 class="text-2xl font-semibold mb-4 text-green-400">Controls</h2>
+            <!-- Control panel content -->
+            <div class="space-y-4">
+                <div class="flex flex-col space-y-2">
+                    <label for="numPlaces" class="text-sm font-medium text-gray-300">Number of Places:</label>
+                    <input type="number" id="numPlaces" min="1" max="20" value="10" class="bg-gray-700 text-white border border-gray-600 rounded-md p-2">
                 </div>
-                
-            </div>
-            
-            <div class="bg-white shadow-lg rounded-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4 text-green-700">Controls</h2>
-                <div class="flex flex-col space-y-4">
-                    <div class="flex flex-col space-y-2">
-                        <label for="numPlaces" class="text-sm font-medium text-gray-700">Number of Places:</label>
-                        <input type="number" id="numPlaces" min="1" max="20" value="10" class="border border-gray-300 rounded-md p-2">
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <label for="numPersonas" class="text-sm font-medium text-gray-700">Number of Personas:</label>
-                        <input type="number" id="numPersonas" min="1" max="20" value="5" class="border border-gray-300 rounded-md p-2">
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <label for="villageContext" class="text-sm font-medium text-gray-700">Village Context:</label>
-                        <textarea id="villageContext" rows="3" class="border border-gray-300 rounded-md p-2" placeholder="Describe the village style, era, etc."></textarea>
-                    </div>
-                    <div class="flex flex-col space-y-2">
-                        <label for="maxSteps" class="text-sm font-medium text-gray-700">Maximum Simulation Steps:</label>
-                        <input type="number" id="maxSteps" min="1" max="1000" value="100" class="border border-gray-300 rounded-md p-2">
-                    </div>
-                    <div class="flex items-center mt-2">
-                        <input type="checkbox" id="buildImages" class="form-checkbox h-4 w-4 text-indigo-600 transition duration-150 ease-in-out">
-                        <label for="buildImages" class="ml-2 text-sm font-medium text-gray-700">Build images (Coming up soon)</label>
-                    </div>                    
-                    <button id="buildVillageBtn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Build Village
-                    </button>
-                    <button id="startPauseBtn" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Start Simulation
-                    </button>
-                    <div class="flex items-center">
-                        <label for="speedControl" class="mr-2">Speed:</label>
-                        <input type="range" id="speedControl" min="1" max="4" value="1" class="w-full">
-                    </div>
-                    <button id="exportBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Export State
-                    </button>
-                    <button id="importBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Import State
-                    </button>
-                    <button id="buildStoryBtn" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Build story
-                    </button>                    
+                <div class="flex flex-col space-y-2">
+                    <label for="numPersonas" class="text-sm font-medium text-gray-300">Number of Personas:</label>
+                    <input type="number" id="numPersonas" min="1" max="20" value="5" class="bg-gray-700 text-white border border-gray-600 rounded-md p-2">
+                </div>
+                <div class="flex flex-col space-y-2">
+                    <label for="villageContext" class="text-sm font-medium text-gray-300">Village Context:</label>
+                    <textarea id="villageContext" rows="3" class="bg-gray-700 text-white border border-gray-600 rounded-md p-2" placeholder="Describe the village style, era, etc."></textarea>
+                </div>
+                <div class="flex flex-col space-y-2">
+                    <label for="maxSteps" class="text-sm font-medium text-gray-300">Maximum Simulation Steps:</label>
+                    <input type="number" id="maxSteps" min="1" max="1000" value="100" class="bg-gray-700 text-white border border-gray-600 rounded-md p-2">
+                </div>
+                <div class="flex items-center mt-2">
+                    <input type="checkbox" id="buildImages" class="form-checkbox h-4 w-4 text-green-500">
+                    <label for="buildImages" class="ml-2 text-sm font-medium text-gray-300">Build images (Coming up soon)</label>
+                </div>
+                <button id="buildVillageBtn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Build Village
+                </button>
+                <div class="flex items-center">
+                    <label for="speedControl" class="mr-2 text-gray-300">Speed:</label>
+                    <input type="range" id="speedControl" min="1" max="4" value="1" class="w-full">
                 </div>
             </div>
         </div>
-        
-        <div class="mt-8 bg-white shadow-lg rounded-lg p-6">
-            <h2 class="text-2xl font-semibold mb-4 text-green-700">Character Information</h2>
-            <div id="characterInfo" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
-        </div>
-        
-        <div class="mt-8 bg-white shadow-lg rounded-lg p-6">
-            <h2 class="text-2xl font-semibold mb-4 text-green-700">Event Log</h2>
-            <div id="eventLog" class="space-y-2">
+
+        <!-- Main game area -->
+        <div class="flex-grow">
+            <div id="villageMapContainer" class="w-full h-full bg-green-900">
+                <div id="villageMap" class="w-full h-full"></div>
             </div>
         </div>
+
+        <!-- Bottom panels -->
+        <div id="characterPanel" class="hidden absolute inset-x-0 bottom-16 bg-gray-800 bg-opacity-90 p-4 overflow-y-auto max-h-[70vh]">
+            <h2 class="text-2xl font-semibold mb-4 text-green-400">Characters</h2>
+            <div id="characterInfo" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        </div>
+
+        <div id="eventPanel" class="hidden absolute inset-x-0 bottom-16 bg-gray-800 bg-opacity-90 p-4">
+            <h2 class="text-2xl font-semibold mb-4 text-green-400">Event Log</h2>
+            <div id="eventLogContainer" class="h-64 overflow-y-auto">
+                <div id="eventLog" class="space-y-2"></div>
+            </div>
+        </div>
+        
+        <div id="loadingOverlay" class="hidden absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center">
+            <div class="bg-gray-800 p-6 rounded-lg">
+                <div class="flex items-center mb-4">
+                    <div class="animate-spin rounded-full h-8 w-8 border-t-4 border-green-500 border-solid mr-3"></div>
+                    <h3 class="text-lg font-semibold text-green-400">Processing...</h3>
+                </div>
+                <div class="bg-gray-900 p-3 rounded">
+                    <pre id="consoleOutput" class="text-green-500 font-mono text-sm overflow-y-auto max-h-40 whitespace-pre-wrap break-words"></pre>
+                </div>
+                <button id="pauseBtn" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    Pause
+                </button>
+            </div>
+        </div>
+
+        <!-- Bottom menu bar -->
+        <div class="absolute bottom-0 inset-x-0 bg-gray-800 bg-opacity-90 p-4 flex justify-between items-center z-50 shadow-lg">
+            <div class="flex space-x-4">
+                <button id="controlsBtn" class="flex items-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                    Controls
+                </button>
+                <button id="charactersBtn" class="flex items-center bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                    Characters
+                </button>
+                <button id="eventLogBtn" class="flex items-center bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                    Event Log
+                </button>
+                <button id="exportBtn" class="flex items-center bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    Export State
+                </button>
+                <button id="importBtn" class="flex items-center bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                    </svg>
+                    Import State
+                </button>
+            </div>
+            <div class="flex space-x-4">
+                <button id="buildStoryBtn" class="flex items-center bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                    </svg>
+                    Build Story
+                </button>
+                <button id="startPauseBtn" class="flex items-center bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300 transform hover:scale-105">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Start Simulation
+                </button>
+            </div>
+        </div>
+        
     </div>
+
     <script>
+        // Initialize panzoom on the village map
+        const villageMapElement = document.getElementById('villageMap');
+        const panzoomInstance = panzoom(villageMapElement, {
+            maxZoom: 5,
+            minZoom: 0.5,
+            bounds: true,
+            boundsPadding: 0.1
+        });
+
+        // Panel toggle functionality
+        const controlPanel = document.getElementById('controlPanel');
+        const characterPanel = document.getElementById('characterPanel');
+        const eventPanel = document.getElementById('eventPanel');
+
+        document.getElementById('controlsBtn').addEventListener('click', () => {
+            controlPanel.classList.toggle('-translate-x-full');
+            characterPanel.classList.add('hidden');
+            eventPanel.classList.add('hidden');
+        });
+
+        document.getElementById('charactersBtn').addEventListener('click', () => {
+            characterPanel.classList.toggle('hidden');
+            eventPanel.classList.add('hidden');
+            controlPanel.classList.add('-translate-x-full');
+        });
+
+        document.getElementById('eventLogBtn').addEventListener('click', () => {
+            eventPanel.classList.toggle('hidden');
+            characterPanel.classList.add('hidden');
+            controlPanel.classList.add('-translate-x-full');
+        });
         const lc = new LollmsClient();
         let simulationRunning = false;
         let villagers = [];
@@ -479,7 +547,7 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
 
             locations.forEach((location, index) => {
                 const locationElement = document.createElement('div');
-                locationElement.className = 'absolute w-16 h-16 bg-yellow-200 rounded-lg flex items-center justify-center text-xs text-center cursor-pointer';
+                locationElement.className = 'absolute w-16 h-16 bg-yellow-200 rounded-lg flex items-center justify-center text-xs text-center text-black cursor-pointer';
                 locationElement.style.left = `${(index % 5) * 20}%`;
                 locationElement.style.top = `${Math.floor(index / 5) * 25}%`;
                 locationElement.textContent = location.name;
@@ -489,7 +557,7 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
 
             villagers.forEach((villager, index) => {
                 const villagerElement = document.createElement('div');
-                villagerElement.className = 'absolute w-8 h-8 rounded-full flex items-center justify-center text-xs text-white cursor-pointer';
+                villagerElement.className = 'absolute w-8 h-8 rounded-full flex items-center justify-center text-xs text-black cursor-pointer';
                 
                 // Colorization based on age and gender
                 const agePercent = villager.age / 100; // Assuming max age is 100
@@ -526,7 +594,7 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
             
             // Create content for the modal
             const content = document.createElement('div');
-            content.className = 'bg-white p-6 rounded-lg max-w-md';
+            content.className = 'bg-gray-800 p-6 rounded-lg max-w-md';
             content.innerHTML = `
                 <h2 class="text-xl font-bold mb-2">${location.name}</h2>
                 <p><strong>Type:</strong> ${location.type}</p>
@@ -550,17 +618,17 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
 
             villagers.forEach((villager, index) => {
                 const villagerCard = document.createElement('div');
-                villagerCard.className = 'bg-gray-100 p-4 rounded-lg mb-4';
+                villagerCard.className = 'bg-gray-900 border border-green-500 rounded-lg p-4 mb-4 font-mono text-green-400 shadow-lg';
                 villagerCard.innerHTML = `
-                    <h3 class="font-semibold">${villager.name}</h3>
-                    <p>Age: ${villager.age}</p>
-                    <p>Gender: ${villager.gender}</p>
-                    <p>Occupation: ${villager.occupation}</p>
-                    <p>Status: ${villager.currentStatus.activity} at ${villager.currentStatus.location}</p>
-                    <p>Mood: ${villager.currentStatus.mood}</p>
-                    <div class="mt-2">
-                        <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs mr-2">Show Memories</button>
-                        <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-2 rounded text-xs">Edit</button>
+                    <h3 class="font-semibold text-lg text-green-300 mb-2">${villager.name}</h3>
+                    <p class="text-green-400">Age: <span class="text-green-500">${villager.age}</span></p>
+                    <p class="text-green-400">Gender: <span class="text-green-500">${villager.gender}</span></p>
+                    <p class="text-green-400">Occupation: <span class="text-green-500">${villager.occupation}</span></p>
+                    <p class="text-green-400">Status: <span class="text-green-500">${villager.currentStatus.activity} at ${villager.currentStatus.location}</span></p>
+                    <p class="text-green-400">Mood: <span class="text-green-500">${villager.currentStatus.mood}</span></p>
+                    <div class="mt-4 flex space-x-2">
+                        <button class="bg-green-700 hover:bg-green-600 text-green-200 font-bold py-1 px-2 rounded text-xs border border-green-500">Show Memories</button>
+                        <button class="bg-green-700 hover:bg-green-600 text-green-200 font-bold py-1 px-2 rounded text-xs border border-green-500">Edit</button>
                     </div>
                 `;
                 const showMemoriesBtn = villagerCard.querySelector('button:first-child');
@@ -575,56 +643,56 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
 
         function showEditVillagerModal(villager, index) {
             const editModal = document.createElement('div');
-            editModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
+            editModal.className = 'fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50';
             editModal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
-                    <h3 class="text-xl font-bold mb-4">Edit ${villager.name}</h3>
+                <div class="bg-gray-900 border border-green-500 p-6 rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto text-green-400 font-mono">
+                    <h3 class="text-xl font-bold mb-4 text-green-300">Edit ${villager.name}</h3>
                     <form id="editVillagerForm">
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="name">Name:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="name" type="text" value="${villager.name}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="name">Name:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="name" type="text" value="${villager.name}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="age">Age:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="age" type="number" value="${villager.age}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="age">Age:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="age" type="number" value="${villager.age}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="gender">Gender:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gender" type="text" value="${villager.gender}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="gender">Gender:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="gender" type="text" value="${villager.gender}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="occupation">Occupation:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="occupation" type="text" value="${villager.occupation}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="occupation">Occupation:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="occupation" type="text" value="${villager.occupation}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="activity">Activity:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="activity" type="text" value="${villager.currentStatus.activity}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="activity">Activity:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="activity" type="text" value="${villager.currentStatus.activity}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="location">Location:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="location" type="text" value="${villager.currentStatus.location}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="location">Location:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="location" type="text" value="${villager.currentStatus.location}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="mood">Mood:</label>
-                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="mood" type="text" value="${villager.currentStatus.mood}">
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="mood">Mood:</label>
+                            <input class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="mood" type="text" value="${villager.currentStatus.mood}">
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="newMemories">New Memories:</label>
-                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="newMemories" rows="4">${villager.newMemories || ''}</textarea>
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="newMemories">New Memories:</label>
+                            <textarea class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="newMemories" rows="4">${villager.newMemories || ''}</textarea>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="thoughts">Thoughts:</label>
-                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="thoughts" rows="4">${villager.thoughts || ''}</textarea>
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="thoughts">Thoughts:</label>
+                            <textarea class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="thoughts" rows="4">${villager.thoughts || ''}</textarea>
                         </div>
                         <div class="mb-4">
-                            <label class="block text-gray-700 text-sm font-bold mb-2" for="backstory">Backstory:</label>
-                            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="backstory" rows="4">${villager.backstory || ''}</textarea>
+                            <label class="block text-green-400 text-sm font-bold mb-2" for="backstory">Backstory:</label>
+                            <textarea class="shadow appearance-none border border-green-500 rounded w-full py-2 px-3 bg-gray-800 text-green-300 leading-tight focus:outline-none focus:shadow-outline" id="backstory" rows="4">${villager.backstory || ''}</textarea>
                         </div>
                         <div class="flex items-center justify-between">
-                            <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit">
+                            <button class="bg-green-700 hover:bg-green-600 text-green-200 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline border border-green-500" type="submit">
                                 Save Changes
                             </button>
-                            <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="button" id="cancelEdit">
+                            <button class="bg-red-700 hover:bg-red-600 text-red-200 font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline border border-red-500" type="button" id="cancelEdit">
                                 Cancel
                             </button>
                         </div>
@@ -661,24 +729,25 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
             });
         }
 
+
         function addEventToLog(event) {
             const eventLog = document.getElementById('eventLog');
             const eventElement = document.createElement('div');
-            eventElement.className = 'bg-white shadow-md rounded-lg p-4 mb-2';
+            eventElement.className = 'bg-gray-900 border border-green-500 rounded-lg p-4 mb-2 font-mono text-green-400 shadow-lg';
             events.push(event)
             let interactionHtml = '';
             if (event.type === 'interaction') {
                 interactionHtml = `
-                    <button class="mt-2 bg-blue-500 hover:bg-blue-600 text-white font-bold py-1 px-2 rounded text-xs show-interaction-btn">
+                    <button class="mt-2 bg-green-700 hover:bg-green-600 text-green-200 font-bold py-1 px-2 rounded text-xs show-interaction-btn border border-green-500">
                         Show Interaction
                     </button>
                 `;
             }
             
             eventElement.innerHTML = `
-                <h3 class="text-lg font-semibold mb-2">${event.title || 'Event'}</h3>
-                <p>${event.description}</p>
-                ${event.details ? `<p class="mt-2 text-sm text-gray-600">${event.details}</p>` : ''}
+                <h3 class="text-lg font-semibold mb-2 text-green-300">${event.title || 'Event'}</h3>
+                <p class="text-green-400">${event.description}</p>
+                ${event.details ? `<p class="mt-2 text-sm text-green-500">${event.details}</p>` : ''}
                 ${interactionHtml}
             `;
             
@@ -710,25 +779,30 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
 
             for (let i = 0; i < villagers.length; i++) {
                 villagers[i] = await updateVillagerStatus(villagers[i]);
-                addEventToLog({
+                event = {
+                    type:'villager update',
                     title: `${villagers[i].name}'s Update`,
                     description: `${villagers[i].name} is ${villagers[i].currentStatus.activity} at ${villagers[i].currentStatus.location}.`,
-                    details: `Mood: ${villagers[i].currentStatus.mood}`
-                });
+                    details:`Mood: ${villagers[i].currentStatus.mood}`
+                }
+                events.push(event)
+                addEventToLog(event);
             }
 
             // Modified main interaction function
             if (villagers.length >= 2) {
                 const interaction = await generateGroupInteraction(villagers);
+                event = {
+                    type: 'interaction',
+                    title: `Group Interaction: ${interaction.type}`,
+                    description: `${participantNames} interact: "${interaction.dialogue[0]?.text || 'No dialogue available'}"`,
+                    details: `Outcomes: ${Object.entries(interaction.outcomes).map(([name, outcome]) => `${name}: ${outcome.moodChange || 'No mood change'}`).join(', ')}`,
+                    interaction: interaction
+                }
+                events.push(event)
                 if (interaction) {
                     const participantNames = Object.keys(interaction.outcomes).join(', ');
-                    addEventToLog({
-                        type: 'interaction',
-                        title: `Group Interaction: ${interaction.type}`,
-                        description: `${participantNames} interact: "${interaction.dialogue[0]?.text || 'No dialogue available'}"`,
-                        details: `Outcomes: ${Object.entries(interaction.outcomes).map(([name, outcome]) => `${name}: ${outcome.moodChange || 'No mood change'}`).join(', ')}`,
-                        interaction: interaction
-                    });
+                    addEventToLog(event);
                 }
             }
 
@@ -737,34 +811,58 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
             hideLoader();
         }
 
-        function showInteractionPopup(interaction) {
-            const interactionModal = document.createElement('div');
-            interactionModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
-            interactionModal.innerHTML = `
-                <div class="scrollable-container max-w-md w-full">
-                    <h3 class="text-xl font-bold mb-4">Interaction: ${interaction.type}</h3>
-                    <div class="mb-4">
-                        ${interaction.dialogue.map(d => `<p><strong>${d.speaker}:</strong> ${d.text}</p>`).join('')}
-                    </div>
-                    <h4 class="font-bold mb-2">Outcomes:</h4>
-                    <ul class="list-disc pl-5 mb-4">
-                        ${Object.entries(interaction.outcomes).map(([name, outcome]) => `
-                            <li>
-                                <strong>${name}:</strong>
-                                <ul class="list-disc pl-5">
-                                    <li>Mood change: ${outcome.moodChange}</li>
-                                    <li>Affinity change: ${outcome.affinityChange}</li>
-                                    <li>New memories: ${outcome.newMemories.join(', ')}</li>
-                                </ul>
-                            </li>
-                        `).join('')}
-                    </ul>
-                    <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Close</button>
-                </div>
+        function addEventToLog(event) {
+            const eventLog = document.getElementById('eventLog');
+            const eventElement = document.createElement('div');
+            eventElement.className = 'bg-gray-900 border border-green-500 rounded-lg p-4 mb-2 font-mono text-green-400 shadow-lg';
+            events.push(event)
+            let interactionHtml = '';
+            if (event.type === 'interaction') {
+                interactionHtml = `
+                    <button class="mt-2 bg-green-700 hover:bg-green-600 text-green-200 font-bold py-1 px-2 rounded text-xs show-interaction-btn border border-green-500">
+                        Show Interaction
+                    </button>
+                `;
+            }
+            
+            eventElement.innerHTML = `
+                <h3 class="text-lg font-semibold mb-2 text-green-300">${event.title || 'Event'}</h3>
+                <p class="text-green-400">${event.description}</p>
+                ${event.details ? `<p class="mt-2 text-sm text-green-500">${event.details}</p>` : ''}
+                ${interactionHtml}
             `;
-            document.body.appendChild(interactionModal);
-            interactionModal.querySelector('button').addEventListener('click', () => {
-                document.body.removeChild(interactionModal);
+            
+            if (event.type === 'interaction') {
+                const showInteractionBtn = eventElement.querySelector('.show-interaction-btn');
+                showInteractionBtn.addEventListener('click', () => showInteractionPopup(event.interaction));
+            }
+            
+            eventLog.insertBefore(eventElement, eventLog.firstChild);
+        }
+
+        function showInteractionPopup(interaction) {
+            const popup = document.createElement('div');
+            popup.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            
+            const content = document.createElement('div');
+            content.className = 'bg-gray-800 border border-green-500 rounded-lg p-6 max-w-2xl w-full max-h-[80vh] flex flex-col';
+            
+            content.innerHTML = `
+                <h2 class="text-xl font-bold mb-4 text-green-300">Interaction Details</h2>
+                <div class="overflow-y-auto flex-grow">
+                    <pre class="text-green-400 whitespace-pre-wrap">${JSON.stringify(interaction, null, 2)}</pre>
+                </div>
+                <button class="mt-4 bg-green-700 hover:bg-green-600 text-green-200 font-bold py-2 px-4 rounded close-popup">
+                    Close
+                </button>
+            `;
+            
+            popup.appendChild(content);
+            document.body.appendChild(popup);
+            
+            const closeBtn = popup.querySelector('.close-popup');
+            closeBtn.addEventListener('click', () => {
+                document.body.removeChild(popup);
             });
         }
 
@@ -775,7 +873,7 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
             const historyModal = document.createElement('div');
             historyModal.className = 'fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50';
             historyModal.innerHTML = `
-                <div class="bg-white p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
+                <div class="bg-gray-900 p-6 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] flex flex-col">
                     <h3 class="text-xl font-bold mb-4">${villager.name}'s History</h3>
                     <div class="overflow-y-auto mb-4 flex-shrink-0" style="max-height: 100px;">
                         <p>${villager.backstory}</p>
@@ -844,6 +942,10 @@ ${lc.user_message()}Villagers: ${JSON.stringify(participants)}. Please generate 
                         currentStep = gameState.currentStep || 0;
                         updateVillageMap();
                         updateCharacterInfo();
+                        console.log(events)
+                        events.map((event)=>{
+                            addEventToLog(event);
+                        });
                         alert('Game state imported successfully.');
                     } catch (error) {
                         alert('Error importing game state: ' + error.message);
