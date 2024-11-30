@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MazeQuest</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <style>
+        .maze-wrapper {
+            width: 300px;
+            height: 300px;
+            overflow: auto;
+        }
+        .cell { aspect-ratio: 1 / 1; }
+        .wall { background-color: #1a202c; }
+        .path { background-color: #e2e8f0; }
+        .start { background-color: #48bb78; }
+        .end { background-color: #f56565; }
+        .player { background-color: #4299e1; }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .overlay-content {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans min-h-screen flex items-center justify-center">
+    <div class="container mx-auto px-4 py-8 text-center">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-6">MazeQuest</h1>
+        <div id="main-menu" class="bg-white shadow-lg rounded-lg p-6 mb-8">
+            <button id="start-game" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+            <button id="show-leaderboard" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4 w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+            </button>
+            <button id="show-credits" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded transition duration-300 w-full">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </button>
+        </div>
+        <div id="game-container" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
+            <div class="maze-wrapper mx-auto mb-4">
+                <div id="maze-container" class="flex flex-col"></div>
+            </div>
+            <div class="flex justify-center space-x-4 mb-4">
+                <button id="up" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                </button>
+                <button id="down" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                </button>
+                <button id="left" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                </button>
+                <button id="right" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+            <div class="mb-4">
+                <span class="font-bold">Level: </span><span id="level">1</span>
+            </div>
+            <button id="next-level" class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300 hidden">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-indigo-800 font-semibold">Generating maze...</p>
+        </div>
+    </div>
+    <div id="leaderboardOverlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2 class="text-2xl font-bold mb-4">Leaderboard</h2>
+            <ul id="leaderboard-list" class="list-decimal list-inside"></ul>
+            <button id="close-leaderboard" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div id="creditsOverlay" class="overlay hidden">
+        <div class="overlay-content">
+            <h2 class="text-2xl font-bold mb-4">Credits</h2>
+            <p>Created by: Your Name</p>
+            <p>Powered by LoLLMs</p>
+            <button id="close-credits" class="mt-4 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <script>
+        const lc = new LollmsClient();
+        let maze = [];
+        let playerPos = { x: 0, y: 0 };
+        let endPos = { x: 0, y: 0 };
+        let currentLevel = 1;
+        let playerName = "";
+        let highScores = [];
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+        async function generateMaze(level) {
+            showLoader();
+            const size = 5 + level;
+            const prompt = `Generate a ${size}x${size} maze as a 2D array where 0 represents a path and 1 represents a wall. Include a start position at [1,1] and an end position at [${size-2},${size-2}]. Ensure there's a valid path from start to end. Only return the 2D array, nothing else.`;
+            try {
+                const response = await lc.generateCode(prompt);
+                hideLoader();
+                if (response) {
+                    maze = JSON.parse(response);
+                    playerPos = { x: 1, y: 1 };
+                    endPos = { x: size - 2, y: size - 2 };
+                    renderMaze();
+                }
+            } catch (error) {
+                console.error("Error generating maze:", error);
+                hideLoader();
+            }
+        }
+        function renderMaze() {
+            const container = document.getElementById('maze-container');
+            container.innerHTML = '';
+            const cellSize = 300 / maze.length;
+            for (let y = 0; y < maze.length; y++) {
+                const row = document.createElement('div');
+                row.className = 'flex';
+                for (let x = 0; x < maze[y].length; x++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.style.width = `${cellSize}px`;
+                    if (x === playerPos.x && y === playerPos.y) {
+                        cell.classList.add('player');
+                    } else if (x === 1 && y === 1) {
+                        cell.classList.add('start');
+                    } else if (x === endPos.x && y === endPos.y) {
+                        cell.classList.add('end');
+                    } else if (maze[y][x] === 1) {
+                        cell.classList.add('wall');
+                    } else {
+                        cell.classList.add('path');
+                    }
+                    row.appendChild(cell);
+                }
+                container.appendChild(row);
+            }
+        }
+        function movePlayer(dx, dy) {
+            const newX = playerPos.x + dx;
+            const newY = playerPos.y + dy;
+            if (newX >= 0 && newX < maze[0].length && newY >= 0 && newY < maze.length && maze[newY][newX] === 0) {
+                playerPos.x = newX;
+                playerPos.y = newY;
+                renderMaze();
+                checkWin();
+            }
+        }
+        function checkWin() {
+            if (playerPos.x === endPos.x && playerPos.y === endPos.y) {
+                document.getElementById('next-level').classList.remove('hidden');
+            }
+        }
+        function showMainMenu() {
+            document.getElementById('main-menu').classList.remove('hidden');
+            document.getElementById('game-container').classList.add('hidden');
+        }
+        function startGame() {
+            playerName = prompt("Enter your name:");
+            if (playerName) {
+                document.getElementById('main-menu').classList.add('hidden');
+                document.getElementById('game-container').classList.remove('hidden');
+                currentLevel = 1;
+                document.getElementById('level').textContent = currentLevel;
+                generateMaze(currentLevel);
+            }
+        }
+        function showLeaderboard() {
+            const leaderboardList = document.getElementById('leaderboard-list');
+            leaderboardList.innerHTML = '';
+highScores.sort((a, b) => b.level - a.level);
+            highScores.slice(0, 10).forEach(score => {
+                const li = document.createElement('li');
+                li.textContent = `${score.name}: Level ${score.level}`;
+                leaderboardList.appendChild(li);
+            });
+            document.getElementById('leaderboardOverlay').classList.remove('hidden');
+        }
+        function closeLeaderboard() {
+            document.getElementById('leaderboardOverlay').classList.add('hidden');
+        }
+        function showCredits() {
+            document.getElementById('creditsOverlay').classList.remove('hidden');
+        }
+        function closeCredits() {
+            document.getElementById('creditsOverlay').classList.add('hidden');
+        }
+        document.getElementById('start-game').addEventListener('click', startGame);
+        document.getElementById('show-leaderboard').addEventListener('click', showLeaderboard);
+        document.getElementById('close-leaderboard').addEventListener('click', closeLeaderboard);
+        document.getElementById('show-credits').addEventListener('click', showCredits);
+        document.getElementById('close-credits').addEventListener('click', closeCredits);
+        document.getElementById('up').addEventListener('click', () => movePlayer(0, -1));
+        document.getElementById('down').addEventListener('click', () => movePlayer(0, 1));
+        document.getElementById('left').addEventListener('click', () => movePlayer(-1, 0));
+        document.getElementById('right').addEventListener('click', () => movePlayer(1, 0));
+        document.getElementById('next-level').addEventListener('click', () => {
+            currentLevel++;
+            document.getElementById('level').textContent = currentLevel;
+            document.getElementById('next-level').classList.add('hidden');
+            generateMaze(currentLevel);
+            highScores.push({ name: playerName, level: currentLevel - 1 });
+        });
+        document.addEventListener('keydown', (e) => {
+            switch(e.key) {
+                case 'ArrowUp': movePlayer(0, -1); break;
+                case 'ArrowDown': movePlayer(0, 1); break;
+                case 'ArrowLeft': movePlayer(-1, 0); break;
+                case 'ArrowRight': movePlayer(1, 0); break;
+            }
+        });
+        showMainMenu();
+    </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Contextual Summarizer and Synthesizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptx2json@0.0.10/index.test.min.js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
+    <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="app_title"></h1>
+            <p class="text-lg text-gray-700" data-translate="app_description"></p>
+        </header>
+        <main class="bg-white shadow-lg rounded-lg p-6">
+            <section class="mb-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="upload_files"></h2>
+                <div class="border-2 border-dashed border-indigo-300 rounded-lg p-4 text-center">
+                    <input id="fileInput" type="file" multiple accept=".pdf,.docx,.txt" class="hidden">
+                    <label for="fileInput" class="cursor-pointer text-indigo-600 hover:underline" data-translate="click_to_upload"></label>
+                    <p class="text-sm text-gray-500 mt-2" data-translate="supported_formats"></p>
+                </div>
+                <ul id="fileList" class="mt-4 text-gray-700"></ul>
+            </section>
+            <section class="mb-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="input_prompts"></h2>
+                <textarea id="summaryPrompt" rows="4" placeholder="" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" data-translate="summary_prompt_placeholder"></textarea>
+                <textarea id="synthesisPrompt" rows="4" placeholder="" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-translate="synthesis_prompt_placeholder"></textarea>
+            </section>
+            <section class="flex justify-between">
+                <button id="processButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="process_documents"></button>
+                <button id="clearButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300" data-translate="clear_all"></button>
+            </section>
+            <section id="resultsSection" class="mt-8 hidden">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="results"></h2>
+                <div id="individualSummaries" class="mb-6"></div>
+                <div id="finalSynthesis" class="bg-gray-100 p-4 rounded-lg shadow-md">
+                    <h3 class="text-xl font-semibold text-indigo-600" data-translate="final_synthesis"></h3>
+                    <p id="synthesisResult" class="text-gray-700 mt-2"></p>
+                </div>
+            </section>
+        </main>
+    </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
+        <div class="text-center">
+            <div class="animate-spin text-indigo-600 text-4xl">🌟</div>
+            <p class="text-indigo-700 mt-4" data-translate="processing"></p>
+        </div>
+    </div>
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    app_title: "Document Contextual Summarizer and Synthesizer",
+                    app_description: "Upload your documents, provide prompts, and get contextual summaries and a final synthesis.",
+                    upload_files: "Upload Files",
+                    click_to_upload: "Click to upload files",
+                    supported_formats: "Supported formats: PDF, DOCX, TXT",
+                    input_prompts: "Input Prompts",
+                    summary_prompt_placeholder: "Enter the prompt for contextual summaries...",
+                    synthesis_prompt_placeholder: "Enter the prompt for final synthesis...",
+                    process_documents: "Process Documents",
+                    clear_all: "Clear All",
+                    results: "Results",
+                    final_synthesis: "Final Synthesis",
+                    processing: "Processing..."
+                }
+            }
+        };
+        const localizer = new WebAppLocalizer(translations, "doc_summarizer_", null);
+        localizer.apply();
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const processButton = document.getElementById('processButton');
+        const clearButton = document.getElementById('clearButton');
+        const resultsSection = document.getElementById('resultsSection');
+        const individualSummaries = document.getElementById('individualSummaries');
+        const synthesisResult = document.getElementById('synthesisResult');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const lollmsClient = new TasksLibrary(new LollmsClient());
+        const mr = new MarkdownRenderer();
+        const fileLoader = new LollmsFileLoader();
+        let uploadedFiles = [];
+        fileInput.addEventListener('change', (event) => {
+            uploadedFiles = Array.from(event.target.files);
+            fileList.innerHTML = uploadedFiles.map(file => `<li>${file.name}</li>`).join('');
+        });
+        processButton.addEventListener('click', async () => {
+            if (uploadedFiles.length === 0) {
+                alert(localizer.translate("click_to_upload"));
+                return;
+            }
+            const summaryPrompt = document.getElementById('summaryPrompt').value.trim();
+            const synthesisPrompt = document.getElementById('synthesisPrompt').value.trim();
+            if (!summaryPrompt || !synthesisPrompt) {
+                alert(localizer.translate("input_prompts"));
+                return;
+            }
+            loadingOverlay.classList.remove('hidden');
+            individualSummaries.innerHTML = '';
+            synthesisResult.textContent = '';
+            try {
+                const summaries = [];
+                for (const file of uploadedFiles) {
+                    const markdownContent = await fileLoader.loadFile(file);
+                    const summary = await lollmsClient.smartDataExtraction({
+                        text: markdownContent,
+                        summaryInstruction: summaryPrompt
+                    });
+                    summaries.push(summary);
+                    const rendered_summary = await mr.renderMarkdown(summary);
+                    individualSummaries.innerHTML += `<div class="mb-4"><h3 class="text-lg font-semibold text-indigo-600">${file.name}</h3><p class="text-gray-700">${rendered_summary}</p></div>`;
+                }
+                const synthesis = await lollmsClient.smartDataExtraction({
+                    text: summaries.join('\n'),
+                    finalTaskInstruction: synthesisPrompt
+                });
+                synthesisResult.innerHTML = await mr.renderMarkdown(synthesis);
+                resultsSection.classList.remove('hidden');
+            } catch (error) {
+                console.error(error);
+                alert(localizer.translate("processing_error"));
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        });
+        clearButton.addEventListener('click', () => {
+            fileInput.value = '';
+            fileList.innerHTML = '';
+            document.getElementById('summaryPrompt').value = '';
+            document.getElementById('synthesisPrompt').value = '';
+            resultsSection.classList.add('hidden');
+            uploadedFiles = [];
+        });
+    </script>
+</body>
+</html>

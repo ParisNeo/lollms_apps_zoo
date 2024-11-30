@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pomodoro Task Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h1 class="text-2xl font-bold text-center mb-4">Pomodoro Task Manager</h1>
+        <div id="taskList" class="mb-4"></div>
+        <div class="flex mb-4">
+            <input id="taskInput" type="text" placeholder="Add a new task" class="flex-1 p-2 border border-gray-300 rounded-l-lg focus:outline-none">
+            <button onclick="addTask()" class="bg-blue-500 text-white px-4 py-2 rounded-r-lg hover:bg-blue-600">Add</button>
+        </div>
+        <div class="text-center mb-4">
+            <span id="timer" class="text-4xl font-bold">25:00</span>
+        </div>
+        <div class="text-center">
+            <button id="startButton" onclick="startPomodoro()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600">Start</button>
+            <button id="nextButton" onclick="nextTask()" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 hidden">Next</button>
+            <button id="validateButton" onclick="validateTransition()" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 hidden">Validate</button>
+        </div>
+        <div class="mt-4 text-center">
+            <p class="text-lg font-semibold">Score: <span id="score">0</span></p>
+        </div>
+    </div>
+    <audio id="notificationSound" src="https://www.soundjay.com/button/beep-07.wav" loop></audio>
+    <script>
+        let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+        let currentTaskIndex = JSON.parse(localStorage.getItem('currentTaskIndex')) || 0;
+        let timerInterval;
+        let timeLeft = JSON.parse(localStorage.getItem('timeLeft')) || 25 * 60;
+        let isResting = JSON.parse(localStorage.getItem('isResting')) || false;
+        let score = JSON.parse(localStorage.getItem('score')) || 0;
+
+        function saveToLocalStorage() {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            localStorage.setItem('currentTaskIndex', JSON.stringify(currentTaskIndex));
+            localStorage.setItem('timeLeft', JSON.stringify(timeLeft));
+            localStorage.setItem('isResting', JSON.stringify(isResting));
+            localStorage.setItem('score', JSON.stringify(score));
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+            taskList.innerHTML = '';
+            tasks.forEach((task, index) => {
+                const taskDiv = document.createElement('div');
+                taskDiv.className = `p-2 mb-2 rounded-lg ${index === currentTaskIndex ? 'bg-green-100' : 'bg-gray-100'} flex justify-between items-center`;
+                taskDiv.innerHTML = `
+                    <span>${task}</span>
+                    <button onclick="removeTask(${index})" class="bg-red-500 text-white px-2 py-1 rounded-lg hover:bg-red-600">Delete</button>
+                `;
+                taskList.appendChild(taskDiv);
+            });
+        }
+
+        function addTask() {
+            const taskInput = document.getElementById('taskInput');
+            const task = taskInput.value.trim();
+            if (task) {
+                tasks.push(task);
+                taskInput.value = '';
+                saveToLocalStorage();
+                renderTasks();
+            }
+        }
+
+        function removeTask(index) {
+            tasks.splice(index, 1);
+            if (currentTaskIndex >= tasks.length) currentTaskIndex = tasks.length - 1;
+            saveToLocalStorage();
+            renderTasks();
+        }
+
+        function startPomodoro() {
+            if (tasks.length === 0) {
+                alert('Please add a task first.');
+                return;
+            }
+            document.getElementById('startButton').classList.add('hidden');
+            document.getElementById('nextButton').classList.remove('hidden');
+            timeLeft = isResting ? 5 * 60 : 25 * 60;
+            saveToLocalStorage();
+            updateTimerDisplay();
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                saveToLocalStorage();
+                updateTimerDisplay();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('notificationSound').play();
+                    document.getElementById('validateButton').classList.remove('hidden');
+                    document.getElementById('nextButton').classList.add('hidden');
+                }
+            }, 1000);
+        }
+
+        function nextTask() {
+            if (isResting) {
+                alert('You need to validate your rest before moving to the next task.');
+                return;
+            }
+            if (currentTaskIndex < tasks.length - 1) {
+                currentTaskIndex++;
+                saveToLocalStorage();
+                renderTasks();
+            } else {
+                alert('All tasks completed! Great job!');
+            }
+        }
+
+        function validateTransition() {
+            document.getElementById('notificationSound').pause();
+            document.getElementById('notificationSound').currentTime = 0;
+            isResting = !isResting;
+            if (!isResting) {
+                score += 10;
+                document.getElementById('score').textContent = score;
+            }
+            saveToLocalStorage();
+            document.getElementById('validateButton').classList.add('hidden');
+            document.getElementById('startButton').classList.remove('hidden');
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timer').textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        renderTasks();
+        document.getElementById('score').textContent = score;
+        updateTimerDisplay();
+    </script>
+</body>
+</html>

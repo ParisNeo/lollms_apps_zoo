@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClubID Cipher</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <style>
+        .blurred-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            z-index: 50;
+        }
+        .popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            display: none;
+            z-index: 51;
+        }
+        .card {
+            width: 320px;
+            height: 200px;
+            perspective: 1000px;
+        }
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+        .card:hover .card-inner {
+            transform: rotateY(180deg);
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <button id="backToHome" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4">Back to Home</button>
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">ClubID Cipher</h1>
+        
+        <div id="clubsList" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+        
+        <button id="addClubButton" class="fixed bottom-4 right-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold w-12 h-12 rounded-full text-2xl transition duration-300">+</button>
+        
+        <div id="clubDetails" class="hidden">
+            <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
+                <h2 id="clubName" class="text-2xl font-semibold text-indigo-700 mb-4"></h2>
+                <p id="clubDescription" class="text-gray-600 mb-4"></p>
+                <img id="clubLogo" class="w-32 h-32 mx-auto mb-4" alt="Club Logo">
+                <div id="memberManagement" class="mt-8">
+                    <h3 class="text-xl font-semibold text-indigo-700 mb-4">Member Management</h3>
+                    <div class="flex flex-col md:flex-row gap-4 mb-4">
+                        <input id="memberName" type="text" placeholder="Name" class="border border-indigo-300 rounded-md p-2 flex-grow">
+                        <input id="memberAge" type="number" placeholder="Age" class="border border-indigo-300 rounded-md p-2 w-20">
+                        <select id="memberGender" class="border border-indigo-300 rounded-md p-2">
+                            <option value="">Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                        <button id="addMember" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Add Member</button>
+                    </div>
+                    <textarea id="memberDescription" placeholder="Member Description" class="border border-indigo-300 rounded-md p-2 w-full h-24 mb-4"></textarea>
+                    <div id="memberCards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+                </div>
+                <div class="mt-4 flex justify-between">
+                    <button id="backToClubs" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded transition duration-300">Back to Clubs</button>
+                    <button id="removeClub" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">Remove Club</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="blurred-overlay flex flex-col items-center justify-center hidden z-50">
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+            <h3 class="text-xl font-semibold mb-4" id="loadingMessage">Processing...</h3>
+            <div class="loader mb-4"></div>
+            <button id="cancelOperation" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">Cancel</button>
+        </div>
+    </div>
+
+    <div id="newClubPopup" class="popup">
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Create New Club</h2>
+        <input id="newClubName" type="text" placeholder="Club Name" class="border border-indigo-300 rounded-md p-2 w-full mb-4">
+        <textarea id="newClubDescription" type="text" placeholder="Club Description" class="border border-indigo-300 rounded-md p-2 w-full mb-4"></textarea>
+        <button id="createClub" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 w-full">Create Club</button>
+    </div>
+
+    <div id="secretCodePopup" class="popup relative">
+        <button id="closePopup" class="absolute top-2 right-2 text-gray-600 hover:text-gray-800 transition duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Club Created Successfully</h2>
+        <p class="mb-2">Your secret code is:</p>
+        <div class="bg-gray-100 p-2 rounded mb-4">
+            <code id="secretCode" class="text-lg font-mono"></code>
+        </div>
+        <button id="copySecretCode" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300 w-full mb-4">Copy Code</button>
+        <p class="text-sm text-gray-600">Please save this code securely. It will be required to access the club.</p>
+    </div>
+    
+    <script>
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
+        let clubs = [];
+        let currentClub = null;
+        let db;
+
+        const dbName = 'ClubIDCipherDB';
+        const storeName = 'clubs';
+
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 1);
+
+                request.onerror = (event) => reject("IndexedDB error: " + event.target.error);
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve();
+                };
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    db.createObjectStore(storeName, { keyPath: 'name' });
+                };
+            });
+        }
+
+        function saveClub(club) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.put(club);
+
+                request.onerror = (event) => reject("Error saving club: " + event.target.error);
+                request.onsuccess = (event) => resolve();
+            });
+        }
+
+        function loadClubs() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readonly');
+                const store = transaction.objectStore(storeName);
+                const request = store.getAll();
+
+                request.onerror = (event) => reject("Error loading clubs: " + event.target.error);
+                request.onsuccess = (event) => {
+                    clubs = event.target.result;
+                    resolve(clubs);
+                };
+            });
+        }
+
+        function removeClubFromDB(clubName) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([storeName], 'readwrite');
+                const store = transaction.objectStore(storeName);
+                const request = store.delete(clubName);
+
+                request.onerror = (event) => reject("Error removing club: " + event.target.error);
+                request.onsuccess = (event) => resolve();
+            });
+        }
+
+        function showLoader(message) {
+            document.getElementById('loadingMessage').textContent = message;
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function displayClubsList() {
+            const clubsList = document.getElementById('clubsList');
+            clubsList.innerHTML = '';
+            clubs.forEach((club, index) => {
+                const clubCard = document.createElement('div');
+                clubCard.className = 'bg-white shadow-lg rounded-lg p-6';
+                clubCard.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 hover:shadow-lg transition duration-300">
+                        <img src="data:image/png;base64,${club.logo}" alt="${club.name} Logo" class="w-24 h-24 mx-auto mb-4 rounded-full border-4 border-indigo-200">
+                        <h3 class="text-2xl font-semibold text-indigo-700 mb-2 text-center">${club.name}</h3>
+                        <p class="text-gray-600 mb-6 text-center">${club.description}</p>
+                        <div class="flex justify-between space-x-4">
+                            <button class="openClub flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                                <i class="fas fa-door-open mr-2"></i>Open
+                            </button>
+                            <button class="deleteClub flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                                <i class="fas fa-trash-alt mr-2"></i>Delete
+                            </button>
+                        </div>
+                    </div>
+                `;
+                clubsList.appendChild(clubCard);
+
+                clubCard.querySelector('.openClub').addEventListener('click', () => openClub(index));
+                clubCard.querySelector('.deleteClub').addEventListener('click', () => deleteClub(index));
+            });
+        }
+
+        async function createClub() {
+            document.getElementById('newClubPopup').style.display = 'none';
+            const name = document.getElementById('newClubName').value;
+            const description = document.getElementById('newClubDescription').value;
+            
+            if (!name || !description) {
+                alert('Please enter both club name and description.');
+                return;
+            }
+
+            showLoader('Creating club...');
+            
+            try {
+                const logoPrompt = `Create a logo for a club named "${name}" with the following description: "${description}". The logo should be simple, iconic, and suitable for an ID card.`;
+                const logoImage = await ttiClient.generateImage(logoPrompt, '', 256, 256);
+                
+                const secretCodePrompt = `Generate a unique secret code for the club "${name}" based on its description: "${description}". The code should be a combination of letters and numbers, 10 characters long. Put the code in a json placed at a json markdown tag like this:
+\`\`\`json
+{
+    "secret_code":Here you put the code
+}
+\`\`\` 
+                `;
+                const secretCodeTxt = await lc.generateCode(secretCodePrompt);
+                if(secretCodeTxt){
+                    const secretCode = JSON.parse(secretCodeTxt)["secret_code"]
+
+                    const newClub = {
+                        name,
+                        description,
+                        secretCode: secretCode.trim(),
+                        logo: logoImage,
+                        members: []
+                    };
+
+                    await saveClub(newClub);
+                    clubs.push(newClub);
+                    displayClubsList();
+                    document.getElementById('secretCode').textContent = newClub.secretCode;
+                    document.getElementById('secretCodePopup').style.display = 'block';
+                }
+                else{
+                    alert('Failed to generate secret code. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error creating club:', error);
+                alert('An error occurred while creating the club. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function openClub(index) {
+            const secretCode = prompt('Enter the secret code for this club:');
+            if (secretCode === clubs[index].secretCode) {
+currentClub = clubs[index];
+                document.getElementById('clubsList').style.display = 'none';
+                const clubDetails = document.getElementById('clubDetails');
+                clubDetails.style.display = 'block';
+                document.getElementById('clubName').textContent = currentClub.name;
+                document.getElementById('clubDescription').textContent = currentClub.description;
+                document.getElementById('clubLogo').src = `data:image/png;base64,${currentClub.logo}`;
+                displayMemberCards();
+            } else {
+                alert('Invalid secret code. Access denied.');
+            }
+        }
+
+        async function deleteClub(index) {
+            const confirmDelete = confirm(`Are you sure you want to delete the club "${clubs[index].name}"? This action cannot be undone.`);
+            if (confirmDelete) {
+                showLoader('Deleting club...');
+                try {
+                    await removeClubFromDB(clubs[index].name);
+                    clubs.splice(index, 1);
+                    hideLoader();
+                    displayClubsList();
+                    alert('Club deleted successfully.');
+                } catch (error) {
+                    console.error('Error deleting club:', error);
+                    alert('An error occurred while deleting the club. Please try again.');
+                    hideLoader();
+                }
+            }
+        }
+
+        async function addMember() {
+            const name = document.getElementById('memberName').value;
+            const age = document.getElementById('memberAge').value;
+            const gender = document.getElementById('memberGender').value;
+            const description = document.getElementById('memberDescription').value;
+
+            if (!name || !age || !gender || !description) {
+                alert('Please fill in all member details.');
+                return;
+            }
+
+            showLoader('Adding member...');
+
+            try {
+                const imagePrompt = `Create a cartoonish ID image for a ${gender} club member named ${name}, age ${age}. The image should have clear outlines and be suitable for an ID card. Description: ${description}`;
+                const memberImage = await ttiClient.generateImage(imagePrompt, '', 256, 256);
+
+                const pseudonymePrompt = `Generate a secret pseudonym for a club member with the following characteristics:
+Club: ${currentClub.name}
+Club Description: ${currentClub.description}
+Member Name: ${name}
+Member Age: ${age}
+Member Gender: ${gender}
+Member Description: ${description}
+
+The pseudonym should hint at the club's main subject and the member's characteristics without revealing their real identity.
+The output must be in form of a json styled as json markdown tag:
+\`\`\`json
+{
+    "pseudonym": the generated pseudonym
+}
+\`\`\`
+`;
+                const jsonPseudonyme = await lc.generateCode(pseudonymePrompt);
+                const pseudonymObj = JSON.parse(jsonPseudonyme);
+                const pseudonym = pseudonymObj.pseudonym || "Unknown";
+
+                const member = {
+                    name,
+                    age,
+                    gender,
+                    description,
+                    image: memberImage,
+                    pseudonym: pseudonym.trim()
+                };
+
+                const encryptedMember = CryptoJS.AES.encrypt(JSON.stringify(member), currentClub.secretCode).toString();
+                currentClub.members.push(encryptedMember);
+
+                await saveClub(currentClub);
+                displayMemberCards();
+                document.getElementById('memberName').value = '';
+                document.getElementById('memberAge').value = '';
+                document.getElementById('memberGender').value = '';
+                document.getElementById('memberDescription').value = '';
+            } catch (error) {
+                console.error('Error adding member:', error);
+                alert('An error occurred while adding the member. Please try again.');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function displayMemberCards() {
+            const memberCards = document.getElementById('memberCards');
+            memberCards.innerHTML = '';
+            currentClub.members.forEach((encryptedMember, index) => {
+                const member = JSON.parse(CryptoJS.AES.decrypt(encryptedMember, currentClub.secretCode).toString(CryptoJS.enc.Utf8));
+                const cardContainer = document.createElement('div');
+                cardContainer.className = 'card';
+                cardContainer.innerHTML = `
+                    <div class="card-inner">
+                        <div class="card-front bg-white shadow-lg rounded-lg overflow-hidden">
+                            <img src="data:image/png;base64,${member.image}" alt="${member.name}" class="w-full h-32 object-cover">
+                            <div class="p-4">
+                                <h3 class="font-bold text-lg">${member.name}</h3>
+                                <p class="text-sm text-gray-600">${member.pseudonym}</p>
+                            </div>
+                        </div>
+                        <div class="card-back bg-white shadow-lg rounded-lg overflow-hidden flex items-center justify-center">
+                            <div id="qrcode-${index}" class="qrcode"></div>
+                        </div>
+                    </div>
+                `;
+                memberCards.appendChild(cardContainer);
+                setTimeout(() => {
+                    new QRCode(document.getElementById(`qrcode-${index}`), {
+                        text: encryptedMember,
+                        width: 128,
+                        height: 128,
+                        colorDark: "#000000",
+                        colorLight: "#ffffff",
+                        correctLevel: QRCode.CorrectLevel.H
+                    });
+                }, 100);
+            });
+        }
+
+        function backToClubs() {
+            currentClub = null;
+            document.getElementById('clubDetails').style.display = 'none';
+            document.getElementById('clubsList').style.display = 'grid';
+        }
+
+        function openNewClubPopup() {
+            document.getElementById('newClubPopup').style.display = 'block';
+        }
+
+        function closeNewClubPopup() {
+            document.getElementById('newClubPopup').style.display = 'none';
+        }
+
+        function copySecretCode() {
+            const secretCode = document.getElementById('secretCode').textContent;
+            navigator.clipboard.writeText(secretCode).then(() => {
+                alert('Secret code copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        async function removeClub() {
+            if (confirm('Are you sure you want to remove this club? This action cannot be undone.')) {
+                try {
+                    await removeClubFromDB(currentClub.name);
+                    clubs = clubs.filter(club => club.name !== currentClub.name);
+                    backToClubs();
+                    displayClubsList();
+                    alert('Club removed successfully.');
+                } catch (error) {
+                    console.error('Error removing club:', error);
+                    alert('An error occurred while removing the club. Please try again.');
+                }
+            }
+        }
+
+        function backToHome() {
+            currentClub = null;
+            document.getElementById('clubDetails').style.display = 'none';
+            document.getElementById('clubsList').style.display = 'grid';
+        }
+
+        document.getElementById('addClubButton').addEventListener('click', openNewClubPopup);
+        document.getElementById('createClub').addEventListener('click', createClub);
+        document.getElementById('addMember').addEventListener('click', addMember);
+        document.getElementById('backToClubs').addEventListener('click', backToClubs);
+        document.getElementById('copySecretCode').addEventListener('click', copySecretCode);
+        document.getElementById('cancelOperation').addEventListener('click', hideLoader);
+        document.getElementById('removeClub').addEventListener('click', removeClub);
+        document.getElementById('backToHome').addEventListener('click', backToHome);
+
+        initDB().then(() => {
+            loadClubs().then(() => {
+                displayClubsList();
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const closeButton = document.getElementById('closePopup');
+            const popup = document.getElementById('secretCodePopup');
+
+            closeButton.addEventListener('click', function() {
+                popup.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html>
