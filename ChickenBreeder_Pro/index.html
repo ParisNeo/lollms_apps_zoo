@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChickenBreeder Pro</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="text-white text-center">
+            <div class="spinner text-4xl mb-4">🐔</div>
+            <p>Analyzing breeding data...</p>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-amber-700">ChickenBreeder Pro</h1>
+            <p class="text-gray-600 mt-2">AI-Powered Chicken Breeding Predictions</p>
+        </header>
+
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            
+            <!-- Parent Input Forms -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-6 text-amber-600">Parent Characteristics</h2>
+                
+                <!-- Parent 1 -->
+                <div class="mb-8">
+                    <h3 class="text-lg font-medium mb-4">Parent 1</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Breed</label>
+                            <select id="parent1Breed" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="leghorn">Leghorn</option>
+                                <option value="plymouth">Plymouth Rock</option>
+                                <option value="rhode">Rhode Island Red</option>
+                                <option value="orpington">Orpington</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Comb Type</label>
+                            <select id="parent1Comb" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="single">Single</option>
+                                <option value="rose">Rose</option>
+                                <option value="pea">Pea</option>
+                                <option value="walnut">Walnut</option>
+                                <option value="buttercup">Buttercup</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Feather Pattern</label>
+                            <select id="parent1Pattern" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="solid">Solid</option>
+                                <option value="speckled">Speckled</option>
+                                <option value="barred">Barred</option>
+                                <option value="laced">Laced</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Feather Color</label>
+                            <select id="parent1Color" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="white">White</option>
+                                <option value="black">Black</option>
+                                <option value="red">Red</option>
+                                <option value="buff">Buff</option>
+                                <option value="partridge">Partridge</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Leg Color</label>
+                            <select id="parent1LegColor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="yellow">Yellow</option>
+                                <option value="white">White</option>
+                                <option value="black">Black</option>
+                                <option value="slate">Slate</option>
+                                <option value="green">Green</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Egg Color</label>
+                            <select id="parent1EggColor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="white">White</option>
+                                <option value="brown">Brown</option>
+                                <option value="cream">Cream</option>
+                                <option value="tinted">Tinted</option>
+                                <option value="blue">Blue</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Size (kg)</label>
+                            <input type="number" id="parent1Size" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Egg Production (per year)</label>
+                            <input type="number" id="parent1EggProduction" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parent 2 -->
+                <div>
+                    <h3 class="text-lg font-medium mb-4">Parent 2</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Breed</label>
+                            <select id="parent2Breed" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="leghorn">Leghorn</option>
+                                <option value="plymouth">Plymouth Rock</option>
+                                <option value="rhode">Rhode Island Red</option>
+                                <option value="orpington">Orpington</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Comb Type</label>
+                            <select id="parent2Comb" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="single">Single</option>
+                                <option value="rose">Rose</option>
+                                <option value="pea">Pea</option>
+                                <option value="walnut">Walnut</option>
+                                <option value="buttercup">Buttercup</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Feather Pattern</label>
+                            <select id="parent2Pattern" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="solid">Solid</option>
+                                <option value="speckled">Speckled</option>
+                                <option value="barred">Barred</option>
+                                <option value="laced">Laced</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Feather Color</label>
+                            <select id="parent2Color" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="white">White</option>
+                                <option value="black">Black</option>
+                                <option value="red">Red</option>
+                                <option value="buff">Buff</option>
+                                <option value="partridge">Partridge</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Leg Color</label>
+                            <select id="parent2LegColor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="yellow">Yellow</option>
+                                <option value="white">White</option>
+                                <option value="black">Black</option>
+                                <option value="slate">Slate</option>
+                                <option value="green">Green</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Egg Color</label>
+                            <select id="parent2EggColor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                                <option value="white">White</option>
+                                <option value="brown">Brown</option>
+                                <option value="cream">Cream</option>
+                                <option value="tinted">Tinted</option>
+                                <option value="blue">Blue</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Size (kg)</label>
+                            <input type="number" id="parent2Size" step="0.1" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Egg Production (per year)</label>
+                            <input type="number" id="parent2EggProduction" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-amber-500 focus:ring-amber-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Results Panel -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-6 text-amber-600">Offspring Predictions</h2>
+                <div id="predictions" class="space-y-6">
+                    <!-- Predictions will be inserted here -->
+                    <div class="text-center text-gray-500 italic">
+                        Enter parent characteristics and click predict to see offspring predictions
+                    </div>
+                </div>
+                <button onclick="predictOffspring()" class="mt-8 w-full bg-amber-600 text-white py-3 px-6 rounded-lg hover:bg-amber-700 transition duration-300">
+                    Predict Offspring Characteristics
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+
+        async function predictOffspring() {
+            showLoader();
+            
+            const parentData = {
+                parent1: {
+                    breed: document.getElementById('parent1Breed').value,
+                    combType: document.getElementById('parent1Comb').value,
+                    pattern: document.getElementById('parent1Pattern').value,
+                    featherColor: document.getElementById('parent1Color').value,
+                    legColor: document.getElementById('parent1LegColor').value,
+                    eggColor: document.getElementById('parent1EggColor').value,
+                    size: parseFloat(document.getElementById('parent1Size').value),
+                    eggProduction: parseInt(document.getElementById('parent1EggProduction').value)
+                },
+                parent2: {
+                    breed: document.getElementById('parent2Breed').value,
+                    combType: document.getElementById('parent2Comb').value,
+                    pattern: document.getElementById('parent2Pattern').value,
+                    featherColor: document.getElementById('parent2Color').value,
+                    legColor: document.getElementById('parent2LegColor').value,
+                    eggColor: document.getElementById('parent2EggColor').value,
+                    size: parseFloat(document.getElementById('parent2Size').value),
+                    eggProduction: parseInt(document.getElementById('parent2EggProduction').value)
+                }
+            };
+
+            const expectedFormat = `
+{
+    "size": {
+        "value": "2.5",
+        "confidence": 85
+    },
+    "combType": {
+        "value": "single",
+        "confidence": 90
+    },
+    "pattern": {
+        "value": "speckled",
+        "confidence": 75
+    },
+    "featherColor": {
+        "value": "buff",
+        "confidence": 85
+    },
+    "legColor": {
+        "value": "yellow",
+        "confidence": 80
+    },
+    "eggColor": {
+        "value": "brown",
+        "confidence": 95
+    },
+    "eggProduction": {
+        "value": 280,
+        "confidence": 80
+    },
+    "temperament": {
+        "value": "docile",
+        "confidence": 70
+    },
+    "healthNotes": "Strong genetic diversity suggests robust immune system and good overall health prospects."
+}`;
+
+            const prompt = `${lc.system_message()}You are an AI chicken breeding expert. Analyze the following parent characteristics and predict offspring traits with confidence levels. Return the results in this exact JSON format:
+${expectedFormat}
+
+Parent 1: ${JSON.stringify(parentData.parent1)}
+Parent 2: ${JSON.stringify(parentData.parent2)}${lc.user_message()}Generate detailed offspring predictions with confidence levels${lc.ai_message()}`;
+
+            try {
+                const prediction = await lc.generateCode(prompt);
+                if (prediction) {
+                    const results = JSON.parse(prediction);
+                    displayPredictions(results);
+                }
+            } catch (error) {
+                console.error('Prediction error:', error);
+                document.getElementById('predictions').innerHTML = `
+                    <div class="text-red-600">
+                        Error generating predictions. Please try again.
+                    </div>
+                `;
+            }
+            
+            hideLoader();
+        }
+
+        function displayPredictions(results) {
+            const predictionsHtml = `
+                <div class="space-y-6">
+                    <div class="bg-amber-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2">Physical Characteristics</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium">Expected Size:</p>
+                                <p>${results.size.value} kg</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.size.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.size.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Comb Type:</p>
+                                <p>${results.combType.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.combType.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.combType.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Feather Pattern:</p>
+                                <p>${results.pattern.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.pattern.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.pattern.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Feather Color:</p>
+                                <p>${results.featherColor.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.featherColor.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.featherColor.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Leg Color:</p>
+                                <p>${results.legColor.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.legColor.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.legColor.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Egg Color:</p>
+                                <p>${results.eggColor.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.eggColor.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.eggColor.confidence}%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2">Performance Traits</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-sm font-medium">Egg Production:</p>
+                                <p>${results.eggProduction.value} eggs/year</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.eggProduction.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.eggProduction.confidence}%</p>
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium">Temperament:</p>
+                                <p>${results.temperament.value}</p>
+                                <div class="mt-1 bg-gray-200 h-2 rounded-full">
+                                    <div class="bg-amber-600 h-2 rounded-full" style="width: ${results.temperament.confidence}%"></div>
+                                </div>
+                                <p class="text-xs text-gray-500">Confidence: ${results.temperament.confidence}%</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-amber-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-lg mb-2">Health Indicators</h3>
+                        <p class="text-sm">${results.healthNotes}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('predictions').innerHTML = predictionsHtml;
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
