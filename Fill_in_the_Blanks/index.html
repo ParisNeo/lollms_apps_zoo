@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fill in the Blanks</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-white/80 flex justify-center items-center z-50 hidden">
+        <div class="text-center text-pink-500">
+            <div class="text-6xl animate-spin">🍓</div>
+            <div class="mt-4">Processing...</div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-pink-600">Fill in the Blanks</h1>
+        
+        <!-- Input Section -->
+        <div class="mb-8">
+            <textarea 
+                id="inputText" 
+                class="w-full h-48 p-4 rounded-lg border-2 border-pink-300 focus:border-pink-500 focus:ring focus:ring-pink-200 outline-none resize-none"
+                placeholder="Enter your text with _ placeholders..."></textarea>
+        </div>
+
+        <div class="text-center mb-8">
+            <button 
+                onclick="processText()"
+                class="bg-pink-500 text-white px-8 py-3 rounded-full hover:bg-pink-600 transition duration-300 shadow-lg">
+                Generate
+            </button>
+        </div>
+
+        <!-- Output Section -->
+        <div id="outputContainer" class="bg-white rounded-lg p-6 shadow-lg mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Generated Text</h2>
+            <div id="outputText" class="text-gray-700 mb-4 whitespace-pre-wrap"></div>
+            <button 
+                onclick="copyToClipboard()"
+                class="bg-gray-100 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-200 transition duration-300">
+                Copy to Clipboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        async function processText() {
+            const inputText = document.getElementById('inputText').value;
+            if (!inputText) return;
+
+            showLoader();
+
+            try {
+                const system_prompt = "You are a helpful assistant that fills in blanks marked with underscores (_) in text. Return a JSON with a single 'text' field containing the completed text. Make the filled content coherent with the context.";
+                const user_prompt = `Please fill in the blanks in this text: ${inputText}`;
+                
+                const prompt = `${lc.system_message()}${system_prompt}${lc.template.separator_template}${lc.user_message()}${user_prompt}${lc.template.separator_template}${lc.ai_message()}`;
+                
+                const response = await lc.generateCode(prompt);
+                if (response) {
+                    const data = JSON.parse(response);
+                    document.getElementById('outputContainer').classList.remove('hidden');
+                    document.getElementById('outputText').textContent = data.text;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while processing the text.');
+            } finally {
+                hideLoader();
+            }
+        }
+
+        function copyToClipboard() {
+            const outputText = document.getElementById('outputText').textContent;
+            navigator.clipboard.writeText(outputText).then(() => {
+                alert('Text copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy text:', err);
+            });
+        }
+    </script>
+</body>
+</html>

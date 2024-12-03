@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LollmsChess - Play Chess Against AI</title>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/chessboard-js/1.0.0/chessboard-1.0.0.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        .board-wrapper {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        #board {
+            width: 100%;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .loading {
+            text-align: center;
+            color: #FF69B4;
+        }
+        .strawberry {
+            font-size: 64px;
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(-360deg); }
+        }
+        .analysis-panel {
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+            height: 100%;
+            overflow-y: auto;
+        }
+        .game-container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div id="loadingOverlay" class="overlay">
+        <div class="loading">
+            <div class="strawberry">🍓</div>
+            <div class="mt-5">AI is thinking...</div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center text-gray-800 mb-8">LollmsChess</h1>
+        
+        <div class="game-container">
+            <div class="analysis-panel">
+                <h2 class="text-xl font-semibold mb-3">Analysis Panel</h2>
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Opponent Analysis</h3>
+                    <div id="opponentAnalysis" class="text-gray-700 mb-3">
+                        Waiting for game to begin...
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h3 class="font-semibold text-gray-700">Move Explanation</h3>
+                    <div id="moveExplanation" class="text-gray-700 mb-3">
+                        Waiting for first move...
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-gray-700">Current Move</h3>
+                    <div id="aiMove" class="text-gray-700">
+                        Waiting for your move...
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="font-semibold text-gray-700">Game Actions</h3>
+                    <div class="grid grid-cols-2 gap-2 mt-2">
+                        <button onclick="saveGame()" class="bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">
+                            Save Game
+                        </button>
+                        <button onclick="loadGame()" class="bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600">
+                            Load Game
+                        </button>
+                        <button onclick="exportAsJSON()" class="bg-purple-500 text-white px-2 py-1 rounded hover:bg-purple-600">
+                            Export JSON
+                        </button>
+                        <button onclick="exportAsMarkdown()" class="bg-indigo-500 text-white px-2 py-1 rounded hover:bg-indigo-600">
+                            Export MD
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-section bg-white rounded-lg shadow-lg p-6">
+                <div class="board-wrapper mb-6">
+                    <div id="board"></div>
+                </div>
+
+                <div class="game-info mt-4">
+                    <h2 class="text-xl font-semibold mb-3">Game Status</h2>
+                    <div id="status" class="text-gray-700 mb-4">Game in progress...</div>
+                    <div class="flex gap-2">
+                        <button id="newGameBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors">
+                            New Game
+                        </button>
+                        <button id="undoBtn" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors">
+                            Undo Move
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let board = null;
+        let game = new Chess();
+        const lc = new LollmsClient();
+        const MAX_retries = 3;
+        
+        // Game history tracking
+        let gameHistory = {
+            moves: [],
+            currentFEN: game.fen(),
+            status: 'active'
+        };
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function saveGame() {
+            const saveData = {
+                history: gameHistory,
+                fen: game.fen(),
+                pgn: game.pgn()
+            };
+            localStorage.setItem('savedChessGame', JSON.stringify(saveData));
+            alert('Game saved successfully!');
+        }
+
+        function loadGame() {
+            const savedGame = localStorage.getItem('savedChessGame');
+            if (savedGame) {
+                const gameData = JSON.parse(savedGame);
+                game.load(gameData.fen);
+                gameHistory = gameData.history;
+                board.position(gameData.fen);
+                updateStatus();
+                alert('Game loaded successfully!');
+            } else {
+                alert('No saved game found!');
+            }
+        }
+
+        function exportAsJSON() {
+            const gameData = {
+                history: gameHistory,
+                fen: game.fen(),
+                pgn: game.pgn(),
+                timestamp: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(gameData, null, 2)], {type: 'application/json'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chess_game_${new Date().toISOString()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportAsMarkdown() {
+            let markdown = `# Chess Game Analysis\n\nDate: ${new Date().toLocaleDateString()}\n\n## Moves\n\n`;
+            
+            gameHistory.moves.forEach((move, index) => {
+                markdown += `### Move ${index + 1}\n`;
+                markdown += `- Player: ${move.player}\n`;
+                markdown += `- Move: ${move.move}\n`;
+                if (move.analysis) markdown += `- Analysis: ${move.analysis}\n`;
+                if (move.explanation) markdown += `- Explanation: ${move.explanation}\n\n`;
+            });
+
+            markdown += `\n## Final Position\n\nFEN: ${game.fen()}\nPGN: ${game.pgn()}\n`;
+            
+            const blob = new Blob([markdown], {type: 'text/markdown'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chess_game_${new Date().toISOString()}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function onDragStart(source, piece, position, orientation) {
+            if (game.game_over() || game.in_checkmate()) return false;
+            if (piece.search(/^b/) !== -1) return false;
+            if (game.turn() !== 'w') return false;
+        }
+
+        function convertMoveFormat(move) {
+            if (move.includes('-')) {
+                return move.replace('-', '');
+            }
+            return move;
+        }
+
+        async function getAIMove(fen, lastMove, previous_move_attempt="") {
+            const board = game.board();
+            const boardConfig = board.map(row => 
+                row.map(piece => 
+                    piece ? `${piece.color}${piece.type}` : '--'
+                ).join(' ')
+            ).join('\n');
+            let replay_prompt = ""
+
+            if(previous_move_attempt!=""){
+                replay_prompt=`you tried to play ${previous_move_attempt}, but that is not a valid move.`
+            }
+            const systemPrompt = `You are a chess engine. Analyze the current position and make a strong move. 
+Respond only with a JSON object containing:
+{
+    "opponent_analysis": "analysis of opponent's position and threats",
+    "move_explanation": "brief strategic explanation",
+    "move": "the move in standard algebraic notation (e.g., e7e5 or e2e4)"
+}`;
+            
+            const userPrompt = `Current position FEN: ${fen}
+Board Configuration:
+${boardConfig}
+Last move played: ${lastMove}
+Provide your next move as Black.`+replay_prompt;
+
+            try {
+                showLoader();
+                const response = await lc.generateCode(
+                    lc.system_message() + systemPrompt + 
+                    lc.template.separator_template + 
+                    lc.user_message() + userPrompt + 
+                    lc.template.separator_template + 
+                    lc.ai_message()
+                );
+                
+                if (response) {
+                    console.log("Raw AI response:", response);
+                    const moveData = JSON.parse(response);
+                    console.log("Parsed move data:", moveData);
+                    return moveData;
+                }
+            } catch (error) {
+                console.error("Error getting AI move:", error);
+                return null;
+            } finally {
+                hideLoader();
+            }
+        }
+
+        async function onDrop(source, target) {
+            try {
+                const move = game.move({
+                    from: source,
+                    to: target,
+                    promotion: 'q'
+                });
+
+                if (move === null) return 'snapback';
+
+                // Record player's move
+                gameHistory.moves.push({
+                    player: 'White',
+                    move: `${source}-${target}`,
+                    fen: game.fen()
+                });
+
+                board.position(game.fen());
+                updateStatus();
+
+                if (game.game_over() || game.in_checkmate()) return;
+                let retries_number = 0;
+                let retry_prompt = "";
+
+                while(retries_number<MAX_retries){
+                    retries_number+=1;
+                    const aiMoveData = await getAIMove(game.fen(), `${source}-${target}`, retry_prompt );
+                
+                    if(game.game_over()){
+                        $('#opponentAnalysis').text('Game is over');
+                        break;
+                    }
+
+                    if (aiMoveData && aiMoveData.move) {
+                        const formattedMove = convertMoveFormat(aiMoveData.move);
+                        retry_prompt = formattedMove;
+                        
+                        let aiMove;
+                        try {
+                            const possibleMoves = game.moves({ verbose: true });
+                            const isLegalMove = possibleMoves.some(m => 
+                                (m.from + m.to === formattedMove) || 
+                                (m.san === formattedMove)
+                            );
+
+                            if (!isLegalMove) throw new Error("Illegal AI move");
+
+                            aiMove = game.move({
+                                from: formattedMove.substring(0, 2),
+                                to: formattedMove.substring(2, 4),
+                                promotion: 'q'
+                            });
+                            console.log("isLegalMove")
+                            console.log(isLegalMove)
+                        } catch (moveError) {
+                            try {
+                                aiMove = game.move(formattedMove);
+                            } catch (algebraicError) {
+                                game.undo();
+                                return 'snapback';
+                            }
+                        }
+
+                        if (aiMove) {
+                            // Record AI's move
+                            gameHistory.moves.push({
+                                player: 'Black',
+                                move: aiMoveData.move,
+                                analysis: aiMoveData.opponent_analysis,
+                                explanation: aiMoveData.move_explanation,
+                                fen: game.fen()
+                            });
+
+                            board.position(game.fen());
+                            $('#opponentAnalysis').html(aiMoveData.opponent_analysis);
+                            $('#moveExplanation').html(aiMoveData.move_explanation);
+                            $('#aiMove').html(`Move: ${aiMoveData.move}`);
+                        } else {
+                            $('#opponentAnalysis').text('AI failed to generate a valid move.');
+                            $('#opponentAnalysis').text('Error occurred during move execution.');
+                            $('#moveExplanation').text('Invalid AI move.');
+                            $('#aiMove').text('Please try again.');
+                            game.undo();
+                            board.position(game.fen());
+                        }
+                        break;
+                        
+                    } else {
+                        $('#moveExplanation').text('No analysis available.');
+                        $('#aiMove').text('No move available');
+                    }
+                }
+
+                updateStatus();
+            } catch (error) {
+                console.error("Move error:", error);
+                return 'snapback';
+            }
+        }
+
+        function updateStatus() {
+            let status = '';
+            gameHistory.currentFEN = game.fen();
+
+            if (game.in_checkmate()) {
+                status = 'Game over - ' + (game.turn() === 'w' ? 'Black' : 'White') + ' wins by checkmate!';
+                gameHistory.status = 'checkmate';
+                $('#aiMove').text('Game Over - Checkmate!');
+                $('#opponentAnalysis').text('Game completed.');
+                $('#moveExplanation').text('');
+            } else if (game.in_draw()) {
+                status = 'Game over - Draw';
+                gameHistory.status = 'draw';
+                $('#aiMove').text('Game Over - Draw!');
+                $('#opponentAnalysis').text('Game completed.');
+                $('#moveExplanation').text('');
+            } else if (game.game_over()) {
+                status = 'Game over';
+status = 'Game over';
+                gameHistory.status = 'over';
+                $('#aiMove').text('Game Over!');
+                $('#opponentAnalysis').text('Game completed.');
+                $('#moveExplanation').text('');
+            } else {
+                status = (game.turn() === 'w' ? 'White' : 'Black') + ' to move';
+                gameHistory.status = 'active';
+                if (game.in_check()) {
+                    status += ', ' + (game.turn() === 'w' ? 'White' : 'Black') + ' is in check';
+                }
+            }
+
+            $('#status').text(status);
+        }
+
+        $('#newGameBtn').on('click', function() {
+            game.reset();
+            board.position('start');
+            gameHistory = {
+                moves: [],
+                currentFEN: game.fen(),
+                status: 'active'
+            };
+            $('#aiMove').text('Waiting for your move...');
+            $('#opponentAnalysis').text('Waiting for game to begin...');
+            $('#moveExplanation').text('Waiting for first move...');
+            updateStatus();
+        });
+
+        $('#undoBtn').on('click', function() {
+            game.undo();
+            game.undo();
+            // Remove last two moves from history
+            gameHistory.moves.pop();
+            gameHistory.moves.pop();
+            board.position(game.fen());
+            $('#aiMove').text('Move undone');
+            $('#opponentAnalysis').text('Previous analysis cleared');
+            $('#moveExplanation').text('');
+            updateStatus();
+        });
+
+        const config = {
+            draggable: true,
+            position: 'start',
+            onDragStart: onDragStart,
+            onDrop: onDrop,
+            pieceTheme: 'https://chessboardjs.com/img/chesspieces/wikipedia/{piece}.png'
+        };
+
+        board = Chessboard('board', config);
+        updateStatus();
+
+        $(window).resize(function() {
+            board.resize();
+        });
+    </script>
+</body>
+</html>
