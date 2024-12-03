@@ -7,56 +7,171 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="fixed inset-0 bg-white/80 flex justify-center items-center z-50 hidden">
         <div class="text-center text-pink-500">
             <div class="text-6xl animate-spin">🍓</div>
-            <div class="mt-4">Processing...</div>
+            <div class="mt-4" data-translate="processing">Processing...</div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 hidden">
+        <div class="bg-white rounded-lg p-8 max-w-2xl mx-4">
+            <h2 class="text-2xl font-bold mb-4 text-pink-600" data-translate="howToUse">How to Use Fill in the Blanks</h2>
+            <div class="text-gray-700 space-y-4" data-translate="helpContent" data-translate-html>
+                <p>1. Enter your text in the input box below and use underscores (_) to mark where you want the AI to fill in blanks.</p>
+                <p>2. Example:</p>
+                <pre class="bg-gray-100 p-2 rounded">The capital of France is _. The Eiffel Tower is _ meters tall.</pre>
+                <p>3. Click the "Generate" button to let the AI fill in the blanks.</p>
+                <p>4. The completed text will appear below, and you can copy it to your clipboard.</p>
+                <p class="font-semibold">Tips:</p>
+                <ul class="list-disc list-inside">
+                    <li>Make sure to provide enough context around the blanks</li>
+                    <li>You can use multiple blanks in one text</li>
+                    <li>The AI will try to maintain consistency with the surrounding text</li>
+                </ul>
+            </div>
+            <button 
+                onclick="closeHelp()"
+                class="mt-6 bg-pink-500 text-white px-6 py-2 rounded-full hover:bg-pink-600 transition duration-300"
+                data-translate="close">
+                Close
+            </button>
         </div>
     </div>
 
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-center mb-8 text-pink-600">Fill in the Blanks</h1>
+        <div class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-pink-600" data-translate="title">Fill in the Blanks</h1>
+            <div class="flex items-center gap-4">
+                <select id="languageSelector" class="bg-white border border-pink-300 rounded-lg px-3 py-2">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+                <button 
+                    onclick="showHelp()"
+                    class="bg-pink-100 text-pink-600 px-4 py-2 rounded-full hover:bg-pink-200 transition duration-300 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span data-translate="help">Help</span>
+                </button>
+            </div>
+        </div>
         
         <!-- Input Section -->
         <div class="mb-8">
             <textarea 
                 id="inputText" 
                 class="w-full h-48 p-4 rounded-lg border-2 border-pink-300 focus:border-pink-500 focus:ring focus:ring-pink-200 outline-none resize-none"
+                data-translate="placeholder" data-translate-placeholder
                 placeholder="Enter your text with _ placeholders..."></textarea>
         </div>
 
         <div class="text-center mb-8">
             <button 
                 onclick="processText()"
-                class="bg-pink-500 text-white px-8 py-3 rounded-full hover:bg-pink-600 transition duration-300 shadow-lg">
+                class="bg-pink-500 text-white px-8 py-3 rounded-full hover:bg-pink-600 transition duration-300 shadow-lg"
+                data-translate="generate">
                 Generate
             </button>
         </div>
 
         <!-- Output Section -->
         <div id="outputContainer" class="bg-white rounded-lg p-6 shadow-lg mb-8 hidden">
-            <h2 class="text-2xl font-semibold mb-4 text-gray-800">Generated Text</h2>
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800" data-translate="generatedText">Generated Text</h2>
             <div id="outputText" class="text-gray-700 mb-4 whitespace-pre-wrap"></div>
             <button 
                 onclick="copyToClipboard()"
-                class="bg-gray-100 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-200 transition duration-300">
+                class="bg-gray-100 text-gray-700 px-6 py-2 rounded-full hover:bg-gray-200 transition duration-300"
+                data-translate="copy">
                 Copy to Clipboard
             </button>
         </div>
     </div>
 
     <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "processing": "Processing...",
+                    "howToUse": "How to Use Fill in the Blanks",
+                    "helpContent": `<p>1. Enter your text in the input box below and use underscores (_) to mark where you want the AI to fill in blanks.</p>
+                                <p>2. Example:</p>
+                                <pre class="bg-gray-100 p-2 rounded">The capital of France is _. The Eiffel Tower is _ meters tall.</pre>
+                                <p>3. Click the "Generate" button to let the AI fill in the blanks.</p>
+                                <p>4. The completed text will appear below, and you can copy it to your clipboard.</p>
+                                <p class="font-semibold">Tips:</p>
+                                <ul class="list-disc list-inside">
+                                    <li>Make sure to provide enough context around the blanks</li>
+                                    <li>You can use multiple blanks in one text</li>
+                                    <li>The AI will try to maintain consistency with the surrounding text</li>
+                                </ul>`,
+                    "close": "Close",
+                    "title": "Fill in the Blanks",
+                    "help": "Help",
+                    "placeholder": "Enter your text with _ placeholders...",
+                    "generate": "Generate",
+                    "generatedText": "Generated Text",
+                    "copy": "Copy to Clipboard",
+                    "copiedMessage": "Text copied to clipboard!"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "processing": "Traitement en cours...",
+                    "howToUse": "Comment utiliser Remplir les Blancs",
+                    "helpContent": `<p>1. Entrez votre texte dans la zone ci-dessous et utilisez des tirets bas (_) pour marquer où vous voulez que l'IA remplisse les blancs.</p>
+                                <p>2. Exemple:</p>
+                                <pre class="bg-gray-100 p-2 rounded">La capitale de la France est _. La Tour Eiffel mesure _ mètres de haut.</pre>
+                                <p>3. Cliquez sur le bouton "Générer" pour laisser l'IA remplir les blancs.</p>
+                                <p>4. Le texte complété apparaîtra ci-dessous, et vous pourrez le copier dans le presse-papiers.</p>
+                                <p class="font-semibold">Conseils:</p>
+                                <ul class="list-disc list-inside">
+                                    <li>Assurez-vous de fournir suffisamment de contexte autour des blancs</li>
+                                    <li>Vous pouvez utiliser plusieurs blancs dans un texte</li>
+                                    <li>L'IA essaiera de maintenir la cohérence avec le texte environnant</li>
+                                </ul>`,
+                    "close": "Fermer",
+                    "title": "Remplir les Blancs",
+                    "help": "Aide",
+                    "placeholder": "Entrez votre texte avec des espaces _ à remplir...",
+                    "generate": "Générer",
+                    "generatedText": "Texte Généré",
+                    "copy": "Copier dans le Presse-papiers",
+                    "copiedMessage": "Texte copié dans le presse-papiers!"
+                }
+            }
+        };
+
         const lc = new LollmsClient();
+        const localizer = new WebAppLocalizer(translations, "fillBlanks_", document.getElementById("languageSelector"));
         
+        // Apply translations on page load
+        document.addEventListener("DOMContentLoaded", () => {
+            localizer.apply();
+        });
+
         function showLoader() {
             document.getElementById('loadingOverlay').classList.remove('hidden');
         }
 
         function hideLoader() {
             document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function showHelp() {
+            document.getElementById('helpModal').classList.remove('hidden');
+        }
+
+        function closeHelp() {
+            document.getElementById('helpModal').classList.add('hidden');
         }
 
         async function processText() {
@@ -88,7 +203,7 @@
         function copyToClipboard() {
             const outputText = document.getElementById('outputText').textContent;
             navigator.clipboard.writeText(outputText).then(() => {
-                alert('Text copied to clipboard!');
+                alert(localizer.translate("copiedMessage"));
             }).catch(err => {
                 console.error('Failed to copy text:', err);
             });
