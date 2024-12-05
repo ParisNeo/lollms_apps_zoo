@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Persona Forge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <style>
+        @keyframes gradientBG {
+            0% {background-position: 0% 50%;}
+            50% {background-position: 100% 50%;}
+            100% {background-position: 0% 50%;}
+        }
+        .animate-gradient {
+            background: linear-gradient(270deg, #667eea, #764ba2, #6B8DD6, #8E37D7);
+            background-size: 300% 300%;
+            animation: gradientBG 15s ease infinite;
+        }
+        .card-shadow {
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+        }
+        .card {
+            perspective: 1000px;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+        }
+        .card-back {
+            transform: rotateY(180deg);
+        }
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+    <div class="min-h-screen animate-gradient">
+        <div class="container mx-auto px-4 py-8">
+            <h1 class="text-5xl font-extrabold text-white text-center mb-8 shadow-text">Epic Persona Forge</h1>
+            
+            <div class="bg-white rounded-lg shadow-xl p-6 mb-8">
+                <div class="mb-4">
+                    <label for="characterDescription" class="block text-gray-700 text-sm font-bold mb-2">Character Description:</label>
+                    <textarea id="characterDescription" rows="4" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:border-indigo-500" placeholder="Enter character description or leave blank for 'Impress Me'"></textarea>
+                </div>
+                
+                <div class="mb-4">
+                    <label for="artStyle" class="block text-gray-700 text-sm font-bold mb-2">Art Style:</label>
+                    <select id="artStyle" class="w-full px-3 py-2 text-gray-700 border rounded-lg focus:outline-none focus:border-indigo-500">
+                        <option value="cell-shading">Cell Shading</option>
+                        <option value="pixel-art">Pixel Art</option>
+                        <option value="art-nouveau">Art Nouveau</option>
+                        <option value="watercolor">Watercolor</option>
+                        <option value="cyberpunk">Cyberpunk</option>
+                    </select>
+                </div>
+                
+                <div class="flex justify-center">
+                    <button id="generateBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                        Generate Epic Persona
+                    </button>
+                </div>
+            </div>
+            
+            <div id="cardContainer" class="flex flex-wrap justify-center gap-8"></div>
+            
+            <div class="flex justify-center space-x-4 mt-8">
+                <button id="exportAllBtn" class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105 hidden">
+                    Export All Cards
+                </button>
+                <input type="file" id="importFile" accept=".json" class="hidden">
+                <button id="importBtn" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                    Import Card
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl">
+            <div class="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+            <p class="mt-4 text-lg font-semibold text-indigo-600">Generating Epic Persona...</p>
+        </div>
+    </div>
+
+    <div id="detailsPopup" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4">
+            <h2 id="popupName" class="text-3xl font-bold mb-4"></h2>
+            <div id="popupDetails"></div>
+            <button id="closePopup" class="mt-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient();
+        const ttiClient = new LollmsTTI();
+
+        const generateBtn = document.getElementById('generateBtn');
+        const cardContainer = document.getElementById('cardContainer');
+        const exportAllBtn = document.getElementById('exportAllBtn');
+        const importBtn = document.getElementById('importBtn');
+        const importFile = document.getElementById('importFile');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const detailsPopup = document.getElementById('detailsPopup');
+        const closePopup = document.getElementById('closePopup');
+
+        let generatedCharacters = [];
+
+        generateBtn.addEventListener('click', generateCharacter);
+        importBtn.addEventListener('click', () => importFile.click());
+        importFile.addEventListener('change', importCard);
+        closePopup.addEventListener('click', () => detailsPopup.classList.add('hidden'));
+
+        async function generateCharacter() {
+            const description = document.getElementById('characterDescription').value;
+            const artStyle = document.getElementById('artStyle').value;
+
+            loadingOverlay.classList.remove('hidden');
+
+            try {
+                const prompt = `Generate a unique character with the following details:
+                ${description ? 'Description: ' + description : 'Create an impressive and unique character'}
+                Art Style: ${artStyle}
+
+                Provide the character information in JSON format with the following structure:
+                {
+                    "name": "Character Name",
+                    "age": 25,
+                    "occupation": "Occupation",
+                    "physicalDescription": "Detailed physical description",
+                    "personality": "Brief personality traits",
+                    "background": "Short background story",
+                    "skills": ["Skill 1", "Skill 2", "Skill 3"]
+                }`;
+
+                const generatedJson = await lc.generateCode(prompt);
+                const generatedCharacter = JSON.parse(generatedJson);
+
+                const card = createCharacterCard(generatedCharacter);
+                cardContainer.appendChild(card);
+
+                const imagePrompt = `Generate an image of ${generatedCharacter.name}, ${generatedCharacter.physicalDescription} in ${artStyle} style.`;
+                const imageContainer = card.querySelector('.character-image');
+                await ttiClient.generateAndDisplayImage(imagePrompt, '', 512, 512, imageContainer);
+
+                generatedCharacters.push(generatedCharacter);
+
+                if (generatedCharacters.length > 1) {
+                    exportAllBtn.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error generating character:', error);
+                alert('An error occurred while generating the character. Please try again.');
+            } finally {
+                loadingOverlay.classList.add('hidden');
+            }
+        }
+
+        function createCharacterCard(character) {
+            const cardWrapper = document.createElement('div');
+            cardWrapper.className = 'w-full sm:w-1/2 lg:w-1/3 xl:w-1/4 mb-8';
+            
+            const card = document.createElement('div');
+            card.className = 'bg-white rounded-lg shadow-xl p-6 card-shadow card relative';
+            card.style.height = '400px'; // Increased height
+
+            card.innerHTML = `
+                <div class="card-inner w-full h-full transition-transform duration-700 transform-style-preserve-3d">
+                    <div class="card-front h-full flex flex-col justify-between bg-gradient-to-br from-blue-500 to-purple-600 text-white p-6 rounded-xl shadow-lg">
+                        <div>
+                            <div class="character-image w-full h-48 bg-gray-300 rounded-lg mb-4 overflow-hidden">
+                                <img src="${character.imageUrl || 'placeholder-image.jpg'}" alt="${character.name}" class="w-full h-full object-cover transition-transform duration-300 hover:scale-110">
+                            </div>
+                            <h2 class="text-3xl font-bold mb-2 text-shadow">${character.name}</h2>
+                            <p class="text-xl mb-2">Age: ${character.age}</p>
+                            <p class="text-lg mb-4">Occupation: ${character.occupation}</p>
+                            <div class="skills mt-4">
+                                <h3 class="text-xl font-semibold mb-2">Skills:</h3>
+                                <ul class="list-disc list-inside">
+                                    ${character.skills.map(skill => `<li>${skill}</li>`).join('')}
+                                </ul>
+                            </div>
+                        </div>
+                        <button class="flip-button bg-white text-purple-600 px-4 py-2 rounded-full mt-4 hover:bg-purple-100 transition-colors duration-300">Flip for QR Code</button>
+                    </div>
+                    <div class="card-back absolute inset-0 bg-white rounded-xl shadow-lg transform-rotateY-180 backface-hidden">
+                        <div id="qrcode-${character.name.replace(/\s+/g, '')}" class="w-full h-full flex items-center justify-center cursor-pointer"></div>
+                        <button class="flip-button absolute top-4 right-4 bg-purple-600 text-white px-4 py-2 rounded-full hover:bg-purple-700 transition-colors duration-300">Back to Info</button>
+                    </div>
+                </div>
+            `;
+
+            // Add event listeners for flip buttons
+            const flipButtons = card.querySelectorAll('.flip-button');
+            flipButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    card.querySelector('.card-inner').classList.toggle('transform-rotateY-180');
+                });
+            });
+
+            // Generate QR code
+            const qrCodeContainer = card.querySelector(`#qrcode-${character.name.replace(/\s+/g, '')}`);
+            new QRCode(qrCodeContainer, {
+                text: `https://example.com/character/${character.id}`,
+                width: 200,
+                height: 200,
+            });
+
+            const buttonContainer = document.createElement('div');
+            buttonContainer.className = 'flex justify-between mt-4';
+            buttonContainer.innerHTML = `
+                <button class="export-json-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                    Export JSON
+                </button>
+                <button class="export-image-btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                    Export Image
+                </button>
+                <button class="export-bundle-btn bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-4 rounded-full transition duration-300 transform hover:scale-105">
+                    Export Bundle
+                </button>
+            `;
+
+            cardWrapper.appendChild(card);
+            cardWrapper.appendChild(buttonContainer);
+
+            buttonContainer.querySelector('.export-json-btn').addEventListener('click', () => exportJson(character));
+            buttonContainer.querySelector('.export-image-btn').addEventListener('click', () => exportImage(card));
+            buttonContainer.querySelector('.export-bundle-btn').addEventListener('click', () => exportBundle(character, card));
+            card.addEventListener('click', () => card.classList.toggle('flipped'));
+
+            generateQRCode(card, character);
+
+            return cardWrapper;
+        }
+
+        function generateQRCode(card, character) {
+            const qrCodeContainer = card.querySelector(`#qrcode-${character.name.replace(/\s+/g, '')}`);
+            new QRCode(qrCodeContainer, {
+                text: JSON.stringify(character),
+                width: 256,
+                height: 256
+            });
+            qrCodeContainer.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showDetailsPopup(character);
+            });
+        }
+
+        function showDetailsPopup(character) {
+            const popupName = document.getElementById('popupName');
+            const popupDetails = document.getElementById('popupDetails');
+
+            popupName.textContent = character.name;
+            popupDetails.innerHTML = `
+                <p><strong>Age:</strong> ${character.age}</p>
+                <p><strong>Occupation:</strong> ${character.occupation}</p>
+                <p><strong>Physical Description:</strong> ${character.physicalDescription}</p>
+                <p><strong>Personality:</strong> ${character.personality}</p>
+                <p><strong>Background:</strong> ${character.background}</p>
+                <p><strong>Skills:</strong> ${character.skills.join(', ')}</p>
+            `;
+
+            detailsPopup.classList.remove('hidden');
+        }
+
+
+        function exportJson(character) {
+            const jsonString = JSON.stringify(character, null, 2);
+            const blob = new Blob([jsonString], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${character.name}_data.json`;
+            link.click();
+        }
+
+        async function exportImage(card) {
+            const canvas = await html2canvas(card);
+            const link = document.createElement('a');
+            link.href = canvas.toDataURL('image/png');
+            link.download = `${card.querySelector('h2').textContent}_card.png`;
+            link.click();
+        }
+
+        function importCard(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const character = JSON.parse(e.target.result);
+                        const card = createCharacterCard(character);
+                        cardContainer.appendChild(card);
+                        generatedCharacters.push(character);
+
+                        if (generatedCharacters.length > 1) {
+                            exportAllBtn.classList.remove('hidden');
+                        }
+                    } catch (error) {
+                        console.error('Error importing card:', error);
+                        alert('Error importing card. Please make sure the file is a valid JSON.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        
+        async function exportBundle(character, card) {
+            const jsonString = JSON.stringify(character, null, 2);
+            const canvas = await html2canvas(card);
+            const imageBlob = await new Promise(resolve => canvas.toBlob(resolve));
+
+            const zip = new JSZip();
+            zip.file(`${character.name}_data.json`, jsonString);
+            zip.file(`${character.name}_card.png`, imageBlob);
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${character.name}_bundle.zip`;
+            link.click();
+        }
+
+        async function exportAllCards() {
+            const zip = new JSZip();
+            for (let i = 0; i < generatedCharacters.length; i++) {
+                const character = generatedCharacters[i];
+                const card = cardContainer.children[i].querySelector('.card');
+
+                const jsonString = JSON.stringify(character, null, 2);
+                const canvas = await html2canvas(card);
+                const imageBlob = await new Promise(resolve => canvas.toBlob(resolve));
+
+                zip.file(`${character.name}_data.json`, jsonString);
+                zip.file(`${character.name}_card.png`, imageBlob);
+            }
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(content);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'all_characters.zip';
+            link.click();
+        }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</body>
+</html>
