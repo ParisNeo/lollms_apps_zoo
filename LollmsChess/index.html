@@ -308,6 +308,7 @@ Provide your next move as Black.`+replay_prompt;
                 let retry_prompt = "";
 
                 while(retries_number<MAX_retries){
+                    console.log("retry ", retries_number)
                     retries_number+=1;
                     const aiMoveData = await getAIMove(game.fen(), `${source}-${target}`, retry_prompt );
                 
@@ -318,7 +319,7 @@ Provide your next move as Black.`+replay_prompt;
 
                     if (aiMoveData && aiMoveData.move) {
                         const formattedMove = convertMoveFormat(aiMoveData.move);
-                        retry_prompt = formattedMove;
+                        retry_prompt += formattedMove + "\nIllegal move\n";
                         
                         let aiMove;
                         try {
@@ -328,7 +329,7 @@ Provide your next move as Black.`+replay_prompt;
                                 (m.san === formattedMove)
                             );
 
-                            if (!isLegalMove) throw new Error("Illegal AI move");
+                            if (!isLegalMove) continue;
 
                             aiMove = game.move({
                                 from: formattedMove.substring(0, 2),
@@ -338,12 +339,7 @@ Provide your next move as Black.`+replay_prompt;
                             console.log("isLegalMove")
                             console.log(isLegalMove)
                         } catch (moveError) {
-                            try {
-                                aiMove = game.move(formattedMove);
-                            } catch (algebraicError) {
-                                game.undo();
-                                return 'snapback';
-                            }
+                            continue;
                         }
 
                         if (aiMove) {
@@ -401,7 +397,6 @@ Provide your next move as Black.`+replay_prompt;
                 $('#moveExplanation').text('');
             } else if (game.game_over()) {
                 status = 'Game over';
-status = 'Game over';
                 gameHistory.status = 'over';
                 $('#aiMove').text('Game Over!');
                 $('#opponentAnalysis').text('Game completed.');
