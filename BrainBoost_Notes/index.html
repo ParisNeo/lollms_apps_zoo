@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrainBoost Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 transition-colors duration-200">
+    <div class="container mx-auto p-4">
+        <div class="flex justify-between items-center mb-4">
+            <h1 class="text-3xl font-bold text-purple-600">BrainBoost Notes</h1>
+            <button id="darkModeToggle" class="bg-gray-200 px-4 py-2 rounded-full">
+                <i class="fas fa-moon"></i> Dark Mode
+            </button>
+        </div>
+        
+        <div class="flex mb-4">
+            <input id="searchInput" type="text" placeholder="Search notes..." class="flex-grow p-2 border rounded-l">
+            <button onclick="searchNotes()" class="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700">Search</button>
+        </div>
+
+        <div class="flex space-x-4">
+            <div class="w-1/4 bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">Categories</h2>
+                <ul id="categoriesList" class="space-y-2"></ul>
+                <input id="newCategoryInput" type="text" placeholder="New category" class="w-full p-2 mt-2 border rounded">
+                <button onclick="addCategory()" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Add Category</button>
+            </div>
+            
+            <div class="w-1/4 bg-white p-4 rounded shadow">
+                <h2 class="text-xl font-semibold mb-2">Notes</h2>
+                <ul id="notesList" class="space-y-2"></ul>
+                <button onclick="createNewNote()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">New Note</button>
+            </div>
+            
+            <div class="w-2/4 bg-white p-4 rounded shadow">
+                <input id="noteTitle" type="text" placeholder="Note Title" class="w-full p-2 mb-2 border rounded">
+                <textarea id="noteContent" rows="10" placeholder="Write your note here..." class="w-full p-2 mb-2 border rounded"></textarea>
+                <input id="noteTags" type="text" placeholder="Tags (comma-separated)" class="w-full p-2 mb-2 border rounded">
+                <select id="noteCategory" class="w-full p-2 mb-2 border rounded">
+                    <option value="">Select Category</option>
+                </select>
+                <div class="flex justify-between items-center mb-2">
+                    <span id="wordCount" class="text-sm text-gray-600">Words: 0</span>
+                    <button onclick="shareNote()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Share Note</button>
+                </div>
+                <div class="flex justify-between">
+                    <button onclick="saveNote()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save Note</button>
+                    <button onclick="deleteNote()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Delete Note</button>
+                    <button onclick="enhanceNote()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Enhance with AI</button>
+                    <button onclick="exportNote()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Export Note</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 bg-white p-4 rounded shadow">
+            <h2 class="text-xl font-semibold mb-2">Chat with Your Notes</h2>
+            <div id="chatMessages" class="h-64 overflow-y-auto mb-2 p-2 border rounded"></div>
+            <div class="flex">
+                <input id="chatInput" type="text" placeholder="Ask about your notes..." class="flex-grow p-2 border rounded-l">
+                <button onclick="sendChatMessage()" class="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center hidden">
+        <div class="bg-white p-4 rounded-lg shadow-lg text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-2"></div>
+            <p>Processing...</p>
+        </div>
+    </div>
+
+    <script>
+        const db = new Dexie('BrainBoostNotesDB');
+        db.version(2).stores({
+            notes: '++id, title, content, tags, category',
+            categories: '++id, name'
+        });
+
+        const lc = new LollmsClient();
+        const lr = new LOLLMSRAGClient(lc);
+
+        let currentNoteId = null;
+
+        async function loadCategories() {
+            const categoriesList = document.getElementById('categoriesList');
+            const noteCategorySelect = document.getElementById('noteCategory');
+            categoriesList.innerHTML = '';
+            noteCategorySelect.innerHTML = '<option value="">Select Category</option>';
+            const categories = await db.categories.toArray();
+            categories.forEach(category => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${category.name}</span>
+                    <button onclick="removeCategory(${category.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
+                `;
+                categoriesList.appendChild(li);
+
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = category.name;
+                noteCategorySelect.appendChild(option);
+            });
+        }
+
+        async function addCategory() {
+            const newCategoryInput = document.getElementById('newCategoryInput');
+            const categoryName = newCategoryInput.value.trim();
+            if (categoryName) {
+                await db.categories.add({ name: categoryName });
+                newCategoryInput.value = '';
+                loadCategories();
+            }
+        }
+
+        async function removeCategory(id) {
+            await db.categories.delete(id);
+            loadCategories();
+            loadNotes();
+        }
+
+        async function loadNotes() {
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = '';
+            const notes = await db.notes.toArray();
+            notes.forEach(note => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="#" class="text-blue-600 hover:underline" onclick="loadNote(${note.id})">${note.title}</a>
+                    <button onclick="deleteNote(${note.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
+                `;
+                notesList.appendChild(li);
+            });
+        }
+
+        async function loadNote(id) {
+            const note = await db.notes.get(id);
+            if (note) {
+                currentNoteId = id;
+                document.getElementById('noteTitle').value = note.title;
+                document.getElementById('noteContent').value = note.content;
+                document.getElementById('noteTags').value = note.tags || '';
+                document.getElementById('noteCategory').value = note.category || '';
+                updateWordCount();
+            }
+        }
+
+        async function createNewNote() {
+            currentNoteId = null;
+            document.getElementById('noteTitle').value = '';
+            document.getElementById('noteContent').value = '';
+            document.getElementById('noteTags').value = '';
+            document.getElementById('noteCategory').value = '';
+            updateWordCount();
+        }
+
+        async function saveNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            const tags = document.getElementById('noteTags').value;
+            const category = document.getElementById('noteCategory').value;
+            if (currentNoteId) {
+                await db.notes.update(currentNoteId, { title, content, tags, category });
+            } else {
+                await db.notes.add({ title, content, tags, category });
+            }
+            loadNotes();
+            await lr.addDocument(title, content, category);
+            await lr.indexDatabase();
+        }
+
+        async function deleteNote(id = null) {
+            const noteId = id || currentNoteId;
+            if (noteId) {
+                await db.notes.delete(noteId);
+                createNewNote();
+                loadNotes();
+            }
+        }
+
+        async function enhanceNote() {
+            const content = document.getElementById('noteContent').value;
+            if (content) {
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                const prompt = `${lc.system_message()}You are an AI assistant for enhancing notes. Please analyze the following note and provide suggestions for improvement, additional relevant information, or potential connections to other topics:\n\n${content}\n\n${lc.ai_message()}`;
+                try {
+                    const enhancement = await lc.generate(prompt);
+                    document.getElementById('noteContent').value += '\n\nAI Enhancement:\n' + enhancement;
+                    updateWordCount();
+                } catch (error) {
+                    console.error('Error enhancing note:', error);
+                    alert('An error occurred while enhancing the note. Please try again.');
+                } finally {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }
+            }
+        }
+
+        async function searchNotes() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const notesList = document.getElementById('notesList');
+            notesList.innerHTML = '';
+            const notes = await db.notes.toArray();
+            const filteredNotes = notes.filter(note => 
+                note.title.toLowerCase().includes(searchTerm) || 
+                note.content.toLowerCase().includes(searchTerm) ||
+                (note.tags && note.tags.toLowerCase().includes(searchTerm))
+            );
+            filteredNotes.forEach(note => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <a href="#" class="text-blue-600 hover:underline" onclick="loadNote(${note.id})">${note.title}</a>
+                    <button onclick="deleteNote(${note.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
+                `;
+                notesList.appendChild(li);
+            });
+        }
+
+        function updateWordCount() {
+            const content = document.getElementById('noteContent').value;
+            const wordCount = content.trim().split(/\s+/).length;
+            document.getElementById('wordCount').textContent = `Words: ${wordCount}`;
+        }
+
+        function shareNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            const shareText = `Check out my note: ${title}\n\n${content}`;
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Share Note',
+                    text: shareText
+                }).catch(console.error);
+            } else {
+                alert('Web Share API not supported. You can copy the following text to share:\n\n' + shareText);
+            }
+        }
+
+        function exportNote() {
+            const title = document.getElementById('noteTitle').value;
+            const content = document.getElementById('noteContent').value;
+            const blob = new Blob([`${title}\n\n${content}`], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `${title.replace(/\s+/g, '_')}.txt`;
+            a.click();
+        }
+
+        async function sendChatMessage() {
+            const chatInput = document.getElementById('chatInput');
+            const chatMessages = document.getElementById('chatMessages');
+            const message = chatInput.value.trim();
+            if (message) {
+                chatMessages.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
+                chatInput.value = '';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                try {
+                    const extractedData = await lr.search(message);
+                    const prompt = `${lc.system_message()}You are an AI assistant helping with note retrieval and answering questions. Use the following context to answer the user's question:\n\nContext: ${extractedData}\n\nUser question: ${message}\n\n${lc.ai_message()}`;
+                    const response = await lc.generate(prompt);
+                    chatMessages.innerHTML += `<p><strong>AI:</strong> ${response}</p>`;
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } catch (error) {
+                    console.error('Error processing chat message:', error);
+                    chatMessages.innerHTML += `<p><strong>AI:</strong> Sorry, I encountered an error while processing your request. Please try again.</p>`;
+                } finally {
+                    document.getElementById('loadingOverlay').classList.add('hidden');
+                }
+            }
+        }
+
+        document.getElementById('noteContent').addEventListener('input', updateWordCount);
+
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        darkModeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark');
+            if (document.body.classList.contains('dark')) {
+                document.body.classList.add('bg-gray-800', 'text-white');
+                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+            } else {
+                document.body.classList.remove('bg-gray-800', 'text-white');
+                darkModeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
+            }
+        });
+
+        loadCategories();
+        loadNotes();
+    </script>
+</body>
+</html>
