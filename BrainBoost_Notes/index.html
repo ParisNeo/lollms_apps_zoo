@@ -3,295 +3,575 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrainBoost Notes</title>
+    <title>Galactic Idle Tycoon</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min.js"></script>
-    <script src="https://unpkg.com/dexie@latest/dist/dexie.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
 </head>
-<body class="bg-gray-100 transition-colors duration-200">
-    <div class="container mx-auto p-4">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-3xl font-bold text-purple-600">BrainBoost Notes</h1>
-            <button id="darkModeToggle" class="bg-gray-200 px-4 py-2 rounded-full">
-                <i class="fas fa-moon"></i> Dark Mode
+<body class="bg-gradient-to-r from-indigo-900 to-purple-900 min-h-screen text-white">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <!-- Menu Bar -->
+        <nav class="bg-black/30 backdrop-blur-sm rounded-lg p-4 mb-8 flex justify-between items-center">
+            <div class="text-xl font-bold">🚀 Galactic Idle Tycoon</div>
+            <div class="space-x-4">
+                <button @click="showNewGameModal" class="hover:text-purple-300 transition">New Game</button>
+                <button @click="showLoadGameModal" class="hover:text-purple-300 transition">Load Game</button>
+                <button @click="showSettingsModal" class="hover:text-purple-300 transition">Settings</button>
+                <button @click="showCreditsModal" class="hover:text-purple-300 transition">Credits</button>
+                <button @click="showHelpModal" class="hover:text-purple-300 transition">Help</button>
+            </div>
+        </nav>        
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 mb-2">
+                Galactic Idle Tycoon
+            </h1>
+            <p class="text-purple-200">Build your intergalactic empire!</p>
+            <div class="mt-4">
+                <p class="text-xl">Level {{playerLevel}}</p>
+                <div class="w-full bg-purple-900/50 rounded-full h-2 mt-2">
+                    <div class="bg-purple-500 h-2 rounded-full" :style="{width: levelProgress + '%'}"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Manual Work Section -->
+        <div class="text-center mb-8" v-if="playerLevel < 5">
+            <button @click="manualWork" 
+                    class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-lg text-xl font-bold animate-pulse">
+                Mine Resources Manually
             </button>
-        </div>
-        
-        <div class="flex mb-4">
-            <input id="searchInput" type="text" placeholder="Search notes..." class="flex-grow p-2 border rounded-l">
-            <button onclick="searchNotes()" class="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700">Search</button>
+            <p class="text-sm mt-2 text-purple-300">Each click gives you 1 crystal</p>
         </div>
 
-        <div class="flex space-x-4">
-            <div class="w-1/4 bg-white p-4 rounded shadow">
-                <h2 class="text-xl font-semibold mb-2">Categories</h2>
-                <ul id="categoriesList" class="space-y-2"></ul>
-                <input id="newCategoryInput" type="text" placeholder="New category" class="w-full p-2 mt-2 border rounded">
-                <button onclick="addCategory()" class="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Add Category</button>
-            </div>
-            
-            <div class="w-1/4 bg-white p-4 rounded shadow">
-                <h2 class="text-xl font-semibold mb-2">Notes</h2>
-                <ul id="notesList" class="space-y-2"></ul>
-                <button onclick="createNewNote()" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">New Note</button>
-            </div>
-            
-            <div class="w-2/4 bg-white p-4 rounded shadow">
-                <input id="noteTitle" type="text" placeholder="Note Title" class="w-full p-2 mb-2 border rounded">
-                <textarea id="noteContent" rows="10" placeholder="Write your note here..." class="w-full p-2 mb-2 border rounded"></textarea>
-                <input id="noteTags" type="text" placeholder="Tags (comma-separated)" class="w-full p-2 mb-2 border rounded">
-                <select id="noteCategory" class="w-full p-2 mb-2 border rounded">
-                    <option value="">Select Category</option>
-                </select>
-                <div class="flex justify-between items-center mb-2">
-                    <span id="wordCount" class="text-sm text-gray-600">Words: 0</span>
-                    <button onclick="shareNote()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Share Note</button>
+        <!-- Main Game Area -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <!-- Resources Panel -->
+            <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Resources</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span>💎 Crystals:</span>
+                        <span class="text-xl">{{Math.floor(resources.crystals)}}</span>
+                    </div>
+                    <div class="flex justify-between items-center" v-if="unlockedFeatures.fuel">
+                        <span>⚡ Fuel:</span>
+                        <span class="text-xl">{{Math.floor(resources.fuel)}}</span>
+                    </div>
+                    <div class="flex justify-between items-center" v-if="unlockedFeatures.credits">
+                        <span>💰 Credits:</span>
+                        <span class="text-xl">{{Math.floor(resources.credits)}}</span>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-sm text-purple-300">Production per second:</p>
+                        <div class="text-sm">
+                            <div>Crystals: +{{productionRates.crystals.toFixed(1)}}/s</div>
+                            <div v-if="unlockedFeatures.fuel">Fuel: +{{productionRates.fuel.toFixed(1)}}/s</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex justify-between">
-                    <button onclick="saveNote()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Save Note</button>
-                    <button onclick="deleteNote()" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">Delete Note</button>
-                    <button onclick="enhanceNote()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">Enhance with AI</button>
-                    <button onclick="exportNote()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">Export Note</button>
+            </div>
+
+            <!-- Buildings Panel -->
+            <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Buildings</h2>
+                <div class="space-y-4">
+                    <div v-for="building in visibleBuildings" :key="building.id" 
+                         class="border border-purple-500/30 rounded p-3 hover:bg-purple-900/30 transition">
+                        <div class="flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold">{{building.name}}</h3>
+                                <p class="text-sm text-purple-300">Owned: {{building.owned}}</p>
+                            </div>
+                            <button @click="buyBuilding(building.id)"
+                                    class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded"
+                                    :disabled="resources.crystals < building.cost">
+                                {{Math.floor(building.cost)}} 💎
+                            </button>
+                        </div>
+                        <div class="text-sm mt-2 text-purple-300">
+                            Production: +{{building.production}}/s
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Panel -->
+            <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.trading">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Galactic Market</h2>
+                <div class="space-y-4">
+                    <div v-for="resource in tradableResources" :key="resource.name"
+                         class="border border-purple-500/30 rounded p-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span>{{resource.name}}</span>
+                            <span :class="{'text-green-400': resource.trend > 0, 'text-red-400': resource.trend < 0}">
+                                {{resource.price.toFixed(2)}} 💰
+                                <span v-if="resource.trend > 0">↑</span>
+                                <span v-if="resource.trend < 0">↓</span>
+                            </span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button @click="buyResource(resource.id)"
+                                    class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm flex-1"
+                                    :disabled="resources.credits < resource.price">
+                                Buy
+                            </button>
+                            <button @click="sellResource(resource.id)"
+                                    class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm flex-1"
+                                    :disabled="resources[resource.key] < 1">
+                                Sell
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-4 text-sm text-purple-300">
+                    Market updates every {{marketUpdateInterval}} seconds
+                </div>
+            </div>
+
+            <!-- Ships & Research Panel -->
+            <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.ships">
+                <h2 class="text-2xl font-bold mb-4 text-purple-300">Ships & Research</h2>
+                <div class="space-y-4">
+                    <div class="border-b border-purple-500/30 pb-4">
+                        <h3 class="font-bold mb-2">Available Ships</h3>
+                        <div v-for="ship in ships" :key="ship.id"
+                             class="flex justify-between items-center mb-2">
+                            <span>{{ship.name}}</span>
+                            <button @click="buildShip(ship.id)"
+                                    class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
+                                    :disabled="resources.crystals < ship.cost">
+                                Build ({{ship.cost}} 💎)
+                            </button>
+                        </div>
+                    </div>
+                    <div v-if="unlockedFeatures.research">
+                        <h3 class="font-bold mb-2">Research Progress</h3>
+                        <div class="w-full bg-purple-900/50 rounded-full h-2">
+                            <div class="bg-purple-500 h-2 rounded-full" :style="{width: researchProgress + '%'}"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="mt-4 bg-white p-4 rounded shadow">
-            <h2 class="text-xl font-semibold mb-2">Chat with Your Notes</h2>
-            <div id="chatMessages" class="h-64 overflow-y-auto mb-2 p-2 border rounded"></div>
-            <div class="flex">
-                <input id="chatInput" type="text" placeholder="Ask about your notes..." class="flex-grow p-2 border rounded-l">
-                <button onclick="sendChatMessage()" class="bg-purple-600 text-white px-4 py-2 rounded-r hover:bg-purple-700">Send</button>
+        <!-- Game Settings/Stats -->
+        <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm">
+            <div class="flex justify-between">
+                <div>
+                    <h3 class="font-bold">Empire Stats</h3>
+                    <p class="text-sm text-purple-300">Population: {{stats.population}}</p>
+                    <p class="text-sm text-purple-300">Happiness: {{stats.happiness}}%</p>
+                    <p class="text-sm text-purple-300" v-if="unlockedFeatures.trading">Market Influence: {{stats.marketInfluence}}%</p>
+                </div>
+                <div>
+                    <button @click="saveGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded mr-2">
+                        Save Game
+                    </button>
+                    <button @click="resetGame" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
+                        Reset Game
+                    </button>
+                </div>
             </div>
         </div>
+
+        <!-- Notifications -->
+        <div class="fixed bottom-4 right-4 space-y-2">
+            <div v-for="(notification, index) in notifications" :key="index"
+                 class="bg-green-600 text-white px-4 py-2 rounded shadow-lg"
+                 :class="{'animate-bounce': notification.new}">
+                {{notification.message}}
+            </div>
+        </div>
+        <!-- Modal Templates -->
+        <div v-if="activeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <!-- New Game Modal -->
+            <div v-if="activeModal === 'newGame'" class="bg-indigo-900 p-6 rounded-lg w-96">
+                <h2 class="text-2xl font-bold mb-4">Start New Game</h2>
+                <p class="mb-4">Are you sure you want to start a new game? All current progress will be lost.</p>
+                <div class="flex justify-end space-x-4">
+                    <button @click="startNewGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Confirm</button>
+                    <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Load Game Modal -->
+            <div v-if="activeModal === 'loadGame'" class="bg-indigo-900 p-6 rounded-lg w-96">
+                <h2 class="text-2xl font-bold mb-4">Load Game</h2>
+                <p class="mb-4">Load your previously saved game?</p>
+                <div class="flex justify-end space-x-4">
+                    <button @click="loadSavedGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Load</button>
+                    <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Settings Modal -->
+            <div v-if="activeModal === 'settings'" class="bg-indigo-900 p-6 rounded-lg w-96">
+                <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span>Sound Effects</span>
+                        <input type="checkbox" v-model="settings.soundEnabled" class="form-checkbox">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Auto-Save</span>
+                        <input type="checkbox" v-model="settings.autoSaveEnabled" class="form-checkbox">
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span>Save Interval (seconds)</span>
+                        <input type="number" v-model="settings.autoSaveInterval" min="10" max="300" class="bg-indigo-800 rounded p-1">
+                    </div>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                </div>
+            </div>
+
+            <!-- Credits Modal -->
+            <div v-if="activeModal === 'credits'" class="bg-indigo-900 p-6 rounded-lg w-96">
+                <h2 class="text-2xl font-bold mb-4">Credits</h2>
+                <div class="space-y-2">
+                    <p>Game Created by: ParisNeo</p>
+                    <p>Version: 1.0.0</p>
+                    <p>Special thanks to:</p>
+                    <ul class="list-disc ml-6">
+                        <li>Claude Anthropic</li>
+                        <li>Mistral Nemo</li>
+                        <li>Our amazing players</li>
+                    </ul>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                </div>
+            </div>
+
+            <!-- Help Modal -->
+            <div v-if="activeModal === 'help'" class="bg-indigo-900 p-6 rounded-lg w-96 max-h-[80vh] overflow-y-auto">
+                <h2 class="text-2xl font-bold mb-4">Help Guide</h2>
+                <div class="space-y-4">
+                    <section>
+                        <h3 class="text-xl font-bold">Getting Started</h3>
+                        <p>Click "Mine Resources Manually" to begin collecting crystals. Use these to build your first structures.</p>
+                    </section>
+                    <section>
+                        <h3 class="text-xl font-bold">Buildings</h3>
+                        <p>Purchase buildings to automate resource production. Each building increases your production rate.</p>
+                    </section>
+                    <section>
+                        <h3 class="text-xl font-bold">Trading</h3>
+                        <p>Once unlocked, use the Galactic Market to buy and sell resources for credits.</p>
+                    </section>
+                </div>
+                <div class="flex justify-end mt-4">
+                    <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                </div>
+            </div>
+        </div>        
     </div>
 
-    <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center hidden">
-        <div class="bg-white p-4 rounded-lg shadow-lg text-center">
-            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-2"></div>
-            <p>Processing...</p>
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center">
+        <div class="text-center">
+            <div class="text-6xl animate-spin mb-4">🚀</div>
+            <div class="text-xl text-white">Loading your empire...</div>
         </div>
     </div>
 
     <script>
-        const db = new Dexie('BrainBoostNotesDB');
-        db.version(2).stores({
-            notes: '++id, title, content, tags, category',
-            categories: '++id, name'
-        });
+        const { createApp } = Vue
 
-        const lc = new LollmsClient();
-        const lr = new LOLLMSRAGClient(lc);
-
-        let currentNoteId = null;
-
-        async function loadCategories() {
-            const categoriesList = document.getElementById('categoriesList');
-            const noteCategorySelect = document.getElementById('noteCategory');
-            categoriesList.innerHTML = '';
-            noteCategorySelect.innerHTML = '<option value="">Select Category</option>';
-            const categories = await db.categories.toArray();
-            categories.forEach(category => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <span>${category.name}</span>
-                    <button onclick="removeCategory(${category.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
-                `;
-                categoriesList.appendChild(li);
-
-                const option = document.createElement('option');
-                option.value = category.id;
-                option.textContent = category.name;
-                noteCategorySelect.appendChild(option);
-            });
-        }
-
-        async function addCategory() {
-            const newCategoryInput = document.getElementById('newCategoryInput');
-            const categoryName = newCategoryInput.value.trim();
-            if (categoryName) {
-                await db.categories.add({ name: categoryName });
-                newCategoryInput.value = '';
-                loadCategories();
-            }
-        }
-
-        async function removeCategory(id) {
-            await db.categories.delete(id);
-            loadCategories();
-            loadNotes();
-        }
-
-        async function loadNotes() {
-            const notesList = document.getElementById('notesList');
-            notesList.innerHTML = '';
-            const notes = await db.notes.toArray();
-            notes.forEach(note => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="#" class="text-blue-600 hover:underline" onclick="loadNote(${note.id})">${note.title}</a>
-                    <button onclick="deleteNote(${note.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
-                `;
-                notesList.appendChild(li);
-            });
-        }
-
-        async function loadNote(id) {
-            const note = await db.notes.get(id);
-            if (note) {
-                currentNoteId = id;
-                document.getElementById('noteTitle').value = note.title;
-                document.getElementById('noteContent').value = note.content;
-                document.getElementById('noteTags').value = note.tags || '';
-                document.getElementById('noteCategory').value = note.category || '';
-                updateWordCount();
-            }
-        }
-
-        async function createNewNote() {
-            currentNoteId = null;
-            document.getElementById('noteTitle').value = '';
-            document.getElementById('noteContent').value = '';
-            document.getElementById('noteTags').value = '';
-            document.getElementById('noteCategory').value = '';
-            updateWordCount();
-        }
-
-        async function saveNote() {
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            const tags = document.getElementById('noteTags').value;
-            const category = document.getElementById('noteCategory').value;
-            if (currentNoteId) {
-                await db.notes.update(currentNoteId, { title, content, tags, category });
-            } else {
-                await db.notes.add({ title, content, tags, category });
-            }
-            loadNotes();
-            await lr.addDocument(title, content, category);
-            await lr.indexDatabase();
-        }
-
-        async function deleteNote(id = null) {
-            const noteId = id || currentNoteId;
-            if (noteId) {
-                await db.notes.delete(noteId);
-                createNewNote();
-                loadNotes();
-            }
-        }
-
-        async function enhanceNote() {
-            const content = document.getElementById('noteContent').value;
-            if (content) {
-                document.getElementById('loadingOverlay').classList.remove('hidden');
-                const prompt = `${lc.system_message()}You are an AI assistant for enhancing notes. Please analyze the following note and provide suggestions for improvement, additional relevant information, or potential connections to other topics:\n\n${content}\n\n${lc.ai_message()}`;
-                try {
-                    const enhancement = await lc.generate(prompt);
-                    document.getElementById('noteContent').value += '\n\nAI Enhancement:\n' + enhancement;
-                    updateWordCount();
-                } catch (error) {
-                    console.error('Error enhancing note:', error);
-                    alert('An error occurred while enhancing the note. Please try again.');
-                } finally {
-                    document.getElementById('loadingOverlay').classList.add('hidden');
+        createApp({
+            data() {
+                return {
+                    activeModal: null,
+                    settings: {
+                        soundEnabled: true,
+                        autoSaveEnabled: true,
+                        autoSaveInterval: 30
+                    },
+                    gameInitialized: false,
+                    playerLevel: 1,
+                    levelProgress: 0,
+                    resources: {
+                        crystals: 0,
+                        fuel: 0,
+                        credits: 100 // Starting credits
+                    },
+                    productionRates: {
+                        crystals: 0,
+                        fuel: 0
+                    },
+                    buildings: [
+                        {id: 1, name: "Crystal Mine", owned: 0, cost: 10, production: 0.1, minLevel: 1},
+                        {id: 2, name: "Fuel Refinery", owned: 0, cost: 15, production: 0.1, minLevel: 3},
+                        {id: 3, name: "Research Lab", owned: 0, cost: 50, production: 0.05, minLevel: 5}
+                    ],
+                    ships: [
+                        {id: 1, name: "Scout Ship", cost: 100},
+                        {id: 2, name: "Mining Vessel", cost: 250},
+                        {id: 3, name: "Battle Cruiser", cost: 1000}
+                    ],
+                    tradableResources: [
+                        {id: 1, name: "Crystals", key: "crystals", price: 10, basePrice: 10, trend: 0, volatility: 0.1},
+                        {id: 2, name: "Fuel", key: "fuel", price: 15, basePrice: 15, trend: 0, volatility: 0.2}
+                    ],
+                    marketUpdateInterval: 10, // seconds
+                    lastMarketUpdate: Date.now(),
+                    stats: {
+                        population: 100,
+                        happiness: 100,
+                        marketInfluence: 0
+                    },
+                    unlockedFeatures: {
+                        fuel: false,
+                        ships: false,
+                        research: false,
+                        trading: false,
+                        credits: true
+                    },
+                    researchProgress: 0,
+                    lastUpdate: Date.now(),
+                    notifications: []
                 }
-            }
-        }
+            },
+            methods: {
+                initializeGame() {
+                    if (!this.gameInitialized) {
+                        this.updateProductionRates()
+                        this.updateMarketPrices()
+                        this.gameInitialized = true
+                    }
+                },
+                showNewGameModal() {
+                    this.activeModal = 'newGame'
+                },
+                showLoadGameModal() {
+                    this.activeModal = 'loadGame'
+                },
+                showSettingsModal() {
+                    this.activeModal = 'settings'
+                },
+                showCreditsModal() {
+                    this.activeModal = 'credits'
+                },
+                showHelpModal() {
+                    this.activeModal = 'help'
+                },
+                closeModal() {
+                    this.activeModal = null
+                },
+                startNewGame() {
+                    if (confirm('Are you sure? This will erase all progress!')) {
+                        localStorage.removeItem('galacticTycoonSave')
+                        location.reload()
+                    }
+                },
+                loadSavedGame() {
+                    this.loadGame()
+                    this.closeModal()
+                },                
+                updateMarketPrices() {
+                    this.tradableResources.forEach(resource => {
+                        // Calculate price change based on market conditions
+                        const marketInfluence = this.stats.marketInfluence / 100
+                        const randomFactor = (Math.random() - 0.5) * 2 * resource.volatility
+                        const demandFactor = (resource.trend * 0.1)
+                        const newPrice = resource.basePrice * (1 + randomFactor + demandFactor + marketInfluence)
+                        
+                        // Update trend
+                        resource.trend = (newPrice - resource.price) / resource.price
+                        resource.price = Math.max(newPrice, resource.basePrice * 0.5)
+                    })
+                },
+                buyResource(resourceId) {
+                    const resource = this.tradableResources.find(r => r.id === resourceId)
+                    if (resource && this.resources.credits >= resource.price) {
+                        this.resources.credits -= resource.price
+                        this.resources[resource.key]++
+                        resource.trend += 0.05 // Buying increases price trend
+                        this.stats.marketInfluence = Math.min(this.stats.marketInfluence + 1, 100)
+                        this.showNotification(`Bought 1 ${resource.name}`)
+                    }
+                },
+                sellResource(resourceId) {
+                    const resource = this.tradableResources.find(r => r.id === resourceId)
+                    if (resource && this.resources[resource.key] >= 1) {
+                        this.resources.credits += resource.price
+                        this.resources[resource.key]--
+                        resource.trend -= 0.05 // Selling decreases price trend
+                        this.stats.marketInfluence = Math.min(this.stats.marketInfluence + 1, 100)
+                        this.showNotification(`Sold 1 ${resource.name}`)
+                    }
+                },
+                manualWork() {
+                    this.resources.crystals++
+                    this.checkLevelProgress()
+                },
+                buyBuilding(buildingId) {
+                    const building = this.buildings.find(b => b.id === buildingId)
+                    if (building && this.resources.crystals >= building.cost) {
+                        this.resources.crystals -= building.cost
+                        building.owned++
+                        building.cost = Math.floor(building.cost * 1.15)
+                        this.updateProductionRates()
+                        this.checkLevelProgress()
+                    }
+                },
+                buildShip(shipId) {
+                    const ship = this.ships.find(s => s.id === shipId)
+                    if (ship && this.resources.crystals >= ship.cost) {
+                        this.resources.crystals -= ship.cost
+                        this.checkLevelProgress()
+                    }
+                },
+                updateProductionRates() {
+                    this.productionRates.crystals = this.buildings.reduce((acc, building) => 
+                        acc + (building.owned * building.production), 0)
+                    this.productionRates.fuel = this.buildings.reduce((acc, building) => 
+                        acc + (building.owned * building.production * 0.5), 0)
+                },
+                checkLevelProgress() {
+                    const totalResources = this.resources.crystals + (this.resources.fuel || 0)
+                    const levelThreshold = Math.pow(100, this.playerLevel)
+                    this.levelProgress = (totalResources / levelThreshold) * 100
+                    
+                    if (this.levelProgress >= 100) {
+                        this.playerLevel++
+                        this.levelProgress = 0
+                        this.unlockFeatures()
+                    }
+                },
+                unlockFeatures() {
+                    if (!this.unlockedFeatures) {
+                        this.unlockedFeatures = {
+                            fuel: false,
+                            ships: false,
+                            research: false,
+                            trading: false,
+                            credits: true
+                        }
+                    }
+                    
+                    if (this.playerLevel >= 2 && !this.unlockedFeatures.trading) {
+                        this.unlockedFeatures.trading = true
+                        this.showNotification("Trading system unlocked!")
+                    }
+                    if (this.playerLevel >= 3 && !this.unlockedFeatures.fuel) {
+                        this.unlockedFeatures.fuel = true
+                        this.showNotification("Fuel production unlocked!")
+                    }
+                    if (this.playerLevel >= 5 && !this.unlockedFeatures.ships) {
+                        this.unlockedFeatures.ships = true
+                        this.showNotification("Ships system unlocked!")
+                    }
+                    if (this.playerLevel >= 7 && !this.unlockedFeatures.research) {
+                        this.unlockedFeatures.research = true
+                        this.showNotification("Research system unlocked!")
+                    }
+                },
+                showNotification(message) {
+                    const notification = { message, new: true }
+                    this.notifications.push(notification)
+                    setTimeout(() => {
+                        notification.new = false
+                        setTimeout(() => {
+                            console.log("Removing last notification")
+                            console.log(this.notifications)
 
-        async function searchNotes() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const notesList = document.getElementById('notesList');
-            notesList.innerHTML = '';
-            const notes = await db.notes.toArray();
-            const filteredNotes = notes.filter(note => 
-                note.title.toLowerCase().includes(searchTerm) || 
-                note.content.toLowerCase().includes(searchTerm) ||
-                (note.tags && note.tags.toLowerCase().includes(searchTerm))
-            );
-            filteredNotes.forEach(note => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <a href="#" class="text-blue-600 hover:underline" onclick="loadNote(${note.id})">${note.title}</a>
-                    <button onclick="deleteNote(${note.id})" class="ml-2 text-red-500"><i class="fas fa-trash"></i></button>
-                `;
-                notesList.appendChild(li);
-            });
-        }
-
-        function updateWordCount() {
-            const content = document.getElementById('noteContent').value;
-            const wordCount = content.trim().split(/\s+/).length;
-            document.getElementById('wordCount').textContent = `Words: ${wordCount}`;
-        }
-
-        function shareNote() {
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            const shareText = `Check out my note: ${title}\n\n${content}`;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Share Note',
-                    text: shareText
-                }).catch(console.error);
-            } else {
-                alert('Web Share API not supported. You can copy the following text to share:\n\n' + shareText);
-            }
-        }
-
-        function exportNote() {
-            const title = document.getElementById('noteTitle').value;
-            const content = document.getElementById('noteContent').value;
-            const blob = new Blob([`${title}\n\n${content}`], { type: 'text/plain' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `${title.replace(/\s+/g, '_')}.txt`;
-            a.click();
-        }
-
-        async function sendChatMessage() {
-            const chatInput = document.getElementById('chatInput');
-            const chatMessages = document.getElementById('chatMessages');
-            const message = chatInput.value.trim();
-            if (message) {
-                chatMessages.innerHTML += `<p><strong>You:</strong> ${message}</p>`;
-                chatInput.value = '';
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-
-                document.getElementById('loadingOverlay').classList.remove('hidden');
-                try {
-                    const extractedData = await lr.search(message);
-                    const prompt = `${lc.system_message()}You are an AI assistant helping with note retrieval and answering questions. Use the following context to answer the user's question:\n\nContext: ${extractedData}\n\nUser question: ${message}\n\n${lc.ai_message()}`;
-                    const response = await lc.generate(prompt);
-                    chatMessages.innerHTML += `<p><strong>AI:</strong> ${response}</p>`;
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                } catch (error) {
-                    console.error('Error processing chat message:', error);
-                    chatMessages.innerHTML += `<p><strong>AI:</strong> Sorry, I encountered an error while processing your request. Please try again.</p>`;
-                } finally {
-                    document.getElementById('loadingOverlay').classList.add('hidden');
+                            this.notifications.pop();
+                            console.log(this.notifications)
+                        }, 3000)
+                    }, 1000)
+                },
+                update() {
+                    if (!this.gameInitialized) return
+                    
+                    const now = Date.now()
+                    const delta = (now - this.lastUpdate) / 1000
+                    
+                    // Resource production
+                    this.resources.crystals += this.productionRates.crystals * delta
+                    if (this.unlockedFeatures.fuel) {
+                        this.resources.fuel += this.productionRates.fuel * delta
+                    }
+                    
+                    // Market updates
+                    if (this.unlockedFeatures.trading && now - this.lastMarketUpdate >= this.marketUpdateInterval * 1000) {
+                        this.updateMarketPrices()
+                        this.lastMarketUpdate = now
+                    }
+                    
+                    if (this.unlockedFeatures.research) {
+                        this.researchProgress = (this.researchProgress + 0.1) % 100
+                    }
+                    
+                    this.checkLevelProgress()
+                    this.lastUpdate = now
+                },
+                saveGame() {
+                    const saveData = {
+                        resources: this.resources,
+                        buildings: this.buildings,
+                        stats: this.stats,
+                        playerLevel: this.playerLevel,
+                        unlockedFeatures: this.unlockedFeatures,
+                        tradableResources: this.tradableResources,
+                        lastUpdate: this.lastUpdate,
+                        lastMarketUpdate: this.lastMarketUpdate
+                    }
+                    try {
+                        localStorage.setItem('galacticTycoonSave', JSON.stringify(saveData))
+                        this.showNotification("Game saved successfully!")
+                    } catch (error) {
+                        console.error("Save failed:", error)
+                        this.showNotification("Failed to save game!")
+                    }
+                },
+                loadGame() {
+                    try {
+                        const saved = localStorage.getItem('galacticTycoonSave')
+                        if (saved) {
+                            const data = JSON.parse(saved)
+                            this.resources = data.resources || this.resources
+                            this.buildings = data.buildings || this.buildings
+                            this.stats = data.stats || this.stats
+                            this.playerLevel = data.playerLevel || this.playerLevel
+                            this.unlockedFeatures = data.unlockedFeatures || this.unlockedFeatures
+                            this.tradableResources = data.tradableResources || this.tradableResources
+                            this.lastUpdate = data.lastUpdate || Date.now()
+                            this.lastMarketUpdate = data.lastMarketUpdate || Date.now()
+                            this.updateProductionRates()
+                        }
+                    } catch (error) {
+                        console.error("Load failed:", error)
+                        this.showNotification("Failed to load saved game!")
+                    }
+                    this.initializeGame()
+                },
+                resetGame() {
+                    if (confirm('Are you sure you want to reset your progress?')) {
+                        try {
+                            localStorage.removeItem('galacticTycoonSave')
+                            location.reload()
+                        } catch (error) {
+                            console.error("Reset failed:", error)
+                            this.showNotification("Failed to reset game!")
+                        }
+                    }
                 }
+            },
+            computed: {
+                visibleBuildings() {
+                    return this.buildings.filter(b => b.minLevel <= this.playerLevel)
+                }
+            },
+            mounted() {
+                this.loadGame()
+                setInterval(this.update, 100)
+                setInterval(this.saveGame, 30000)
             }
-        }
-
-        document.getElementById('noteContent').addEventListener('input', updateWordCount);
-
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark');
-            if (document.body.classList.contains('dark')) {
-                document.body.classList.add('bg-gray-800', 'text-white');
-                darkModeToggle.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
-            } else {
-                document.body.classList.remove('bg-gray-800', 'text-white');
-                darkModeToggle.innerHTML = '<i class="fas fa-moon"></i> Dark Mode';
-            }
-        });
-
-        loadCategories();
-        loadNotes();
+        }).mount('#app')
     </script>
 </body>
 </html>
