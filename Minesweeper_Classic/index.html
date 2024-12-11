@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minesweeper Classic</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background: linear-gradient(135deg, #c3c3c3, #e7e7e7);
+        }
+        .minesweeper-btn {
+            background: linear-gradient(to bottom, #ffffff 0%, #e0e0e0 100%);
+            border: 2px solid #7b7b7b;
+            box-shadow: inset 2px 2px 0 #ffffff, inset -2px -2px 0 #808080;
+        }
+        .minesweeper-btn:hover {
+            background: linear-gradient(to bottom, #e0e0e0 0%, #d0d0d0 100%);
+        }
+        .minesweeper-cell {
+            border-top: 2px solid #ffffff;
+            border-left: 2px solid #ffffff;
+            border-right: 2px solid #7b7b7b;
+            border-bottom: 2px solid #7b7b7b;
+        }
+        .minesweeper-cell.revealed {
+            border: 1px solid #7b7b7b;
+        }
+    </style>
+</head>
+<body class="min-h-screen font-sans">
+    <div id="app" class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold mb-8 text-center text-gray-800 shadow-text">Minesweeper Classic</h1>
+        
+        <div class="mb-6 flex justify-center space-x-4">
+            <button @click="newGame" class="minesweeper-btn text-black font-bold py-2 px-4 rounded transition duration-300">New Game</button>
+            <select v-model="difficulty" class="minesweeper-btn text-black px-3 py-2 rounded">
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="expert">Expert</option>
+            </select>
+            <button @click="showHelp = true" class="minesweeper-btn text-black font-bold py-2 px-4 rounded transition duration-300">Help</button>
+        </div>
+
+        <div class="flex justify-center space-x-8 mb-4">
+            <div class="text-xl font-semibold bg-black text-red-500 px-4 py-2 rounded">Time: {{ formatTime(timer) }}</div>
+            <div class="text-xl font-semibold bg-black text-red-500 px-4 py-2 rounded">Mines: {{ remainingMines }}</div>
+        </div>
+
+        <div class="bg-gray-300 p-4 rounded-lg shadow-lg mx-auto" :style="{ width: `${cols * 30 + 40}px` }">
+            <div id="minesweeperGrid" class="grid gap-1" :style="{ gridTemplateColumns: `repeat(${cols}, 30px)` }">
+                <div v-for="(cell, index) in flatGrid" :key="index"
+                     @click="handleCellClick(Math.floor(index / cols), index % cols)"
+                     @contextmenu.prevent="handleRightClick(Math.floor(index / cols), index % cols)"
+                     :class="getCellClass(cell)"
+                     class="w-7 h-7 flex items-center justify-center text-sm font-bold cursor-pointer transition-colors duration-300 minesweeper-cell">
+                    {{ getCellContent(cell) }}
+                </div>
+            </div>
+        </div>
+
+        <p class="mt-6 text-2xl font-semibold text-center" :class="{ 'text-red-600': gameStatus === 'Game Over!', 'text-green-600': gameStatus === 'You Win!' }">{{ gameStatus }}</p>
+
+        <div id="image-container" class="mt-8 flex justify-center"></div>
+
+        <!-- Help Modal -->
+        <div v-if="showHelp" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-8 rounded-lg max-w-2xl">
+                <h2 class="text-2xl font-bold mb-4">How to Play Minesweeper</h2>
+                <ul class="list-disc pl-6 mb-4">
+                    <li>Left-click to reveal a cell</li>
+                    <li>Right-click to flag a suspected mine</li>
+                    <li>Numbers indicate how many mines are adjacent to that cell</li>
+                    <li>Clear all non-mine cells to win</li>
+                </ul>
+                <h3 class="text-xl font-semibold mb-2">Tips for Suspecting Mines:</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li>If a number is touching exactly that many unrevealed squares, all of those squares must be mines.</li>
+                    <li>If a number has been satisfied (all its mines have been flagged), the remaining adjacent squares must be safe.</li>
+                    <li>Look for patterns: two 1's diagonally adjacent often indicate a mine in the corner they share.</li>
+                    <li>Use process of elimination when you have partial information about a group of cells.</li>
+                </ul>
+                <h3 class="text-xl font-semibold mb-2">Advanced Strategies:</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li>Look for 1-2-1 patterns along edges, which often indicate mines in specific positions.</li>
+                    <li>When you're stuck, look for cells that must be safe or must be mines based on the total number of remaining mines.</li>
+                    <li>Sometimes, you may need to guess. Choose a guess that has the highest probability of being safe.</li>
+                </ul>
+                <button @click="showHelp = false" class="minesweeper-btn text-black font-bold py-2 px-4 rounded">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+        const ttiClient = new LollmsTTI();
+
+        createApp({
+            setup() {
+                const grid = ref([]);
+                const rows = ref(9);
+                const cols = ref(9);
+                const mines = ref(10);
+                const gameOver = ref(false);
+                const gameStatus = ref('');
+                const difficulty = ref('beginner');
+                const timer = ref(0);
+                const timerInterval = ref(null);
+                const showHelp = ref(false);
+
+                const flatGrid = computed(() => grid.value.flat());
+
+                const remainingMines = computed(() => {
+                    return mines.value - flatGrid.value.filter(cell => cell.flagged).length;
+                });
+
+                function initializeGame() {
+                    stopTimer();
+                    timer.value = 0;
+                    gameOver.value = false;
+                    gameStatus.value = '';
+
+                    switch(difficulty.value) {
+                        case 'beginner':
+                            rows.value = 9; cols.value = 9; mines.value = 10;
+                            break;
+                        case 'intermediate':
+                            rows.value = 16; cols.value = 16; mines.value = 40;
+                            break;
+                        case 'expert':
+                            rows.value = 16; cols.value = 30; mines.value = 99;
+                            break;
+                    }
+
+                    grid.value = Array(rows.value).fill().map(() => 
+                        Array(cols.value).fill().map(() => ({
+                            value: 0,
+                            revealed: false,
+                            flagged: false
+                        }))
+                    );
+
+                    // Place mines
+                    let minesPlaced = 0;
+                    while (minesPlaced < mines.value) {
+                        const row = Math.floor(Math.random() * rows.value);
+                        const col = Math.floor(Math.random() * cols.value);
+                        if (grid.value[row][col].value !== 'M') {
+                            grid.value[row][col].value = 'M';
+                            minesPlaced++;
+                        }
+                    }
+
+                    // Calculate numbers
+                    for (let i = 0; i < rows.value; i++) {
+                        for (let j = 0; j < cols.value; j++) {
+                            if (grid.value[i][j].value !== 'M') {
+                                grid.value[i][j].value = countAdjacentMines(i, j);
+                            }
+                        }
+                    }
+
+                    startTimer();
+                }
+
+                function countAdjacentMines(row, col) {
+                    let count = 0;
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            if (i === 0 && j === 0) continue;
+                            const newRow = row + i;
+                            const newCol = col + j;
+                            if (newRow >= 0 && newRow < rows.value && newCol >= 0 && newCol < cols.value) {
+                                if (grid.value[newRow][newCol].value === 'M') count++;
+                            }
+                        }
+                    }
+                    return count;
+                }
+
+                function handleCellClick(row, col) {
+                    if (gameOver.value || grid.value[row][col].flagged) return;
+                    revealCell(row, col);
+                }
+
+                function handleRightClick(row, col) {
+                    if (gameOver.value || grid.value[row][col].revealed) return;
+                    grid.value[row][col].flagged = !grid.value[row][col].flagged;
+                }
+
+                function revealCell(row, col) {
+                    if (grid.value[row][col].revealed) return;
+
+                    grid.value[row][col].revealed = true;
+                    if (grid.value[row][col].value === 'M') {
+                        gameOver.value = true;
+                        gameStatus.value = 'Game Over!';
+                        revealAllMines();
+                        stopTimer();
+                    } else if (grid.value[row][col].value === 0) {
+                        for (let i = -1; i <= 1; i++) {
+                            for (let j = -1; j <= 1; j++) {
+                                const newRow = row + i;
+                                const newCol = col + j;
+                                if (newRow >= 0 && newRow < rows.value && newCol >= 0 && newCol < cols.value) {
+                                    revealCell(newRow, newCol);
+                                }
+                            }
+                        }
+                    }
+
+                    checkWinCondition();
+                }
+
+                function revealAllMines() {
+                    for (let i = 0; i < rows.value; i++) {
+                        for (let j = 0; j < cols.value; j++) {
+                            if (grid.value[i][j].value === 'M') {
+                                grid.value[i][j].revealed = true;
+                            }
+                        }
+                    }
+                }
+
+                function checkWinCondition() {
+                    const revealedCells = flatGrid.value.filter(cell => cell.revealed).length;
+                    if (revealedCells === rows.value * cols.value - mines.value) {
+                        gameOver.value = true;
+                        gameStatus.value = 'You Win!';
+                        stopTimer();
+                        generateCelebrationImage();
+                    }
+                }
+
+                async function generateCelebrationImage() {
+                    const container = document.getElementById('image-container');
+                    await ttiClient.generateAndDisplayImage('Celebration fireworks for winning Minesweeper', '', 512, 512, container);
+                }
+
+                function getCellClass(cell) {
+                    let classes = 'minesweeper-cell ';
+                    if (cell.flagged) classes += 'bg-yellow-300 hover:bg-yellow-400';
+                    else if (!cell.revealed) classes += 'bg-gray-300 hover:bg-gray-400';
+                    else if (cell.value === 'M') classes += 'bg-red-500 revealed';
+                    else classes += 'bg-gray-100 revealed';
+                    return classes;
+                }
+
+                function getCellContent(cell) {
+                    if (cell.flagged) return '🚩';
+                    if (!cell.revealed) return '';
+                    if (cell.value === 'M') return '💣';
+                    return cell.value === 0 ? '' : cell.value;
+                }
+
+                function newGame() {
+                    initializeGame();
+                }
+
+                function startTimer() {
+                    timerInterval.value = setInterval(() => {
+                        timer.value++;
+                    }, 1000);
+                }
+
+                function stopTimer() {
+                    clearInterval(timerInterval.value);
+                }
+
+                function formatTime(seconds) {
+                    const minutes = Math.floor(seconds / 60);
+                    const remainingSeconds = seconds % 60;
+                    return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+                }
+
+                onMounted(() => {
+                    initializeGame();
+                });
+
+                onUnmounted(() => {
+                    stopTimer();
+                });
+
+                return {
+                    grid,
+                    rows,
+                    cols,
+                    mines,
+                    gameOver,
+                    gameStatus,
+                    difficulty,
+                    timer,
+                    showHelp,
+                    flatGrid,
+                    remainingMines,
+                    handleCellClick,
+                    handleRightClick,
+                    getCellClass,
+                    getCellContent,
+                    newGame,
+                    formatTime
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

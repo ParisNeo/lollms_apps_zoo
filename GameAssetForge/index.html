@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GameAssetForge</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+    <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <style>
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #09f;
+            animation: spin 1s ease infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        #image-container {
+            overflow: hidden;
+            position: relative;
+        }
+
+        #image-wrapper {
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-suitable {
+            background-color: #4ade80;
+            color: #ffffff;
+        }
+
+        .color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 50px;
+            height: 50px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .color-picker::-webkit-color-swatch {
+            border-radius: 50%;
+            border: none;
+        }
+        .color-picker::-moz-color-swatch {
+            border-radius: 50%;
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="min-h-screen flex flex-col">
+        <header class="bg-indigo-600 text-white p-4">
+            <h1 class="text-3xl font-bold">GameAssetForge</h1>
+        </header>
+        <main class="flex-grow flex">
+            <aside class="w-1/4 bg-white p-4 border-r border-gray-200 overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4">Asset Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Asset Type</label>
+                        <select v-model="assetType" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <option value="character">Character</option>
+                            <option value="environment">Environment</option>
+                            <option value="object">Object</option>
+                            <option value="texture">Texture</option>
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700">Prompt</label>
+                        <textarea v-model="prompt" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                        <button @click="togglePromptSuggestions" class="absolute right-2 bottom-2 bg-blue-500 text-white p-2 rounded-full">
+                            <i class="fas fa-lightbulb"></i>
+                        </button>
+                    </div>
+                    <div class="relative">
+                        <label class="block text-sm font-medium text-gray-700">Negative Prompt</label>
+                        <textarea v-model="negativePrompt" rows="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                        <button @click="toggleAntiPromptSuggestions" class="absolute right-2 bottom-2 bg-red-500 text-white p-2 rounded-full">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Size</label>
+                        <div class="flex space-x-2">
+                            <input v-model.number="width" type="number" min="64" max="1024" step="64" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                            <span class="mt-1">x</span>
+                            <input v-model.number="height" type="number" min="64" max="1024" step="64" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        </div>
+                    </div>
+                    <div v-if="assetType === 'character' || assetType === 'object'">
+                        <label class="block text-sm font-medium text-gray-700">Key Color (for transparency)</label>
+                        <div class="flex items-center space-x-2">
+                            <input v-model="keyColor" type="color" class="color-picker">
+                            <span class="text-sm">{{ keyColor }}</span>
+                        </div>
+                    </div>
+                    <button @click="generateAsset" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center justify-center" :disabled="isLoading">
+                        <i class="fas fa-magic mr-2"></i>
+                        {{ isLoading ? 'Generating...' : 'Generate Asset' }}
+                    </button>
+                </div>
+            </aside>
+            <section class="w-3/4 p-4">
+                <div class="bg-white rounded-lg shadow-md p-4 h-full flex flex-col">
+                    <h2 class="text-xl font-semibold mb-4">Asset Preview</h2>
+                    <div id="image-container" class="flex-grow bg-gray-200 rounded-md overflow-hidden">
+                        <div id="image-wrapper" class="w-full h-full flex items-center justify-center">
+                            <div v-if="isLoading" class="spinner"></div>
+                            <p v-else-if="!generatedImage" class="text-gray-500">Your generated asset will appear here</p>
+                            <img v-else :src="generatedImage" alt="Generated Asset" class="max-w-full max-h-full object-contain">
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end space-x-2">
+                        <button @click="resetZoom" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center" :disabled="!generatedImage">
+                            <i class="fas fa-search-minus mr-2"></i> Reset Zoom
+                        </button>
+                        <button @click="exportAsset" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center" :disabled="!generatedImage">
+                            <i class="fas fa-download mr-2"></i> Export Asset
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Prompt Suggestions Popup -->
+        <div v-if="showPromptSuggestions" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4">Keyword Suggestions</h2>
+                <div v-for="(category, categoryName) in keywordCategories" :key="categoryName" class="mb-4">
+                    <h3 class="text-lg font-medium mb-2">{{ categoryName }}</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button 
+                            v-for="keyword in category" 
+                            :key="keyword" 
+                            @click="addKeyword(keyword)"
+                            :class="['text-sm py-1 px-2 rounded-md', isGameSuitable(keyword) ? 'game-suitable' : 'bg-gray-200 hover:bg-gray-300']"
+                        >
+                            {{ keyword }}
+                        </button>
+                    </div>
+                </div>
+                <button @click="togglePromptSuggestions" class="mt-4 bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 flex items-center">
+                    <i class="fas fa-times mr-2"></i> Close
+                </button>
+            </div>
+        </div>
+
+        <!-- Anti-Prompt Suggestions Popup -->
+        <div v-if="showAntiPromptSuggestions" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-6 rounded-lg max-w-2xl max-h-[80vh] overflow-y-auto">
+                <h2 class="text-xl font-semibold mb-4">Anti-Prompt Suggestions</h2>
+                <div class="flex flex-wrap gap-2">
+                    <button 
+                        v-for="keyword in antiPromptKeywords" 
+                        :key="keyword" 
+                        @click="addAntiKeyword(keyword)"
+                        class="bg-red-200 hover:bg-red-300 text-sm py-1 px-2 rounded-md"
+                    >
+                        {{ keyword }}
+                    </button>
+                </div>
+                <button @click="toggleAntiPromptSuggestions" class="mt-4 bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 flex items-center">
+                    <i class="fas fa-times mr-2"></i> Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        const ttiClient = new LollmsTTI();
+
+        createApp({
+            data() {
+                return {
+                    assetType: 'character',
+                    prompt: '',
+                    negativePrompt: '',
+                    width: 512,
+                    height: 512,
+                    generatedImage: null,
+                    isLoading: false,
+                    panzoomInstance: null,
+                    showPromptSuggestions: false,
+                    showAntiPromptSuggestions: false,
+                    keyColor: '#00ff00',
+                    keywordCategories: {
+                        'Shot Types': ['Angled shot', 'Close-up'],
+                        'Art Styles': ['Comic', 'Graphic illustration', 'Comic art', 'Graphic novel art', '2D minimalistic', 'Pixel-art', 'Low-res', 'Blocky', '8-bit graphics', 'Chibi', 'Isometric', 'Paper work', 'Tactile style', 'Double exposure', 'Splash art', 'Gouache', 'Vaporwave', 'Retro aesthetic', 'Cyberpunk'],
+                        'Vibes': ['Warm', 'Vibrant', 'Highly detailed', 'Colored', 'Spooky', 'Colorful', 'Ghostly', 'Creepy', 'Abandoned', 'Fantasy', 'Beautiful', 'Whimsical', 'Dreamy', 'Neon-lit', 'Vintage'],
+                        'Descriptors': ['Freshly made', 'Hot', 'Midday', 'Vivid', 'Rough-textured', 'Handmade', 'Thick opaque', 'Hyperdetailed', 'Dynamic', 'Amazing depth'],
+                        'Colors': ['Black', 'Purple', 'Red', 'Blue', 'White', 'Yellow', 'Winter colours', 'Triadic colours', 'Neon colors', 'Pink'],
+                        'Techniques': ['Emphasize textures', 'Depth of field', 'Brocade'],
+                        'Quality': ['Best quality', 'Masterpiece', 'Masterwork']
+                    },
+                    antiPromptKeywords: ['Blurry', 'Distorted', 'Low quality', 'Pixelated', 'Watermark', 'Signature', 'Text', 'Logo', 'Cropped', 'Cut off', 'Low contrast', 'Overexposed', 'Underexposed', 'Grainy', 'Noisy', 'Artifacts', 'JPEG artifacts', 'Compression artifacts', 'Out of focus', 'Glitchy']
+                }
+            },
+            methods: {
+                async generateAsset() {
+                    let enhancedPrompt = `${this.prompt}, (${this.assetType}:1.2)`;
+                    if ((this.assetType === 'character' || this.assetType === 'object') && this.keyColor) {
+                        enhancedPrompt += `, key color ${this.keyColor} for transparency`;
+                    }
+                    this.isLoading = true;
+                    try {
+                        const base64Image = await ttiClient.generateImage(enhancedPrompt, this.negativePrompt, this.width, this.height);
+                        this.generatedImage = `data:image/png;base64,${base64Image}`;
+                        this.$nextTick(() => {
+                            this.initPanzoom();
+                        });
+                    } catch (error) {
+                        console.error('Error generating asset:', error);
+                        alert('Failed to generate asset. Please try again.');
+                    } finally {
+                        this.isLoading = false;
+                    }
+                },
+                exportAsset() {
+                    if (this.generatedImage) {
+                        const link = document.createElement('a');
+                        link.href = this.generatedImage;
+                        link.download = `${this.assetType}_asset.png`;
+                        link.click();
+                    }
+                },
+                initPanzoom() {
+                    if (this.panzoomInstance) {
+                        this.panzoomInstance.destroy();
+                    }
+                    const element = document.querySelector('#image-wrapper img');
+                    if (element) {
+                        this.panzoomInstance = panzoom(element, {
+                            maxZoom: 5,
+                            minZoom: 0.1,
+                            bounds: true,
+                            boundsPadding: 0.1
+                        });
+                    }
+                },
+                resetZoom() {
+                    if (this.panzoomInstance) {
+                        this.panzoomInstance.reset();
+                    }
+                },
+                addKeyword(keyword) {
+                    if (this.prompt) {
+                        this.prompt += ', ' + keyword;
+                    } else {
+                        this.prompt = keyword;
+                    }
+                },
+                addAntiKeyword(keyword) {
+                    if (this.negativePrompt) {
+                        this.negativePrompt += ', ' + keyword;
+                    } else {
+                        this.negativePrompt = keyword;
+                    }
+                },
+                togglePromptSuggestions() {
+                    this.showPromptSuggestions = !this.showPromptSuggestions;
+                },
+                toggleAntiPromptSuggestions() {
+                    this.showAntiPromptSuggestions = !this.showAntiPromptSuggestions;
+                },
+                isGameSuitable(keyword) {
+                    const gameSuitableKeywords = ['Pixel-art', 'Low-res', 'Blocky', '8-bit graphics', 'Chibi', 'Isometric', 'Comic', 'Graphic illustration', 'Comic art', 'Graphic novel art', '2D minimalistic'];
+                    return gameSuitableKeywords.includes(keyword);
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
