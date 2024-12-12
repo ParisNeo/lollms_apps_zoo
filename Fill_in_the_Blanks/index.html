@@ -181,7 +181,14 @@
             showLoader();
 
             try {
-                const system_prompt = "You are a helpful assistant that fills in blanks marked with underscores (_) in text. Return a JSON with a single 'text' field containing the completed text. Put the generated json inside json markdown tag. Make the filled content coherent with the context.";
+                const system_prompt = `You are a helpful assistant that fills in blanks marked with underscores (_) in text.
+Return a JSON with a single 'text' field containing the completed text.
+Put the generated json inside json markdown tag.
+\`\`\`json
+{"text":"the full completed text"}
+\`\`\`
+Make the filled content coherent with the context.
+It is mandatory to put the output inside the json markdown tag.`;
                 const user_prompt = `Please fill in the blanks in this text: ${inputText}`;
                 
                 const prompt = `${lc.system_message()}${system_prompt}${lc.template.separator_template}${lc.user_message()}${user_prompt}${lc.template.separator_template}${lc.ai_message()}`;
