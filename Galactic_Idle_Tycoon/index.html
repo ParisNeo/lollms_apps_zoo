@@ -877,11 +877,44 @@
                 async updateStatusImage() {
                     console.log("Generating image")
                     this.isGeneratingImage = true;
-                    const prompt = `Generate a futuristic colorful artwork of a galactic empire with the following details:
-                        Level: ${this.playerLevel}
-                        Buildings: ${this.buildings.reduce((acc, b) => acc + b.owned, 0)}
-                        Population: ${this.stats.population}
-                        Happiness: ${this.stats.happiness}%`
+                    const generateArtworkPrompt = (gameState) => {
+                        const { playerLevel, buildings, ships } = gameState;
+                        
+                        let basePrompt = `Generate a hyper-realistic, vibrant, and highly detailed 8K resolution artwork of a futuristic galactic empire. The image should be colorful, with a rich palette of neon hues and deep space tones. Ensure the artwork has a cinematic quality with dramatic lighting and a sense of scale.\n\n`;
+
+                        // Add details based on player level
+                        if (playerLevel >= 1 && playerLevel < 3) {
+                            basePrompt += `Depict a fledgling colony on an alien planet. Show crystal mines glowing in the twilight, with basic dome-shaped habitats. The sky should feature a few sleek, small spacecraft leaving light trails.`;
+                        } else if (playerLevel >= 3 && playerLevel < 5) {
+                            basePrompt += `Illustrate a growing settlement with both crystal mines and fuel refineries belching colorful flames. Include an orbital platform with docked mining vessels. The planet's terrain should be a mix of natural alien landscape and terraformed areas.`;
+                        } else if (playerLevel >= 5 && playerLevel < 7) {
+                            basePrompt += `Showcase an expanding city with gleaming research labs and holographic billboards. The skyline should be punctuated by towering arcologies. In the sky, display a variety of ships including agile scout ships and bulky mining vessels, creating a busy traffic pattern.`;
+                        } else if (playerLevel >= 7 && playerLevel < 10) {
+                            basePrompt += `Present a thriving metropolis with a massive, ring-shaped space station dominating the sky. The city should have gravity-defying architecture and transparent tubes for transport. Include imposing battle cruisers patrolling near the space station, their weapons glowing with potential energy.`;
+                        } else if (playerLevel >= 10) {
+                            basePrompt += `Visualize an advanced civilization that seamlessly blends technology and nature. Quantum computer cores should be visible as crystalline structures. Massive motherships should loom in the sky, dwarfing all other spacecraft. The landscape should be dotted with impossible geometric shapes housing various facilities, all connected by streams of energy and data.`;
+                        }
+
+                        // Add details about specific buildings without mentioning numbers
+                        const presentBuildings = buildings.filter(b => b.owned > 0).map(b => b.name);
+                        if (presentBuildings.length > 0) {
+                            basePrompt += `\n\nFeature the following structures prominently in the artwork: ${presentBuildings.join(', ')}.`;
+                        }
+
+                        // Add details about ships without mentioning numbers
+                        const presentShips = ships.filter(s => s.owned > 0).map(s => s.name);
+                        if (presentShips.length > 0) {
+                            basePrompt += `\n\nInclude the following types of ships in space or docked: ${presentShips.join(', ')}.`;
+                        }
+
+                        basePrompt += `\n\nEnsure the final image is breathtaking, with a sense of wonder and the vastness of space. Use advanced visual effects to create a sense of movement and life within the scene.`;
+
+                        return basePrompt;
+                    };
+
+                    // Usage
+                    const prompt = generateArtworkPrompt(this);
+
 
                     try {
                         console.log("Starting generation")
