@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classic Pong Game</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-900 text-white">
+    <div id="app" class="min-h-screen flex flex-col items-center justify-center">
+        <component :is="currentComponent"></component>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted, onUnmounted, computed } = Vue
+
+        const MainMenu = {
+            template: `
+                <div class="text-center">
+                    <h1 class="text-4xl font-bold mb-8">Classic Pong Game</h1>
+                    <button @click="$emit('start')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4">
+                        Start Game
+                    </button>
+                    <button @click="$emit('showSettings')" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                        Settings
+                    </button>
+                </div>
+            `
+        }
+
+        const GameOver = {
+            props: ['playerScore', 'aiScore'],
+            template: `
+                <div class="text-center">
+                    <h2 class="text-3xl font-bold mb-4">Game Over</h2>
+                    <p class="text-xl mb-4">Final Score: Player {{ playerScore }} - AI {{ aiScore }}</p>
+                    <button @click="$emit('restart')" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">
+                        Play Again
+                    </button>
+                </div>
+            `
+        }
+
+        const Game = {
+            template: `
+                <div>
+                    <div class="relative w-[800px] h-[400px] bg-black border-4 border-white mb-4" ref="gameCanvas">
+                        <div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-4 h-20 bg-white" :style="{ top: playerPaddle + 'px' }"></div>
+                        <div class="absolute right-2 top-1/2 transform -translate-y-1/2 w-4 h-20 bg-white" :style="{ top: aiPaddle + 'px' }"></div>
+                        <div class="absolute w-4 h-4 bg-white rounded-full" :style="{ left: ballX + 'px', top: ballY + 'px' }"></div>
+                    </div>
+                    <div class="text-2xl text-center mb-4">
+                        Player: {{ playerScore }} | AI: {{ aiScore }}
+                    </div>
+                </div>
+            `,
+            setup(props, { emit }) {
+                const playerPaddle = ref(180)
+                const aiPaddle = ref(180)
+                const ballX = ref(398)
+                const ballY = ref(198)
+                const ballSpeedX = ref(5)
+                const ballSpeedY = ref(5)
+                const playerScore = ref(0)
+                const aiScore = ref(0)
+                const gameCanvas = ref(null)
+
+                let animationId
+
+                const resetBall = () => {
+                    ballX.value = 398
+                    ballY.value = 198
+                    ballSpeedX.value = 5 * (Math.random() > 0.5 ? 1 : -1)
+                    ballSpeedY.value = 5 * (Math.random() > 0.5 ? 1 : -1)
+                }
+
+                const updateGame = () => {
+                    ballX.value += ballSpeedX.value
+                    ballY.value += ballSpeedY.value
+
+                    if (ballY.value <= 0 || ballY.value >= 396) {
+                        ballSpeedY.value *= -1
+                    }
+
+                    if (ballX.value <= 20 && ballY.value > playerPaddle.value && ballY.value < playerPaddle.value + 80) {
+                        ballSpeedX.value = Math.abs(ballSpeedX.value) + 0.5
+                    }
+                    if (ballX.value >= 776 && ballY.value > aiPaddle.value && ballY.value < aiPaddle.value + 80) {
+                        ballSpeedX.value = -Math.abs(ballSpeedX.value) - 0.5
+                    }
+
+                    if (ballX.value <= 0) {
+                        aiScore.value++
+                        resetBall()
+                    }
+                    if (ballX.value >= 796) {
+                        playerScore.value++
+                        resetBall()
+                    }
+
+                    const aiTarget = ballY.value - 40
+                    aiPaddle.value += (aiTarget - aiPaddle.value) * 0.1
+                    aiPaddle.value = Math.max(0, Math.min(320, aiPaddle.value))
+
+                    if (playerScore.value >= 10 || aiScore.value >= 10) {
+                        emit('gameOver', { playerScore: playerScore.value, aiScore: aiScore.value })
+                        return
+                    }
+
+                    animationId = requestAnimationFrame(updateGame)
+                }
+
+                const handleMouseMove = (e) => {
+                    const rect = gameCanvas.value.getBoundingClientRect()
+                    const mouseY = e.clientY - rect.top
+                    playerPaddle.value = Math.max(0, Math.min(320, mouseY - 40))
+                }
+
+                onMounted(() => {
+                    gameCanvas.value.addEventListener('mousemove', handleMouseMove)
+                    animationId = requestAnimationFrame(updateGame)
+                })
+
+                onUnmounted(() => {
+                    gameCanvas.value.removeEventListener('mousemove', handleMouseMove)
+                    cancelAnimationFrame(animationId)
+                })
+
+                return {
+                    playerPaddle,
+                    aiPaddle,
+                    ballX,
+                    ballY,
+                    playerScore,
+                    aiScore,
+                    gameCanvas
+                }
+            }
+        }
+
+        const Settings = {
+            template: `
+                <div class="bg-gray-800 p-6 rounded-lg">
+                    <h2 class="text-2xl font-bold mb-4">Lollms Settings</h2>
+                    <div class="mb-4">
+                        <label class="block mb-2">Host Address:</label>
+                        <input v-model="settings.host_address" type="text" class="bg-gray-700 p-2 rounded w-full">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block mb-2">Generation Format:</label>
+                        <select v-model="settings.generation_format" class="bg-gray-700 p-2 rounded w-full">
+                            <option value="LOLLMS">LOLLMS</option>
+                            <option value="OPENAI">OPENAI</option>
+                            <option value="OLLAMA">OLLAMA</option>
+                            <option value="VLLM">VLLM</option>
+                        </select>
+                    </div>
+                    <div class="flex justify-between">
+                        <button @click="$emit('apply', settings)" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded">
+                            Apply
+                        </button>
+                        <button @click="$emit('back')" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">
+                            Back
+                        </button>
+                    </div>
+                </div>
+            `,
+            setup() {
+                const settings = reactive({
+                    host_address: 'http://localhost:9600',
+                    generation_format: 'LOLLMS'
+                })
+
+                return { settings }
+            }
+        }
+
+        createApp({
+            components: {
+                MainMenu,
+                Game,
+                GameOver,
+                Settings
+            },
+            setup() {
+                const currentComponent = ref('MainMenu')
+                const gameState = reactive({
+                    playerScore: 0,
+                    aiScore: 0
+                })
+
+                const startGame = () => {
+                    currentComponent.value = 'Game'
+                }
+
+                const showSettings = () => {
+                    currentComponent.value = 'Settings'
+                }
+
+                const applySettings = (newSettings) => {
+                    console.log('Applying settings:', newSettings)
+                    // Implement settings update logic here
+                    currentComponent.value = 'MainMenu'
+                }
+
+                const gameOver = ({ playerScore, aiScore }) => {
+                    gameState.playerScore = playerScore
+                    gameState.aiScore = aiScore
+                    currentComponent.value = 'GameOver'
+                }
+
+                return {
+                    currentComponent,
+                    gameState,
+                    startGame,
+                    showSettings,
+                    applySettings,
+                    gameOver
+                }
+            },
+            template: `
+                <MainMenu v-if="currentComponent === 'MainMenu'" @start="startGame" @showSettings="showSettings" />
+                <Game v-else-if="currentComponent === 'Game'" @gameOver="gameOver" />
+                <GameOver v-else-if="currentComponent === 'GameOver'" :playerScore="gameState.playerScore" :aiScore="gameState.aiScore" @restart="startGame" />
+                <Settings v-else-if="currentComponent === 'Settings'" @apply="applySettings" @back="currentComponent = 'MainMenu'" />
+            `
+        }).mount('#app')
+    </script>
+</body>
+</html>

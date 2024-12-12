@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WordPress Plugin Maker</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gray-100">
+    <div id="app" class="container mx-auto p-4">
+        <h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">WordPress Plugin Maker</h1>
+        
+        <div class="mb-8 bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Settings</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Lollms Host</label>
+                    <input v-model="settings.hostAddress" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Generation Format</label>
+                    <select v-model="settings.generationFormat" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <option value="LOLLMS">LOLLMS</option>
+                        <option value="OPENAI">OpenAI</option>
+                        <option value="OLLAMA">Ollama</option>
+                        <option value="VLLM">VLLM</option>
+                    </select>
+                </div>
+            </div>
+            <button @click="updateSettings" class="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                Update Settings
+            </button>
+        </div>
+
+        <div class="bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Plugin Details</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Plugin Name</label>
+                    <input v-model="pluginDetails.name" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Description</label>
+                    <textarea v-model="pluginDetails.description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Author</label>
+                    <input v-model="pluginDetails.author" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Version</label>
+                    <input v-model="pluginDetails.version" type="text" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                </div>
+            </div>
+            <button @click="generatePlugin" class="mt-6 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                Generate Plugin
+            </button>
+        </div>
+
+        <div v-if="generatedCode" class="mt-8 bg-white shadow-md rounded-lg p-6">
+            <h2 class="text-xl font-semibold mb-4">Generated Plugin Code</h2>
+            <pre class="bg-gray-100 p-4 rounded-md overflow-x-auto"><code>{{ generatedCode }}</code></pre>
+            <button @click="downloadPlugin" class="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                Download Plugin
+            </button>
+        </div>
+
+        <div id="loadingOverlay" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex justify-center items-center" style="display: none;">
+            <div class="text-center">
+                <div class="animate-spin rounded-full h-32 w-32 border-b-2 border-white"></div>
+                <p class="mt-4 text-white text-xl">Generating Plugin...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue
+
+        createApp({
+            setup() {
+                const settings = ref({
+                    hostAddress: 'http://localhost:9600',
+                    generationFormat: 'LOLLMS'
+                })
+                const pluginDetails = ref({
+                    name: '',
+                    description: '',
+                    author: '',
+                    version: '1.0.0'
+                })
+                const generatedCode = ref('')
+                const lc = ref(null)
+
+                function updateSettings() {
+                    lc.value = new LollmsClient(
+                        settings.value.hostAddress,
+                        null,
+                        4096,
+                        -1,
+                        4096,
+                        0.1,
+                        50,
+                        0.95,
+                        0.8,
+                        40,
+                        null,
+                        8,
+                        "",
+                        ELF_GENERATION_FORMAT[settings.value.generationFormat]
+                    )
+                    alert('Settings updated successfully!')
+                }
+
+                function showLoader() {
+                    document.getElementById('loadingOverlay').style.display = 'flex'
+                }
+
+                function hideLoader() {
+                    document.getElementById('loadingOverlay').style.display = 'none'
+                }
+
+                async function generatePlugin() {
+                    if (!lc.value) {
+                        alert('Please update settings first!')
+                        return
+                    }
+
+                    showLoader()
+                    const prompt = `
+                        ${lc.value.system_message()}Create a WordPress plugin with the following details:
+                        Name: ${pluginDetails.value.name}
+                        Description: ${pluginDetails.value.description}
+                        Author: ${pluginDetails.value.author}
+                        Version: ${pluginDetails.value.version}
+
+                        Generate the main plugin file with basic structure, including necessary WordPress hooks and a simple admin page.
+                        ${lc.value.user_message()}Please generate the WordPress plugin code.
+                        ${lc.value.ai_message()}Certainly! I'll create a basic WordPress plugin structure based on the details you provided. Here's the main plugin file:
+
+                        <?php
+                        /**
+                         * Plugin Name: ${pluginDetails.value.name}
+                         * Plugin URI: http://example.com/plugin-name-uri/
+                         * Description: ${pluginDetails.value.description}
+                         * Version: ${pluginDetails.value.version}
+                         * Author: ${pluginDetails.value.author}
+                         * Author URI: http://example.com/
+                         * License: GPL2
+                         */
+
+                        // If this file is called directly, abort.
+                        if (!defined('WPINC')) {
+                            die;
+                        }
+
+                        // Define plugin constants
+                        define('${pluginDetails.value.name.toUpperCase().replace(/\s+/g, '_')}_VERSION', '${pluginDetails.value.version}');
+                        define('${pluginDetails.value.name.toUpperCase().replace(/\s+/g, '_')}_PLUGIN_DIR', plugin_dir_path(__FILE__));
+                        define('${pluginDetails.value.name.toUpperCase().replace(/\s+/g, '_')}_PLUGIN_URL', plugin_dir_url(__FILE__));
+
+                        // Activation hook
+                        function activate_${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')}() {
+                            // Activation code here
+                        }
+                        register_activation_hook(__FILE__, 'activate_${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')}');
+
+                        // Deactivation hook
+                        function deactivate_${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')}() {
+                            // Deactivation code here
+                        }
+                        register_deactivation_hook(__FILE__, 'deactivate_${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')}');
+
+                        // The main plugin class
+                        class ${pluginDetails.value.name.replace(/\s+/g, '_')} {
+                            public function __construct() {
+                                // Hook into the admin menu
+                                add_action('admin_menu', array($this, 'create_plugin_settings_page'));
+                            }
+
+                            public function create_plugin_settings_page() {
+                                // Add the menu item and page
+                                $page_title = '${pluginDetails.value.name} Settings';
+                                $menu_title = '${pluginDetails.value.name}';
+                                $capability = 'manage_options';
+                                $slug = '${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')}_settings';
+                                $callback = array($this, 'plugin_settings_page_content');
+                                $icon = 'dashicons-admin-plugins';
+                                $position = 100;
+
+                                add_menu_page($page_title, $menu_title, $capability, $slug, $callback, $icon, $position);
+                            }
+
+                            public function plugin_settings_page_content() {
+                                ?>
+                                <div class="wrap">
+                                    <h2>${pluginDetails.value.name} Settings</h2>
+                                    <p>Welcome to the ${pluginDetails.value.name} settings page!</p>
+                                    <!-- Add your plugin settings form here -->
+                                </div>
+                                <?php
+                            }
+                        }
+
+                        // Instantiate the plugin class
+                        $${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '_')} = new ${pluginDetails.value.name.replace(/\s+/g, '_')}();
+
+                        // Additional plugin functions can be added here
+                    `
+                    try {
+                        const code = await lc.value.generateCode(prompt)
+                        generatedCode.value = code
+                    } catch (error) {
+                        console.error('Error generating plugin:', error)
+                        alert('An error occurred while generating the plugin. Please try again.')
+                    } finally {
+                        hideLoader()
+                    }
+                }
+
+                function downloadPlugin() {
+                    const element = document.createElement('a')
+                    const file = new Blob([generatedCode.value], {type: 'text/plain'})
+                    element.href = URL.createObjectURL(file)
+                    element.download = `${pluginDetails.value.name.toLowerCase().replace(/\s+/g, '-')}.php`
+                    document.body.appendChild(element)
+                    element.click()
+                    document.body.removeChild(element)
+                }
+
+                return {
+                    settings,
+                    pluginDetails,
+                    generatedCode,
+                    updateSettings,
+                    generatePlugin,
+                    downloadPlugin
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
