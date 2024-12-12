@@ -9,7 +9,21 @@
     <script src="/lollms_assets/js/axios.min"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="/lollms_assets/js/lollms_tti"></script>
+    <script src="https://cdn.jsdelivr.net/npm/idb@8.0.0/build/umd.min.js"></script>
     <style>
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #ffffff;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         .image-slider {
             position: relative;
             width: 100%;
@@ -36,6 +50,16 @@
             color: white;
             padding: 5px 10px;
             border-radius: 5px;
+        }
+        .thumbnail {
+            width: 100px;
+            height: 56px;
+            object-fit: cover;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .thumbnail:hover {
+            transform: scale(1.1);
         }
     </style>
 </head>
@@ -93,6 +117,11 @@
                         <span>💰 Credits:</span>
                         <span class="text-xl">{{Math.floor(resources.credits)}}</span>
                     </div>
+                    <div class="flex justify-between items-center" v-if="unlockedFeatures.rareMetals">
+                        <span>🔧 Rare Metals:</span>
+                        <span class="text-xl">{{Math.floor(resources.rareMetals)}}</span>
+                    </div>
+                    
                     <div class="mt-4">
                         <p class="text-sm text-purple-300">Production per second:</p>
                         <div class="text-sm">
@@ -190,7 +219,7 @@
         <!-- Game Status Image Panel -->
         <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm">
             <h2 class="text-2xl font-bold mb-4 text-purple-300">Game Status</h2>
-            <div id="status-image-container" class="w-full h-64 bg-gray-800 rounded-lg mb-4">
+            <div id="status-image-container" class="w-full h-[620px] bg-gray-800 rounded-lg mb-4">
                 <div class="image-slider">
                     <div v-for="(image, index) in statusImages" :key="index" 
                          :class="['slide', { active: index === currentImageIndex }]">
@@ -202,13 +231,19 @@
                     </div>
                 </div>
             </div>
-            <div class="flex justify-between items-center">
-                <button @click="updateStatusImage" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">
-                    Update Status Image
-                </button>
+            <div class="flex justify-between items-center mb-4">
+                <button @click="updateStatusImage" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded" :disabled="isGeneratingImage">
+                    {{ isGeneratingImage ? 'Generating...' : 'Update Status Image' }}
+                  </button>
                 <div v-if="settings.autoImageUpdateEnabled" class="text-sm text-purple-300">
                     Auto-update every {{settings.imageUpdateInterval}} minutes
                 </div>
+            </div>
+            <div class="flex space-x-2 overflow-x-auto pb-2">
+                <img v-for="(image, index) in statusImages" :key="index"
+                     :src="image.url" 
+                     :class="['thumbnail', { 'border-2 border-purple-500': index === currentImageIndex }]"
+                     @click="currentImageIndex = index" />
             </div>
         </div>
 
@@ -225,10 +260,32 @@
                     <button @click="saveGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded mr-2">
                         Save Game
                     </button>
+                    <button @click="exportGame" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mr-2">
+                        Export Game
+                    </button>
+                    <button @click="importGame" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded mr-2">
+                        Import Game
+                    </button>
                     <button @click="resetGame" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
                         Reset Game
                     </button>
                 </div>
+            </div>
+        </div>
+
+        <!-- AI Manager -->
+        <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.aiManager">
+            <h2 class="text-2xl font-bold mb-4 text-purple-300">AI Manager</h2>
+            <div class="flex items-center justify-between">
+                <div>
+                    <p>Let the AI manage your empire</p>
+                    <p class="text-sm text-purple-300">Efficiency: {{aiManagerEfficiency}}%</p>
+                </div>
+                <button @click="toggleAIManager" 
+                        :class="aiManagerActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+                        class="px-4 py-2 rounded">
+                    {{aiManagerActive ? 'Deactivate AI' : 'Activate AI'}}
+                </button>
             </div>
         </div>
 
@@ -240,6 +297,7 @@
                 {{notification.message}}
             </div>
         </div>
+
         <!-- Modal Templates -->
         <div v-if="activeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
             <!-- New Game Modal -->
@@ -255,10 +313,20 @@
             <!-- Load Game Modal -->
             <div v-if="activeModal === 'loadGame'" class="bg-indigo-900 p-6 rounded-lg w-96">
                 <h2 class="text-2xl font-bold mb-4">Load Game</h2>
-                <p class="mb-4">Load your previously saved game?</p>
-                <div class="flex justify-end space-x-4">
-                    <button @click="loadSavedGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Load</button>
-                    <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
+                <div v-if="savedGames.length > 0">
+                    <p class="mb-2">Select a saved game to load:</p>
+                    <ul class="mb-4 space-y-2">
+                        <li v-for="game in savedGames" :key="game.id" class="flex justify-between items-center">
+                            <span>{{game.name}} (Level {{game.level}})</span>
+                            <button @click="loadSavedGame(game.id)" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
+                                Load
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <p v-else class="mb-4">No saved games found.</p>
+                <div class="flex justify-end">
+                    <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Close</button>
                 </div>
             </div>
 
@@ -297,7 +365,7 @@
                 <h2 class="text-2xl font-bold mb-4">Credits</h2>
                 <div class="space-y-2">
                     <p>Game Created by: ParisNeo</p>
-                    <p>Version: 1.0.0</p>
+                    <p>Version: 1.1.0</p>
                     <p>Special thanks to:</p>
                     <ul class="list-disc ml-6">
                         <li>Claude Anthropic</li>
@@ -326,6 +394,14 @@
                         <h3 class="text-xl font-bold">Trading</h3>
                         <p>Once unlocked, use the Galactic Market to buy and sell resources for credits.</p>
                     </section>
+                    <section>
+                        <h3 class="text-xl font-bold">AI Manager</h3>
+                        <p>At higher levels, unlock the AI Manager to automate your empire's operations.</p>
+                    </section>
+                    <section>
+                        <h3 class="text-xl font-bold">Saving and Loading</h3>
+                        <p>Use the save and load features to manage multiple game sessions. You can also export and import your progress.</p>
+                    </section>
                 </div>
                 <div class="flex justify-end mt-4">
                     <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
@@ -346,9 +422,18 @@
         const { createApp } = Vue
         const ttiClient = new LollmsTTI();
 
+        // Initialize IndexedDB
+        const dbPromise = idb.openDB('GalacticTycoonDB', 1, {
+            upgrade(db) {
+                db.createObjectStore('gameData', { keyPath: 'id', autoIncrement: true });
+                db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+            },
+        });
+
         createApp({
             data() {
                 return {
+                    isGeneratingImage: false,
                     activeModal: null,
                     settings: {
                         soundEnabled: true,
@@ -363,6 +448,7 @@
                     resources: {
                         crystals: 0,
                         fuel: 0,
+                        rareMetals: 0,
                         credits: 100 // Starting credits
                     },
                     productionRates: {
@@ -372,16 +458,21 @@
                     buildings: [
                         {id: 1, name: "Crystal Mine", owned: 0, cost: 10, production: 0.1, minLevel: 1},
                         {id: 2, name: "Fuel Refinery", owned: 0, cost: 15, production: 0.1, minLevel: 3},
-                        {id: 3, name: "Research Lab", owned: 0, cost: 50, production: 0.05, minLevel: 5}
+                        {id: 3, name: "Research Lab", owned: 0, cost: 50, production: 0.05, minLevel: 5},
+                        {id: 4, name: "Space Station", owned: 0, cost: 100, production: 0.2, minLevel: 7},
+                        {id: 5, name: "Quantum Computer", owned: 0, cost: 200, production: 0.5, minLevel: 10}
                     ],
                     ships: [
                         {id: 1, name: "Scout Ship", cost: 100},
                         {id: 2, name: "Mining Vessel", cost: 250},
-                        {id: 3, name: "Battle Cruiser", cost: 1000}
+                        {id: 3, name: "Battle Cruiser", cost: 1000},
+                        {id: 4, name: "Colony Ship", cost: 2000},
+                        {id: 5, name: "Mothership", cost: 5000}
                     ],
                     tradableResources: [
                         {id: 1, name: "Crystals", key: "crystals", price: 10, basePrice: 10, trend: 0, volatility: 0.1, quantity: 1},
-                        {id: 2, name: "Fuel", key: "fuel", price: 15, basePrice: 15, trend: 0, volatility: 0.2, quantity: 1}
+                        {id: 2, name: "Fuel", key: "fuel", price: 15, basePrice: 15, trend: 0, volatility: 0.2, quantity: 1},
+                        {id: 3, name: "Rare Metals", key: "rareMetals", price: 50, basePrice: 50, trend: 0, volatility: 0.3, quantity: 1}
                     ],
                     marketUpdateInterval: 10, // seconds
                     lastMarketUpdate: Date.now(),
@@ -396,22 +487,26 @@
                         research: false,
                         trading: false,
                         credits: true,
-                        multiUnitTrading: false
+                        multiUnitTrading: false,
+                        aiManager: false
                     },
                     researchProgress: 0,
                     lastUpdate: Date.now(),
                     notifications: [],
                     lastImageUpdate: Date.now(),
                     statusImages: [],
-                    currentImageIndex: 0
+                    currentImageIndex: 0,
+                    savedGames: [],
+                    aiManagerActive: false,
+                    aiManagerEfficiency: 80
                 }
             },
             methods: {
-                initializeGame() {
+                async initializeGame() {
                     if (!this.gameInitialized) {
                         this.updateProductionRates()
                         this.updateMarketPrices()
-                        this.updateStatusImage()
+                        await this.loadSavedGames()
                         this.gameInitialized = true
                     }
                 },
@@ -433,14 +528,14 @@
                 closeModal() {
                     this.activeModal = null
                 },
-                startNewGame() {
+                async startNewGame() {
                     if (confirm('Are you sure? This will erase all progress!')) {
-                        localStorage.removeItem('galacticTycoonSave')
-                        location.reload()
+                        await this.resetGame()
+                        this.closeModal()
                     }
                 },
-                loadSavedGame() {
-                    this.loadGame()
+                async loadSavedGame(gameId) {
+                    await this.loadGame(gameId)
                     this.closeModal()
                 },                
                 updateMarketPrices() {
@@ -499,6 +594,7 @@
                         this.resources.crystals -= ship.cost
                         this.checkLevelProgress()
                     }
+                    this.showNotification(`Built a new ${ship.name}!`)
                 },
                 updateProductionRates() {
                     this.productionRates.crystals = this.buildings.reduce((acc, building) => 
@@ -515,20 +611,10 @@
                         this.playerLevel++
                         this.levelProgress = 0
                         this.unlockFeatures()
+                        this.showNotification(`Level up! You are now level ${this.playerLevel}`)
                     }
                 },
                 unlockFeatures() {
-                    if (!this.unlockedFeatures) {
-                        this.unlockedFeatures = {
-                            fuel: false,
-                            ships: false,
-                            research: false,
-                            trading: false,
-                            credits: true,
-                            multiUnitTrading: false
-                        }
-                    }
-                    
                     if (this.playerLevel >= 2 && !this.unlockedFeatures.trading) {
                         this.unlockedFeatures.trading = true
                         this.showNotification("Trading system unlocked!")
@@ -551,6 +637,10 @@
                         this.unlockedFeatures.research = true
                         this.showNotification("Research system unlocked!")
                     }
+                    if (this.playerLevel >= 10 && !this.unlockedFeatures.aiManager) {
+                        this.unlockedFeatures.aiManager = true
+                        this.showNotification("AI Manager unlocked!")
+                    }
                 },
                 showNotification(message) {
                     const notification = { message, new: true }
@@ -564,6 +654,7 @@
                 },
                 update() {
                     if (!this.gameInitialized) return
+                    console.log("updating")
                     
                     const now = Date.now()
                     const delta = (now - this.lastUpdate) / 1000
@@ -594,109 +685,223 @@
                         this.lastImageUpdate = now
                     }
 
-                    // Rotate status images
-                    if (this.statusImages.length > 1) {
-                        this.currentImageIndex = (this.currentImageIndex + 1) % this.statusImages.length
+                    // AI Manager actions
+                    if (this.aiManagerActive) {
+                        this.runAIManager()
                     }
                 },
-                saveGame() {
-                    const saveData = {
-                    resources: this.resources,
-                    buildings: this.buildings,
-                    stats: this.stats,
-                    playerLevel: this.playerLevel,
-                    unlockedFeatures: this.unlockedFeatures,
-                    tradableResources: this.tradableResources,
-                    lastUpdate: this.lastUpdate,
-                    lastMarketUpdate: this.lastMarketUpdate,
-                    settings: this.settings,
-                    statusImages: this.statusImages
-                }
-                try {
-                    localStorage.setItem('galacticTycoonSave', JSON.stringify(saveData))
-                    this.showNotification("Game saved successfully!")
-                } catch (error) {
-                    console.error("Save failed:", error)
-                    this.showNotification("Failed to save game!")
-                }
-            },
-            loadGame() {
-                try {
-                    const saved = localStorage.getItem('galacticTycoonSave')
-                    if (saved) {
-                        const data = JSON.parse(saved)
-                        this.resources = data.resources || this.resources
-                        this.buildings = data.buildings || this.buildings
-                        this.stats = data.stats || this.stats
-                        this.playerLevel = data.playerLevel || this.playerLevel
-                        this.unlockedFeatures = data.unlockedFeatures || this.unlockedFeatures
-                        this.tradableResources = data.tradableResources || this.tradableResources
-                        this.lastUpdate = data.lastUpdate || Date.now()
-                        this.lastMarketUpdate = data.lastMarketUpdate || Date.now()
-                        this.settings = data.settings || this.settings
-                        this.statusImages = data.statusImages || []
-                        this.updateProductionRates()
+                deepSanitize (obj) {
+                    if (Array.isArray(obj)) {
+                        return obj.map(this.deepSanitize);
+                    } else if (obj && typeof obj === 'object') {
+                        const newObj = {};
+                        for (const [key, value] of Object.entries(obj)) {
+                            if (value instanceof Date) {
+                                newObj[key] = value.toISOString();
+                            } else if (typeof value !== 'function' && !(value instanceof PointerEvent)) {
+                                newObj[key] = this.deepSanitize(value);
+                            }
+                        }
+                        return newObj;
                     }
-                } catch (error) {
-                    console.error("Load failed:", error)
-                    this.showNotification("Failed to load saved game!")
-                }
-                this.initializeGame()
-            },
-            resetGame() {
-                if (confirm('Are you sure you want to reset your progress?')) {
+                    return obj;
+                },
+
+                async saveGame(gameId = null) {
+                    const saveData = this.deepSanitize({
+                        id: gameId || 0,
+                        name: `Save ${new Date().toLocaleString()}`,
+                        level: this.playerLevel,
+                        resources: this.resources,
+                        buildings: this.buildings.map(b => ({...b, upgradeFunction: undefined})),
+                        stats: this.stats,
+                        playerLevel: this.playerLevel,
+                        unlockedFeatures: this.unlockedFeatures,
+                        tradableResources: this.tradableResources,
+                        lastUpdate: this.lastUpdate,
+                        lastMarketUpdate: this.lastMarketUpdate,
+                        settings: this.settings,
+                        statusImages: this.statusImages
+                    });
+
+                    console.log(saveData);
                     try {
-                        localStorage.removeItem('galacticTycoonSave')
-                        location.reload()
+                        const db = await dbPromise;
+                        await db.put('gameData', saveData);
+                        this.showNotification(`Game ${saveData.id} saved successfully!`);
+                        await this.loadSavedGames();
+                    } catch (error) {
+                        console.error("Save failed:", error);
+                        this.showNotification("Failed to save game!");
+                    }
+                },
+
+
+                async loadGame(gameId = null) {
+                    try {
+                        const db = await dbPromise;
+                        const data = await db.get('gameData', gameId || 0);
+                        console.log(data)
+                        if (data) {
+                            this.resources = data.resources;
+                            this.buildings = data.buildings;
+                            this.stats = data.stats;
+                            this.playerLevel = data.playerLevel;
+                            this.unlockedFeatures = data.unlockedFeatures;
+                            this.tradableResources = data.tradableResources;
+                            this.lastUpdate = data.lastUpdate;
+                            this.lastMarketUpdate = new Date(data.lastMarketUpdate);
+                            this.settings = data.settings;
+                            this.statusImages = data.statusImages;
+                            this.updateProductionRates();
+                            this.showNotification(`Game ${data.id} loaded successfully!`);
+                        } else {
+                            this.showNotification("No saved game found!");
+                        }
+                    } catch (error) {
+                        console.error("Load failed:", error);
+                        this.showNotification("Failed to load saved game!");
+                    }
+                    this.initializeGame();
+                },
+
+                async loadSavedGames() {
+                    try {
+                        const db = await dbPromise
+                        this.savedGames = await db.getAll('gameData')
+                    } catch (error) {
+                        console.error("Failed to load saved games:", error)
+                    }
+                },
+                async resetGame() {
+                    try {
+                        const db = await dbPromise
+                        await db.clear('gameData')
+                        await db.clear('images')
+                        Object.assign(this.$data, this.$options.data())
+                        this.initializeGame()
+                        this.showNotification("Game reset successfully!")
                     } catch (error) {
                         console.error("Reset failed:", error)
                         this.showNotification("Failed to reset game!")
                     }
+                },
+                async updateStatusImage() {
+                    console.log("Generating image")
+                    this.isGeneratingImage = true;
+                    const prompt = `Generate a futuristic colorful artwork of a galactic empire with the following details:
+                        Level: ${this.playerLevel}
+                        Buildings: ${this.buildings.reduce((acc, b) => acc + b.owned, 0)}
+                        Population: ${this.stats.population}
+                        Happiness: ${this.stats.happiness}%`
+
+                    try {
+                        console.log("Starting generation")
+                        const base64Image = await ttiClient.generateImage(prompt, 'Blurry, Distorted, Low quality, Pixelated, Watermark, Signature, Text, Logo, Cropped, Cut off, Low contrast, Overexposed, Underexposed, Grainy, Noisy, Artifacts, JPEG artifacts, Compression artifacts, Out of focus, Glitchy', 1024, 512)
+                        console.log("image generated")
+                        const stardate = new Date().toISOString()
+                        const info = `Level ${this.playerLevel} - ${Math.floor(this.resources.crystals)} Crystals`
+                        const newImage = {
+                            url: `data:image/jpeg;base64,${base64Image}`,
+                            stardate,
+                            info
+                        }
+                        this.statusImages.push(newImage)
+                        if (this.statusImages.length > 5) {
+                            this.statusImages.shift()
+                        }
+                        this.showNotification("Status image updated!")
+
+                        // Save the new image to IndexedDB
+                        const db = await dbPromise
+                        await db.add('images', { ...newImage, timestamp: Date.now() })
+
+                    } catch (error) {
+                        console.error("Failed to update status image:", error)
+                        this.showNotification("Failed to update status image!")
+                    }
+                    this.isGeneratingImage = false;
+                },
+                exportGame() {
+                    const gameData = JSON.stringify({
+                        resources: this.resources,
+                        buildings: this.buildings,
+                        stats: this.stats,
+                        playerLevel: this.playerLevel,
+                        unlockedFeatures: this.unlockedFeatures,
+                        tradableResources: this.tradableResources,
+                        settings: this.settings,
+                        statusImages: this.statusImages
+                    })
+                    const blob = new Blob([gameData], {type: 'application/json'})
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'galactic_tycoon_save.json'
+                    a.click()
+                    URL.revokeObjectURL(url)
+                },
+                importGame() {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = '.json'
+                    input.onchange = e => {
+                        const file = e.target.files[0]
+                        const reader = new FileReader()
+                        reader.onload = async event => {
+                            try {
+                                const gameData = JSON.parse(event.target.result)
+                                Object.assign(this, gameData)
+                                this.updateProductionRates()
+                                this.showNotification("Game imported successfully!")
+                                await this.saveGame()
+                            } catch (error) {
+                                console.error("Import failed:", error)
+                                this.showNotification("Failed to import game!")
+                            }
+                        }
+                        reader.readAsText(file)
+                    }
+                    input.click()
+                },
+                toggleAIManager() {
+                    this.aiManagerActive = !this.aiManagerActive
+                    this.showNotification(this.aiManagerActive ? "AI Manager activated!" : "AI Manager deactivated!")
+                },
+                runAIManager() {
+                    // Simple AI logic
+                    this.buildings.forEach(building => {
+                        if (this.resources.crystals >= building.cost && Math.random() < this.aiManagerEfficiency / 100) {
+                            this.buyBuilding(building.id)
+                        }
+                    })
+
+                    if (this.unlockedFeatures.trading) {
+                        this.tradableResources.forEach(resource => {
+                            if (resource.trend > 0 && this.resources.credits >= resource.price && Math.random() < this.aiManagerEfficiency / 100) {
+                                this.buyResource(resource.id)
+                            } else if (resource.trend < 0 && this.resources[resource.key] > 0 && Math.random() < this.aiManagerEfficiency / 100) {
+                                this.sellResource(resource.id)
+                            }
+                        })
+                    }
                 }
             },
-            async updateStatusImage() {
-                console.log("Generating image")
-                const prompt = `Generate a cartoonish image with bold outlines of a galactic empire with the following details:
-                    Level: ${this.playerLevel}
-                    Crystals: ${Math.floor(this.resources.crystals)}
-                    Fuel: ${Math.floor(this.resources.fuel)}
-                    Credits: ${Math.floor(this.resources.credits)}
-                    Buildings: ${this.buildings.reduce((acc, b) => acc + b.owned, 0)}
-                    Population: ${this.stats.population}
-                    Happiness: ${this.stats.happiness}%`
-
-                try {
-                    console.log("Starting generation")
-                    const imageData = await ttiClient.generateImage(prompt, '', 1024, 512)
-                    console.log("image generated")
-                    const stardate = new Date().toISOString()
-                    const info = `Level ${this.playerLevel} - ${Math.floor(this.resources.crystals)} Crystals`
-                    this.statusImages.push({
-                        url:  `data:image/jpeg;base64,${base64Image}`,
-                        stardate,
-                        info
-                    })
-                    if (this.statusImages.length > 5) {
-                        this.statusImages.shift()
-                    }
-                    this.showNotification("Status image updated!")
-                } catch (error) {
-                    console.error("Failed to update status image:", error)
-                    this.showNotification("Failed to update status image!")
+            computed: {
+                visibleBuildings() {
+                    return this.buildings.filter(b => b.minLevel <= this.playerLevel)
                 }
+            },
+            mounted() {
+                this.loadGame()
+                setInterval(this.update, 100)
+                setInterval(() => {
+                    if (this.settings.autoSaveEnabled) {
+                        this.saveGame()
+                    }
+                }, this.settings.autoSaveInterval * 1000)
             }
-        },
-        computed: {
-            visibleBuildings() {
-                return this.buildings.filter(b => b.minLevel <= this.playerLevel)
-            }
-        },
-        mounted() {
-            this.loadGame()
-            setInterval(this.update, 100)
-            setInterval(this.saveGame, 30000)
-        }
-    }).mount('#app')
+        }).mount('#app')
     </script>
 </body>
 </html>
