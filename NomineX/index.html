@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NomineX - Baby Name Finder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+</head>
+<body class="bg-gradient-to-r from-pink-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <div class="flex justify-end mb-4">
+                <select id="languageSelect" class="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="ar">العربية</option>
+                    <option value="zh">中文</option>
+                </select>
+            </div>
+            <h1 class="text-4xl font-bold text-purple-800 mb-2" data-translate="title">NomineX</h1>
+            <p class="text-gray-600" data-translate="subtitle">Discover the Perfect Name for Your Little One</p>
+        </header>
+
+        <div class="max-w-2xl mx-auto bg-white rounded-xl shadow-lg p-8">
+            <form id="nameFinderForm" class="space-y-6">
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" data-translate="culture_label">Cultural Background</label>
+                    <select id="culture" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="" data-translate="select_culture">Select Cultural Background</option>
+                        <option value="african" data-translate="african">African</option>
+                        <option value="arabic" data-translate="arabic">Arabic</option>
+                        <option value="asian" data-translate="asian">Asian</option>
+                        <option value="european" data-translate="european">European</option>
+                        <option value="hispanic" data-translate="hispanic">Hispanic</option>
+                        <option value="indian" data-translate="indian">Indian</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" data-translate="language_label">Language Preferences</label>
+                    <select id="language" multiple class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-h-[120px]">
+                        <option value="arabic" data-translate="arabic">Arabic</option>
+                        <option value="chinese" data-translate="chinese">Chinese</option>
+                        <option value="english" data-translate="english">English</option>
+                        <option value="french" data-translate="french">French</option>
+                        <option value="hindi" data-translate="hindi">Hindi</option>
+                        <option value="spanish" data-translate="spanish">Spanish</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" data-translate="religion_label">Religious Considerations</label>
+                    <select id="religion" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                        <option value="" data-translate="select_religion">Select Religion (if applicable)</option>
+                        <option value="buddhist" data-translate="buddhist">Buddhist</option>
+                        <option value="christian" data-translate="christian">Christian</option>
+                        <option value="hindu" data-translate="hindu">Hindu</option>
+                        <option value="islamic" data-translate="islamic">Islamic</option>
+                        <option value="jewish" data-translate="jewish">Jewish</option>
+                        <option value="secular" data-translate="secular">Secular</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" data-translate="gender_label">Gender</label>
+                    <div class="flex space-x-4">
+                        <label class="flex items-center">
+                            <input type="radio" name="gender" value="boy" class="form-radio text-purple-600">
+                            <span class="ml-2" data-translate="boy">Boy</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="gender" value="girl" class="form-radio text-purple-600">
+                            <span class="ml-2" data-translate="girl">Girl</span>
+                        </label>
+                        <label class="flex items-center">
+                            <input type="radio" name="gender" value="neutral" class="form-radio text-purple-600">
+                            <span class="ml-2" data-translate="neutral">Gender Neutral</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-gray-700 font-semibold mb-2" data-translate="name_count_label">Number of Names</label>
+                    <input type="number" id="nameCount" min="1" max="100" value="5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent">
+                </div>
+
+                <button type="submit" class="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300" data-translate="find_names">
+                    Find Names
+                </button>
+            </form>
+        </div>
+
+        <div id="results" class="max-w-2xl mx-auto mt-8 hidden">
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold text-purple-800" data-translate="suggested_names">Suggested Names</h2>
+                    <div class="flex gap-2">
+                        <button id="saveResults" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300" data-translate="save_results">
+                            Save JSON
+                        </button>
+                        <button id="saveHtml" class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300" data-translate="save_html">
+                            Save HTML
+                        </button>
+                    </div>
+                </div>
+                <div id="namesList" class="space-y-4"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center">
+        <div class="text-center text-white">
+            <div class="animate-spin text-4xl mb-4">🌟</div>
+            <p data-translate="loading_message">Finding perfect names...</p>
+        </div>
+    </div>
+
+    <script>
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    title: "NomineX",
+                    subtitle: "Discover the Perfect Name for Your Little One",
+                    culture_label: "Cultural Background",
+                    select_culture: "Select Cultural Background",
+                    language_label: "Language Preferences (Hold Ctrl/Cmd to select multiple)",
+                    religion_label: "Religious Considerations",
+                    select_religion: "Select Religion (if applicable)",
+                    gender_label: "Gender",
+                    name_count_label: "Number of Names",
+                    find_names: "Find Names",
+                    suggested_names: "Suggested Names",
+                    save_results: "Save JSON",
+                    save_html: "Save HTML",
+                    loading_message: "Finding perfect names...",
+                    african: "African",
+                    arabic: "Arabic",
+                    asian: "Asian",
+                    european: "European",
+                    hispanic: "Hispanic",
+                    indian: "Indian",
+                    buddhist: "Buddhist",
+                    christian: "Christian",
+                    hindu: "Hindu",
+                    islamic: "Islamic",
+                    jewish: "Jewish",
+                    secular: "Secular",
+                    boy: "Boy",
+                    girl: "Girl",
+                    neutral: "Gender Neutral"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    title: "NomineX",
+                    subtitle: "Découvrez le nom parfait pour votre petit",
+                    culture_label: "Origine culturelle",
+                    select_culture: "Sélectionnez l'origine culturelle",
+                    language_label: "Préférences linguistiques",
+                    religion_label: "Considérations religieuses",
+                    select_religion: "Sélectionnez la religion (si applicable)",
+                    gender_label: "Genre",
+                    name_count_label: "Nombre de noms",
+                    find_names: "Trouver des noms",
+                    suggested_names: "Noms suggérés",
+                    save_results: "Sauvegarder JSON",
+                    save_html: "Sauvegarder HTML",
+                    loading_message: "Recherche de noms parfaits...",
+                    african: "Africain",
+                    arabic: "Arabe",
+                    asian: "Asiatique",
+                    european: "Européen",
+                    hispanic: "Hispanique",
+                    indian: "Indien",
+                    buddhist: "Bouddhiste",
+                    christian: "Chrétien",
+                    hindu: "Hindou",
+                    islamic: "Islamique",
+                    jewish: "Juif",
+                    secular: "Laïque",
+                    boy: "Garçon",
+                    girl: "Fille",
+                    neutral: "Neutre"
+                }
+            },
+            es: {
+                name: "Español",
+                translations: {
+                    title: "NomineX",
+                    subtitle: "Descubre el nombre perfecto para tu pequeño",
+                    culture_label: "Origen cultural",
+                    select_culture: "Selecciona el origen cultural",
+                    language_label: "Preferencias de idioma",
+                    religion_label: "Consideraciones religiosas",
+                    select_religion: "Selecciona la religión (si aplica)",
+                    gender_label: "Género",
+                    name_count_label: "Número de nombres",
+                    find_names: "Buscar nombres",
+                    suggested_names: "Nombres sugeridos",
+                    save_results: "Guardar JSON",
+                    save_html: "Guardar HTML",
+                    loading_message: "Buscando nombres perfectos...",
+                    african: "Africano",
+                    arabic: "Árabe",
+                    asian: "Asiático",
+                    european: "Europeo",
+                    hispanic: "Hispano",
+                    indian: "Indio",
+                    buddhist: "Budista",
+                    christian: "Cristiano",
+                    hindu: "Hindú",
+                    islamic: "Islámico",
+                    jewish: "Judío",
+                    secular: "Secular",
+                    boy: "Niño",
+                    girl: "Niña",
+                    neutral: "Neutral"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'nominex_', document.getElementById('languageSelect'));
+        
+        const lc = new LollmsClient();
+        let currentResults = null;
+
+        window.addEventListener('load', () => {
+            localizer.apply();
+            const savedData = localStorage.getItem('nameFinderFormData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                document.getElementById('culture').value = data.culture || '';
+                document.getElementById('religion').value = data.religion || '';
+                document.getElementById('nameCount').value = data.nameCount || 5;
+                
+                const languageSelect = document.getElementById('language');
+                Array.from(languageSelect.options).forEach(option => {
+                    option.selected = data.languages.includes(option.value);
+                });
+
+                if (data.gender) {
+                    document.querySelector(`input[name="gender"][value="${data.gender}"]`).checked = true;
+                }
+            }
+        });
+
+        document.getElementById('languageSelect').addEventListener('change', (e) => {
+            localizer.setLanguage(e.target.value);
+            localizer.apply();
+        });
+
+        function saveFormData() {
+            const formData = {
+                culture: document.getElementById('culture').value,
+                languages: Array.from(document.getElementById('language').selectedOptions).map(option => option.value),
+                religion: document.getElementById('religion').value,
+                gender: document.querySelector('input[name="gender"]:checked')?.value,
+                nameCount: document.getElementById('nameCount').value
+            };
+            localStorage.setItem('nameFinderFormData', JSON.stringify(formData));
+        }
+
+        document.getElementById('saveResults').addEventListener('click', () => {
+            if (currentResults) {
+                const blob = new Blob([JSON.stringify(currentResults, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'baby-names.json';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+
+        document.getElementById('saveHtml').addEventListener('click', () => {
+            if (currentResults) {
+                const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Baby Names Results</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .name-card { background: #f8f0ff; padding: 20px; margin: 10px 0; border-radius: 8px; }
+        .name { font-size: 24px; color: #6b46c1; margin: 0 0 10px 0; }
+        .detail { color: #4a5568; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>Suggested Baby Names</h1>
+    ${currentResults.map(name => `
+    <div class="name-card">
+        <h2 class="name">${name.name}</h2>
+        <p class="detail"><strong>Meaning:</strong> ${name.meaning}</p>
+        <p class="detail"><strong>Origin:</strong> ${name.origin}</p>
+    </div>
+    `).join('')}
+</body>
+</html>`;
+
+                const blob = new Blob([htmlContent], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'baby-names.html';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        });
+        
+        document.getElementById('nameFinderForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const culture = document.getElementById('culture').value;
+            const languages = Array.from(document.getElementById('language').selectedOptions).map(option => option.value);
+            const religion = document.getElementById('religion').value;
+            const gender = document.querySelector('input[name="gender"]:checked')?.value;
+            const nameCount = document.getElementById('nameCount').value;
+
+            if (!culture || languages.length === 0 || !gender) {
+                alert(localizer.translate('fill_all_fields'));
+                return;
+            }
+
+            saveFormData();
+
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            document.getElementById('loadingOverlay').classList.add('flex');
+
+            const prompt = `${lc.system_message()}You are a baby name expert. Please suggest ${nameCount} baby names that match these criteria:
+            Culture: ${culture}
+            Languages: ${languages.join(', ')} (name should work well in all these languages)
+            Religion: ${religion}
+            Gender: ${gender}
+            
+            For each name, provide its meaning and origin. Format the response as a JSON array of objects with 'name', 'meaning', and 'origin' properties.${lc.template.separator_template}${lc.ai_message()}`;
+
+            try {
+                const response = await lc.generateCode(prompt);
+                currentResults = JSON.parse(response);
+                
+                const namesList = document.getElementById('namesList');
+                namesList.innerHTML = '';
+                
+                currentResults.forEach(name => {
+                    const nameElement = document.createElement('div');
+                    nameElement.className = 'bg-purple-50 p-4 rounded-lg';
+                    nameElement.innerHTML = `
+                        <h3 class="text-xl font-semibold text-purple-800">${name.name}</h3>
+                        <p class="text-gray-600"><span class="font-medium">${localizer.translate('meaning')}:</span> ${name.meaning}</p>
+                        <p class="text-gray-600"><span class="font-medium">${localizer.translate('origin')}:</span> ${name.origin}</p>
+                    `;
+                    namesList.appendChild(nameElement);
+                });
+
+                document.getElementById('results').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert(localizer.translate('error_message'));
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                document.getElementById('loadingOverlay').classList.remove('flex');
+            }
+        });
+    </script>
+</body>
+</html>
