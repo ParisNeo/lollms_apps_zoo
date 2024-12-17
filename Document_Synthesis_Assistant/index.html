@@ -24,7 +24,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
     <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-    <!-- Add FontAwesome for delete icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans">
@@ -45,12 +44,13 @@
             </section>
             <section class="mb-6">
                 <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="input_prompts"></h2>
-                <textarea id="summaryPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" data-translate="summary_prompt_placeholder" placeholder=""></textarea>
+                <textarea id="summaryPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" data-translate="summary_prompt_placeholder"></textarea>
                 <textarea id="synthesisPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-translate="synthesis_prompt_placeholder"></textarea>
             </section>
             <section class="flex justify-between">
                 <button id="processButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="process_documents"></button>
                 <button id="clearButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300" data-translate="clear_all"></button>
+                <button id="settingsButton" class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="settings"></button>
             </section>
             <section id="resultsSection" class="mt-8 hidden">
                 <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="results"></h2>
@@ -68,6 +68,21 @@
             <p class="text-indigo-700 mt-4" data-translate="processing"></p>
         </div>
     </div>
+    <div id="settingsOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center hidden">
+        <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+            <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="settings"></h2>
+            <label class="block mb-2 text-gray-700" data-translate="context_size"></label>
+            <input id="contextSizeInput" type="number" class="w-full border border-indigo-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block mb-2 text-gray-700" data-translate="max_tokens"></label>
+            <input id="maxTokensInput" type="number" class="w-full border border-indigo-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <label class="block mb-2 text-gray-700" data-translate="temperature"></label>
+            <input id="temperatureInput" type="number" step="0.1" class="w-full border border-indigo-300 rounded-md p-2 mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <div class="flex justify-end">
+                <button id="saveSettingsButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300" data-translate="save"></button>
+                <button id="closeSettingsButton" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded transition duration-300 ml-2" data-translate="close"></button>
+            </div>
+        </div>
+    </div>
     <script>
         const translations = {
             en: {
@@ -83,6 +98,12 @@
                     synthesis_prompt_placeholder: "Enter the prompt for final synthesis...",
                     process_documents: "Process Documents",
                     clear_all: "Clear All",
+                    settings: "Settings",
+                    context_size: "Context Size",
+                    max_tokens: "Max Tokens",
+                    temperature: "Temperature",
+                    save: "Save",
+                    close: "Close",
                     results: "Results",
                     final_synthesis: "Final Synthesis",
                     processing: "Processing...",
@@ -147,9 +168,24 @@
 
         localizer.apply();
 
+        // Load persisted inputs
+        document.getElementById('summaryPrompt').value = localStorage.getItem('summaryPrompt') || '';
+        document.getElementById('synthesisPrompt').value = localStorage.getItem('synthesisPrompt') || '';
+        document.getElementById('contextSizeInput').value = localStorage.getItem('contextSize') || 4096;
+        document.getElementById('maxTokensInput').value = localStorage.getItem('maxTokens') || 2048;
+        document.getElementById('temperatureInput').value = localStorage.getItem('temperature') || 0.1;
+
         document.getElementById('fileInput').addEventListener('change', (event) => {
             fileManager.addFiles(event.target.files);
             event.target.value = ''; // Reset input to allow selecting the same file again
+        });
+
+        document.getElementById('summaryPrompt').addEventListener('input', (event) => {
+            localStorage.setItem('summaryPrompt', event.target.value);
+        });
+
+        document.getElementById('synthesisPrompt').addEventListener('input', (event) => {
+            localStorage.setItem('synthesisPrompt', event.target.value);
         });
 
         document.getElementById('processButton').addEventListener('click', async () => {
@@ -182,10 +218,7 @@
                     const markdownContent = await fileLoader.loadFile(file);
                     const summary = await lollmsClient.summarizeText(
                         markdownContent,
-                        summaryPrompt+`\nrecommendations:
-- Extract information as bullet points.
-- Avoid repetition of the same information.
-- Synthesize the extracted information.`
+                        summaryPrompt
                     );
                     summaries.push(summary);
                     const renderedSummary = await mr.renderMarkdown(summary);
@@ -199,11 +232,7 @@
                 const prompt = `${lc.system_message()}${synthesisPrompt}
 ${lc.user_message("Text")}
 ${summaries.join('\n')}
-Make sure you use all the extracted information and fuse them.
-Avoid repitition.
-The output must be well structured as markdown text.
-The synthesis must be written in the same language as the user.
-${lc.ai_message("Synthesis text")}`;
+${lc.ai_message("Rewritten text:")}`;
                 console.log(prompt)
                 const synthesis = await lc.generate(
                     prompt
@@ -223,6 +252,34 @@ ${lc.ai_message("Synthesis text")}`;
             document.getElementById('summaryPrompt').value = '';
             document.getElementById('synthesisPrompt').value = '';
             document.getElementById('resultsSection').classList.add('hidden');
+            localStorage.removeItem('summaryPrompt');
+            localStorage.removeItem('synthesisPrompt');
+        });
+
+        document.getElementById('settingsButton').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').classList.remove('hidden');
+        });
+
+        document.getElementById('closeSettingsButton').addEventListener('click', () => {
+            document.getElementById('settingsOverlay').classList.add('hidden');
+        });
+
+        document.getElementById('saveSettingsButton').addEventListener('click', () => {
+            const contextSize = document.getElementById('contextSizeInput').value;
+            const maxTokens = document.getElementById('maxTokensInput').value;
+            const temperature = document.getElementById('temperatureInput').value;
+
+            lc.updateSettings({
+                ctx_size: parseInt(contextSize),
+                n_predict: parseInt(maxTokens),
+                temperature: parseFloat(temperature)
+            });
+
+            localStorage.setItem('contextSize', contextSize);
+            localStorage.setItem('maxTokens', maxTokens);
+            localStorage.setItem('temperature', temperature);
+
+            document.getElementById('settingsOverlay').classList.add('hidden');
         });
     </script>
 </body>
