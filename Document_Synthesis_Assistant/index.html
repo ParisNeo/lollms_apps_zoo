@@ -45,7 +45,7 @@
             </section>
             <section class="mb-6">
                 <h2 class="text-2xl font-semibold text-indigo-700 mb-4" data-translate="input_prompts"></h2>
-                <textarea id="summaryPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" data-translate="summary_prompt_placeholder"></textarea>
+                <textarea id="summaryPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-4" data-translate="summary_prompt_placeholder" placeholder=""></textarea>
                 <textarea id="synthesisPrompt" rows="4" class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" data-translate="synthesis_prompt_placeholder"></textarea>
             </section>
             <section class="flex justify-between">
@@ -182,7 +182,10 @@
                     const markdownContent = await fileLoader.loadFile(file);
                     const summary = await lollmsClient.summarizeText(
                         markdownContent,
-                        summaryPrompt
+                        summaryPrompt+`\nrecommendations:
+- Extract information as bullet points.
+- Avoid repetition of the same information.
+- Synthesize the extracted information.`
                     );
                     summaries.push(summary);
                     const renderedSummary = await mr.renderMarkdown(summary);
@@ -196,7 +199,11 @@
                 const prompt = `${lc.system_message()}${synthesisPrompt}
 ${lc.user_message("Text")}
 ${summaries.join('\n')}
-${lc.ai_message("Rewritten text:")}`;
+Make sure you use all the extracted information and fuse them.
+Avoid repitition.
+The output must be well structured as markdown text.
+The synthesis must be written in the same language as the user.
+${lc.ai_message("Synthesis text")}`;
                 console.log(prompt)
                 const synthesis = await lc.generate(
                     prompt
