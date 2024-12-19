@@ -1,10 +1,11 @@
 # Import necessary libraries
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
-from pdf2docx import Converter
 import os
+
 import uvicorn
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pdf2docx import Converter
 
 app = FastAPI()
 
@@ -20,6 +21,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 @app.post("/convert_pdf2docx")
 async def convert_pdf_to_docx(file: UploadFile = File(...)):
@@ -38,7 +40,12 @@ async def convert_pdf_to_docx(file: UploadFile = File(...)):
     os.remove(pdf_file_path)
 
     # Return the DOCX file
-    return FileResponse(docx_file_path, media_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document', filename=os.path.basename(docx_file_path))
+    return FileResponse(
+        docx_file_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=os.path.basename(docx_file_path),
+    )
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="localhost", port=8000)

@@ -1,9 +1,10 @@
+import os
+from typing import List
+
+import sympy as sp
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import sympy as sp
-from typing import List
-import os
 
 app = FastAPI()
 
@@ -16,12 +17,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class DerivativeRequest(BaseModel):
     function: str
     parameters: List[str]
 
+
 class DerivativeResponse(BaseModel):
     derivatives: List[str]
+
 
 @app.post("/generate_derivatives", response_model=DerivativeResponse)
 async def generate_derivatives(request: DerivativeRequest):
@@ -41,6 +45,8 @@ async def generate_derivatives(request: DerivativeRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="localhost", port=8000)

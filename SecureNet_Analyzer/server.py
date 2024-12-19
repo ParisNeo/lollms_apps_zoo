@@ -1,15 +1,18 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+import platform
 import random
 import subprocess
-import platform
+
 import pipmaster as pm
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
 if not pm.is_installed("netifaces"):
     pm.install("netifaces")
-import netifaces
-from typing import List
 import socket
 import struct
+from typing import List
+
+import netifaces
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -23,6 +26,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class Device(BaseModel):
     name: str
     ip: str
@@ -30,26 +34,32 @@ class Device(BaseModel):
     type: str
     hostname: str
 
+
 class Risk(BaseModel):
     severity: str
     level: str
     description: str
 
+
 class RiskAssessment(BaseModel):
     risks: List[Risk]
     recommendations: str
+
 
 class Settings(BaseModel):
     scanFrequency: int
     notificationsEnabled: bool
 
+
 class PortScan(BaseModel):
     ip: str
+
 
 class PortResult(BaseModel):
     number: int
     service: str
     status: str
+
 
 def get_local_ip():
     interfaces = netifaces.interfaces()
@@ -57,19 +67,22 @@ def get_local_ip():
         addresses = netifaces.ifaddresses(interface)
         if netifaces.AF_INET in addresses:
             for link in addresses[netifaces.AF_INET]:
-                if 'addr' in link:
-                    if link['addr'].startswith('192.168.') or link['addr'].startswith('10.'):
-                        return link['addr']
+                if "addr" in link:
+                    if link["addr"].startswith("192.168.") or link["addr"].startswith(
+                        "10."
+                    ):
+                        return link["addr"]
     return None
+
 
 def get_mac(ip):
     os_name = platform.system().lower()
     try:
         if os_name == "windows":
-            output = subprocess.check_output(f'arp -a {ip}', shell=True).decode('utf-8')
+            output = subprocess.check_output(f"arp -a {ip}", shell=True).decode("utf-8")
             mac = output.split()[-2]
         elif os_name in ["linux", "darwin"]:  # Linux or macOS
-            output = subprocess.check_output(f'arp -n {ip}', shell=True).decode('utf-8')
+            output = subprocess.check_output(f"arp -n {ip}", shell=True).decode("utf-8")
             mac = output.split()[3]
         else:
             raise OSError("Unsupported operating system")
@@ -77,11 +90,13 @@ def get_mac(ip):
     except:
         return "00:00:00:00:00:00"
 
+
 def get_hostname(ip):
     try:
         return socket.gethostbyaddr(ip)[0]
     except:
         return "Unknown"
+
 
 def guess_device_type_by_hostname(hostname):
     hostname = hostname.lower()
@@ -96,12 +111,13 @@ def guess_device_type_by_hostname(hostname):
     else:
         return hostname
 
+
 def scan_network():
     local_ip = get_local_ip()
     if not local_ip:
         raise HTTPException(status_code=500, detail="Could not determine local IP")
 
-    ip_parts = local_ip.split('.')
+    ip_parts = local_ip.split(".")
     base_ip = f"{ip_parts[0]}.{ip_parts[1]}.{ip_parts[2]}."
 
     devices = []
@@ -112,26 +128,24 @@ def scan_network():
             hostname = get_hostname(ip)
             device_type = guess_device_type_by_hostname(hostname)
             device = Device(
-                name=f"Device {i}",
-                ip=ip,
-                mac=mac,
-                type=device_type,
-                hostname=hostname
+                name=f"Device {i}", ip=ip, mac=mac, type=device_type, hostname=hostname
             )
             devices.append(device)
 
     return devices
 
+
 def is_host_up(ip):
     os_name = platform.system().lower()
     try:
         if os_name == "windows":
-            output = subprocess.check_output(f'ping -n 1 -w 100 {ip}', shell=True)
+            output = subprocess.check_output(f"ping -n 1 -w 100 {ip}", shell=True)
         else:  # Linux or macOS
-            output = subprocess.check_output(f'ping -c 1 -W 1 {ip}', shell=True)
+            output = subprocess.check_output(f"ping -c 1 -W 1 {ip}", shell=True)
         return True
     except:
         return False
+
 
 def scan_port(ip, port):
     try:
@@ -147,6 +161,7 @@ def scan_port(ip, port):
     finally:
         sock.close()
 
+
 @app.get("/scan_network", response_model=List[Device])
 async def api_scan_network():
     try:
@@ -154,20 +169,39 @@ async def api_scan_network():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.get("/risk_assessment", response_model=RiskAssessment)
 async def api_risk_assessment():
     risks = [
-        Risk(severity="High", level="red", description="Open SSH port detected on multiple devices"),
-        Risk(severity="Medium", level="yellow", description="Outdated firmware on network router"),
-        Risk(severity="Low", level="green", description="Guest network not properly isolated")
+        Risk(
+            severity="High",
+            level="red",
+            description="Open SSH port detected on multiple devices",
+        ),
+        Risk(
+            severity="Medium",
+            level="yellow",
+            description="Outdated firmware on network router",
+        ),
+        Risk(
+            severity="Low",
+            level="green",
+            description="Guest network not properly isolated",
+        ),
     ]
-    recommendations = "Update firmware, close unnecessary ports, and review network segmentation."
+    recommendations = (
+        "Update firmware, close unnecessary ports, and review network segmentation."
+    )
     return RiskAssessment(risks=risks, recommendations=recommendations)
+
 
 @app.post("/update_settings")
 async def update_settings(settings: Settings):
-    print(f"Updated settings: Scan Frequency: {settings.scanFrequency}, Notifications: {settings.notificationsEnabled}")
+    print(
+        f"Updated settings: Scan Frequency: {settings.scanFrequency}, Notifications: {settings.notificationsEnabled}"
+    )
     return {"status": "success", "message": "Settings updated successfully"}
+
 
 @app.post("/scan_ports", response_model=List[PortResult])
 async def api_scan_ports(port_scan: PortScan):
@@ -183,16 +217,18 @@ async def api_scan_ports(port_scan: PortScan):
         143: "IMAP",
         443: "HTTPS",
         3306: "MySQL",
-        3389: "RDP"
+        3389: "RDP",
     }
-    
+
     results = []
     for port, service in common_ports.items():
         status = scan_port(port_scan.ip, port)
         results.append(PortResult(number=port, service=service, status=status))
-    
+
     return results
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

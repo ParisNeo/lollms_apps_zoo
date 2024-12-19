@@ -1,10 +1,11 @@
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
-from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware
 import os
 import subprocess
 import tempfile
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 app = FastAPI()
 
@@ -17,9 +18,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 class ExportPDFRequest(BaseModel):
     latex: str
     assets: dict
+
 
 @app.post("/export-pdf")
 async def export_pdf(request: ExportPDFRequest):
@@ -40,12 +43,20 @@ async def export_pdf(request: ExportPDFRequest):
 
         # Compile the LaTeX document to PDF
         try:
-            subprocess.run(["pdflatex", "-output-directory", temp_dir, tex_file_path], check=True)
+            subprocess.run(
+                ["pdflatex", "-output-directory", temp_dir, tex_file_path], check=True
+            )
             pdf_file_path = os.path.join(temp_dir, "document.pdf")
-            return FileResponse(pdf_file_path, media_type='application/pdf', filename='latex_document.pdf')
+            return FileResponse(
+                pdf_file_path,
+                media_type="application/pdf",
+                filename="latex_document.pdf",
+            )
         except subprocess.CalledProcessError:
             return {"error": "Failed to compile LaTeX document."}
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="localhost", port=8000)
