@@ -140,6 +140,7 @@
                         <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
                         <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
                         <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
+                        <option value="lollms_smart_router" data-translate="questionAnswerOption">Lollms smart router</option>
                         <option value="custom" data-translate="customOption">Custom</option>
                     </select>
                 </div>
@@ -174,8 +175,8 @@
                 </div>
                 
                 <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="preprocess-dataset1NameLabel">Dataset 1 Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-dataset1Name" type="text" placeholder="Dataset in name or local path" required>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="fusedbs-dataset1NameLabel">Dataset 1 Name/Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-dataset1Name" type="text" placeholder="Dataset in name or local path" required>
                 </div>
                 <div class="mb-4">
                     <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fusedbs-dataset2SourceLabel">Dataset 2 Source</label>
@@ -419,8 +420,23 @@
             <div id="helpContent" class="mt-4"></div>
         </div>
     </div>
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex justify-center items-center hidden">
+        <div class="text-center text-pink-500">
+            <div class="text-6xl animate-spin">🌟</div>
+            <div class="mt-4">Processing (take a look at console for details) ...</div>
+        </div>
+    </div>
 
     <script>
+        function showLoadingOverlay() {
+        document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoadingOverlay() {
+        document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+
         // Help content dictionary
         const helpContent = {
             // Download section
@@ -971,7 +987,7 @@
             const targetDir = document.getElementById('downloadTargetDir').value;
 
             try {
-                const response = await fetch('/download_model/', {
+                const response = await fetch('http://localhost:8000/download_model/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1000,7 +1016,8 @@
             event.preventDefault();
 
             try {
-                const response = await fetch('/preprocess/', {
+                showLoadingOverlay();
+                const response = await fetch('http://localhost:8000/preprocess/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1025,6 +1042,7 @@
                 console.error('Error downloading model:', error);
                 alert('An error occurred while downloading the model.');
             }
+            hideLoadingOverlay()
         });
 
         // Fuse datasets
@@ -1032,17 +1050,23 @@
             event.preventDefault();
 
             try {
-                const response = await fetch('/fuse_datasets/', {
+                showLoadingOverlay();
+                const dataset1_source= document.querySelector('input[name="fusedbs-dataset1Source"]:checked')
+                const dataset1_path= document.getElementById('fusedbs-dataset1Name')
+                const dataset2_source= document.querySelector('input[name="fusedbs-dataset1Source"]:checked')
+                const dataset2_path= document.getElementById('fusedbs-dataset2Name')
+                const output_dataset_path= document.getElementById('fusedbs-datasetOutName')
+                const response = await fetch('http://localhost:8000/fuse_datasets/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        dataset1_source: document.querySelector('input[name="fusedbs-dataset1Source"]:checked').value,
-                        dataset1_path: document.getElementById('fusedbs-dataset1Name').value,
-                        dataset2_source: document.querySelector('input[name="fusedbs-dataset2Source"]:checked').value,
-                        dataset2_path: document.getElementById('fusedbs-dataset2Name').value,
-                        output_dataset_path: document.getElementById('fusedbs-datasetOutName').value,
+                        dataset1_source: dataset1_source.value,
+                        dataset1_path: dataset1_path.value,
+                        dataset2_source: dataset2_source.value,
+                        dataset2_path: dataset2_path.value,
+                        output_dataset_path: output_dataset_path.value,
                     }),
                 });
 
@@ -1057,12 +1081,13 @@
                 console.error('Error downloading model:', error);
                 alert('An error occurred while downloading the model.');
             }
+            hideLoadingOverlay();
         });
         
 
         document.getElementById('finetuneForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            showLoadingOverlay();
             const jsonData = {
                 model_name: document.getElementById('modelName').value,
                 dataset_source: document.querySelector('input[name="datasetSource"]:checked').value,
@@ -1100,7 +1125,7 @@
             };
 
             try {
-                const response = await fetch('/train', {
+                const response = await fetch('http://localhost:8000/train', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1119,11 +1144,12 @@
                 console.error('Error:', error);
                 alert('An error occurred while starting the training process.');
             }
+            hideLoadingOverlay();
         });
 
         document.getElementById('fusionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            showLoadingOverlay();
             const jsonData = {
                 base_model_path: document.getElementById('baseModelPath').value,
                 lora_model_path: document.getElementById('loraModelPath').value,
@@ -1131,7 +1157,7 @@
             };
 
             try {
-                const response = await fetch('/fuse', {
+                const response = await fetch('http://localhost:8000/fuse', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1150,11 +1176,12 @@
                 console.error('Error:', error);
                 alert('An error occurred while starting the fusion process.');
             }
+            hideLoadingOverlay();
         });
 
         document.getElementById('quantizationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+            showLoadingOverlay();
             const jsonData = {
                 model_path: document.getElementById('modelPathQuantize').value,
                 output_path: document.getElementById('quantizedOutputPath').value,
@@ -1182,6 +1209,7 @@
                 console.error('Error:', error);
                 alert('An error occurred while starting the quantization process.');
             }
+            hideLoadingOverlay();
         });
 
         function initWebSocket() {

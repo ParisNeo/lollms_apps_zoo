@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeartRateTracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_tti"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800">HeartRateTracker</h1>
+            <p class="text-gray-600 mt-2">Monitor your heart rate using your webcam</p>
+        </header>
+
+        <main class="max-w-3xl mx-auto">
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+                <div class="flex flex-col items-center">
+                    <div id="webcam-container" class="w-full max-w-md mb-4">
+                        <video id="webcam" class="w-full rounded-lg" autoplay playsinline></video>
+                    </div>
+                    
+                    <div class="text-center">
+                        <div class="text-6xl font-bold text-indigo-600 mb-2">
+                            <span id="heartRate">--</span>
+                            <span class="text-2xl">BPM</span>
+                        </div>
+                        <div id="status" class="text-gray-500">Place your face in the camera view</div>
+                    </div>
+
+                    <div class="flex gap-4 mt-6">
+                        <button id="startBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                            Start Monitoring
+                        </button>
+                        <button id="stopBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition duration-300" disabled>
+                            Stop
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Heart Rate History</h2>
+                <canvas id="heartRateChart" class="w-full h-64"></canvas>
+            </div>
+        </main>
+
+        <footer class="mt-8 text-center text-gray-600 text-sm">
+            <p class="mb-2">Disclaimer: This application is not intended for medical diagnosis.</p>
+            <p>Please consult healthcare professionals for medical advice.</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        let webcam;
+        let heartRateData = [];
+        let chart;
+        
+        async function setupWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                webcam = document.getElementById('webcam');
+                webcam.srcObject = stream;
+            } catch (err) {
+                console.error('Error accessing webcam:', err);
+                document.getElementById('status').textContent = 'Error accessing webcam';
+            }
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('heartRateChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Heart Rate',
+                        data: [],
+                        borderColor: 'rgb(79, 70, 229)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            min: 40,
+                            max: 120
+                        }
+                    }
+                }
+            });
+        }
+
+        let monitoring = false;
+        let frameCount = 0;
+        let rValues = [];
+
+        function processFrame() {
+            if (!monitoring) return;
+
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            context.drawImage(webcam, 0, 0);
+            
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const pixelData = context.getImageData(centerX - 50, centerY - 50, 100, 100).data;
+            
+            let totalRed = 0;
+            for (let i = 0; i < pixelData.length; i += 4) {
+                totalRed += pixelData[i];
+            }
+            const avgRed = totalRed / (pixelData.length / 4);
+            rValues.push(avgRed);
+
+            if (rValues.length > 30) {
+                const heartRate = calculateHeartRate(rValues);
+                document.getElementById('heartRate').textContent = heartRate;
+                
+                heartRateData.push(heartRate);
+                updateChart();
+                
+                rValues = rValues.slice(-30);
+            }
+
+            frameCount++;
+            if (monitoring) {
+                requestAnimationFrame(processFrame);
+            }
+        }
+
+        function calculateHeartRate(values) {
+            // Simple peak detection algorithm
+            let peaks = 0;
+            for (let i = 1; i < values.length - 1; i++) {
+                if (values[i] > values[i-1] && values[i] > values[i+1]) {
+                    peaks++;
+                }
+            }
+            
+            const seconds = values.length / 30; // Assuming 30 fps
+            const bpm = Math.round((peaks * 60) / seconds);
+            return Math.min(Math.max(bpm, 40), 120); // Clamp between 40-120 BPM
+        }
+
+        function updateChart() {
+            const labels = heartRateData.map((_, i) => i);
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = heartRateData;
+            chart.update();
+        }
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            monitoring = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('stopBtn').disabled = false;
+            document.getElementById('status').textContent = 'Monitoring...';
+            processFrame();
+        });
+
+        document.getElementById('stopBtn').addEventListener('click', () => {
+            monitoring = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('status').textContent = 'Monitoring stopped';
+        });
+
+        // Initialize
+        setupWebcam();
+        initializeChart();
+    </script>
+</body>
+</html>
