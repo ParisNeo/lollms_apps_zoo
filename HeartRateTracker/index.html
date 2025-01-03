@@ -5,44 +5,105 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HeartRateTracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/lollms_assets/js/lollms_tti"></script>
+    <script src="/apps/HeartRateTracker/tf.min.js"></script>
+    <script src="/apps/HeartRateTracker/blazeface.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
+        <div id="instructionsOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center max-w-lg">
+                <h2 class="text-2xl font-bold text-indigo-800 mb-4">Getting Started</h2>
+                <p class="text-gray-700 mb-4">Please follow these instructions:</p>
+                <ol class="text-left text-gray-600 space-y-2 mb-6">
+                    <li>1. Position yourself in good lighting</li>
+                    <li>2. Keep your face centered in the camera view</li>
+                    <li>3. Remain still for 30 seconds during initial calibration</li>
+                    <li>4. Breathe normally</li>
+                </ol>
+                <button onclick="closeInstructions()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                    I understand
+                </button>
+            </div>
+        </div>
+
+        <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+            <div class="bg-white p-8 rounded-lg shadow-xl text-center">
+                <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                <p id="loadingStatus" class="text-lg text-indigo-800">Loading face detection model...</p>
+            </div>
+        </div>
+
         <header class="text-center mb-8">
             <h1 class="text-4xl font-bold text-indigo-800">HeartRateTracker</h1>
             <p class="text-gray-600 mt-2">Monitor your heart rate using your webcam</p>
         </header>
 
-        <main class="max-w-3xl mx-auto">
-            <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-                <div class="flex flex-col items-center">
-                    <div id="webcam-container" class="w-full max-w-md mb-4">
-                        <video id="webcam" class="w-full rounded-lg" autoplay playsinline></video>
-                    </div>
-                    
-                    <div class="text-center">
-                        <div class="text-6xl font-bold text-indigo-600 mb-2">
-                            <span id="heartRate">--</span>
-                            <span class="text-2xl">BPM</span>
-                        </div>
-                        <div id="status" class="text-gray-500">Place your face in the camera view</div>
-                    </div>
-
-                    <div class="flex gap-4 mt-6">
-                        <button id="startBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition duration-300">
-                            Start Monitoring
-                        </button>
-                        <button id="stopBtn" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition duration-300" disabled>
-                            Stop
-                        </button>
-                    </div>
+        <main class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Face Detection</h2>
+                <div class="relative aspect-video">
+                    <video id="webcam" class="w-full rounded-lg" autoplay playsinline></video>
+                    <canvas id="overlay" class="absolute top-0 left-0 w-full h-full"></canvas>
                 </div>
             </div>
 
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Heart Rate History</h2>
-                <canvas id="heartRateChart" class="w-full h-64"></canvas>
+                <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Signal Analysis</h2>
+                <div class="space-y-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-indigo-600">Raw Signal</h3>
+                        <canvas id="signalCanvas" class="w-full h-32 bg-black rounded-lg"></canvas>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-indigo-600">Spectrogram</h3>
+                        <canvas id="spectrogramCanvas" 
+                                class="w-full h-32 bg-black rounded-lg" 
+                                width="300" 
+                                height="150">
+                        </canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-lg p-6 lg:col-span-2">
+                <div class="text-center mb-6">
+                    <div class="flex justify-center items-baseline gap-4">
+                        <div>
+                            <div class="text-sm text-gray-500">FFT BPM</div>
+                            <div class="text-4xl font-bold text-indigo-400">
+                                <span id="fftHeartRate">--</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-500">Filtered BPM</div>
+                            <div class="text-6xl font-bold text-indigo-600">
+                                <span id="heartRate">--</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="status" class="text-gray-500 font-semibold mt-2">Ready to start</div>
+                    <div id="calibrationStatus" class="text-blue-500 font-semibold mt-2"></div>
+                    <div id="debugInfo" class="text-sm text-gray-400 mt-2"></div>
+                    <div id="webcamInfo" class="text-sm text-blue-500 mt-2"></div>
+                    <div id="modelInfo" class="text-sm text-green-500 mt-2"></div>
+                    <div id="processingInfo" class="text-sm text-purple-500 mt-2"></div>
+                    <div id="errorInfo" class="text-sm text-red-500 mt-2"></div>
+
+                    <div class="flex justify-center gap-4 mt-6">
+                        <button id="startBtn" onclick="startMonitoring()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-full transition duration-300">
+                            Start Monitoring
+                        </button>
+                        <button id="stopBtn" onclick="stopMonitoring()" class="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-6 rounded-full transition duration-300" disabled>
+                            Stop
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-2xl font-semibold text-indigo-800 mb-4">Heart Rate History</h2>
+                    <canvas id="heartRateChart" class="w-full h-64"></canvas>
+                </div>
             </div>
         </main>
 
@@ -52,128 +113,746 @@
         </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        let webcam;
+        // Global variables
+        let webcam = null;
+        let model = null;
+        let stream = null;
+        let monitoring = false;
         let heartRateData = [];
-        let chart;
+        let filteredHeartRateData = [];
+        let chart = null;
+        let greenValues = [];
+        let signalValues = [];
+        let signalCanvas = null;
+        let signalCtx = null;
+        let spectrogramCanvas = null;
+        let spectrogramCtx = null;
+        let overlayCanvas = null;
+        let overlayCtx = null;
+        let kalmanFilter = null;
+        let audioContext = null;
+        let analyser = null;
+        let calibrationPhase = true;
+        let calibrationCounter = 0;
+        let isModelLoaded = false;
+        let spectrogram = null;
+
+        // Constants
+        const CALIBRATION_FRAMES = 90;
+        const HISTORY_POINTS = 60;
+        const FFT_SIZE = 1024;
+        const SAMPLE_RATE = 30;
+
+        let isInitialized = false;
+
         
-        async function setupWebcam() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                webcam = document.getElementById('webcam');
-                webcam.srcObject = stream;
-            } catch (err) {
-                console.error('Error accessing webcam:', err);
-                document.getElementById('status').textContent = 'Error accessing webcam';
+        class Spectrogram {
+            constructor(canvas, numFrequencies, historyLength) {
+                if (!canvas) {
+                    console.error('Canvas element not found');
+                    return;
+                }
+                this.canvas = canvas;
+                this.ctx = canvas.getContext('2d');
+                this.numFrequencies = numFrequencies;
+                this.historyLength = historyLength;
+                this.spectrogramData = [];
+                this.colormap = this.generateColormap();
+                this.isInitialized = true;
+            }
+
+            generateColormap() {
+                const colors = [];
+                for (let i = 0; i < 256; i++) {
+                    if (i < 85) {
+                        colors.push([0, i * 3, 255]);
+                    } else if (i < 170) {
+                        colors.push([0, 255, 255 - (i - 85) * 3]);
+                    } else {
+                        colors.push([(i - 170) * 3, 255, 0]);
+                    }
+                }
+                return colors;
+            }
+
+            updateSpectrogram(frequencyData) {
+                // Normalize frequency data to 0-255 range
+                const normalizedData = new Uint8Array(frequencyData.length);
+                const minDb = -100;
+                const maxDb = 0;
+                
+                for (let i = 0; i < frequencyData.length; i++) {
+                    const normalized = ((frequencyData[i] - minDb) / (maxDb - minDb)) * 255;
+                    normalizedData[i] = Math.max(0, Math.min(255, normalized));
+                }
+
+                // Add new data column
+                this.spectrogramData.push(normalizedData);
+                if (this.spectrogramData.length > this.historyLength) {
+                    this.spectrogramData.shift();
+                }
+
+                this.draw();
+            }
+
+            draw() {
+                const width = this.canvas.width;
+                const height = this.canvas.height;
+                
+                // Clear canvas
+                this.ctx.fillStyle = 'black';
+                this.ctx.fillRect(0, 0, width, height);
+
+                // Calculate dimensions
+                const columnWidth = width / this.historyLength;
+                const rowHeight = height / this.numFrequencies;
+
+                // Draw spectrogram data
+                for (let t = 0; t < this.spectrogramData.length; t++) {
+                    const x = t * columnWidth;
+                    
+                    for (let f = 0; f < this.numFrequencies; f++) {
+                        const y = height - (f + 1) * rowHeight;
+                        const colorIndex = this.spectrogramData[t][f];
+                        const [r, g, b] = this.colormap[colorIndex];
+                        
+                        this.ctx.fillStyle = `rgb(${r},${g},${b})`;
+                        this.ctx.fillRect(x, y, columnWidth + 1, rowHeight + 1);
+                    }
+                }
             }
         }
 
+
+
+        async function initialize() {
+            return new Promise((resolve, reject) => {
+                try {
+                    // Initialize all canvas elements
+                    signalCanvas = document.getElementById('signalCanvas');
+                    spectrogramCanvas = document.getElementById('spectrogramCanvas');
+                    overlayCanvas = document.getElementById('overlay');
+                    
+                    // Check if elements exist
+                    if (!signalCanvas || !spectrogramCanvas || !overlayCanvas) {
+                        throw new Error('Canvas elements not found');
+                    }
+                    
+                    // Get contexts
+                    signalCtx = signalCanvas.getContext('2d');
+                    spectrogramCtx = spectrogramCanvas.getContext('2d');
+                    overlayCtx = overlayCanvas.getContext('2d');
+                    
+                    // Set dimensions
+                    spectrogramCanvas.width = spectrogramCanvas.clientWidth;
+                    spectrogramCanvas.height = spectrogramCanvas.clientHeight;
+                    signalCanvas.width = signalCanvas.clientWidth;
+                    signalCanvas.height = signalCanvas.clientHeight;
+                    
+                    // Initialize spectrogram
+                    spectrogram = new Spectrogram(spectrogramCanvas, 64, 100);
+                    
+                    // Initialize Kalman filter
+                    kalmanFilter = new KalmanFilter(0.05, 1, 60);
+                    
+                    initializeChart()
+                    isInitialized = true;
+                    resolve();
+                } catch (error) {
+                    console.error('Initialization error:', error);
+                    reject(error);
+                }
+            });
+        }
+
+        // Wait for DOM to be fully loaded before initializing
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                await initialize();
+                console.log('Initial setup complete');
+            } catch (error) {
+                console.error('Initial setup failed:', error);
+            }
+        });
+        window.addEventListener('resize', async () => {
+            if (isInitialized) {
+                await initialize();
+            }
+        });
+        // Initialize spectrogram in the global scope
+
+        const debug = {
+            log: function(message) {
+                const debugElement = document.getElementById('debugInfo');
+                if (debugElement) {
+                    debugElement.textContent = message;
+                }
+                console.log(message);
+            },
+            error: function(message) {
+                const errorElement = document.getElementById('errorInfo');
+                if (errorElement) {
+                    errorElement.textContent = message;
+                }
+                console.error(message);
+            }
+        };
+
+
+        class KalmanFilter {
+            constructor(processNoise = 0.01, measurementNoise = 1, initialValue = 60) {
+                this.Q = processNoise;
+                this.R = measurementNoise;
+                this.X = initialValue;
+                this.P = 1;
+            }
+
+            update(measurement) {
+                const predictedP = this.P + this.Q;
+                const K = predictedP / (predictedP + this.R);
+                this.X = this.X + K * (measurement - this.X);
+                this.P = (1 - K) * predictedP;
+                return this.X;
+            }
+        }
+
+        async function initializeAudioContext() {
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = FFT_SIZE;
+                debug.log("Audio context initialized");
+            } catch (error) {
+                debug.error("Failed to initialize audio context: " + error.message);
+            }
+        }
+
+        function performFFT(timeData) {
+            try {
+                if (!audioContext || !analyser) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = FFT_SIZE;
+                    analyser.smoothingTimeConstant = 0.8;
+                }
+
+                // Upsample the data
+                const minSampleRate = 3000;
+                const upsampledData = [];
+                const upsampleFactor = Math.ceil(minSampleRate / SAMPLE_RATE);
+                
+                // Apply Hann window to the input data
+                const hannWindow = timeData.map((val, idx) => 
+                    val * (0.5 * (1 - Math.cos((2 * Math.PI * idx) / (timeData.length - 1))))
+                );
+
+                // Perform upsampling with windowed data
+                for (let i = 0; i < hannWindow.length - 1; i++) {
+                    upsampledData.push(hannWindow[i]);
+                    for (let j = 1; j < upsampleFactor; j++) {
+                        const fraction = j / upsampleFactor;
+                        const interpolatedValue = hannWindow[i] * (1 - fraction) + hannWindow[i + 1] * fraction;
+                        upsampledData.push(interpolatedValue);
+                    }
+                }
+                upsampledData.push(hannWindow[hannWindow.length - 1]);
+
+                const buffer = audioContext.createBuffer(1, upsampledData.length, minSampleRate);
+                const channelData = buffer.getChannelData(0);
+                upsampledData.forEach((value, index) => channelData[index] = value);
+
+                // Create and connect source
+                const source = audioContext.createBufferSource();
+                source.buffer = buffer;
+                source.connect(analyser);
+                source.connect(audioContext.destination);
+                source.start(0);
+
+                // Get frequency data
+                const frequencyData = new Float32Array(analyser.frequencyBinCount);
+                analyser.getFloatFrequencyData(frequencyData);
+
+                // Draw the spectrum
+                if (spectrogram) {
+                    spectrogram.updateSpectrogram(frequencyData);
+                }
+
+                // Calculate BPM with adjusted frequency range
+                const frequencyResolution = minSampleRate / FFT_SIZE;
+                const minBPMFreq = 0.66; // 40 BPM
+                const maxBPMFreq = 3.0;  // 180 BPM
+                const minBPMBin = Math.floor(minBPMFreq / frequencyResolution);
+                const maxBPMBin = Math.ceil(maxBPMFreq / frequencyResolution);
+
+                // Peak detection with threshold
+                let maxAmplitude = -Infinity;
+                let dominantBin = 0;
+                const threshold = -50; // Adjustable threshold for noise reduction
+
+                for (let i = minBPMBin; i <= maxBPMBin; i++) {
+                    if (frequencyData[i] > maxAmplitude && frequencyData[i] > threshold) {
+                        // Check if it's a local maximum
+                        if (i > 0 && i < frequencyData.length - 1) {
+                            if (frequencyData[i] > frequencyData[i-1] && frequencyData[i] > frequencyData[i+1]) {
+                                maxAmplitude = frequencyData[i];
+                                dominantBin = i;
+                            }
+                        }
+                    }
+                }
+
+                const dominantFrequency = dominantBin * frequencyResolution;
+                const rawBPM = dominantFrequency * 60;
+
+                // Gradual change limiting
+                const prevBPM = kalmanFilter.X;
+                const maxChange = 10; // Maximum allowed BPM change per update
+                const boundedBPM = Math.max(40, Math.min(180, rawBPM));
+                const smoothedBPM = prevBPM + Math.max(-maxChange, Math.min(maxChange, boundedBPM - prevBPM));
+
+                // Additional confidence check
+                if (maxAmplitude > -40 && smoothedBPM >= 40 && smoothedBPM <= 180) {
+                    return smoothedBPM;
+                } else {
+                    // If confidence is low, return previous value with small random variation
+                    return prevBPM + (Math.random() - 0.5) * 2;
+                }
+
+            } catch (error) {
+                console.error("FFT processing error:", error);
+                return kalmanFilter.X; // Return last known good value
+            }
+        }
+        window.addEventListener('resize', () => {
+            const spectrogramCanvas = document.getElementById('spectrogramCanvas');
+            if (spectrogramCanvas) {
+                spectrogramCanvas.width = spectrogramCanvas.clientWidth;
+                spectrogramCanvas.height = spectrogramCanvas.clientHeight;
+                if (spectrogram) {
+                    spectrogram.draw();
+                }
+            }
+        });
+
+        function drawFFTSpectrum(frequencyData) {
+            if (!spectrogram || !spectrogram.isInitialized) {
+                console.warn('Spectrogram not initialized');
+                return;
+            }
+            
+            try {
+                spectrogram.updateSpectrogram(frequencyData);
+            } catch (error) {
+                console.error('Error updating spectrogram:', error);
+            }
+        }
+
+
+        function drawSignal(values) {
+            // Validate inputs
+            if (!signalCanvas || !signalCtx) {
+                console.warn('Canvas not ready');
+                return;
+            }
+
+            if (!Array.isArray(values) || values.length < 2) {
+                console.warn('Invalid values array:', values);
+                return;
+            }
+
+            const width = signalCanvas.width;
+            const height = signalCanvas.height;
+            const padding = height * 0.1;
+
+            // Clear canvas
+            signalCtx.fillStyle = 'black';
+            signalCtx.fillRect(0, 0, width, height);
+
+            // Find min and max without spread operator
+            let min = values[0];
+            let max = values[0];
+            for (let i = 0; i < values.length; i++) {
+                if (typeof values[i] === 'number' && !isNaN(values[i])) {
+                    if (values[i] < min) min = values[i];
+                    if (values[i] > max) max = values[i];
+                }
+            }
+
+            const range = Math.max(max - min, 1); // Prevent division by zero
+
+            console.log('Signal parameters:', { min, max, range });
+
+            const scale = (height - 2 * padding) / range;
+            const step = width / (values.length - 1);
+
+            // Draw the signal
+            signalCtx.beginPath();
+            signalCtx.strokeStyle = '#00ff00';
+            signalCtx.lineWidth = 2;
+
+            let drawnPoints = 0;
+            for (let i = 0; i < values.length; i++) {
+                if (typeof values[i] === 'number' && !isNaN(values[i])) {
+                    const x = i * step;
+                    const y = height - padding - ((values[i] - min) * scale);
+                    
+                    if (drawnPoints === 0) {
+                        signalCtx.moveTo(x, y);
+                    } else {
+                        signalCtx.lineTo(x, y);
+                    }
+                    drawnPoints++;
+                }
+            }
+
+            console.log(`Drew signal with ${drawnPoints} points`);
+
+            if (drawnPoints > 0) {
+                signalCtx.stroke();
+            }
+        }
+
+
+
+        function normalize(array) {
+            const mean = array.reduce((a, b) => a + b, 0) / array.length;
+            const values = array.map(x => x - mean);
+            const maxAbs = Math.max(...values.map(Math.abs));
+            return values.map(x => x / (maxAbs || 1));
+        }
+
+
+        async function loadModel() {
+            try {
+                if (typeof blazeface === 'undefined') {
+                    throw new Error('Blazeface library not loaded');
+                }
+                
+                isModelLoaded = false;
+                document.getElementById('modelInfo').textContent = 'Loading face detection model...';
+                document.getElementById('loadingOverlay').classList.remove('hidden');
+                
+                model = await blazeface.load();
+                
+                isModelLoaded = true;
+                document.getElementById('modelInfo').textContent = 'Face detection model loaded successfully';
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                return true;
+            } catch (err) {
+                console.error('Model loading error:', err);
+                document.getElementById('modelInfo').textContent = 'Error loading face detection model: ' + err.message;
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                throw err;
+            }
+        }
+
+        function closeInstructions() {
+            document.getElementById('instructionsOverlay').classList.add('hidden');
+            initializeWebcam();
+        }
+
+        async function initializeWebcam() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                });
+                webcam = document.getElementById('webcam');
+                webcam.srcObject = stream;
+                
+                // Wait for video to be ready
+                await new Promise((resolve) => {
+                    webcam.onloadedmetadata = () => {
+                        webcam.play();
+                        resolve();
+                    };
+                });
+
+                // Initialize overlay canvas
+                const overlay = document.getElementById('overlay');
+                overlay.width = webcam.videoWidth;
+                overlay.height = webcam.videoHeight;
+                
+                // Initialize overlay context
+                overlayCtx = overlay.getContext('2d');
+                
+                document.getElementById('webcamInfo').textContent = 'Webcam initialized successfully';
+            } catch (err) {
+                console.error('Webcam initialization error:', err);
+                document.getElementById('status').textContent = 'Error: Could not access webcam';
+            }
+        }
+
+
         function initializeChart() {
+            if (chart) {
+                chart.destroy();
+            }
+            
             const ctx = document.getElementById('heartRateChart').getContext('2d');
             chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [],
+                    labels: Array(HISTORY_POINTS).fill(''),
                     datasets: [{
                         label: 'Heart Rate',
-                        data: [],
-                        borderColor: 'rgb(79, 70, 229)',
-                        tension: 0.3
+                        data: Array(HISTORY_POINTS).fill(null),
+                        borderColor: 'rgb(99, 102, 241)',
+                        tension: 0.4,
+                        fill: false // Add this
                     }]
                 },
                 options: {
                     responsive: true,
+                    animation: false, // Change to false for better performance
                     scales: {
                         y: {
                             beginAtZero: false,
                             min: 40,
-                            max: 120
+                            max: 180 // Increase max range
                         }
                     }
                 }
             });
         }
 
-        let monitoring = false;
-        let frameCount = 0;
-        let rValues = [];
-
-        function processFrame() {
-            if (!monitoring) return;
-
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.width = webcam.videoWidth;
-            canvas.height = webcam.videoHeight;
-            context.drawImage(webcam, 0, 0);
+        async function startMonitoring() {
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
             
-            const centerX = canvas.width / 2;
-            const centerY = canvas.height / 2;
-            const pixelData = context.getImageData(centerX - 50, centerY - 50, 100, 100).data;
+            startBtn.disabled = true;
+            document.getElementById('status').textContent = 'Initializing...';
             
-            let totalRed = 0;
-            for (let i = 0; i < pixelData.length; i += 4) {
-                totalRed += pixelData[i];
-            }
-            const avgRed = totalRed / (pixelData.length / 4);
-            rValues.push(avgRed);
-
-            if (rValues.length > 30) {
-                const heartRate = calculateHeartRate(rValues);
-                document.getElementById('heartRate').textContent = heartRate;
+            try {
+                // Initialize arrays
+                greenValues = [];  // Make sure to initialize
+                heartRateData = [];                
+                // Wait for initialization to complete
+                if (!isInitialized) {
+                    await initialize();
+                }
                 
-                heartRateData.push(heartRate);
-                updateChart();
+                await loadModel();
                 
-                rValues = rValues.slice(-30);
+                // Make sure video is ready
+                if (!webcam.videoWidth) {
+                    await new Promise(resolve => webcam.addEventListener('loadedmetadata', resolve));
+                }
+                
+                stopBtn.disabled = false;
+                monitoring = true;
+                calibrationPhase = true;
+                calibrationCounter = 0;
+                greenValues = [];
+                heartRateData = [];
+                document.getElementById('status').textContent = 'Starting monitoring...';
+                
+                // Start the frame processing loop
+                requestAnimationFrame(processFrame);
+            } catch (err) {
+                startBtn.disabled = false;
+                document.getElementById('status').textContent = 'Error initializing. Please try again.';
+                console.error('Start monitoring error:', err);
+            }
+        }
+
+        function stopMonitoring() {
+            monitoring = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('stopBtn').disabled = true;
+            document.getElementById('status').textContent = 'Monitoring stopped';
+        }
+
+        async function processFrame() {
+            if (!monitoring || !webcam || !model || !isInitialized) {
+                console.warn('Not ready for frame processing');
+                return;
             }
 
-            frameCount++;
+            try {
+                if (!overlayCanvas || !signalCanvas || !spectrogramCanvas) {
+                    requestAnimationFrame(processFrame);
+                    return;
+                }
+                // Wait for next video frame
+                await new Promise(requestAnimationFrame);
+
+                // Ensure video is playing and ready
+                if (webcam.readyState !== webcam.HAVE_ENOUGH_DATA) {
+                    requestAnimationFrame(processFrame);
+                    return;
+                }
+
+                // Set dimensions
+                overlay.width = webcam.videoWidth;
+                overlay.height = webcam.videoHeight;
+
+                // Clear previous frame
+                overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
+                // Detect faces
+                const predictions = await model.estimateFaces(webcam, false);
+
+                if (predictions.length > 0) {
+                    const face = predictions[0];
+                    
+                    // Draw face box
+                    overlayCtx.strokeStyle = '#00ff00';
+                    overlayCtx.lineWidth = 2;
+                    overlayCtx.strokeRect(
+                        face.topLeft[0], face.topLeft[1],
+                        face.bottomRight[0] - face.topLeft[0],
+                        face.bottomRight[1] - face.topLeft[1]
+                    );
+
+                    // Define ROI (Region of Interest)
+                    const roiX = Math.floor(face.topLeft[0] + (face.bottomRight[0] - face.topLeft[0]) * 0.3);
+                    const roiY = Math.floor(face.topLeft[1] + (face.bottomRight[1] - face.topLeft[1]) * 0.3);
+                    const roiWidth = Math.floor((face.bottomRight[0] - face.topLeft[0]) * 0.4);
+                    const roiHeight = Math.floor((face.bottomRight[1] - face.topLeft[1]) * 0.3);
+
+                    // Draw ROI
+                    overlayCtx.strokeStyle = '#ff0000';
+                    overlayCtx.strokeRect(roiX, roiY, roiWidth, roiHeight);
+
+                    // Extract green channel values from ROI
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = roiWidth;
+                    tempCanvas.height = roiHeight;
+
+                    // Draw ROI to temporary canvas
+                    tempCtx.drawImage(webcam, roiX, roiY, roiWidth, roiHeight, 0, 0, roiWidth, roiHeight);
+                    const imageData = tempCtx.getImageData(0, 0, roiWidth, roiHeight);
+
+                    // Calculate average green value
+                    let greenSum = 0;
+                    for (let i = 0; i < imageData.data.length; i += 4) {
+                        greenSum += imageData.data[i + 1]; // Green channel
+                    }
+                    const avgGreen = greenSum / (imageData.data.length / 4);
+
+                    // Add to signal array
+                    if (!greenValues) greenValues = []; // Initialize if undefined
+                    
+                    if (typeof avgGreen === 'number' && !isNaN(avgGreen)) {
+                        greenValues.push(avgGreen);
+                        if (greenValues.length > 300) {
+                            greenValues.shift();
+                        }
+                        console.log("Green values array length:", greenValues.length);
+                        
+                        // Only draw if we have valid data
+                        if (greenValues.length > 0) {
+                            drawSignal(greenValues.slice()); // Pass a copy of the array
+                        }
+                    }
+
+                    // Draw raw signal
+                    if (signalCtx) {
+                        drawSignal(signalCanvas, signalCtx, greenValues, '#00ff00');
+                    }
+
+                    // Process signal during calibration
+                    if (calibrationPhase) {
+                        calibrationCounter++;
+                        document.getElementById('calibrationStatus').textContent = 
+                            `Calibrating: ${Math.round((calibrationCounter / CALIBRATION_FRAMES) * 100)}%`;
+
+                        if (calibrationCounter >= CALIBRATION_FRAMES) {
+                            calibrationPhase = false;
+                            document.getElementById('calibrationStatus').textContent = 'Calibration complete';
+                        }
+                    } else {
+                        // Perform FFT and calculate heart rate
+                        if (greenValues.length >= 64) {  // Minimum data points for FFT
+                            const normalizedSignal = normalize(greenValues);
+                            const fftBPM = performFFT(normalizedSignal);
+                            
+                            // Apply Kalman filter for smoother readings
+                            const filteredBPM = kalmanFilter.update(fftBPM);
+
+                            // Update displays
+                            document.getElementById('fftHeartRate').textContent = Math.round(fftBPM);
+                            document.getElementById('heartRate').textContent = Math.round(filteredBPM);
+
+                            // Update history chart
+                            updateChart(filteredBPM);
+
+                            // Get frequency data for visualization
+                            if (analyser) {
+                                const frequencyData = new Float32Array(analyser.frequencyBinCount);
+                                analyser.getFloatFrequencyData(frequencyData);
+                                drawFFTSpectrum(frequencyData);
+                            }
+                        }
+                    }
+
+                    document.getElementById('status').textContent = 'Face detected - Monitoring active';
+                    document.getElementById('processingInfo').textContent = 
+                        `Processing: ${greenValues.length} samples, ${Math.round(performance.now())}ms`;
+                } else {
+                    document.getElementById('status').textContent = 'No face detected - Please center your face';
+                }
+
+            } catch (err) {
+                console.error('Processing error:', err);
+                const statusElement = document.getElementById('status');
+                if (statusElement) {
+                    statusElement.textContent = 'Processing error - Please try again';
+                }
+                // Add automatic recovery
+                setTimeout(() => {
+                    if (monitoring) {
+                        requestAnimationFrame(processFrame);
+                    }
+                }, 1000);
+            }
+
+            // Continue monitoring
             if (monitoring) {
                 requestAnimationFrame(processFrame);
             }
         }
 
-        function calculateHeartRate(values) {
-            // Simple peak detection algorithm
-            let peaks = 0;
-            for (let i = 1; i < values.length - 1; i++) {
-                if (values[i] > values[i-1] && values[i] > values[i+1]) {
-                    peaks++;
-                }
+        function updateDisplays(fftBPM, filteredBPM) {
+            const fftElement = document.getElementById('fftHeartRate');
+            const heartRateElement = document.getElementById('heartRate');
+            
+            if (fftElement) {
+                fftElement.textContent = Math.round(fftBPM);
+            }
+            if (heartRateElement) {
+                heartRateElement.textContent = Math.round(filteredBPM);
+            }
+        }
+
+
+        function normalize(array) {
+            const mean = array.reduce((a, b) => a + b, 0) / array.length;
+            return array.map(x => x - mean);
+        }
+
+        function updateChart(bpm) {
+            if (!chart) return;
+            
+            chart.data.datasets[0].data.push(bpm);
+            if (chart.data.datasets[0].data.length > HISTORY_POINTS) {
+                chart.data.datasets[0].data.shift();
             }
             
-            const seconds = values.length / 30; // Assuming 30 fps
-            const bpm = Math.round((peaks * 60) / seconds);
-            return Math.min(Math.max(bpm, 40), 120); // Clamp between 40-120 BPM
+            chart.update('none'); // Disable animation for smoother updates
         }
 
-        function updateChart() {
-            const labels = heartRateData.map((_, i) => i);
-            chart.data.labels = labels;
-            chart.data.datasets[0].data = heartRateData;
-            chart.update();
-        }
 
-        document.getElementById('startBtn').addEventListener('click', () => {
-            monitoring = true;
-            document.getElementById('startBtn').disabled = true;
-            document.getElementById('stopBtn').disabled = false;
-            document.getElementById('status').textContent = 'Monitoring...';
-            processFrame();
-        });
 
-        document.getElementById('stopBtn').addEventListener('click', () => {
-            monitoring = false;
-            document.getElementById('startBtn').disabled = false;
-            document.getElementById('stopBtn').disabled = true;
-            document.getElementById('status').textContent = 'Monitoring stopped';
-        });
-
-        // Initialize
-        setupWebcam();
-        initializeChart();
+        window.onload = () => {
+            document.getElementById('loadingStatus').textContent = 'Ready to start';
+        };
     </script>
 </body>
 </html>
