@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSBeautifier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_tti.js"></script>
+    <!-- Include all required js-beautify modules -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-html.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-beautify/1.14.7/beautify-css.min.js"></script>
+    <!-- Use more reliable monaco-editor source -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs/loader.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 text-center mb-8">Code Beautifier</h1>
+        <div class="mb-4 flex justify-center">
+            <select id="languageSelect" class="bg-white border border-indigo-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <option value="javascript">JavaScript</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+            </select>
+        </div>
+        <div class="flex flex-col lg:flex-row gap-4">
+            <div class="flex-1">
+                <div class="bg-white rounded-lg shadow-lg p-4">
+                    <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Input Code</h2>
+                    <div id="inputEditor" class="h-[500px] border border-gray-300 rounded"></div>
+                </div>
+            </div>
+            <div class="flex flex-col justify-center gap-4">
+                <button id="beautifyBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 transform hover:scale-105">
+                    Beautify &rarr;
+                </button>
+            </div>
+            <div class="flex-1">
+                <div class="bg-white rounded-lg shadow-lg p-4">
+                    <h2 class="text-2xl font-semibold text-indigo-600 mb-4">Formatted Code</h2>
+                    <div id="outputEditor" class="h-[500px] border border-gray-300 rounded"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configure Monaco loader with fallback
+        require.config({ 
+            paths: { 
+                'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.41.0/min/vs',
+                'vs-fallback': 'https://unpkg.com/monaco-editor@0.41.0/min/vs'
+            }
+        });
+
+        require(['vs/editor/editor.main'], function() {
+            // Initialize editors with error handling
+            let inputEditor, outputEditor;
+            
+            try {
+                inputEditor = monaco.editor.create(document.getElementById('inputEditor'), {
+                    value: '// Paste your code here',
+                    language: 'javascript',
+                    theme: 'vs-dark',
+                    minimap: { enabled: false },
+                    automaticLayout: true  // Added for better resize handling
+                });
+
+                outputEditor = monaco.editor.create(document.getElementById('outputEditor'), {
+                    value: '// Beautified code will appear here',
+                    language: 'javascript',
+                    theme: 'vs-dark',
+                    minimap: { enabled: false },
+                    readOnly: true,
+                    automaticLayout: true  // Added for better resize handling
+                });
+            } catch (error) {
+                console.error('Error initializing editors:', error);
+                document.body.innerHTML = 'Error initializing code editors. Please refresh the page.';
+                return;
+            }
+
+            const languageSelect = document.getElementById('languageSelect');
+            languageSelect.addEventListener('change', function() {
+                const newLanguage = this.value;
+                try {
+                    inputEditor.updateOptions({ language: newLanguage });
+                    outputEditor.updateOptions({ language: newLanguage });
+                } catch (error) {
+                    console.error('Error changing language:', error);
+                }
+            });
+
+            document.getElementById('beautifyBtn').addEventListener('click', function() {
+                const input = inputEditor.getValue().trim();
+                const language = languageSelect.value;
+                
+                if (!input || input === '// Paste your code here') {
+                    outputEditor.setValue('Please enter some code first.');
+                    return;
+                }
+
+                try {
+                    let beautified;
+                    const options = {
+                        indent_size: 2,
+                        space_in_empty_paren: true,
+                        preserve_newlines: true,
+                        max_preserve_newlines: 2,
+                        wrap_line_length: 80,
+                        end_with_newline: true,  // Added for consistent ending
+                        indent_inner_html: true,  // Added for better HTML formatting
+                        extra_liners: ['head', 'body', '/html']  // Added for better HTML structure
+                    };
+
+                    switch(language) {
+                        case 'javascript':
+                            beautified = js_beautify(input, options);
+                            break;
+                        case 'html':
+                            beautified = html_beautify(input, options);
+                            break;
+                        case 'css':
+                            beautified = css_beautify(input, options);
+                            break;
+                        default:
+                            throw new Error('Unsupported language');
+                    }
+                    
+                    outputEditor.setValue(beautified);
+                } catch (error) {
+                    console.error('Beautification error:', error);
+                    outputEditor.setValue(`Error: Could not format the code. Please make sure it's valid ${language.toUpperCase()}.\n\nDetails: ${error.message}`);
+                }
+            });
+        }, function(error) {
+            console.error('Failed to load Monaco Editor:', error);
+            document.body.innerHTML = 'Failed to load code editor. Please check your internet connection and refresh the page.';
+        });
+    </script>
+</body>
+</html>
