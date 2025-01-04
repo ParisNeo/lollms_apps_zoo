@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Space Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        .stars {
+            position: fixed;
+            width: 2px;
+            height: 2px;
+            background: white;
+            animation: starfall linear infinite;
+        }
+        @keyframes starfall {
+            0% { transform: translateY(-100vh); }
+            100% { transform: translateY(100vh); }
+        }
+    </style>
+</head>
+<body class="bg-black min-h-screen text-white overflow-x-hidden">
+    <div id="starsContainer"></div>
+
+    <div id="loadingOverlay" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 flex justify-center items-center z-50" style="display: none;">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🌟</div>
+            <div class="mt-4">Exploring Space...</div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">Space Explorer Hub</h1>
+            <p class="text-lg text-gray-300">Your Gateway to the Cosmos</p>
+        </header>
+
+        <!-- NASA APOD Section -->
+        <div class="mb-12 bg-gray-900 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4">Astronomy Picture of the Day</h2>
+            <div id="apod-content" class="flex flex-col md:flex-row gap-6">
+                <div class="md:w-1/2">
+                    <img id="apod-image" class="w-full rounded-lg" src="" alt="APOD">
+                </div>
+                <div class="md:w-1/2">
+                    <h3 id="apod-title" class="text-xl font-bold mb-2"></h3>
+                    <p id="apod-explanation" class="text-gray-300"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Space News Section -->
+        <div class="mb-12 bg-gray-900 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4">Latest Space News</h2>
+            <div id="space-news" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Solar System Viewer -->
+        <div class="mb-12">
+            <div class="relative">
+                <div id="space-viewer" class="w-full h-[80vh] rounded-xl overflow-hidden shadow-2xl"></div>
+                <div class="absolute bottom-4 right-4 flex flex-wrap gap-2">
+                    <button onclick="focusOnPlanet('sun')" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Sun</button>
+                    <button onclick="focusOnPlanet('mercury')" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded">Mercury</button>
+                    <button onclick="focusOnPlanet('venus')" class="bg-yellow-800 hover:bg-yellow-900 px-4 py-2 rounded">Venus</button>
+                    <button onclick="focusOnPlanet('earth')" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Earth</button>
+                    <button onclick="focusOnPlanet('mars')" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Mars</button>
+                    <button onclick="focusOnPlanet('jupiter')" class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded">Jupiter</button>
+                    <button onclick="focusOnPlanet('saturn')" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded">Saturn</button>
+                    <button onclick="focusOnPlanet('uranus')" class="bg-teal-600 hover:bg-teal-700 px-4 py-2 rounded">Uranus</button>
+                    <button onclick="focusOnPlanet('neptune')" class="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded">Neptune</button>
+                </div>
+            </div>
+            <div class="mt-8">
+                <div id="planet-info" class="bg-gray-900 p-6 rounded-xl">
+                    <h2 class="text-2xl font-bold mb-4">Planet Information</h2>
+                    <div id="info-content" class="prose prose-invert"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Satellite Tracker -->
+        <div class="mb-12 bg-gray-900 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4">Satellite Tracker</h2>
+            <div id="satellite-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <!-- Stars Information -->
+        <div class="mb-12 bg-gray-900 rounded-xl p-6">
+            <h2 class="text-2xl font-bold mb-4">Stellar Database</h2>
+            <input type="text" id="star-search" placeholder="Search for a star..." 
+                   class="w-full p-2 mb-4 bg-gray-800 rounded border border-gray-700 focus:border-blue-500">
+                   <button onclick="searchstar()" class="bg-blue-800 hover:bg-blue-900 px-4 py-2 rounded">Search</button>
+            <div id="star-info" class="prose prose-invert"></div>
+        </div>
+    </div>
+
+    <script>
+        const lc = new LollmsClient(null, null, 4096, -1, 4096, 0.7);
+        let scene, camera, renderer, controls;
+        let planets = {};
+        let sun;
+        let currentFocusTarget = null;  // Add this line with other global variables
+
+        // Planet data remains the same as before
+        const PLANET_DATA = {
+            sun: { size: 50, distance: 0, textureUrl: '/apps/SpaceXplorer/textures/sun.jpg', color: 0xffff00 },
+            mercury: { size: 0.383, distance: 80, textureUrl: '/apps/SpaceXplorer/textures/mercury.jpg', orbitSpeed: 0.02 },
+            venus: { size: 0.949, distance: 110, textureUrl: '/apps/SpaceXplorer/textures/venus.jpg', orbitSpeed: 0.015 },
+            earth: { size: 1, distance: 150, textureUrl: '/apps/SpaceXplorer/textures/earth.jpg', orbitSpeed: 0.01 },
+            mars: { size: 0.532, distance: 200, textureUrl: '/apps/SpaceXplorer/textures/mars.jpg', orbitSpeed: 0.008 },
+            jupiter: { size: 11.21, distance: 300, textureUrl: '/apps/SpaceXplorer/textures/jupiter.jpg', orbitSpeed: 0.004 },
+            saturn: { size: 9.45, distance: 400, textureUrl: '/apps/SpaceXplorer/textures/saturn.jpg', orbitSpeed: 0.003 },
+            uranus: { size: 4, distance: 500, textureUrl: '/apps/SpaceXplorer/textures/uranus.jpg', orbitSpeed: 0.002 },
+            neptune: { size: 3.88, distance: 600, textureUrl: '/apps/SpaceXplorer/textures/neptune.jpg', orbitSpeed: 0.001 }
+        };
+
+        // Fetch NASA APOD
+        async function fetchAPOD() {
+            try {
+                const response = await fetch('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY');
+                const data = await response.json();
+                document.getElementById('apod-image').src = data.url;
+                document.getElementById('apod-title').textContent = data.title;
+                document.getElementById('apod-explanation').textContent = data.explanation;
+            } catch (error) {
+                console.error('Error fetching APOD:', error);
+            }
+        }
+
+        // Fetch Space News
+        async function fetchSpaceNews() {
+            try {
+                const response = await fetch('https://api.spaceflightnewsapi.net/v3/articles?_limit=6');
+                const data = await response.json();
+                const newsContainer = document.getElementById('space-news');
+                newsContainer.innerHTML = '';
+                
+                data.forEach(article => {
+                    const articleElement = document.createElement('div');
+                    articleElement.className = 'bg-gray-800 rounded-lg overflow-hidden';
+                    articleElement.innerHTML = `
+                        <img src="${article.imageUrl}" alt="${article.title}" class="w-full h-48 object-cover">
+                        <div class="p-4">
+                            <h3 class="font-bold mb-2">${article.title}</h3>
+                            <p class="text-gray-300 text-sm">${article.summary.substring(0, 100)}...</p>
+                            <a href="${article.url}" target="_blank" class="text-blue-400 hover:text-blue-300 mt-2 inline-block">Read more</a>
+                        </div>
+                    `;
+                    newsContainer.appendChild(articleElement);
+                });
+            } catch (error) {
+                console.error('Error fetching space news:', error);
+            }
+        }
+
+        // Fetch Satellite Data
+        async function fetchSatellites() {
+            try {
+                const response = await fetch('https://celestrak.org/NORAD/elements/gp.php?GROUP=active&FORMAT=json');
+                const data = await response.json();
+                const satelliteList = document.getElementById('satellite-list');
+                satelliteList.innerHTML = '';
+
+                data.slice(0, 6).forEach(sat => {
+                    const satElement = document.createElement('div');
+                    satElement.className = 'bg-gray-800 p-4 rounded-lg';
+                    satElement.innerHTML = `
+                        <h3 class="font-bold mb-2">${sat.OBJECT_NAME}</h3>
+                        <p class="text-sm text-gray-300">Catalog Number: ${sat.NORAD_CAT_ID}</p>
+                        <p class="text-sm text-gray-300">Epoch: ${sat.EPOCH}</p>
+                    `;
+                    satelliteList.appendChild(satElement);
+                });
+            } catch (error) {
+                console.error('Error fetching satellites:', error);
+            }
+        }
+        // Star search functionality
+        async function searchstar(e){
+
+            const searchTerm = document.getElementById('star-search').value;
+            if (searchTerm.length > 2) {
+                const starInfo = await getStarInfo(searchTerm);
+                document.getElementById('star-info').innerHTML = starInfo;
+            }
+        };
+
+        // The rest of your existing functions (init3DViewer, createSolarSystem, animate, focusOnPlanet, etc.)
+        // remain the same as in your original code
+
+        async function getStarInfo(starName) {
+            showLoader();
+            const prompt = `Give me scientific information about the star ${starName} including its type, distance from Earth, and notable characteristics in 3-4 sentences.`;
+            const response = await lc.generate(prompt);
+            hideLoader();
+            return response;
+        }
+
+        // Your existing 3D viewer functions remain the same
+        function init3DViewer() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
+            currentFocusTarget = null; // Reset focus target on initialization
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(document.getElementById('space-viewer').clientWidth, document.getElementById('space-viewer').clientHeight);
+            renderer.shadowMap.enabled = true;
+            document.getElementById('space-viewer').appendChild(renderer.domElement);
+
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxDistance = 1000;
+
+            const ambientLight = new THREE.AmbientLight(0x333333);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.PointLight(0xffffff, 2, 1000);
+            scene.add(sunLight);
+
+            createSolarSystem();
+            camera.position.set(200, 200, 200);
+            
+            animate();
+        }
+
+        // The rest of your existing functions remain unchanged
+        function createSolarSystem() {
+            // Create sun
+            const sunGeometry = new THREE.SphereGeometry(PLANET_DATA.sun.size, 32, 32);
+            const sunMaterial = new THREE.MeshBasicMaterial({
+                color: PLANET_DATA.sun.color,
+                emissive: 0xffff00
+            });
+            sun = new THREE.Mesh(sunGeometry, sunMaterial);
+            scene.add(sun);
+
+            Object.entries(PLANET_DATA).forEach(([planetName, data]) => {
+                if (planetName === 'sun') return;
+
+                const planetGeometry = new THREE.SphereGeometry(data.size, 32, 32);
+                const texture = new THREE.TextureLoader().load(data.textureUrl);
+                const planetMaterial = new THREE.MeshPhongMaterial({ map: texture });
+                const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+
+                const orbitGeometry = new THREE.BufferGeometry();
+                const orbitPoints = [];
+                const segments = 128;
+                for (let i = 0; i <= segments; i++) {
+                    const theta = (i / segments) * Math.PI * 2;
+                    orbitPoints.push(
+                        data.distance * Math.cos(theta),
+                        0,
+                        data.distance * Math.sin(theta)
+                    );
+                }
+                orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
+                const orbitMaterial = new THREE.LineBasicMaterial({ color: 0x444444 });
+                const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
+                scene.add(orbit);
+
+                planet.position.x = data.distance;
+                planets[planetName] = {
+                    mesh: planet,
+                    orbit: orbit,
+                    angle: 0,
+                    data: data
+                };
+                scene.add(planet);
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update planet positions
+            Object.entries(planets).forEach(([planetName, planetObj]) => {
+                planetObj.angle += planetObj.data.orbitSpeed;
+                planetObj.mesh.position.x = Math.cos(planetObj.angle) * planetObj.data.distance;
+                planetObj.mesh.position.z = Math.sin(planetObj.angle) * planetObj.data.distance;
+                planetObj.mesh.rotation.y += 0.01;
+                
+                // Update camera position if following this planet
+                if (currentFocusTarget === planetName) {
+                    const distance = PLANET_DATA[planetName].size * 10;
+                    camera.position.x = planetObj.mesh.position.x + distance;
+                    camera.position.z = planetObj.mesh.position.z + distance;
+                    controls.target.copy(planetObj.mesh.position);
+                }
+            });
+            
+            sun.rotation.y += 0.001;
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        function resetView() {
+            currentFocusTarget = null;
+            camera.position.set(200, 200, 200);
+            controls.target.set(0, 0, 0);
+            updatePlanetInfo('sun');
+        }
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(document.getElementById('space-viewer').clientWidth, document.getElementById('space-viewer').clientHeight);
+        });
+
+        // Focus camera on selected planet
+        function focusOnPlanet(planetName) {
+            showLoader();
+            
+            if (planetName === 'sun') {
+                currentFocusTarget = 'sun';
+                camera.position.set(100, 100, 100);
+                controls.target.set(0, 0, 0);
+                updatePlanetInfo('sun');
+            } else if (planets[planetName]) {
+                currentFocusTarget = planetName;
+                const planet = planets[planetName].mesh;
+                const distance = PLANET_DATA[planetName].size * 10;
+                camera.position.set(
+                    planet.position.x + distance,
+                    distance,
+                    planet.position.z + distance
+                );
+                controls.target.copy(planet.position);
+                updatePlanetInfo(planetName);
+            }
+            
+            hideLoader();
+        }
+
+        // Update planet information display
+        function updatePlanetInfo(planetName) {
+            const planetInfo = {
+                sun: {
+                    title: "The Sun",
+                    description: "The Sun is the star at the center of our Solar System. It is a nearly perfect sphere of hot plasma, heated to incandescence by nuclear fusion reactions in its core. The Sun radiates energy mainly as light and heat.",
+                    stats: "Diameter: 1.39 million km | Surface Temperature: 5,500°C | Age: 4.6 billion years"
+                },
+                mercury: {
+                    title: "Mercury",
+                    description: "Mercury is the smallest and innermost planet in the Solar System. Its orbit around the Sun takes 87.97 Earth days, the shortest of all the Sun's planets.",
+                    stats: "Diameter: 4,879 km | Day length: 176 Earth days | Distance from Sun: 57.9 million km"
+                },
+                venus: {
+                    title: "Venus",
+                    description: "Venus is the second planet from the Sun and is Earth's closest planetary neighbor. It's one of the four inner, terrestrial planets, and is often called Earth's sister planet.",
+                    stats: "Diameter: 12,104 km | Day length: 243 Earth days | Distance from Sun: 108.2 million km"
+                },
+                earth: {
+                    title: "Earth",
+                    description: "Earth is the third planet from the Sun and the only astronomical object known to harbor life. About 29.2% of Earth's surface is land consisting of continents and islands.",
+                    stats: "Diameter: 12,742 km | Day length: 24 hours | Distance from Sun: 149.6 million km"
+                },
+                mars: {
+                    title: "Mars",
+                    description: "Mars is the fourth planet from the Sun and the second-smallest planet in the Solar System. It is often called the 'Red Planet' due to its reddish appearance.",
+                    stats: "Diameter: 6,779 km | Day length: 24 hours 37 minutes | Distance from Sun: 227.9 million km"
+                },
+                jupiter: {
+                    title: "Jupiter",
+                    description: "Jupiter is the fifth planet from the Sun and the largest in the Solar System. It is a gas giant with a mass more than two and a half times that of all the other planets combined.",
+                    stats: "Diameter: 139,820 km | Day length: 10 hours | Distance from Sun: 778.5 million km"
+                },
+                saturn: {
+                    title: "Saturn",
+                    description: "Saturn is the sixth planet from the Sun and the second-largest in the Solar System, after Jupiter. It is a gas giant with an average radius about nine and a half times that of Earth.",
+                    stats: "Diameter: 116,460 km | Day length: 10.7 hours | Distance from Sun: 1.4 billion km"
+                },
+                uranus: {
+                    title: "Uranus",
+                    description: "Uranus is the seventh planet from the Sun. It has the third-largest planetary radius and fourth-largest planetary mass in the Solar System.",
+                    stats: "Diameter: 50,724 km | Day length: 17 hours | Distance from Sun: 2.9 billion km"
+                },
+                neptune: {
+                    title: "Neptune",
+                    description: "Neptune is the eighth and farthest-known Solar planet from the Sun. It is the fourth-largest planet by diameter and the third-most-massive planet.",
+                    stats: "Diameter: 49,244 km | Day length: 16 hours | Distance from Sun: 4.5 billion km"
+                }
+            };
+
+            const info = planetInfo[planetName];
+            document.getElementById('info-content').innerHTML = `
+                <h3 class="text-xl font-bold mb-2">${info.title}</h3>
+                <p class="mb-4">${info.description}</p>
+                <div class="text-sm text-gray-300">${info.stats}</div>
+            `;
+        }
+
+        // Create star background animation
+        function createStarBackground() {
+            const starsContainer = document.getElementById('starsContainer');
+            const numberOfStars = 200;
+
+            for (let i = 0; i < numberOfStars; i++) {
+                const star = document.createElement('div');
+                star.className = 'stars';
+                
+                // Random position
+                star.style.left = `${Math.random() * 100}%`;
+                
+                // Random size
+                const size = Math.random() * 3;
+                star.style.width = `${size}px`;
+                star.style.height = `${size}px`;
+                
+                // Random animation duration
+                star.style.animationDuration = `${Math.random() * 3 + 2}s`;
+                
+                // Random delay
+                star.style.animationDelay = `${Math.random() * 3}s`;
+                
+                starsContainer.appendChild(star);
+            }
+        }
+
+        // Add this to window.onload
+        window.onload = () => {
+            init3DViewer();
+            fetchAPOD();
+            fetchSpaceNews();
+            fetchSatellites();
+            createStarBackground();
+            
+            // Initial planet info
+            updatePlanetInfo('earth');
+            
+            // Add window resize handler
+            window.addEventListener('resize', () => {
+                renderer.setSize(document.getElementById('space-viewer').clientWidth, document.getElementById('space-viewer').clientHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+            });
+        };
+
+
+    </script>
+</body>
+</html>
