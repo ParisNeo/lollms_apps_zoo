@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImageSlim - Image Compression Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 text-center mb-8">ImageSlim</h1>
+        
+        <div class="max-w-2xl mx-auto bg-white rounded-lg shadow-lg p-6">
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="imageInput">
+                    Select Image
+                </label>
+                <input type="file" 
+                       id="imageInput" 
+                       accept="image/*"
+                       class="w-full p-2 border border-gray-300 rounded-lg">
+            </div>
+
+            <div class="mb-6">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="qualitySlider">
+                    Compression Quality: <span id="qualityValue">80%</span>
+                </label>
+                <input type="range" 
+                       id="qualitySlider" 
+                       min="1" 
+                       max="100" 
+                       value="80"
+                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+            </div>
+
+            <div class="flex flex-wrap gap-4 mb-6">
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold mb-2">Original</h3>
+                    <div id="originalContainer" class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p class="text-gray-500">No image selected</p>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600">Size: <span id="originalSize">-</span></p>
+                </div>
+                
+                <div class="flex-1">
+                    <h3 class="text-lg font-semibold mb-2">Compressed</h3>
+                    <div id="compressedContainer" class="aspect-video bg-gray-100 rounded-lg flex items-center justify-center">
+                        <p class="text-gray-500">Compressed image will appear here</p>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-600">Size: <span id="compressedSize">-</span></p>
+                </div>
+            </div>
+
+            <div class="flex justify-center gap-4">
+                <button onclick="compressImage()" 
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                    Compress
+                </button>
+                <button id="downloadBtn" 
+                        onclick="downloadImage()" 
+                        disabled
+                        class="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Download
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 flex justify-center items-center hidden">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🌟</div>
+            <div class="mt-4 text-indigo-600">Processing...</div>
+        </div>
+    </div>
+
+    <script>
+        let compressedImageBlob = null;
+        const qualitySlider = document.getElementById('qualitySlider');
+        const qualityValue = document.getElementById('qualityValue');
+        const downloadBtn = document.getElementById('downloadBtn');
+
+        qualitySlider.addEventListener('input', function() {
+            qualityValue.textContent = this.value + '%';
+        });
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        async function compressImage() {
+            const input = document.getElementById('imageInput');
+            if (!input.files || !input.files[0]) {
+                alert('Please select an image first');
+                return;
+            }
+
+            const file = input.files[0];
+            const reader = new FileReader();
+
+            reader.onload = function(e) {
+                showLoader();
+                const img = new Image();
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    canvas.toBlob(
+                        function(blob) {
+                            compressedImageBlob = blob;
+                            const compressedUrl = URL.createObjectURL(blob);
+                            document.getElementById('compressedContainer').innerHTML = `
+                                <img src="${compressedUrl}" class="max-w-full max-h-full object-contain">
+                            `;
+                            document.getElementById('compressedSize').textContent = formatSize(blob.size);
+                            downloadBtn.disabled = false;
+                            hideLoader();
+                        },
+                        'image/jpeg',
+                        qualitySlider.value / 100
+                    );
+                };
+                img.src = e.target.result;
+                document.getElementById('originalContainer').innerHTML = `
+                    <img src="${e.target.result}" class="max-w-full max-h-full object-contain">
+                `;
+                document.getElementById('originalSize').textContent = formatSize(file.size);
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function downloadImage() {
+            if (!compressedImageBlob) return;
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(compressedImageBlob);
+            link.download = 'compressed_image.jpg';
+            link.click();
+        }
+    </script>
+</body>
+</html>
