@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Analysis Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.9.359/pdf.worker.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pptx2json@0.0.10/index.test.min.js"></script>
+    <script src="/lollms_assets/js/lollms_anything_to_markdown"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen">
+    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 flex justify-center items-center z-50 hidden">
+        <div class="text-center">
+            <div class="text-6xl animate-spin">🌟</div>
+            <div class="mt-4 text-gray-800" data-translate="processing">Processing...</div>
+        </div>
+    </div>
+
+    <nav class="bg-white shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-indigo-600" data-translate="appTitle">CV Analysis Pro</h1>
+            <div class="flex items-center space-x-4">
+                <select id="languageSelector" class="border rounded-md px-3 py-1">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="es">Español</option>
+                    <option value="de">Deutsch</option>
+                    <option value="it">Italiano</option>
+                    <option value="zh">中文</option>
+                    <option value="ja">日本語</option>
+                </select>
+                <button id="settingsBtn" class="p-2 rounded-full hover:bg-gray-100 transition duration-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="positionType">Position Type</label>
+                    <select id="positionType" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                        <option value="internship" data-translate="internship">Internship</option>
+                        <option value="phd" data-translate="phd">PhD Position</option>
+                        <option value="junior" data-translate="junior">Junior Position</option>
+                        <option value="senior" data-translate="senior">Senior Position</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="severity">Severity (0-10)</label>
+                    <input type="range" id="severity" min="0" max="10" class="w-full accent-indigo-600" value="5">
+                    <div class="text-center" id="severityValue">5</div>
+                </div>
+            </div>
+            <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="positionDetails">Position Details</label>
+                <textarea id="positionDetails" rows="4" class="w-full border border-gray-300 rounded-md px-3 py-2" data-translate="positionDetailsPlaceholder" placeholder="Enter position details and requirements..."></textarea>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-gray-800" data-translate="cvUploadTitle">CV Upload</h2>
+                <div class="flex space-x-2">
+                    <label class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md cursor-pointer transition">
+                        <input type="file" id="cvUpload" class="hidden" multiple accept=".pdf,.docx">
+                        <span data-translate="uploadCVs">Upload CVs</span>
+                    </label>
+                </div>
+            </div>
+            <div id="cvList" class="space-y-4"></div>
+        </div>
+
+        <button id="analyzeBtn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg mb-8 transition">
+            <span data-translate="analyzeCVs">Analyze CVs</span>
+        </button>
+
+        <div id="analysisResults" class="space-y-8"></div>
+    </div>
+
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg p-6 w-96">
+            <h2 class="text-xl font-bold mb-4" data-translate="settings">Settings</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-translate="hostAddress">Host Address</label>
+                    <input type="text" id="hostAddress" class="w-full border rounded-md px-3 py-2" placeholder="http://localhost:9600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1" data-translate="generationFormat">Generation Format</label>
+                    <select id="generationFormat" class="w-full border rounded-md px-3 py-2">
+                        <option value="LOLLMS">LOLLMS</option>
+                        <option value="OPENAI">OpenAI</option>
+                        <option value="OLLAMA">Ollama</option>
+                        <option value="VLLM">VLLM</option>
+                    </select>
+                </div>
+                <button id="saveSettings" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition">
+                    <span data-translate="saveSettings">Save Settings</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Skills template structure
+        const skillsTemplate = [
+            '{',
+            '    "skills": [',
+            '        {',
+            '            "name": "string: skill name",',
+            '            "description": "string: skill description",',
+            '            "importance": "0-10"',
+            '        }',
+            '    ]',
+            '}'
+        ].join('\n');
+
+        // Analysis template structure
+        const analysisTemplate = [
+            '{',
+            '    "candidateName": "string: the candidate name",',
+            '    "candidateEmail": "string: the candidate email (if present in the CV)",',
+            '    "candidatePhoneNumber": "string: the candidate email (if present in the CV)",',
+            '    "matchingSkills": [',
+            '        {',
+            '            "name": "string: skill name",',
+            '            "proficiency": "0-10"',
+            '        }',
+            '    ],',
+            '    "missingSkills": [',
+            '        {',
+            '            "name": "string: skill name",',
+            '            "importance": "0-10"',
+            '        }',
+            '    ],',
+            '    "fitnessAnalysis": "string: detailed analysis",',
+            '    "grade": "0-100"',
+            '}'
+        ].join('\n');
+
+        // Ranking template structure
+        const rankingTemplate = [
+            '{',
+            '    "ranked_candidates": [',
+            '        {',
+            '            "name": "string: candidate name",',
+            '            "grade": "0-100",',
+            '            "explanation": "string: ranking explanation"',
+            '        }',
+            '    ]',
+            '}'
+        ].join('\n');
+
+        const interviewTemplate = [
+            // HTML Header
+            '<!DOCTYPE html>',
+            '<html>',
+            '<head>',
+            '    <title>Interview Plan</title>',
+            '</head>',
+            
+            // Body Start
+            '<body class="p-8 bg-gradient-to-r from-blue-100 to-purple-100">',
+            '    <div class="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">',
+            
+            // Main Title
+            '        <h1 class="text-3xl font-bold text-indigo-800 mb-6">Interview Plan for {candidate_name}</h1>',
+            
+            // Candidate Overview Section
+            '        <section class="mb-8">',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Candidate Overview</h2>',
+            '            <div class="bg-gray-50 p-4 rounded-lg">',
+            '                <p class="mb-2"><span class="font-semibold">Overall Grade:</span> {overall_grade}/100</p>',
+            '                <p class="mb-4"><span class="font-semibold">Summary:</span> {fitness_analysis}</p>',
+            '            </div>',
+            '        </section>',
+            
+            // Technical Skills Section
+            '        <section class="mb-8">',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Technical Skills Assessment</h2>',
+            '            <div class="space-y-6">',
+            '                <div class="bg-green-50 p-4 rounded-lg">',
+            '                    <h3 class="text-lg font-semibold text-green-800 mb-3">Strong Skills to Validate</h3>',
+            '                    {matching_skills_questions}',
+            '                </div>',
+            '                <div class="bg-red-50 p-4 rounded-lg">',
+            '                    <h3 class="text-lg font-semibold text-red-800 mb-3">Areas for Development</h3>',
+            '                    {missing_skills_questions}',
+            '                </div>',
+            '            </div>',
+            '        </section>',
+            
+            // Behavioral Assessment Section
+            '        <section class="mb-8">',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Behavioral Assessment</h2>',
+            '            <div class="bg-indigo-50 p-4 rounded-lg">',
+            '                {behavioral_questions}',
+            '            </div>',
+            '        </section>',
+            
+            // Practical Exercise Section
+            '        <section class="mb-8">',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Practical Exercise</h2>',
+            '            <div class="bg-yellow-50 p-4 rounded-lg">',
+            '                {practical_exercise}',
+            '            </div>',
+            '        </section>',
+            
+            // Culture Fit Section
+            '        <section class="mb-8">',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Culture Fit & Soft Skills</h2>',
+            '            <div class="bg-purple-50 p-4 rounded-lg">',
+            '                {culture_fit_questions}',
+            '            </div>',
+            '        </section>',
+            
+            // Scoring Guide Section
+            '        <section>',
+            '            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Interview Scoring Guide</h2>',
+            '            <div class="bg-gray-50 p-4 rounded-lg">',
+            '                {scoring_guide}',
+            '            </div>',
+            '        </section>',
+            
+            // Closing Tags
+            '    </div>',
+            '</body>',
+            '</html>'
+        ].join('\n');
+
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    appTitle: "CV Analysis Pro",
+                    processing: "Processing...", 
+                    positionType: "Position Type",
+                    severity: "Severity (0-10)",
+                    positionDetails: "Position Details",
+                    positionDetailsPlaceholder: "Enter position details and requirements...",
+                    cvUploadTitle: "CV Upload",
+                    uploadCVs: "Upload CVs",
+                    analyzeCVs: "Analyze CVs",
+                    settings: "Settings",
+                    hostAddress: "Host Address",
+                    generationFormat: "Generation Format",  
+                    saveSettings: "Save Settings",
+                    internship: "Internship",
+                    phd: "PhD Position",
+                    junior: "Junior Position",
+                    senior: "Senior Position"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    appTitle: "Analyse de CV Pro",
+                    processing: "Traitement en cours...",
+                    positionType: "Type de Poste",
+                    severity: "Sévérité (0-10)",
+                    positionDetails: "Détails du Poste",
+                    positionDetailsPlaceholder: "Entrez les détails et exigences du poste...",
+                    cvUploadTitle: "Téléchargement de CV",
+                    uploadCVs: "Télécharger CV",
+                    analyzeCVs: "Analyser les CV",
+                    settings: "Paramètres",
+                    hostAddress: "Adresse du Serveur",
+                    generationFormat: "Format de Génération",
+                    saveSettings: "Enregistrer",
+                    internship: "Stage",
+                    phd: "Poste de Doctorat", 
+                    junior: "Poste Junior",
+                    senior: "Poste Senior"
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'cvAnalysis', document.getElementById('languageSelector'));
+        const lc = new LollmsClient();
+        const fileLoader = new LollmsFileLoader();
+        let cvData = [];
+        let analysesData = []; // Store analyses results
+
+        document.getElementById('hostAddress').value = localStorage.getItem('hostAddress') || 'http://localhost:9600';
+        document.getElementById('generationFormat').value = localStorage.getItem('generationFormat') || 'LOLLMS';
+
+        // Settings Modal
+        const settingsModal = document.getElementById('settingsModal');
+        document.getElementById('settingsBtn').onclick = () => settingsModal.classList.remove('hidden');
+        // Close modal when clicking outside
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) {
+                settingsModal.classList.add('hidden');
+            }
+        });
+
+        document.getElementById('saveSettings').onclick = () => {
+            const hostAddress = document.getElementById('hostAddress').value;
+            const generationFormat = document.getElementById('generationFormat').value;
+            
+            localStorage.setItem('hostAddress', hostAddress);
+            localStorage.setItem('generationFormat', generationFormat);
+            
+            lc.updateSettings({
+                host_address: hostAddress,
+                default_generation_mode: ELF_GENERATION_FORMAT[generationFormat]
+            });
+            
+            settingsModal.classList.add('hidden');
+        };
+
+        // Initialize localization 
+        localizer.apply();
+        document.getElementById('languageSelector').addEventListener('change', () => {
+            localizer.setLanguage(document.getElementById('languageSelector').value);
+            localizer.apply();
+        });
+
+        // Settings Modal
+        document.getElementById('settingsBtn').onclick = () => document.getElementById('settingsModal').classList.remove('hidden');
+        document.getElementById('saveSettings').onclick = () => {
+            const hostAddress = document.getElementById('hostAddress').value;
+            const generationFormat = document.getElementById('generationFormat').value;
+            
+            localStorage.setItem('hostAddress', hostAddress);
+            localStorage.setItem('generationFormat', generationFormat);
+            
+            lc.updateSettings({
+                host_address: hostAddress,
+                default_generation_mode: ELF_GENERATION_FORMAT[generationFormat]
+            });
+            
+            document.getElementById('settingsModal').classList.add('hidden');
+        };
+
+        // Severity slider
+        document.getElementById('severity').oninput = (e) => {
+            document.getElementById('severityValue').textContent = e.target.value;
+        };
+
+        // CV Upload
+        document.getElementById('cvUpload').onchange = async (e) => {
+            const files = Array.from(e.target.files);
+            console.log(files)
+            for (const file of files) {
+                try {
+                    showLoader();
+                    const content = await fileLoader.loadFile(file);
+                    cvData.push({ name: file.name, content: content });
+                    updateCVList();
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                } finally {
+                    hideLoader();
+                }
+            }
+        };
+        function updateCVList() {
+            const cvList = document.getElementById('cvList');
+            
+            // Clear existing entries first
+            cvList.innerHTML = '';
+            
+            // SVG path for delete icon
+            const deleteIconPath = [
+                '<path fill-rule="evenodd"',
+                '      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"',
+                '      clip-rule="evenodd"/>',
+            ].join('\n');
+
+            // SVG container
+            const deleteIcon = [
+                '<svg xmlns="http://www.w3.org/2000/svg"',
+                '     class="h-5 w-5"',
+                '     viewBox="0 0 20 20"',
+                '     fill="currentColor">',
+                deleteIconPath,
+                '</svg>'
+            ].join('\n');
+
+            // Generate HTML for each CV entry
+            cvData.forEach((cv, index) => {
+                // Create main container
+                const container = document.createElement('div');
+                container.className = 'flex items-center justify-between p-3 bg-gray-50 rounded';
+                
+                // Create name span
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'font-medium';
+                nameSpan.textContent = cv.name;
+                
+                // Create delete button
+                const deleteButton = document.createElement('button');
+                deleteButton.className = 'text-red-600 hover:text-red-800';
+                deleteButton.onclick = () => deleteCV(index);
+                deleteButton.innerHTML = deleteIcon;
+                
+                // Combine elements
+                container.appendChild(nameSpan);
+                container.appendChild(deleteButton);
+                
+                // Append directly to cvList
+                cvList.appendChild(container);
+            });
+        }
+
+
+
+        function deleteCV(index) {
+            cvData.splice(index, 1);
+            updateCVList();
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        document.getElementById('analyzeBtn').onclick = async () => {
+
+            const positionType = document.getElementById('positionType').value;
+            const positionDetails = document.getElementById('positionDetails').value;
+            const severity = document.getElementById('severity').value;
+            console.log(positionDetails)
+            if (positionDetails == null || positionDetails == "") {
+                alert('Please write a position description');
+                return;
+            }
+            if (cvData.length === 0) {
+                alert('Please upload at least one CV');
+                return;
+            }
+
+            showLoader();
+
+            try {
+                // Extract skills from position
+                const skillsPrompt = `Extract skills from this position description and format as JSON array with name, description, and importance (0-10): ${positionDetails}.
+all JSON values must be written in ${localizer.currentLang}.`;
+                console.log("skillsPrompt:", skillsPrompt)
+                const skillsJson = await lc.generateCode(skillsPrompt, template=skillsTemplate, language='json');
+                const skills = JSON.parse(skillsJson);
+
+                analysesData = []; // Clear previous analyses
+                for (const cv of cvData) {
+                    const analysisPrompt = `Analyze this CV against the position requirements:
+Position: ${positionDetails}
+Required Skills: ${JSON.stringify(skills)}
+CV Content: ${cv.content}
+
+Generate JSON with matching skills, missing skills, fitness analysis and overall grade (0-100).
+The JSON values must be written in ${localizer.currentLang}`;
+
+                    const analysisJson = await lc.generateCode(analysisPrompt, template=analysisTemplate, language='json');
+                    const analysis = JSON.parse(analysisJson);
+                    cv.candidateName = analysis.candidateName
+                    analysesData.push({ ...analysis, name: cv.name, skills: skills });
+                }
+
+                // Final ranking
+                const rankingPrompt = `Rank these candidates and explain why (Generate JSON):
+Position: ${positionDetails}
+Candidates: ${JSON.stringify(analysesData)}
+The JSON values must be written in ${localizer.currentLang}`;
+
+                const rankingJson = await lc.generateCode(rankingPrompt, template=rankingTemplate, language='json');
+                const ranking = JSON.parse(rankingJson);
+
+                // Display results
+                displayResults(analysesData, ranking.ranked_candidates, severity);
+            } catch (error) {
+                console.error('Analysis error:', error);
+                alert('An error occurred during analysis');
+            } finally {
+                hideLoader();
+            }
+        };
+
+        function displayResults(analyses, ranking, threshold) {
+            const resultsDiv = document.getElementById('analysisResults');
+            resultsDiv.innerHTML = '';
+            
+            const container = document.createElement('div');
+            container.className = 'bg-white rounded-lg shadow-lg p-6';
+            
+            // Header remains the same
+            const header = document.createElement('h2');
+            header.className = 'text-2xl font-bold mb-6';
+            header.textContent = 'Analysis Results';
+            container.appendChild(header);
+            
+            ranking.forEach((candidate, index) => {
+                const analysis = analyses.find(a => a.candidateName === candidate.name);
+                
+                const candidateDiv = document.createElement('div');
+                candidateDiv.className = `mb-8 p-6 rounded-lg border-l-4 ${candidate.grade < threshold * 10 ? 'border-red-500 bg-red-50' : 'border-green-500 bg-green-50'}`;
+                
+                // Contact Section
+                const contactSection = document.createElement('div');
+                contactSection.className = 'flex justify-between items-start mb-6';
+                
+                const nameSection = document.createElement('div');
+                nameSection.innerHTML = `
+                    <h3 class="text-xl font-semibold mb-2">#${index + 1}: ${analysis.candidateName}</h3>
+                    <div class="text-gray-600">
+                        <p><i class="fas fa-envelope mr-2"></i>${analysis.candidateEmail}</p>
+                        <p><i class="fas fa-phone mr-2"></i>${analysis.candidatePhoneNumber}</p>
+                    </div>
+                `;
+                
+                // Create the actions section with properly escaped data
+                const actionsSection = document.createElement('div');
+                actionsSection.className = 'flex gap-2';
+                
+                const interviewButton = document.createElement('button');
+                interviewButton.className = 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded';
+                interviewButton.innerHTML = '<i class="fas fa-user-tie mr-2"></i>Prepare Interview';
+                interviewButton.onclick = () => prepareInterview(analysis.candidateName, analysis);
+
+                const viewCVButton = document.createElement('button');
+                viewCVButton.className = 'bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded';
+                viewCVButton.innerHTML = '<i class="fas fa-file-alt mr-2"></i>View CV';
+                viewCVButton.onclick = () => displayCV(analysis.candidateName, analysis);
+
+                actionsSection.appendChild(interviewButton);
+                actionsSection.appendChild(viewCVButton);
+                
+                contactSection.appendChild(nameSection);
+                contactSection.appendChild(actionsSection);
+                
+                // Grade Section
+                const gradeSection = document.createElement('div');
+                gradeSection.className = 'mb-6';
+                gradeSection.innerHTML = `
+                    <div class="relative pt-1">
+                        <div class="flex mb-2 items-center justify-between">
+                            <div class="text-sm font-semibold">Overall Grade</div>
+                            <div class="text-sm font-semibold">${analysis.grade}/100</div>
+                        </div>
+                        <div class="overflow-hidden h-3 mb-4 text-xs flex rounded bg-gray-200">
+                            <div style="width:${analysis.grade}%" 
+                                class="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center ${
+                                    analysis.grade < threshold * 10 ? 'bg-red-500' : 'bg-green-500'
+                                }">
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Skills Section
+                const skillsSection = document.createElement('div');
+                skillsSection.className = 'grid grid-cols-2 gap-6 mb-6';
+                
+                // Matching Skills
+                const matchingSkillsDiv = document.createElement('div');
+                matchingSkillsDiv.innerHTML = `
+                    <h4 class="font-semibold mb-3 text-green-700">
+                        <i class="fas fa-check-circle mr-2"></i>Matching Skills
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${analysis.matchingSkills.map(skill => `
+                            <div class="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm flex items-center">
+                                ${skill.name}
+                                <span class="ml-2 bg-green-200 px-2 rounded-full">${skill.proficiency}/10</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                // Missing Skills
+                const missingSkillsDiv = document.createElement('div');
+                missingSkillsDiv.innerHTML = `
+                    <h4 class="font-semibold mb-3 text-red-700">
+                        <i class="fas fa-exclamation-circle mr-2"></i>Missing Skills
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${analysis.missingSkills.map(skill => `
+                            <div class="bg-red-100 text-red-800 px-3 py-1 rounded-full text-sm flex items-center">
+                                ${skill.name}
+                                <span class="ml-2 bg-red-200 px-2 rounded-full">Importance: ${skill.importance}/10</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                skillsSection.appendChild(matchingSkillsDiv);
+                skillsSection.appendChild(missingSkillsDiv);
+                
+                // Analysis Section
+                const analysisSection = document.createElement('div');
+                analysisSection.className = 'bg-white rounded-lg p-4';
+                analysisSection.innerHTML = `
+                    <h4 class="font-semibold mb-3">
+                        <i class="fas fa-clipboard-list mr-2"></i>Fitness Analysis
+                    </h4>
+                    <p class="text-gray-700">${analysis.fitnessAnalysis}</p>
+                `;
+                
+                // Combine all sections
+                candidateDiv.appendChild(contactSection);
+                candidateDiv.appendChild(gradeSection);
+                candidateDiv.appendChild(skillsSection);
+                candidateDiv.appendChild(analysisSection);
+                container.appendChild(candidateDiv);
+            });
+            
+            // Export button
+            const exportButton = document.createElement('button');
+            exportButton.className = 'mt-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded';
+            exportButton.innerHTML = '<i class="fas fa-file-export mr-2"></i>Export Report';
+            exportButton.onclick = exportReport;
+            container.appendChild(exportButton);
+            
+            resultsDiv.appendChild(container);
+        }
+        // Function to display CV
+        function displayCV(candidateName, analysis) {
+            try {
+                const cvWindow = window.open('', '_blank');
+                
+                // Safely escape the content
+                const safeEmail = analysis.candidateEmail ? analysis.candidateEmail.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'N/A';
+                const safePhone = analysis.candidatePhoneNumber ? analysis.candidatePhoneNumber.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'N/A';
+                const safeFitnessAnalysis = analysis.fitnessAnalysis ? analysis.fitnessAnalysis.replace(/</g, '&lt;').replace(/>/g, '&gt;') : 'No analysis available';
+
+                cvWindow.document.write(`
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                        <title>CV - ${candidateName}</title>
+                        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+                        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+                        <meta charset="UTF-8">
+                    </head>
+                    <body class="bg-gray-100 p-8">
+                        <div class="max-w-4xl mx-auto bg-white shadow-lg rounded-lg overflow-hidden">
+                            <div class="bg-gray-800 text-white p-6">
+                                <h1 class="text-3xl font-bold mb-2">${candidateName}</h1>
+                                <div class="flex items-center space-x-4">
+                                    <span><i class="fas fa-envelope mr-2"></i>${safeEmail}</span>
+                                    <span><i class="fas fa-phone mr-2"></i>${safePhone}</span>
+                                </div>
+                            </div>
+
+                            <div class="p-6 space-y-6">
+                                <section>
+                                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">
+                                        <i class="fas fa-tools mr-2"></i>Skills
+                                    </h2>
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <h3 class="text-lg font-medium mb-2 text-gray-700">Technical Skills</h3>
+                                            <div class="flex flex-wrap gap-2">
+                                                ${analysis.matchingSkills ? analysis.matchingSkills.map(skill => `
+                                                    <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                                                        ${skill.name} (${skill.proficiency}/10)
+                                                    </span>
+                                                `).join('') : 'No matching skills found'}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 class="text-lg font-medium mb-2 text-gray-700">Areas for Development</h3>
+                                            <div class="flex flex-wrap gap-2">
+                                                ${analysis.missingSkills ? analysis.missingSkills.map(skill => `
+                                                    <span class="bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
+                                                        ${skill.name}
+                                                    </span>
+                                                `).join('') : 'No missing skills found'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <section>
+                                    <h2 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">
+                                        <i class="fas fa-chart-line mr-2"></i>Professional Assessment
+                                    </h2>
+                                    <p class="text-gray-700">${safeFitnessAnalysis}</p>
+                                </section>
+                            </div>
+
+                            <div class="bg-gray-50 p-6 flex justify-end">
+                                <button onclick="window.print()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
+                                    <i class="fas fa-print mr-2"></i>Print CV
+                                </button>
+                            </div>
+                        </div>
+                    </body>
+                    </html>
+                `);
+                
+                cvWindow.document.close();
+            } catch (error) {
+                console.error('Error displaying CV:', error);
+                alert('There was an error displaying the CV. Please try again.');
+            }
+        }
+
+        async function prepareInterview(candidateName) {
+            showLoader();
+            
+            try {
+                // Find relevant data
+                console.log("candidateName",candidateName)
+                console.log("analysesData", analysesData)
+                const analysis = analysesData.find(a => a.candidateName === candidateName);
+                const cv = cvData.find(cv => cv.candidateName === candidateName);
+                const positionDetails = document.getElementById('positionDetails').value;
+                
+                // Build prompt sections
+                const promptHeader = 'Generate a comprehensive interview plan for this candidate.';
+                
+                const promptPosition = 'Position Details: ' + positionDetails;
+                
+                const promptAnalysis = [
+                    'Candidate Analysis:',
+                    '- Overall Grade: ' + analysis.grade + '/100',
+                    '- CV Content: ' + cv.content,
+                    '- Matching Skills: ' + JSON.stringify(analysis.matchingSkills),
+                    '- Missing Skills: ' + JSON.stringify(analysis.missingSkills),
+                    '- Fitness Analysis: ' + analysis.fitnessAnalysis
+                ].join('\n');
+                
+                const promptRequirements = [
+                    'Generate an HTML interview plan that includes:',
+                    '1. Technical questions specific to their matching skills',
+                    '2. Questions to assess their potential in missing skill areas',
+                    '3. Behavioral questions based on their experience',
+                    '4. A practical exercise relevant to their strongest skills',
+                    '5. Culture fit questions',
+                    '6. A detailed scoring guide',
+                    '',
+                    'Use the provided template structure and include specific examples and expected answers.'
+                ].join('\n');
+                
+                // Combine all prompt sections
+                const interviewPrompt = [
+                    promptHeader,
+                    '',
+                    promptPosition,
+                    '',
+                    promptAnalysis,
+                    '',
+                    promptRequirements,
+                    `all JSON values must be written in ${localizer.currentLang}.`
+                ].join('\n');
+
+                // Generate interview HTML
+                let interviewHtml = await lc.generateCode(
+                    interviewPrompt,
+                    interviewTemplate,
+                    'html'
+                );
+                
+                // Create replacement map
+                const replacements = {
+                    '{candidate_name}': candidateName,
+                    '{overall_grade}': analysis.grade,
+                    '{fitness_analysis}': analysis.fitnessAnalysis
+                };
+                
+                // Apply all replacements
+                Object.entries(replacements).forEach(([key, value]) => {
+                    interviewHtml = interviewHtml.replace(key, value);
+                });
+                
+                // Display in new window
+                const win = window.open('', '_blank');
+                if (!win) {
+                    throw new Error('Popup blocked - please allow popups and try again');
+                }
+                
+                win.document.write(interviewHtml);
+                win.document.close();
+                
+            } catch (error) {
+                console.error('Interview preparation error:', error);
+                alert('Error preparing interview: ' + error.message);
+                
+            } finally {
+                hideLoader();
+            }
+        }
+
+
+        function exportReport() {
+            // Create new window
+            const win = window.open('', '_blank');
+            const doc = win.document;
+            
+            // Create and append DOCTYPE
+            const docType = doc.implementation.createDocumentType('html', '', '');
+            doc.appendChild(docType);
+            
+            // Create html element
+            const html = doc.createElement('html');
+            doc.appendChild(html);
+            
+            // Create and setup head
+            const head = doc.createElement('head');
+            html.appendChild(head);
+            
+            // Add title
+            const title = doc.createElement('title');
+            title.textContent = 'CV Analysis Report';
+            head.appendChild(title);
+            
+            // Add Tailwind CSS
+            const tailwindScript = doc.createElement('script');
+            tailwindScript.src = 'https://cdn.tailwindcss.com';
+            head.appendChild(tailwindScript);
+            
+            // Create and setup body
+            const body = doc.createElement('body');
+            body.className = 'p-8';
+            html.appendChild(body);
+            
+            // Add main heading
+            const heading = doc.createElement('h1');
+            heading.className = 'text-3xl font-bold mb-8';
+            heading.textContent = 'CV Analysis Report';
+            body.appendChild(heading);
+            
+            // Clone the analysis results
+            const originalContent = document.getElementById('analysisResults');
+            const contentClone = originalContent.cloneNode(true);
+            body.appendChild(contentClone);
+            
+            // Close the document
+            doc.close();
+            
+            // Optional: Add print button to the exported report
+            const printButton = doc.createElement('button');
+            printButton.className = 'mt-4 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded';
+            printButton.textContent = 'Print Report';
+            printButton.onclick = () => win.print();
+            body.appendChild(printButton);
+        }
+
+
+    </script>
+</body>
+</html>
