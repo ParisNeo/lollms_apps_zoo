@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CV Builder Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gradient-to-r from-blue-50 to-indigo-50 min-h-screen">
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+            <div class="animate-spin text-4xl mb-4">🍓</div>
+            <p class="text-gray-700" data-translate="processing">Processing...</p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-40">
+        <div class="bg-white p-6 rounded-lg shadow-xl w-96">
+            <h3 class="text-xl font-bold mb-4" data-translate="settings">Settings</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700" data-translate="hostAddress">Host Address</label>
+                <input type="text" id="hostAddress" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700" data-translate="generationFormat">Generation Format</label> 
+                <select id="genFormat" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="LOLLMS">LOLLMS</option>
+                    <option value="OPENAI">OpenAI</option>
+                    <option value="OLLAMA">Ollama</option>
+                    <option value="VLLM">VLLM</option>
+                </select>
+            </div>
+            <div class="flex justify-end gap-2">
+                <button onclick="closeSettings()" class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300" data-translate="cancel">Cancel</button>
+                <button onclick="saveSettings()" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700" data-translate="save">Save</button>                
+            </div>
+        </div>
+    </div>
+
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="cvBuilderPro">CV Builder Pro</h1>
+            <select id="languageSelector" class="border rounded-md px-3 py-1">
+                <option value="en">English</option>
+                <option value="fr">Français</option>
+                <option value="es">Español</option>
+                <option value="de">Deutsch</option>
+                <option value="it">Italiano</option>
+                <option value="zh">中文</option>
+                <option value="ja">日本語</option>
+            </select>
+
+            <button onclick="openSettings()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                ⚙️ Settings
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Input Section -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4"  data-translate="enterYourInformation">Enter Your Information</h2>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2" data-translate="profileImage">Profile Image</label>
+                    <input type="file" id="profileImage" accept="image/*" onChange="handleImageUpload(event)" class="w-full">
+                    <div id="imagePreview" class="mt-2 hidden">
+                        <img id="previewImg" class="h-32 w-32 object-cover rounded-full mx-auto" />
+                    </div>
+                </div>
+                <textarea id="cvInfo" rows="12" class="w-full p-4 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" data-translate="enterCVInfo" placeholder="Enter your CV information here..."></textarea>
+                <button onclick="generateCV()" class="mt-4 w-full bg-indigo-600 text-white py-3 rounded-lg hover:bg-indigo-700 transition" data-translate="generateCV">Generate CV</button>
+            </div>
+
+            <!-- Preview Section -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-semibold">Preview</h2>
+                    <div class="flex space-x-2">
+                        <select id="templateSelector" class="border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <option value="modern" data-translate="modernTemplate">Modern Template</option>
+                            <option value="classic" data-translate="classicTemplate">Classic Template</option>
+                            <option value="minimal" data-translate="minimalTemplate">Minimal Template</option>
+                            <option value="creative" data-translate="creativeTemplate">Creative Template</option>
+                            <option value="tech" data-translate="techTemplate">Tech Template</option>
+                            <option value="executive" data-translate="executiveTemplate">Executive Template</option>
+                            <option value="academic" data-translate="academicTemplate">Academic Template</option>
+                            <option value="portfolio" data-translate="portfolioTemplate">Portfolio Template</option>
+                        </select>
+                        <button onclick="exportCV('html')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">HTML</button>
+                        <button onclick="exportCV('pdf')" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">PDF</button>
+                        <button onclick="exportCV('docx')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">DOCX</button>
+                    </div>
+                </div>
+                <div id="cvPreview" class="border rounded-lg p-4 min-h-[500px] max-h-[800px] overflow-auto">
+                    <p class="text-gray-500 text-center mt-20" data-translate="previewMessage">Your CV preview will appear here</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lc;
+        let currentCV = null;
+        let profileImageBase64 = null;
+
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    enterYourInformation: "Enter your information",
+                    settings: "Settings",
+                    cancel: "Cancel",
+                    save: "Save",
+                    cvBuilderPro: "CV Builder Pro",
+                    profileImage: "Profile Image",
+                    generateCV: "Generate CV",
+                    preview: "Preview",
+                    modernTemplate: "Modern Template",
+                    classicTemplate: "Classic Template",
+                    minimalTemplate: "Minimal Template",
+                    creativeTemplate: "Creative Template",
+                    techTemplate: "Tech Template",
+                    executiveTemplate: "Executive Template",
+                    academicTemplate: "Academic Template",
+                    portfolioTemplate: "Portfolio Template",
+                    previewMessage: "Your CV preview will appear here",
+                    processing: "Processing...",
+                    hostAddress: "Host Address",
+                    generationFormat: "Generation Format",
+                    enterCVInfo: "Enter your CV information here..."
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    enterYourInformation: "Saisissez vos informations",
+                    settings: "Paramètres",
+                    cancel: "Annuler",
+                    save: "Enregistrer",
+                    cvBuilderPro: "Créateur de CV Pro",
+                    profileImage: "Photo de profil",
+                    generateCV: "Générer le CV",
+                    preview: "Aperçu",
+                    modernTemplate: "Template Moderne",
+                    classicTemplate: "Template Classique",
+                    minimalTemplate: "Template Minimal",
+                    creativeTemplate: "Template Créatif",
+                    techTemplate: "Template Tech",
+                    executiveTemplate: "Template Executif",
+                    academicTemplate: "Template Académique",
+                    portfolioTemplate: "Template Portfolio",
+                    previewMessage: "Votre aperçu de CV apparaîtra ici",
+                    processing: "Traitement en cours...",
+                    hostAddress: "Adresse de l'hôte",
+                    generationFormat: "Format de génération",
+                    enterCVInfo: "Entrez vos informations de CV ici..."
+                }
+            }
+        };
+
+        const localizer = new WebAppLocalizer(translations, 'cvAnalysis', document.getElementById('languageSelector'));
+
+        async function initializeLollms() {
+            const savedHost = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
+            const savedFormat = localStorage.getItem('lollmsFormat') || 'LOLLMS';
+            
+            lc = new LollmsClient(
+                savedHost,
+                null,
+                null,
+                -1,
+                null,
+                0.1,
+                50,
+                0.95,
+                0.8,
+                40,
+                null,
+                8,
+                "",
+                savedFormat
+            );
+        }
+
+        async function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    profileImageBase64 = e.target.result;
+                    document.getElementById('imagePreview').classList.remove('hidden');
+                    document.getElementById('previewImg').src = profileImageBase64;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function showLoader() {
+            document.getElementById('loadingOverlay').style.display = 'flex';
+        }
+
+        function hideLoader() {
+            document.getElementById('loadingOverlay').style.display = 'none';
+        }
+
+        function openSettings() {
+            document.getElementById('settingsModal').style.display = 'flex';
+            document.getElementById('hostAddress').value = localStorage.getItem('lollmsHost') || 'http://localhost:9600';
+            document.getElementById('genFormat').value = localStorage.getItem('lollmsFormat') || 'LOLLMS';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        function saveSettings() {
+            const host = document.getElementById('hostAddress').value;
+            const format = document.getElementById('genFormat').value;
+            localStorage.setItem('lollmsHost', host);
+            localStorage.setItem('lollmsFormat', format);
+            initializeLollms();
+            closeSettings();
+        }
+
+        async function generateCV() {
+            showLoader();
+            const userInfo = document.getElementById('cvInfo').value;
+            
+            const jsonTemplate = {
+                "personal": {
+                    "name": "string",
+                    "email": "string",
+                    "phone": "string",
+                    "location": "string",
+                    "summary": "string",
+                    "imageUrl": "string",
+                    "links": [{
+                        "platform": "string",
+                        "url": "string"
+                    }]
+                },
+                "education": [{
+                    "degree": "string",
+                    "institution": "string",
+                    "year": "string",
+                    "details": "string",
+                    "gpa": "string"
+                }],
+                "experience": [{
+                    "title": "string",
+                    "company": "string",
+                    "period": "string",
+                    "responsibilities": ["string"],
+                    "achievements": ["string"]
+                }],
+                "skills": [{
+                    "category": "string",
+                    "items": ["string"]
+                }],
+                "languages": [{
+                    "name": "string",
+                    "proficiency": "string"
+                }],
+                "certifications": [{
+                    "name": "string",
+                    "issuer": "string",
+                    "year": "string",
+                    "details": "string"
+                }],
+                "projects": [{
+                    "name": "string",
+                    "description": "string",
+                    "technologies": ["string"],
+                    "url": "string"
+                }]
+            };
+
+            const prompt = `Parse the following CV information and structure it into a detailed JSON format. Include all possible sections and ensure comprehensive information capture: ${userInfo}
+all JSON values must be written in ${localizer.currentLang}.`;
+
+            try {
+                const cvData = await lc.generateCode(prompt, JSON.stringify(jsonTemplate), "json");
+                currentCV = JSON.parse(cvData);
+                if (profileImageBase64) {
+                    currentCV.personal.imageUrl = profileImageBase64;
+                }
+                updatePreview();
+            } catch (error) {
+                console.error('Error generating CV:', error);
+                alert('Error generating CV. Please try again.');
+            }
+            hideLoader();
+        }
+
+        function updatePreview() {
+            if (!currentCV) return;
+
+            const template = document.getElementById('templateSelector').value;
+            const previewDiv = document.getElementById('cvPreview');
+            
+            let html = '';
+            // Update the updatePreview function to include new cases:
+            switch(template) {
+                case 'modern':
+                    html = generateModernTemplate(currentCV);
+                    break;
+                case 'classic':
+                    html = generateClassicTemplate(currentCV);
+                    break;
+                case 'minimal':
+                    html = generateMinimalTemplate(currentCV);
+                    break;
+                case 'creative':
+                    html = generateCreativeTemplate(currentCV);
+                    break;
+                case 'tech':
+                    html = generateTechTemplate(currentCV);
+                    break;
+                case 'executive':
+                    html = generateExecutiveTemplate(currentCV);
+                    break;
+                case 'academic':
+                    html = generateAcademicTemplate(currentCV);
+                    break;
+                case 'portfolio':
+                    html = generatePortfolioTemplate(currentCV);
+                    break;
+            }
+            
+            previewDiv.innerHTML = html;
+        }
+
+        // Template generation functions will be continued in the next message due to length...
+
+        window.onload = function() {
+            initializeLollms();
+            document.getElementById('templateSelector').addEventListener('change', updatePreview);
+        };
+
+        function generateModernTemplate(cv) {
+            return `
+                <div class="font-sans max-w-4xl mx-auto">
+                    <header class="bg-indigo-600 text-white p-8 rounded-t-lg">
+                        <div class="flex items-center gap-6">
+                            ${cv.personal.imageUrl ? 
+                                `<img src="${cv.personal.imageUrl}" class="w-32 h-32 rounded-full object-cover border-4 border-white">` 
+                                : ''}
+                            <div>
+                                <h1 class="text-3xl font-bold">${cv.personal.name}</h1>
+                                <p class="text-xl mt-2">${cv.personal.email} | ${cv.personal.phone}</p>
+                                <p class="mt-1">${cv.personal.location}</p>
+                            </div>
+                        </div>
+                        <p class="mt-4">${cv.personal.summary}</p>
+                        ${cv.personal.links ? `
+                            <div class="mt-4 flex gap-4">
+                                ${cv.personal.links.map(link => 
+                                    `<a href="${link.url}" class="hover:text-indigo-200">${link.platform}</a>`
+                                ).join('')}
+                            </div>
+                        ` : ''}
+                    </header>
+
+                    <div class="p-8 bg-white">
+                        <section class="mb-8">
+                            <h2 class="text-2xl font-bold text-indigo-600 mb-4">Experience</h2>
+                            ${cv.experience.map(exp => `
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-semibold">${exp.title}</h3>
+                                    <p class="text-gray-600">${exp.company} | ${exp.period}</p>
+                                    <ul class="list-disc ml-6 mt-2">
+                                        ${exp.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                                    </ul>
+                                </div>
+                            `).join('')}
+                        </section>
+
+                        <section class="mb-8">
+                            <h2 class="text-2xl font-bold text-indigo-600 mb-4">Education</h2>
+                            ${cv.education.map(edu => `
+                                <div class="mb-4">
+                                    <h3 class="text-xl font-semibold">${edu.degree}</h3>
+                                    <p class="text-gray-600">${edu.institution} | ${edu.year}</p>
+                                    <p>${edu.details}</p>
+                                    ${edu.gpa ? `<p>GPA: ${edu.gpa}</p>` : ''}
+                                </div>
+                            `).join('')}
+                        </section>
+
+                        <section class="mb-8">
+                            <h2 class="text-2xl font-bold text-indigo-600 mb-4">Skills</h2>
+                            ${cv.skills.map(skill => `
+                                <div class="mb-4">
+                                    <h3 class="text-lg font-semibold">${skill.category}</h3>
+                                    <p class="mt-1">${skill.items.join(', ')}</p>
+                                </div>
+                            `).join('')}
+                        </section>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateClassicTemplate(cv) {
+            return `
+                <div class="font-serif max-w-4xl mx-auto p-8 bg-white">
+                    <header class="text-center border-b-2 pb-6 mb-6">
+                        ${cv.personal.imageUrl ? 
+                            `<img src="${cv.personal.imageUrl}" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover">` 
+                            : ''}
+                        <h1 class="text-3xl font-bold mb-2">${cv.personal.name}</h1>
+                        <p class="text-gray-600">${cv.personal.email} | ${cv.personal.phone}</p>
+                        <p class="text-gray-600">${cv.personal.location}</p>
+                        <p class="mt-4">${cv.personal.summary}</p>
+                    </header>
+
+                    <section class="mb-6">
+                        <h2 class="text-2xl font-bold mb-4 border-b">Professional Experience</h2>
+                        ${cv.experience.map(exp => `
+                            <div class="mb-6">
+                                <div class="flex justify-between">
+                                    <h3 class="font-bold">${exp.title}</h3>
+                                    <span>${exp.period}</span>
+                                </div>
+                                <p class="italic">${exp.company}</p>
+                                <ul class="list-disc ml-6 mt-2">
+                                    ${exp.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </section>
+
+                    <section class="mb-6">
+                        <h2 class="text-2xl font-bold mb-4 border-b">Education</h2>
+                        ${cv.education.map(edu => `
+                            <div class="mb-4">
+                                <div class="flex justify-between">
+                                    <h3 class="font-bold">${edu.degree}</h3>
+                                    <span>${edu.year}</span>
+                                </div>
+                                <p class="italic">${edu.institution}</p>
+                                <p>${edu.details}</p>
+                            </div>
+                        `).join('')}
+                    </section>
+                </div>
+            `;
+        }
+
+        function generateMinimalTemplate(cv) {
+            return `
+                <div class="font-sans max-w-4xl mx-auto p-8 bg-white">
+                    <header class="mb-8">
+                        <h1 class="text-4xl font-light mb-2">${cv.personal.name}</h1>
+                        <div class="text-gray-600">
+                            <p>${cv.personal.email} · ${cv.personal.phone}</p>
+                            <p>${cv.personal.location}</p>
+                        </div>
+                    </header>
+
+                    <section class="mb-8">
+                        <h2 class="text-xl font-light uppercase tracking-wider mb-4">Experience</h2>
+                        ${cv.experience.map(exp => `
+                            <div class="mb-6">
+                                <h3 class="font-medium">${exp.title}</h3>
+                                <p class="text-gray-600 text-sm">${exp.company} | ${exp.period}</p>
+                                <ul class="mt-2 text-sm">
+                                    ${exp.responsibilities.map(r => `<li>· ${r}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </section>
+
+                    <section class="mb-8">
+                        <h2 class="text-xl font-light uppercase tracking-wider mb-4">Education</h2>
+                        ${cv.education.map(edu => `
+                            <div class="mb-4">
+                                <h3 class="font-medium">${edu.degree}</h3>
+                                <p class="text-gray-600 text-sm">${edu.institution}, ${edu.year}</p>
+                            </div>
+                        `).join('')}
+                    </section>
+
+                    <section>
+                        <h2 class="text-xl font-light uppercase tracking-wider mb-4">Skills</h2>
+                        <div class="flex flex-wrap gap-2">
+                            ${cv.skills.flatMap(skill => skill.items).map(item => 
+                                `<span class="px-3 py-1 bg-gray-100 text-sm rounded">${item}</span>`
+                            ).join('')}
+                        </div>
+                    </section>
+                </div>
+            `;
+        }
+
+        function generateCreativeTemplate(cv) {
+            return `
+                <div class="font-sans max-w-4xl mx-auto bg-gradient-to-br from-purple-50 to-indigo-50 p-8">
+                    <header class="relative mb-12">
+                        <div class="flex items-center gap-8">
+                            ${cv.personal.imageUrl ? 
+                                `<div class="w-40 h-40 rounded-full overflow-hidden ring-4 ring-purple-500 shadow-lg">
+                                    <img src="${cv.personal.imageUrl}" class="w-full h-full object-cover">
+                                </div>` 
+                                : ''}
+                            <div>
+                                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
+                                    ${cv.personal.name}
+                                </h1>
+                                <p class="mt-2 text-gray-600">${cv.personal.email} | ${cv.personal.phone}</p>
+                                <p class="text-gray-600">${cv.personal.location}</p>
+                            </div>
+                        </div>
+                        <p class="mt-6 text-lg text-gray-700">${cv.personal.summary}</p>
+                    </header>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <section class="mb-8">
+                                <h2 class="text-2xl font-bold text-purple-600 mb-4">Experience</h2>
+                                ${cv.experience.map(exp => `
+                                    <div class="mb-6 p-4 bg-white rounded-lg shadow-md">
+                                        <h3 class="text-xl font-semibold">${exp.title}</h3>
+                                        <p class="text-purple-600">${exp.company}</p>
+                                        <p class="text-sm text-gray-500 mb-2">${exp.period}</p>
+                                        <ul class="list-disc ml-6 text-gray-700">
+                                            ${exp.responsibilities.map(r => `<li>${r}</li>`).join('')}
+                                        </ul>
+                                    </div>
+                                `).join('')}
+                            </section>
+                        </div>
+
+                        <div>
+                            <section class="mb-8">
+                                <h2 class="text-2xl font-bold text-purple-600 mb-4">Education</h2>
+                                ${cv.education.map(edu => `
+                                    <div class="mb-6 p-4 bg-white rounded-lg shadow-md">
+                                        <h3 class="text-xl font-semibold">${edu.degree}</h3>
+                                        <p class="text-purple-600">${edu.institution}</p>
+                                        <p class="text-sm text-gray-500">${edu.year}</p>
+                                        <p class="mt-2">${edu.details}</p>
+                                    </div>
+                                `).join('')}
+                            </section>
+
+                            <section class="mb-8">
+                                <h2 class="text-2xl font-bold text-purple-600 mb-4">Skills</h2>
+                                <div class="p-4 bg-white rounded-lg shadow-md">
+                                    ${cv.skills.map(skill => `
+                                        <div class="mb-4">
+                                            <h3 class="font-semibold text-purple-600">${skill.category}</h3>
+                                            <div class="flex flex-wrap gap-2 mt-2">
+                                                ${skill.items.map(item => 
+                                                    `<span class="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm">
+                                                        ${item}
+                                                    </span>`
+                                                ).join('')}
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        function generateTechTemplate(cv) {
+            return `
+                <div class="font-mono max-w-4xl mx-auto bg-gray-900 text-green-400 p-8">
+                    <header class="border-b-2 border-green-500 pb-6 mb-8">
+                        <div class="flex items-center gap-6">
+                            ${cv.personal.imageUrl ? 
+                                `<div class="relative">
+                                    <div class="absolute inset-0 bg-green-400 opacity-20 rounded-lg animate-pulse"></div>
+                                    <img src="${cv.personal.imageUrl}" class="w-32 h-32 rounded-lg object-cover relative z-10">
+                                </div>` 
+                                : ''}
+                            <div>
+                                <h1 class="text-3xl font-bold">> ${cv.personal.name}</h1>
+                                <p class="mt-2 text-green-300">$ contact_info</p>
+                                <p class="font-light">${cv.personal.email} | ${cv.personal.phone}</p>
+                                <p class="font-light">${cv.personal.location}</p>
+                            </div>
+                        </div>
+                        <div class="mt-6">
+                            <p class="text-green-300">$ cat summary.txt</p>
+                            <p class="font-light">${cv.personal.summary}</p>
+                        </div>
+                    </header>
+
+                    <section class="mb-8">
+                        <h2 class="text-xl text-green-300 mb-4">$ list_skills</h2>
+                        <div class="grid grid-cols-2 gap-4">
+                            ${cv.skills.map(skill => `
+                                <div class="bg-gray-800 p-4 rounded-lg">
+                                    <h3 class="text-green-500 mb-2">${skill.category}</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${skill.items.map(item => 
+                                            `<span class="px-2 py-1 bg-gray-700 rounded text-sm">${item}</span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </section>
+
+                    <section class="mb-8">
+                        <h2 class="text-xl text-green-300 mb-4">$ cat experience.log</h2>
+                        ${cv.experience.map(exp => `
+                            <div class="mb-6 bg-gray-800 p-4 rounded-lg">
+                                <div class="flex justify-between items-start">
+                                    <div>
+                                        <h3 class="text-lg font-semibold">${exp.title}</h3>
+                                        <p class="text-green-500">${exp.company}</p>
+                                    </div>
+                                    <span class="text-sm bg-gray-700 px-2 py-1 rounded">${exp.period}</span>
+                                </div>
+                                <ul class="list-none mt-4">
+                                    ${exp.responsibilities.map(r => 
+                                        `<li class="mb-2">
+                                            <span class="text-green-500">></span> ${r}
+                                        </li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </section>
+                </div>
+            `;
+        }
+
+        function generateExecutiveTemplate(cv) {
+            return `
+                <div class="font-sans max-w-4xl mx-auto bg-white p-8">
+                    <header class="flex justify-between items-start border-b-4 border-gray-800 pb-8 mb-8">
+                        <div>
+                            <h1 class="text-4xl font-bold text-gray-800">${cv.personal.name}</h1>
+                            <p class="text-xl text-gray-600 mt-2">Executive Professional</p>
+                            <div class="mt-4">
+                                <p class="text-gray-600">${cv.personal.email}</p>
+                                <p class="text-gray-600">${cv.personal.phone}</p>
+                                <p class="text-gray-600">${cv.personal.location}</p>
+                            </div>
+                        </div>
+                        ${cv.personal.imageUrl ? 
+                            `<img src="${cv.personal.imageUrl}" class="w-40 h-40 object-cover rounded-full border-4 border-gray-800">` 
+                            : ''}
+                    </header>
+
+                    <div class="grid grid-cols-3 gap-8">
+                        <div class="col-span-2">
+                            <section class="mb-8">
+                                <h2 class="text-2xl font-bold text-gray-800 mb-6">Executive Summary</h2>
+                                <p class="text-gray-600 leading-relaxed">${cv.personal.summary}</p>
+                            </section>
+
+                            <section class="mb-8">
+                                <h2 class="text-2xl font-bold text-gray-800 mb-6">Leadership Experience</h2>
+                                ${cv.experience.map(exp => `
+                                    <div class="mb-8">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <h3 class="text-xl font-bold">${exp.title}</h3>
+                                            <span class="text-gray-600">${exp.period}</span>
+                                        </div>
+                                        <p class="text-lg text-gray-700 mb-3">${exp.company}</p>
+                                        <h4 class="text-gray-700 font-semibold mb-2">Key Achievements:</h4>
+                                        <ul class="list-none">
+                                            ${exp.responsibilities.map(r => 
+                                                `<li class="mb-2 flex items-start">
+                                                    <span class="text-gray-800 mr-2">•</span>
+                                                    <span>${r}</span>
+                                                </li>`
+                                            ).join('')}
+                                        </ul>
+                                    </div>
+                                `).join('')}
+                            </section>
+                        </div>
+
+                        <div>
+                            <section class="mb-8 bg-gray-50 p-6 rounded">
+                                <h2 class="text-xl font-bold text-gray-800 mb-4">Core Competencies</h2>
+                                ${cv.skills.map(skill => `
+                                    <div class="mb-4">
+                                        <h3 class="font-semibold text-gray-700 mb-2">${skill.category}</h3>
+                                        <ul class="text-gray-600">
+                                            ${skill.items.map(item => 
+                                                `<li class="mb-1">• ${item}</li>`
+                                            ).join('')}
+                                        </ul>
+                                    </div>
+                                `).join('')}
+                            </section>
+
+                            <section class="mb-8 bg-gray-50 p-6 rounded">
+                                <h2 class="text-xl font-bold text-gray-800 mb-4">Education</h2>
+                                ${cv.education.map(edu => `
+                                    <div class="mb-4">
+                                        <h3 class="font-semibold">${edu.degree}</h3>
+                                        <p class="text-gray-600">${edu.institution}</p>
+                                        <p class="text-gray-500 text-sm">${edu.year}</p>
+                                    </div>
+                                `).join('')}
+                            </section>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateAcademicTemplate(cv) {
+            return `
+                <div class="font-serif max-w-4xl mx-auto bg-white p-8">
+                    <header class="text-center mb-8">
+                        <h1 class="text-3xl font-bold mb-2">${cv.personal.name}</h1>
+                        <div class="text-gray-600">
+                            <p>${cv.personal.email} · ${cv.personal.phone}</p>
+                            <p>${cv.personal.location}</p>
+                        </div>
+                    </header>
+
+                    <section class="mb-8">
+                        <h2 class="text-2xl font-bold border-b-2 border-gray-300 pb-2 mb-4">Research Interests</h2>
+                        <p class="text-gray-700 leading-relaxed">${cv.personal.summary}</p>
+                    </section>
+
+                    <section class="mb-8">
+                        <h2 class="text-2xl font-bold border-b-2 border-gray-300 pb-2 mb-4">Education</h2>
+                        ${cv.education.map(edu => `
+                            <div class="mb-6">
+                                <div class="flex justify-between items-top">
+                                    <div>
+                                        <h3 class="font-bold">${edu.degree}</h3>
+                                        <p class="text-gray-700">${edu.institution}</p>
+                                        <p class="text-gray-600 mt-1">${edu.details}</p>
+                                    </div>
+                                    <span class="text-gray-600">${edu.year}</span>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </section>
+
+                    <section class="mb-8">
+                        <h2 class="text-2xl font-bold border-b-2 border-gray-300 pb-2 mb-4">Research Experience</h2>
+                        ${cv.experience.map(exp => `
+                            <div class="mb-6">
+                                <div class="flex justify-between items-top mb-2">
+                                    <div>
+                                        <h3 class="font-bold">${exp.title}</h3>
+                                        <p class="text-gray-700">${exp.company}</p>
+                                    </div>
+                                    <span class="text-gray-600">${exp.period}</span>
+                                </div>
+                                <ul class="list-disc ml-6 text-gray-700">
+                                    ${exp.responsibilities.map(r => `<li class="mb-1">${r}</li>`).join('')}
+                                </ul>
+                            </div>
+                        `).join('')}
+                    </section>
+
+                    <section class="mb-8">
+                        <h2 class="text-2xl font-bold border-b-2 border-gray-300 pb-2 mb-4">Publications</h2>
+                        <ul class="list-disc ml-6 text-gray-700">
+                            ${cv.projects ? cv.projects.map(proj => `
+                                <li class="mb-2">
+                                    <p class="italic">${proj.name}</p>
+                                    <p class="text-sm">${proj.description}</p>
+                                </li>
+                            `).join('') : ''}
+                        </ul>
+                    </section>
+                </div>
+            `;
+        }
+
+        function generatePortfolioTemplate(cv) {
+            return `
+                <div class="font-sans max-w-4xl mx-auto">
+                    <header class="bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 text-white p-12 rounded-lg mb-8">
+                        <div class="max-w-3xl mx-auto text-center">
+                            ${cv.personal.imageUrl ? 
+                                `<img src="${cv.personal.imageUrl}" class="w-40 h-40 rounded-full mx-auto mb-6 object-cover border-4 border-white shadow-lg">` 
+                                : ''}
+                            <h1 class="text-4xl font-bold mb-4">${cv.personal.name}</h1>
+                            <p class="text-xl mb-4">${cv.personal.summary}</p>
+                            <div class="flex justify-center space-x-4">
+                                <span class="px-4 py-2 bg-white bg-opacity-20 rounded-full">${cv.personal.email}</span>
+                                <span class="px-4 py-2 bg-white bg-opacity-20 rounded-full">${cv.personal.phone}</span>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        ${cv.projects ? `
+                            <section class="bg-white p-6 rounded-lg shadow-lg">
+                                <h2 class="text-2xl font-bold text-gray-800 mb-6">Featured Projects</h2>
+                                ${cv.projects.map(proj => `
+                                    <div class="mb-6 p-4 bg-gray-50 rounded">
+                                        <h3 class="text-xl font-bold text-purple-600">${proj.name}</h3>
+                                        <p class="text-gray-600 mt-2">${proj.description}</p>
+                                        ${proj.technologies ? `
+                                            <div class="flex flex-wrap gap-2 mt-3">
+                                                ${proj.technologies.map(tech => 
+                                                    `<span class="px-3 py-1 bg-purple-100 text-purple-600 rounded-full text-sm">
+                                                        ${tech}
+                                                    </span>`
+                                                ).join('')}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                `).join('')}
+                            </section>
+                        ` : ''}
+
+                        <section class="bg-white p-6 rounded-lg shadow-lg">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-6">Skills & Expertise</h2>
+                            ${cv.skills.map(skill => `
+                                <div class="mb-6">
+                                    <h3 class="text-lg font-semibold text-purple-600 mb-3">${skill.category}</h3>
+                                    <div class="flex flex-wrap gap-2">
+                                        ${skill.items.map(item => 
+                                            `<span class="px-3 py-1 bg-gray-100 rounded-full text-gray-700">
+                                                ${item}
+                                            </span>`
+                                        ).join('')}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </section>
+
+                        <section class="bg-white p-6 rounded-lg shadow-lg">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-6">Experience</h2>
+                            ${cv.experience.map(exp => `
+                                <div class="mb-6">
+                                    <div class="flex justify-between items-center mb-2">
+                                        <h3 class="text-xl font-bold text-purple-600">${exp.title}</h3>
+                                        <span class="text-sm text-gray-500">${exp.period}</span>
+                                    </div>
+                                    <p class="text-gray-700 mb-2">${exp.company}</p>
+                                    <ul class="text-gray-600">
+                                        ${exp.responsibilities.map(r => 
+                                            `<li class="mb-1">• ${r}</li>`
+                                        ).join('')}
+                                    </ul>
+                                </div>
+                            `).join('')}
+                        </section>
+
+                        <section class="bg-white p-6 rounded-lg shadow-lg">
+                            <h2 class="text-2xl font-bold text-gray-800 mb-6">Education</h2>
+                            ${cv.education.map(edu => `
+                                <div class="mb-6">
+                                    <h3 class="text-xl font-bold text-purple-600">${edu.degree}</h3>
+                                    <p class="text-gray-700">${edu.institution}</p>
+                                    <p class="text-gray-500">${edu.year}</p>
+                                    <p class="text-gray-600 mt-2">${edu.details}</p>
+                                </div>
+                            `).join('')}
+                        </section>
+                    </div>
+                </div>
+            `;
+        }
+
+
+        async function exportCV(format) {
+            try {
+                if (!currentCV) {
+                    throw new Error('No CV data available to export');
+                }
+
+                const template = document.getElementById('templateSelector').value;
+                let content = '';
+
+                // Generate HTML content based on selected template
+                switch(template) {
+                    case 'modern':
+                        html = generateModernTemplate(currentCV);
+                        break;
+                    case 'classic':
+                        html = generateClassicTemplate(currentCV);
+                        break;
+                    case 'minimal':
+                        html = generateMinimalTemplate(currentCV);
+                        break;
+                    case 'creative':
+                        html = generateCreativeTemplate(currentCV);
+                        break;
+                    case 'tech':
+                        html = generateTechTemplate(currentCV);
+                        break;
+                    case 'executive':
+                        html = generateExecutiveTemplate(currentCV);
+                        break;
+                    case 'academic':
+                        html = generateAcademicTemplate(currentCV);
+                        break;
+                    case 'portfolio':
+                        html = generatePortfolioTemplate(currentCV);
+                        break;
+                    default:
+                        content = generateModernTemplate(currentCV); // fallback
+                }
+
+                switch(format.toLowerCase()) {
+                    case 'html':
+                        // Export as HTML file
+                        const htmlBlob = new Blob([content], { type: 'text/html' });
+                        const htmlUrl = URL.createObjectURL(htmlBlob);
+                        downloadFile(htmlUrl, `cv-${template}.html`);
+                        break;
+
+                    case 'pdf':
+                        // Convert HTML to PDF using html2pdf.js library
+                        const element = document.getElementById('cvPreview');
+                        const opt = {
+                            margin: 1,
+                            filename: `cv-${template}.pdf`,
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { scale: 2 },
+                            jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+                        };
+                        await html2pdf().set(opt).from(element).save();
+                        break;
+
+                    case 'docx':
+                        // Convert HTML to DOCX using docx library
+                        const doc = new Document({
+                            sections: [{
+                                properties: {},
+                                children: [
+                                    new Paragraph({
+                                        children: [
+                                            new TextRun(stripHtml(content)) // Remove HTML tags for DOCX
+                                        ],
+                                    }),
+                                ],
+                            }],
+                        });
+                        
+                        Packer.toBlob(doc).then(blob => {
+                            downloadFile(URL.createObjectURL(blob), `cv-${template}.docx`);
+                        });
+                        break;
+
+                    default:
+                        throw new Error('Unsupported export format');
+                }
+            } catch (error) {
+                console.error('Export failed:', error);
+                alert('Failed to export CV: ' + error.message);
+            }
+        }
+
+        // Helper function to download files
+        function downloadFile(url, filename) {
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        // Helper function to strip HTML tags for DOCX export
+        function stripHtml(html) {
+            const tmp = document.createElement('div');
+            tmp.innerHTML = html;
+            return tmp.textContent || tmp.innerText || '';
+        }
+
+    </script>
+</body>
+</html>
