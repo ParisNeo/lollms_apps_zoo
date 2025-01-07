@@ -871,6 +871,85 @@ all JSON values must be written in ${localizer.currentLang}.`;
         }
 
 
+
+
+        function generateClassicTemplate(cv) {
+            const content = `
+            <div class="max-w-4xl mx-auto p-8">
+                <header class="text-center mb-8">
+                    <h1 class="text-4xl font-serif text-gray-800">${cv.name}</h1>
+                    <div class="text-gray-600 mt-2">
+                        ${cv.email} | ${cv.phone} | ${cv.location}
+                    </div>
+                </header>
+                <!-- Similar structure but with different styling -->
+            </div>`;
+
+            return generateBaseHTML(content, `${cv.name} - CV`);
+        }        
+
+        function generateBaseHTML(content, title) {
+            // Create document
+            const doc = document.implementation.createHTMLDocument();
+            
+            // Create HTML structure
+            const html = doc.documentElement;
+            html.setAttribute('lang', 'en');
+            
+            // Setup head
+            const head = doc.head;
+            
+            // Add meta charset
+            const metaCharset = doc.createElement('meta');
+            metaCharset.setAttribute('charset', 'UTF-8');
+            head.appendChild(metaCharset);
+            
+            // Add viewport meta
+            const metaViewport = doc.createElement('meta');
+            metaViewport.setAttribute('name', 'viewport');
+            metaViewport.setAttribute('content', 'width=device-width, initial-scale=1.0');
+            head.appendChild(metaViewport);
+            
+            // Add title
+            const titleElement = doc.createElement('title');
+            titleElement.textContent = title;
+            head.appendChild(titleElement);
+            
+            // Add Tailwind script
+            const script = doc.createElement('script');
+            script.setAttribute('src', 'https://cdn.tailwindcss.com');
+            script.setAttribute('type', 'text/javascript');
+            head.appendChild(script);
+            
+            // Add style
+            const style = doc.createElement('style');
+            style.textContent = `
+                @media print {
+                    @page { margin: 0; }
+                    body { margin: 1.6cm; }
+                }
+            `;
+            head.appendChild(style);
+            
+            // Setup body
+            const body = doc.body;
+            body.className = 'bg-white';
+            
+            // Add content to body
+            if (typeof content === 'string') {
+                body.innerHTML = content;
+            } else if (content instanceof Node) {
+                body.appendChild(content);
+            }
+            
+            // Convert to string and return
+            return "<!DOCTYPE html>\n" + doc.documentElement.outerHTML;
+        }
+
+
+
+
+
         async function exportCV(format) {
             try {
                 if (!currentCV) {
@@ -883,32 +962,33 @@ all JSON values must be written in ${localizer.currentLang}.`;
                 // Generate HTML content based on selected template
                 switch(template) {
                     case 'modern':
-                        html = generateModernTemplate(currentCV);
+                        content = generateModernTemplate(currentCV);
                         break;
                     case 'classic':
-                        html = generateClassicTemplate(currentCV);
+                        content = generateClassicTemplate(currentCV);
                         break;
                     case 'minimal':
-                        html = generateMinimalTemplate(currentCV);
+                        content = generateMinimalTemplate(currentCV);
                         break;
                     case 'creative':
-                        html = generateCreativeTemplate(currentCV);
+                        content = generateCreativeTemplate(currentCV);
                         break;
                     case 'tech':
-                        html = generateTechTemplate(currentCV);
+                        content = generateTechTemplate(currentCV);
                         break;
                     case 'executive':
-                        html = generateExecutiveTemplate(currentCV);
+                        content = generateExecutiveTemplate(currentCV);
                         break;
                     case 'academic':
-                        html = generateAcademicTemplate(currentCV);
+                        content = generateAcademicTemplate(currentCV);
                         break;
                     case 'portfolio':
-                        html = generatePortfolioTemplate(currentCV);
+                        content = generatePortfolioTemplate(currentCV);
                         break;
                     default:
                         content = generateModernTemplate(currentCV); // fallback
                 }
+                content = generateBaseHTML(content, currentCV.name)
 
                 switch(format.toLowerCase()) {
                     case 'html':
