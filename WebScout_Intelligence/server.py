@@ -255,6 +255,7 @@ async def scrape_urls(request: ScrapeRequest):
     scraper = WebScraper()
 
     async def crawl(url: str, depth: int):
+        print(f"Processing depth: {depth}/{request.depth}")
         if depth < 0 or url in visited_urls:
             return
 
@@ -262,9 +263,12 @@ async def scrape_urls(request: ScrapeRequest):
         text = await scraper.scrape_url(url)
         if text:
             all_text.append(text)
+            print(f"Text found")
 
             if depth > 0:
+                print(f"Stepping down")
                 links = await scraper.get_links(url)
+                print(f"Found links: {links}")
                 tasks = [crawl(link, depth - 1) for link in links]
                 await asyncio.gather(*tasks)
 
@@ -272,6 +276,7 @@ async def scrape_urls(request: ScrapeRequest):
     await asyncio.gather(*tasks)
 
     combined_text = "\n\n".join(all_text)
+    print(combined_text)
     with (STORAGE_DIR / "raw_text.json").open("w", encoding="utf-8") as f:
         json.dump({"text": combined_text}, f)
 
