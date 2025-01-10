@@ -104,8 +104,20 @@
 
                 <!-- Action Buttons -->
                 <div class="flex gap-4">
+                    <button onclick="scrapeUrls()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Scrape URLs
+                    </button>
+                    <button onclick="processText()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Process text
+                    </button>
+                    <button onclick="extractSubjects()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Extract Subjects
+                    </button>
+                    <button onclick="refineContent()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                        Refine Content
+                    </button>
                     <button onclick="startProcessing()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
-                        Start Processing
+                        Start full Processing
                     </button>
                     <button onclick="resetAll()" class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Reset All
@@ -285,12 +297,10 @@
         async function startProcessing() {
             if (state.urls.length === 0) return;
             
-            state.depth = parseInt(document.getElementById('depthInput').value);
-            state.chunkSize = parseInt(document.getElementById('chunkSizeInput').value);
             
             try {
                 showLoader();
-                await scrapeUrls();
+                await scrapeUrls(false);
                 await processText();
                 await extractSubjects();
                 await refineContent();
@@ -301,7 +311,12 @@
             }
         }
 
-        async function scrapeUrls() {
+        async function scrapeUrls(use_loader=true) {
+            if(use_loader)
+                showLoader()
+            state.depth = parseInt(document.getElementById('depthInput').value);
+            state.chunkSize = parseInt(document.getElementById('chunkSizeInput').value);
+    
             urls=state.urls
             depth = state.depth
             updateStepStatus(1, 'Scraping');
@@ -326,6 +341,9 @@
               console.error('Error:', error);
               updateStepStatus(1, 'Failed');
             }
+            if(use_loader)
+                hideLoader()
+
           }
           
           // Placeholder functions
@@ -338,7 +356,10 @@
           }
           
 
-        async function processText() {
+        async function processText(use_loader=true) {
+            if(use_loader)
+                showLoader()
+
             try {
                 updateStepStatus(2, 'Processing');
                 
@@ -383,12 +404,21 @@
             } catch (error) {
                 console.error('Error processing text:', error);
                 updateStepStatus(2, 'Error');
+                if(use_loader)
+                    hideLoader()
+
                 throw error;
             }
+            if(use_loader)
+                hideLoader()
+
         }
         
 
-        async function extractSubjects() {
+        async function extractSubjects(use_loader) {
+            if(use_loader)
+                showLoader()
+
             try {
                 updateStepStatus(3, 'Processing');
                 
@@ -461,12 +491,21 @@
             } catch (error) {
                 console.error('Error in subject extraction:', error);
                 updateStepStatus(3, 'Error');
-                throw error;
+                if(use_loader)
+                    hideLoader()
+
+                throw error;                
             }
+            if(use_loader)
+                hideLoader()
+
         }
         
 
-        async function refineContent() {
+        async function refineContent(use_loader) {
+            if(use_loader)
+                showLoader()
+
             try {
                 updateStepStatus(4, 'Processing');
         
@@ -547,8 +586,12 @@
             } catch (error) {
                 console.error('Error in content refinement:', error);
                 updateStepStatus(4, 'Error');
+                if(use_loader)
+                    hideLoader()
                 throw error;
             }
+            if(use_loader)
+                hideLoader()
         }
         
 
