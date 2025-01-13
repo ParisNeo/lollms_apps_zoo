@@ -14,6 +14,8 @@
         }
         .game-button {
             touch-action: manipulation;
+            user-select: none;
+            -webkit-user-select: none;
         }
     </style>
 </head>
@@ -38,10 +40,10 @@
             
             <div class="mt-6 flex justify-center gap-4">
                 <div class="flex gap-4">
-                    <button id="leftBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl">⬅️</button>
-                    <button id="rightBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl">➡️</button>
+                    <button id="leftBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl" ontouchstart="event.preventDefault();">⬅️</button>
+                    <button id="rightBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl" ontouchstart="event.preventDefault();">➡️</button>
                 </div>
-                <button id="jumpBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl">⬆️</button>
+                <button id="jumpBtn" class="game-button bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 px-8 rounded text-2xl" ontouchstart="event.preventDefault();">⬆️</button>
             </div>
         </div>
 
@@ -93,7 +95,10 @@
             speed: 5,
             jumpForce: -15,
             velocityY: 0,
-            isJumping: false
+            velocityX: 0,
+            isJumping: false,
+            moveLeft: false,
+            moveRight: false
         };
 
         const platforms = [];
@@ -152,7 +157,19 @@
 
         // Update game state
         function update() {
-            // Player physics
+            // Handle player movement
+            if (player.moveLeft) {
+                player.velocityX = -player.speed;
+            } else if (player.moveRight) {
+                player.velocityX = player.speed;
+            } else {
+                player.velocityX = 0;
+            }
+
+            // Apply movement
+            player.x += player.velocityX;
+
+            // Physics and collisions
             player.velocityY += gravity;
             player.y += player.velocityY;
 
@@ -266,14 +283,17 @@
             initLevel();
         }
 
-        // Event listeners
+
+        // Updated Event Listeners for Smooth Movement
+        const keys = {};
+
         document.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowLeft':
-                    player.x -= player.speed;
+                    player.moveLeft = true;
                     break;
                 case 'ArrowRight':
-                    player.x += player.speed;
+                    player.moveRight = true;
                     break;
                 case 'ArrowUp':
                 case ' ':
@@ -285,21 +305,70 @@
             }
         });
 
-        // Mobile controls
-        document.getElementById('leftBtn').addEventListener('touchstart', () => {
-            player.x -= player.speed;
+        document.addEventListener('keyup', (e) => {
+            switch(e.key) {
+                case 'ArrowLeft':
+                    player.moveLeft = false;
+                    break;
+                case 'ArrowRight':
+                    player.moveRight = false;
+                    break;
+            }
         });
 
-        document.getElementById('rightBtn').addEventListener('touchstart', () => {
-            player.x += player.speed;
+        // Mobile controls with smooth movement
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+        const jumpBtn = document.getElementById('jumpBtn');
+
+        // Touch events for left button
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            player.moveLeft = true;
+        });
+        leftBtn.addEventListener('touchend', () => {
+            player.moveLeft = false;
         });
 
-        document.getElementById('jumpBtn').addEventListener('touchstart', () => {
+        // Touch events for right button
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            player.moveRight = true;
+        });
+        rightBtn.addEventListener('touchend', () => {
+            player.moveRight = false;
+        });
+
+        // Touch events for jump button
+        jumpBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
             if (!player.isJumping) {
                 player.velocityY = player.jumpForce;
                 player.isJumping = true;
             }
         });
+
+        // Mouse events for testing on desktop
+        leftBtn.addEventListener('mousedown', () => {
+            player.moveLeft = true;
+        });
+        leftBtn.addEventListener('mouseup', () => {
+            player.moveLeft = false;
+        });
+        leftBtn.addEventListener('mouseleave', () => {
+            player.moveLeft = false;
+        });
+
+        rightBtn.addEventListener('mousedown', () => {
+            player.moveRight = true;
+        });
+        rightBtn.addEventListener('mouseup', () => {
+            player.moveRight = false;
+        });
+        rightBtn.addEventListener('mouseleave', () => {
+            player.moveRight = false;
+        });
+
 
         // Settings functionality
         const settingsBtn = document.getElementById('settingsBtn');
