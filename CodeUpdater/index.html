@@ -3,683 +3,313 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI-Powered Code Editor</title>
+    <title>LoLLMs Code Editor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs/loader.min.js"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
-    <link rel="stylesheet" type="text/css" href="/lollms_assets/css/lollms_markdown_renderer">
-
-    <!-- For code highlighting -->
-    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-
-    <!-- For LaTeX math rendering -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
-
-    <!-- For Mermaid graph rendering -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-
-    
-    <script src="/lollms_assets/js/tailwindcss"></script>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
-
     <script src="/lollms_assets/js/axios.min"></script>
-    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
-
-   <!-- Prism CSS -->
-   <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
-    
-   <!-- Prism JS -->
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-   
-   <!-- If you want additional languages, include them like this -->
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
-   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
-
-    <script src="/lollms_assets/js/axios.min"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-
-   <!-- Render math -->
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-   <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-    
-    
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        'roboto': ['Roboto', 'sans-serif'],
-                        'fira': ['Fira Code', 'monospace'],
-                    },
-                },
-            },
-        }
-    </script>
     <style>
-        .CodeMirror {
-            height: 500px;
-            font-family: 'Fira Code', monospace;
-            font-size: 14px;
+        .editor-container {
+            height: 600px;
+            border: 1px solid #ccc;
+            margin-bottom: 1rem;
         }
-        .config-menu {
-            background-color: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(10px);
-            z-index: 50;
+        .blurred-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .spinning-icon {
+            animation: spin 2s linear infinite;
+            font-size: 48px;
+            color: #4f46e5;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="font-roboto bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
-    <div id="projectsPage" class="container mx-auto px-4 py-8 mb-24">
-        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400 animate-pulse">Projects List</h1>
-        <div class="flex flex-col justify-between mb-4">
-            <div id="projectCards" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"></div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 mr-4">
-                <div class="mb-4">
-                    <label for="projectName" class="block font-semibold mb-2">Project Name:</label>
-                    <input type="text" id="projectName" placeholder="Enter project name" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div class="flex justify-between">
-                    <button onclick="createProject()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Create Project</button>
-                    <button onclick="deleteProject()" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded transition duration-300">Delete Project</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div id="projectPage" class="container mx-auto px-4 py-8 mb-24 hidden">
-        <h1 class="text-3xl font-bold text-center mb-8 text-blue-600 dark:text-blue-400 animate-pulse">AI-Powered Code Editor</h1>    
-        <div class="flex mb-8 animate__animated animate__fadeInUp h-full">
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 min-w-[500px]">
-                <button onclick="showProjectsPage()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300 mb-4">
-                    Back to Projects List
-                </button>            
-                <div class="mb-4">
-                    <label for="codeFile" class="block font-semibold mb-2">Select Code File:</label>
-                    <input type="file" id="codeFile" accept=".py,.js,.html,.css" onchange="loadFile()" class="hidden">
-                    <button onclick="document.getElementById('codeFile').click();" class="w-full p-2 bg-blue-500 text-white rounded transition duration-300 hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400">
-                        Import Code File
-                    </button>
-                </div>
-                <label for="versionSelector" class="block font-semibold mb-2">Select Version:</label>
-                <select id="versionSelector" onchange="loadVersion(this.value)" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                    <option value="">Select a version</option>
-                </select>        
-                <div class="mb-4">
-                    <label for="instruction" class="block font-semibold mb-2">Modification Instruction:</label>
-                    <textarea id="instruction" rows="4" placeholder="Enter your modification instruction" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400"></textarea>
-                </div>
-                <button onclick="processCode()" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition duration-300">Process</button>
-                <div id="loader" class="hidden mt-4">
-                    <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
-                </div>
-                <div id="executionSteps" class="mt-4 p-4 bg-gray-200 dark:bg-gray-700 rounded font-fira text-sm whitespace-pre-wrap"></div>
-            </div>
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 flex-1 mr-4 stretch">
-                <div class="flex border-b border-gray-200 dark:border-gray-700">
-                    <button onclick="switchTab('currentCode')" class="tab py-2 px-4 font-semibold focus:outline-none hover:bg-blue-500 hover:text-white transition duration-300" data-tab="currentCode">Current Code</button>
-                    <button onclick="switchTab('suggestedCode')" class="tab py-2 px-4 font-semibold focus:outline-none hover:bg-blue-500 hover:text-white transition duration-300" data-tab="suggestedCode">Suggested Code</button>
-                </div>
-                <div id="currentCodeContainer" class="code-editor-container stretch">
-                    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Current Code</div>
-                    <textarea id="currentCode"></textarea>
-                </div>
-                <div id="suggestedCodeContainer" class="code-editor-container stretch hidden">
-                    <div class="bg-gray-200 dark:bg-gray-700 px-4 py-2 font-semibold">Suggested Update</div>
-                    <textarea id="suggestedCode"></textarea>
-                    <button onclick="validateUpdate()" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded transition duration-300">Validate Update</button>
-                </div>
-            </div>
-
-        </div>
-    </div>
-    
-    <div id="configMenu" class="fixed bottom-0 left-0 right-0 config-menu p-4 hidden animate__animated animate__fadeInUp">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-            <div class="flex items-center justify-between mb-4">
-                <h2 class="text-xl font-semibold">Settings</h2>
-                <button onclick="toggleConfigMenu()" class="p-2 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-blue-500 hover:text-white transition duration-300">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div>
-                    <label for="temperature" class="block font-semibold mb-1">Temperature:</label>
-                    <input type="number" id="temperature" value="0.1" step="0.1" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div>
-                    <label for="top_p" class="block font-semibold mb-1">Top P:</label>
-                    <input type="number" id="top_p" value="0.95" step="0.01" min="0" max="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div>
-                    <label for="ctx_size" class="block font-semibold mb-1">Context Size:</label>
-                    <input type="number" id="ctx_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div>
-                    <label for="max_generation_size" class="block font-semibold mb-1">Max Generation Size:</label>
-                    <input type="number" id="max_generation_size" value="4096" step="1" min="1" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div>
-                    <label for="debug" class="block font-semibold mb-1">Debug Mode:</label>
-                    <input type="checkbox" id="debug" class="rounded">
-                </div>
-                <div>
-                    <label for="host_name" class="block font-semibold mb-1">Host Name:</label>
-                    <input type="text" id="host_name" value="http://localhost:9600" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-                <div>
-                    <label for="debug" class="block font-semibold mb-1">Debug:</label>
-                                        <input type="checkbox" id="debug" value="false" class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded transition duration-300 focus:border-blue-500 dark:focus:border-blue-400">
-                </div>
-            </div>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100">
+    <div id="loadingOverlay" class="blurred-overlay">
+        <div class="text-center">
+            <i class="fas fa-cog spinning-icon"></i>
+            <p class="mt-4 text-lg font-semibold text-indigo-600">Generating Code...</p>
         </div>
     </div>
 
-    <button onclick="toggleConfigMenu()" class="fixed bottom-4 right-4 p-4 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition duration-300 animate-bounce">
-        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path>
-        </svg>
-    </button>
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-indigo-800 mb-8 text-center">LoLLMs Code Generator</h1>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Generation Format:</label>
+            <select id="generationFormatSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="lollms">LoLLMs</option>
+                <option value="openai">OpenAI</option>
+                <option value="ollama">Ollama</option>
+                <option value="vllm">VLLM</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Language:</label>
+            <select id="languageSelect" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                <optgroup label="Web Development">
+                    <option value="javascript">JavaScript</option>
+                    <option value="typescript">TypeScript</option>
+                    <option value="vue">Vue.js</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="php">PHP</option>
+                </optgroup>
+                <optgroup label="System Programming">
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
+                    <option value="rust">Rust</option>
+                </optgroup>
+                <optgroup label="Data & ML">
+                    <option value="r">R</option>
+                    <option value="julia">Julia</option>
+                    <option value="matlab">MATLAB</option>
+                </optgroup>
+                <optgroup label="Shell Scripting">
+                    <option value="bash">Bash</option>
+                    <option value="powershell">PowerShell</option>
+                </optgroup>
+            </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Source Code</h2>
+                <div id="sourceEditor" class="editor-container"></div>
+            </div>
+            <div>
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4 flex justify-between items-center">
+                    <span>Generated Code</span>
+                    <div class="space-x-2">
+                        <button id="copyBtn" class="bg-gray-600 text-white px-3 py-1 rounded-md hover:bg-gray-700 transition duration-300">
+                            <i class="fas fa-copy mr-1"></i> Copy
+                        </button>
+                        <button id="saveBtn" class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300">
+                            <i class="fas fa-save mr-1"></i> Save
+                        </button>
+                    </div>
+                </h2>
+                <div id="generatedEditor" class="editor-container"></div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Prompt:</label>
+            <textarea id="prompt" rows="4" class="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500" placeholder="Enter your instructions for code modification..."></textarea>
+        </div>
+
+        <div class="flex justify-between mt-4">
+            <button id="generateBtn" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 transition duration-300">Generate Code</button>
+            <button id="settingsBtn" class="bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition duration-300">Settings</button>
+        </div>
+
+        <div id="settingsModal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Settings</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Host:</label>
+                        <input type="text" id="hostInput" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">API Key:</label>
+                        <input type="password" id="apiKeyInput" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Temperature:</label>
+                        <input type="number" id="temperatureInput" min="0" max="1" step="0.1" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2">
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end">
+                    <button id="closeSettingsBtn" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <script>
-        const mr = new MarkdownRenderer()
-        mr.initMermaid()
+        require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.33.0/min/vs' }});
+        let sourceEditor, generatedEditor;
 
-        class Project {
-            constructor(name) {
-                this.name = name;
-                this.codeVersions = [];
-                this.currentVersionIndex = -1;
-            }
+        // Load saved settings
+        const savedHost = localStorage.getItem('lollms_host') || 'http://localhost:9600';
+        const savedApiKey = localStorage.getItem('lollms_api_key') || '';
+        const savedTemperature = localStorage.getItem('lollms_temperature') || '0.1';
+        const savedGenerationFormat = localStorage.getItem('lollms_generation_format') || 'lollms';
+        const savedLanguage = localStorage.getItem('lollms_language') || 'javascript';
+        const savedSourceCode = localStorage.getItem('lollms_source_code') || '// Enter your code here';
+        const savedGeneratedCode = localStorage.getItem('lollms_generated_code') || '// Generated code will appear here';
+        const savedPrompt = localStorage.getItem('lollms_prompt') || '';
 
-            addVersion(code) {
-                // Remove versions after the current index
-                this.codeVersions = this.codeVersions.slice(0, this.currentVersionIndex + 1);
-                this.codeVersions.push(code);
-                this.currentVersionIndex++;
-            }
+        require(['vs/editor/editor.main'], function() {
+            sourceEditor = monaco.editor.create(document.getElementById('sourceEditor'), {
+                value: savedSourceCode,
+                language: savedLanguage,
+                theme: 'vs-dark',
+                minimap: { enabled: false }
+            });
 
-            loadVersion(index) {
-                if (index >= 0 && index < this.codeVersions.length) {
-                    const version = this.codeVersions[index];
-                    // Update the editor with the selected version
-                    currentCodeEditor.setValue(version);
-                    this.currentVersionIndex = index;
-                }
-            }
-        }
+            generatedEditor = monaco.editor.create(document.getElementById('generatedEditor'), {
+                value: savedGeneratedCode,
+                language: savedLanguage,
+                theme: 'vs-dark',
+                minimap: { enabled: false },
+                readOnly: true
+            });
 
-        let projects = JSON.parse(localStorage.getItem('projects')) || [];
+            document.getElementById('languageSelect').value = savedLanguage;
+            document.getElementById('generationFormatSelect').value = savedGenerationFormat;
+            document.getElementById('prompt').value = savedPrompt;
 
-        // Convert the stored data into Project objects
-        projects = projects.map(projectData => {
-            const project = new Project(projectData.name);
-            project.codeVersions = projectData.codeVersions;
-            project.currentVersionIndex = projectData.currentVersionIndex;
-            return project;
+            // Save editor content on change
+            sourceEditor.onDidChangeModelContent(() => {
+                localStorage.setItem('lollms_source_code', sourceEditor.getValue());
+            });
         });
-        let currentProject = null;
 
-        function initCodeEditors() {
-            currentEditor = CodeMirror.fromTextArea(document.getElementById('currentCode'), {
-                lineNumbers: true,
-                mode: 'javascript',
-                theme: darkMode ? 'monokai' : 'default',
-                readOnly: false
-            });
+        const lc = new LollmsClient(
+            savedHost,
+            null,
+            4096,
+            -1,
+            4096,
+            parseFloat(savedTemperature),
+            50,
+            0.95,
+            0.8,
+            40,
+            null,
+            8,
+            savedApiKey,
+            savedGenerationFormat
+        );
 
-            suggestedUpdateEditor = CodeMirror.fromTextArea(document.getElementById('suggestedCode'), {
-                lineNumbers: true,
-                mode: 'javascript',
-                theme:darkMode ? 'monokai' : 'default',
-                readOnly: false
-            });
-        }
+        document.getElementById('hostInput').value = savedHost;
+        document.getElementById('apiKeyInput').value = savedApiKey;
+        document.getElementById('temperatureInput').value = savedTemperature;
 
-        function updateProjectList() {
-            const projectList = document.getElementById('projectList');
-            projectList.innerHTML = '<option value="">Select a project</option>'; // Reset options
-            projects.forEach((project, index) => {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = project.name;
-                projectList.appendChild(option);
-            });
-            updateProjectCards();
-        }
+        document.getElementById('languageSelect').addEventListener('change', (e) => {
+            const language = e.target.value;
+            monaco.editor.setModelLanguage(sourceEditor.getModel(), language);
+            monaco.editor.setModelLanguage(generatedEditor.getModel(), language);
+            localStorage.setItem('lollms_language', language);
+        });
 
-        function createProject() {
-            const projectName = document.getElementById('projectName').value;
-            if (projectName) {
-                const project = new Project(projectName);
-                projects.push(project);
-                updateProjectList();
-                currentProject = project;
-                document.getElementById('projectName').value = '';
-                saveProjects();
-            } else {
-                alert('Please enter a project name.');
-            }
-        }
+        document.getElementById('generationFormatSelect').addEventListener('change', (e) => {
+            localStorage.setItem('lollms_generation_format', e.target.value);
+            lc.setGenerationFormat(e.target.value);
+        });
 
-        function loadProject(index) {
-            if (index >= 0 && index < projects.length) {
-                currentProject = projects[index];
-                console.log(projects)
-                updateVersionSelector();
-                showProjectPage();
-            } else {
-                currentProject = null;
-                clearVersionSelector();
-            }
-        }
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const sourceCode = sourceEditor.getValue();
+            const prompt = document.getElementById('prompt').value;
+            const language = document.getElementById('languageSelect').value;
 
-        function deleteProject() {
-            const projectIndex = document.getElementById('projectList').value;
-            if (projectIndex !== '') {
-                projects.splice(projectIndex, 1);
-                updateProjectList();
-                currentProject = null;
-                clearVersionSelector();
-                saveProjects();
-            } else {
-                alert('Please select a project to delete.');
-            }
-        }
+            localStorage.setItem('lollms_prompt', prompt);
 
-        function updateVersionSelector() {
-            const versionSelector = document.getElementById('versionSelector');
-            versionSelector.innerHTML = '<option value="">Select a version</option>'; // Reset options
-            if (currentProject) {
-                currentProject.codeVersions.forEach((version, index) => {
-                    const option = document.createElement('option');
-                    option.value = index;
-                    option.textContent = `Version ${index + 1}`;
-                    versionSelector.appendChild(option);
-                });
-            }
-        }
-
-        function clearVersionSelector() {
-            const versionSelector = document.getElementById('versionSelector');
-            versionSelector.innerHTML = '<option value="">Select a version</option>';
-        }
-
-        let currentCodeEditor, suggestedCodeEditor;
-        let darkMode = localStorage.getItem('darkMode') === 'true';
-        let configMenuVisible = false;
-
-        function toggleDarkMode() {
-            darkMode = !darkMode;
-            document.documentElement.classList.toggle('dark', darkMode);
-            localStorage.setItem('darkMode', darkMode);
-        }
-
-        function toggleConfigMenu() {
-            const configMenu = document.getElementById('configMenu');
-            configMenuVisible = !configMenuVisible;
-            configMenu.classList.toggle('hidden', !configMenuVisible);
-        }
-
-        function loadSettings() {
-            const settings = JSON.parse(localStorage.getItem('settings')) || {};
-            document.getElementById('temperature').value = settings.temperature || 0.1;
-            document.getElementById('top_p').value = settings.top_p || 0.95;
-            document.getElementById('ctx_size').value = settings.ctx_size || 4096;
-            document.getElementById('max_generation_size').value = settings.max_generation_size || 4096;
-            document.getElementById('host_name').value = settings.host_name || "http://localhost:9600";
-            document.getElementById('debug').checked = settings.debug || false;            
-        }
-
-        function saveSettings() {
-            const settings = {
-                temperature: parseFloat(document.getElementById('temperature').value),
-                top_p: parseFloat(document.getElementById('top_p').value),
-                ctx_size: parseInt(document.getElementById('ctx_size').value),
-                max_generation_size: parseInt(document.getElementById('max_generation_size').value),
-                host_name: document.getElementById('host_name').value,
-                debug: document.getElementById('debug').checked
-            };
-            localStorage.setItem('settings', JSON.stringify(settings));
-        }
-
-        function createLollmsClient() {
-            const settings = JSON.parse(localStorage.getItem('settings')) || {};
-            return new LollmsClient(
-                settings.host_name || "http://localhost:9600",
-                null,
-                settings.ctx_size || 4096,
-                -1,
-                settings.max_generation_size || 4096,
-                settings.temperature || 0.1,
-                50,
-                settings.top_p || 0.95,
-                0.8,
-                40,
-                null,
-                8,
-                "",
-                ELF_GENERATION_FORMAT.LOLLMS
-            );
-        }
-
-        function initCodeMirror() {
-            // Modify the initialization of CodeMirror
-            currentCodeEditor = CodeMirror.fromTextArea(document.getElementById('currentCode'), {
-                lineNumbers: true,
-                mode: 'javascript',
-                theme: darkMode ? 'monokai' : 'default',
-                readOnly: false,
-                viewportMargin: Infinity // Allow the editor to stretch
-            });
-
-            suggestedCodeEditor = CodeMirror.fromTextArea(document.getElementById('suggestedCode'), {
-                lineNumbers: true,
-                mode: 'javascript',
-                theme: darkMode ? 'monokai' : 'default',
-                readOnly: true,
-                viewportMargin: Infinity // Allow the editor to stretch
-            });
-        }
-
-        function switchTab(tab) {
-            const tabs = document.querySelectorAll('.tab');
-            const containers = document.querySelectorAll('.code-editor-container');
-
-            tabs.forEach(t => t.classList.remove('bg-blue-500', 'text-white'));
-            containers.forEach(c => c.classList.add('hidden'));
-
-            document.querySelector(`[data-tab="${tab}"]`).classList.add('bg-blue-500', 'text-white');
-            document.getElementById(`${tab}Container`).classList.remove('hidden');
-        }
-
-        async function loadFile() {
-            const file = document.getElementById('codeFile').files[0];
-            if (file) {
-                const originalCode = await readFile(file);
-                currentCodeEditor.setValue(originalCode);
-                if (currentProject) {
-                    currentProject.addVersion(originalCode);
-                } else {
-                    alert('Please create a project or select an existing one to load the code file.');
-                }
-                updateVersionSelector();
-                setEditorMode(file.name);
-                saveProjects();
-            }
-        }
-
-        function setEditorMode(filename) {
-            const extension = filename.split('.').pop().toLowerCase();
-            let mode;
-            switch (extension) {
-                case 'py':
-                    mode = 'python';
-                    break;
-                case 'js':
-                    mode = 'javascript';
-                    break;
-                case 'html':
-                    mode = 'htmlmixed';
-                    break;
-                case 'css':
-                    mode = 'css';
-                    break;
-                default:
-                    mode = 'javascript';
-            }
-            currentCodeEditor.setOption('mode', mode);
-            suggestedCodeEditor.setOption('mode', mode);
-        }
-
-        function loadVersion(index) {
-            if (currentProject) {
-                currentProject.loadVersion(index);
-            }
-        }
-
-        function validateUpdate() {
-            const suggestedUpdate = suggestedCodeEditor.getValue();
-            if (suggestedUpdate && currentProject) {
-                currentProject.addVersion(suggestedUpdate);
-                currentCodeEditor.setValue(suggestedUpdate);
-                updateVersionSelector();
-                alert('Update validated and saved as the current code.');
-                saveProjects();
-            } else {
-                alert('No suggested update to validate or no project selected.');
-            }
-        }
-
-        async function processCode() {
-            const settings = JSON.parse(localStorage.getItem('settings'));
-            const file = document.getElementById('codeFile').files[0];
-            const instruction = document.getElementById('instruction').value;
-            const loader = document.getElementById('loader');
-            const executionSteps = document.getElementById('executionSteps');
-
-            if (!currentProject) {
-                alert('Please create a project or select an existing one before processing the code.');
+            if (!sourceCode || !prompt) {
+                alert('Please enter both source code and prompt');
                 return;
             }
 
-            const originalCode = currentCodeEditor.getValue();
-            if (!originalCode || !instruction) {
-                alert('Please select a file or enter an original code or select a version to start from and enter an instruction.');
-                return;
-            }
-
-            loader.classList.remove('hidden');
-            executionSteps.textContent = '';
-            let execution_steps_raw = "";
-            async function addSteps(new_text) {
-                execution_steps_raw += new_text;
-                executionSteps.innerHTML = await mr.renderMarkdown(execution_steps_raw);
-            }
-
-            const prompt = `Given the following code:
-
-\`\`\`python
-${originalCode}
-\`\`\`
-
-Apply this modification: ${instruction}
-To update existing code:
-\`\`\`python
-# REPLACE
-# ORIGINAL
-<old_code>
-# SET
-<new_code_snippet>
-\`\`\`
-The ORIGINAL statement (<old_code>) should contain valid code from the orginal code. It should be a full statement and not just a fragment of a statement.
-The SET statement (<new_code_snippet>) is mandatory. You should put the new lines of code just after it.
-Make sure if possible to change full statements or functions. The code to SET must be fully working and without placeholders.
-If there is no ambiguity, just use a single line of code for each (first line to be changed and last line to be changed).
-When providing code changes, make sure to respect the indentation in Python. Only provide the changes, do not repeat unchanged code. Use comments to indicate the type of change.
-If too many changes needs to be done, and you think a full rewrite of the code is much more adequate, use this syntax:
-\`\`\`python
-# FULL_REWRITE
-<new_full_code>
-\`\`\`
-Select the best between full rewrite and replace according to the amount of text to update.`;
+            const fullPrompt = `Given this ${language} code:\n\n${sourceCode}\n\n${prompt}`;
+            document.getElementById('loadingOverlay').style.display = 'flex';
 
             try {
-                const lc = createLollmsClient();
-                const tl = new TasksLibrary(lc);
-
-                await addSteps("Querying AI ...\n");
-                const prompt_named_tokens = await lc.tokenize(prompt);
-
-                await addSteps(`Number of tokens in query: ${prompt_named_tokens.length}...\n`);
-                if (settings.debug){
-                    console.log("prompt")
-                    console.log(prompt)
-                }
-
-                await addSteps("Generating AI response...\n");
-                const response = await lc.generate(prompt);
-                const response_named_tokens = await lc.tokenize(response);
-
-                await addSteps(`Number of tokens in response: ${response_named_tokens.length}...\n`);
-                await addSteps("AI response received.\n");
-                await addSteps("## AI response:\n");
-                await addSteps(response + "\n");
-
-                codes = tl.extractCodeBlocks(response);
-
-                if (codes.length == 0) {
-                    await addSteps("The AI answer didn't contain any useful code\nTry changing the LLM you are using or update your prompt.");
-                    return;
-                }
-
-                const query = codes[0].content;
-                const { updatedCode, modifications, hasQuery } = tl.updateCode(originalCode, query);
-
-                await addSteps("## Modification explanation")
-                if (hasQuery) {
-                    await addSteps(`The code query contained ${modifications.length} modification(s):\n`);
-                    for (const modification of modifications) {
-                        await addSteps(`- Replaced:\n\`\`\`\n${modification.oldCode}\n\`\`\`\nWith:\n\`\`\`\n${modification.newCode}\n\`\`\`\n`);
+                const response = await lc.generateCode(fullPrompt, null, language, [], {
+                    temperature: parseFloat(document.getElementById('temperatureInput').value),
+                    streamingCallback: (text) => {
+                        generatedEditor.setValue(text);
+                        localStorage.setItem('lollms_generated_code', text);
                     }
-                    await addSteps("<p style=\"color:green\">Changes applied successfully.\n</p>");
-                    console.log(currentProject);
-                    currentProject.addVersion(updatedCode);
-                    suggestedCodeEditor.setValue(updatedCode);
-                    updateVersionSelector();
-                    saveProjects();
-                } else {
-                    await addSteps("<p style=\"color:red\">No code query was present in the response.\n</p>Make sure your LLM has enough context to answer the question.");
-                    return;
-                }
+                });
 
-                // Check if the code was modified
-                if (updatedCode === originalCode) {
-                    await addSteps("No changes were made to the code.\n");
+                if (response) {
+                    generatedEditor.setValue(response);
+                    localStorage.setItem('lollms_generated_code', response);
                 }
-
-                await addSteps("Process completed.\n");
-                switchTab('suggestedCode');
             } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while processing the code.');
-                await addSteps(`Error: ${error.message}\n`);
+                console.error('Generation error:', error);
+                alert('Error generating code. Please check the console for details.');
             } finally {
-                loader.classList.add('hidden');
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
-        }
+        });
 
-        function readFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = event => resolve(event.target.result);
-                reader.onerror = error => reject(error);
-                reader.readAsText(file);
+        document.getElementById('copyBtn').addEventListener('click', () => {
+            const code = generatedEditor.getValue();
+            navigator.clipboard.writeText(code).then(() => {
+                alert('Code copied to clipboard!');
+            }).catch(err => {
+                console.error('Failed to copy code:', err);
+                alert('Failed to copy code to clipboard');
             });
-        }
+        });
 
-        function saveProjects() {
-            localStorage.setItem('projects', JSON.stringify(projects));
-        }
+        document.getElementById('saveBtn').addEventListener('click', () => {
+            const code = generatedEditor.getValue();
+            const language = document.getElementById('languageSelect').value;
+            const blob = new Blob([code], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `generated_code.${language}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        });
 
-        function showProjectsPage() {
-            document.getElementById('projectsPage').classList.remove('hidden');
-            document.getElementById('projectPage').classList.add('hidden');
-            updateProjectCards();
-        }
+        const settingsModal = document.getElementById('settingsModal');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const closeSettingsBtn = document.getElementById('closeSettingsBtn');
 
-        function showProjectPage() {
-            document.getElementById('projectsPage').classList.add('hidden');
-            document.getElementById('projectPage').classList.remove('hidden');
-        }
+        settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+        });
 
-        function updateProjectCards() {
-            const projectCards = document.getElementById('projectCards');
-            projectCards.innerHTML = '';
-            projects.forEach((project, index) => {
-            const card = document.createElement('div');
-            card.className = 'bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 flex flex-col justify-between';
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            
+            const newHost = document.getElementById('hostInput').value;
+            const newApiKey = document.getElementById('apiKeyInput').value;
+            const newTemperature = document.getElementById('temperatureInput').value;
 
-            const cardTitle = document.createElement('h3');
-            cardTitle.className = 'text-lg font-semibold mb-2';
-            cardTitle.textContent = project.name;
+            localStorage.setItem('lollms_host', newHost);
+            localStorage.setItem('lollms_api_key', newApiKey);
+            localStorage.setItem('lollms_temperature', newTemperature);
 
-            const cardVersions = document.createElement('p');
-            cardVersions.className = 'text-gray-500 dark:text-gray-400';
-            cardVersions.textContent = `${project.codeVersions.length} versions`;
-
-            const buttonContainer = document.createElement('div');
-            buttonContainer.className = 'flex justify-between items-center mt-4';
-
-            // Open button with SVG icon
-            const openButton = document.createElement('button');
-            openButton.className = 'bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded flex items-center';
-            openButton.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
-                </svg>
-                Open
-            `;
-            openButton.onclick = (event) => {
-                event.stopPropagation();
-                loadProject(index);
-                showProjectPage();
-            };
-
-            // Delete button with SVG icon
-            const deleteButton = document.createElement('button');
-            deleteButton.className = 'bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded flex items-center';
-            deleteButton.innerHTML = `
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                Delete
-            `;
-            deleteButton.onclick = (event) => {
-                event.stopPropagation();
-                // Add logic to delete the project here
-                console.log(`Deleting project: ${project.name}`);
-            };
-
-            buttonContainer.appendChild(openButton);
-            buttonContainer.appendChild(deleteButton);
-
-            card.appendChild(cardTitle);
-            card.appendChild(cardVersions);
-            card.appendChild(buttonContainer);
-            projectCards.appendChild(card);
+            lc.updateSettings({
+                host_address: newHost,
+                temperature: parseFloat(newTemperature),
+                service_key: newApiKey
             });
-        }
+        });
 
-
-        window.onload = () => {
-            initCodeMirror();
-            loadSettings();
-            document.documentElement.classList.toggle('dark', darkMode);
-
-            // Add event listeners for settings changes
-            document.querySelectorAll('#configMenu input').forEach(input => {
-                input.addEventListener('change', saveSettings);
-            });
-
-            showProjectsPage();
-        };
+        window.addEventListener('resize', () => {
+            if (sourceEditor && generatedEditor) {
+                sourceEditor.layout();
+                generatedEditor.layout();
+            }
+        });
     </script>
-
 </body>
 </html>
