@@ -103,17 +103,18 @@
                 </div>
 
                 <!-- Action Buttons -->
-                <div class="flex gap-4">
-                    <button onclick="scrapeUrls()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <div class="flex gap-4 flex-col">
+                    <button id="btnScrapeUrls" onclick="scrapeUrls()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Scrape URLs
                     </button>
-                    <button onclick="processText()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <div id="downloadContainer" class="flex items-center space-x-2"></div>                    
+                    <button id="btnProcessText" onclick="processText()" class="hidden flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Process text
                     </button>
-                    <button onclick="extractSubjects()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <button id="btnExtractSubjects" onclick="extractSubjects()" class="hidden flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Extract Subjects
                     </button>
-                    <button onclick="refineContent()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                    <button id="btnRefineContent"  onclick="refineContent()" class="hidden flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                         Refine Content
                     </button>
                     <button onclick="startProcessing()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">
@@ -215,13 +216,13 @@
             urls: [],
             depth: 1,
             chunkSize: 4096,
-            rawText: '',
-            chunks: [],
-            subjects: [],
-            processedData: {},
-            currentStep: 0,
-            processedChunks: 0
         };
+        let rawText = ''
+        let chunks = []
+        let subjects = []
+        let processedData = {}
+        let currentStep = 0
+        let processedChunks = []
         // Create an AbortController and an AbortSignal
         const controller = new AbortController();
         const signal = controller.signal;        
@@ -311,49 +312,69 @@
             }
         }
 
-        async function scrapeUrls(use_loader=true) {
-            if(use_loader)
-                showLoader()
+        async function scrapeUrls(use_loader = true) {
+            if (use_loader) showLoader();
             state.depth = parseInt(document.getElementById('depthInput').value);
             state.chunkSize = parseInt(document.getElementById('chunkSizeInput').value);
     
-            urls=state.urls
-            depth = state.depth
+            urls = state.urls;
+            depth = state.depth;
             updateStepStatus(1, 'Scraping');
-          
+    
             try {
                 const response = await axios.post('http://localhost:8000/scrape', {
                     urls,
                     depth,
                 });
-                console.log(response.data)
-                if (!response.data.status=="success") {
+                console.log(response.data);
+                if (!response.data.status == "success") {
                     throw new Error(response.data.error || 'An error occurred');
                 }
-            
+    
                 console.log(response.data.result);
                 updateStepStatus(1, 'Complete');
-                state.rawText =response.data.data
-                console.log("Received data",state.rawText)
+                rawText = response.data.data;
+                console.log("Received data", rawText);
                 saveState();
                 renderProcessedData();
+                document.getElementById('btnProcessText').classList.remove('hidden');
+    
+                // Add download button
+                addDownloadButton(rawText);
             } catch (error) {
-              console.error('Error:', error);
-              updateStepStatus(1, 'Failed');
+                console.error('Error:', error);
+                updateStepStatus(1, 'Failed');
             }
-            if(use_loader)
-                hideLoader()
+            if (use_loader) hideLoader();
+        }
+    
+        function addDownloadButton(rawText) {
+            const downloadContainer = document.getElementById('downloadContainer');
+    
+            // Clear any existing download button
+            downloadContainer.innerHTML = '';
+    
+            // Create a new button element
+            const downloadButton = document.createElement('a');
+            downloadButton.href = URL.createObjectURL(new Blob([rawText], { type: 'text/plain' }));
+            downloadButton.download = 'scraped_data.txt';
+            downloadButton.textContent = 'Download Raw Text';
+            downloadButton.className = 'bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded transition duration-300';
+    
+            // Append the button to the container
+            downloadContainer.appendChild(downloadButton);
+        }
 
-          }
-          
-          // Placeholder functions
-          function updateStepStatus(step, status) {
-            console.log(`Step ${step} status: ${status}`);
-          }
-          
-          function saveState() {
-            console.log('Saving state...');
-          }
+
+        
+        // Placeholder functions
+        function updateStepStatus(step, status) {
+        console.log(`Step ${step} status: ${status}`);
+        }
+        
+        function saveState() {
+        console.log('Saving state...');
+        }
           
 
         async function processText(use_loader=true) {
@@ -366,12 +387,12 @@
                 // Tokenize the input text
 
                 console.log("raw text")
-                console.log(state.rawText)
-                const tokens = await lc.tokenize(state.rawText);
+                console.log(rawText)
+                const tokens = await lc.tokenize(rawText);
                 console.log(tokens)
                 const totalTokens = tokens.length;
                 console.log(`Found ${totalTokens} tokens`)
-                state.chunks = [];
+                chunks = [];
                 
                 // Calculate number of chunks
                 const chunkSize = state.chunkSize;
@@ -387,7 +408,7 @@
                     console.log(chunkText)
                     
                     // Add chunk to state
-                    state.chunks.push({
+                    chunks.push({
                         text: chunkText,
                         tokenCount: chunkTokens.length,
                         startToken: i,
@@ -401,6 +422,7 @@
                 updateStepStatus(2, 'Complete');
                 saveState();
                 renderProcessedData();
+                document.getElementById('btnExtractSubjects').classList.remove('hidden');
             } catch (error) {
                 console.error('Error processing text:', error);
                 updateStepStatus(2, 'Error');
@@ -422,27 +444,27 @@
             try {
                 updateStepStatus(3, 'Processing');
                 
-                if (!state.chunks || state.chunks.length === 0) {
+                if (!chunks || chunks.length === 0) {
                     throw new Error('No chunks available for processing');
                 }
         
                 // Initialize subjects if not exists
-                if (!state.subjects) {
-                    state.subjects = [];
+                if (!subjects) {
+                    subjects = [];
                 }
         
                 // Initialize subject contents if not exists
-                if (!state.processedData) {
-                    state.processedData = {};
+                if (!processedData) {
+                    processedData = {};
                 }
         
                 // Process each chunk
-                for (let i = 0; i < state.chunks.length; i++) {
-                    console.log(`Processing chunk ${i + 1}/${state.chunks.length}`)
-                    updateStepStatus(3, `Processing chunk ${i + 1}/${state.chunks.length}`);
+                for (let i = 0; i < chunks.length; i++) {
+                    console.log(`Processing chunk ${i + 1}/${chunks.length}`)
+                    updateStepStatus(3, `Processing chunk ${i + 1}/${chunks.length}`);
                     
-                    const chunk = state.chunks[i].text;
-                    const result = await processChunkWithLLM(chunk, state.subjects);
+                    const chunk = chunks[i].text;
+                    const result = await processChunkWithLLM(chunk, subjects);
                     
                     if (result) {
 
@@ -450,19 +472,19 @@
                         console.log("resultSubjects");
                         console.log(resultSubjects);
                         // Fuse the subject lists
-                        const fusedSubjects = [...state.subjects, ...resultSubjects].filter((subject, index, self) => {
+                        const fusedSubjects = [...subjects, ...resultSubjects].filter((subject, index, self) => {
                           return self.indexOf(subject) === index;
                         });
-                        state.subjects = fusedSubjects;
+                        subjects = fusedSubjects;
         
                         // Update subject contents
                         for (const [subject, content] of Object.entries(result.extracted_infos)) {
-                            if (state.processedData[subject]) {
+                            if (processedData[subject]) {
                                 // If subject exists, append new content
-                                state.processedData[subject] += '\n\n' + content;
+                                processedData[subject] += '\n\n' + content;
                             } else {
                                 // If new subject, create new entry
-                                state.processedData[subject] = content;
+                                processedData[subject] = content;
                             }
                         }
                     }
@@ -471,10 +493,10 @@
                 // Refine all subject contents
                 console.log("Refining the subjects")
                 updateStepStatus(3, 'Refining subjects');
-                const refinementPromises = state.subjects.map(async subject => {
-                    const content = state.processedData[subject];
+                const refinementPromises = subjects.map(async subject => {
+                    const content = processedData[subject];
                     const refinedContent = await refineSubjectContent(subject, content);
-                    state.processedData[subject] = refinedContent;
+                    processedData[subject] = refinedContent;
                 });
         
                 // Wait for all refinements to complete
@@ -483,9 +505,11 @@
                 updateStepStatus(3, 'Complete');
                 saveState();
                 renderProcessedData();
+                document.getElementById('btnRefineContent').classList.remove('hidden');
+                
                 return {
-                    subjects: state.subjects,
-                    processedData: state.processedData
+                    subjects: subjects,
+                    processedData: processedData
                 };
         
             } catch (error) {
@@ -510,22 +534,22 @@
                 updateStepStatus(4, 'Processing');
         
                 // Check if subjects and content exist
-                if (!state.subjects || !state.processedData) {
+                if (!subjects || !processedData) {
                     throw new Error('No subjects or content available for refinement');
                 }
         
                 // Create a copy of the original content for comparison
-                const originalContents = { ...state.processedData };
+                const originalContents = { ...processedData };
         
                 // Process each subject's content
-                const totalSubjects = state.subjects.length;
+                const totalSubjects = subjects.length;
                 let processedSubjects = 0;
         
                 // Use Promise.all for parallel processing
-                const refinementPromises = state.subjects.map(async (subject) => {
+                const refinementPromises = subjects.map(async (subject) => {
                     try {
                         // Get current content
-                        const currentContent = state.processedData[subject];
+                        const currentContent = processedData[subject];
                         
                         // Skip if content is empty
                         if (!currentContent || currentContent.trim() === '') {
@@ -536,7 +560,7 @@
                         const refinedContent = await refineSubjectContent(subject, currentContent);
                         
                         // Update the state with refined content
-                        state.processedData[subject] = refinedContent;
+                        processedData[subject] = refinedContent;
         
                         // Update progress
                         processedSubjects++;
@@ -545,7 +569,7 @@
                     } catch (error) {
                         console.error(`Error refining content for subject "${subject}":`, error);
                         // Keep original content in case of error
-                        state.processedData[subject] = originalContents[subject];
+                        processedData[subject] = originalContents[subject];
                     }
                 });
         
@@ -561,9 +585,9 @@
                 };
         
                 // Compare original and refined contents
-                for (const subject of state.subjects) {
+                for (const subject of subjects) {
                     const originalLength = originalContents[subject]?.length || 0;
-                    const refinedLength = state.processedData[subject]?.length || 0;
+                    const refinedLength = processedData[subject]?.length || 0;
                     
                     stats.changes[subject] = {
                         originalLength,
@@ -579,7 +603,7 @@
                 saveState();
                 renderProcessedData();        
                 return {
-                    processedData: state.processedData,
+                    processedData: processedData,
                     stats: stats
                 };
         
@@ -623,12 +647,6 @@
                 urls: [],
                 depth: 1,
                 chunkSize: 4096,
-                rawText: '',
-                chunks: [],
-                subjects: [],
-                processedData: {},
-                currentStep: 0,
-                processedChunks: 0
             };
             localStorage.removeItem('webscoutState');
             updateUI();
@@ -638,11 +656,11 @@
         // Export Functions
         function exportData(format) {
             if (format === 'json') {
-                const dataStr = JSON.stringify(state.processedData, null, 2);
+                const dataStr = JSON.stringify(processedData, null, 2);
                 downloadFile(dataStr, 'webscout-data.json', 'application/json');
             } else if (format === 'markdown') {
                 let mdContent = '# WebScout Intelligence Report\n\n';
-                for (const [subject, content] of Object.entries(state.processedData)) {
+                for (const [subject, content] of Object.entries(processedData)) {
                     mdContent += `## ${subject}\n\n${content}\n\n`;
                 }
                 downloadFile(mdContent, 'webscout-report.md', 'text/markdown');
@@ -765,7 +783,7 @@ ${lc.template.separator_template}${lc.ai_message()}`;
             contentPreview.innerHTML = '';
           
             // Render subjects list
-            Object.keys(state.processedData).forEach((subject) => {
+            Object.keys(processedData).forEach((subject) => {
               const listItem = document.createElement('div');
               listItem.classList.add('p-2', 'border-b', 'border-gray-200');
               listItem.textContent = subject;
@@ -773,7 +791,7 @@ ${lc.template.separator_template}${lc.ai_message()}`;
             });
           
             // Render content preview
-            Object.entries(state.processedData).forEach(([subject, content]) => {
+            Object.entries(processedData).forEach(([subject, content]) => {
               const previewItem = document.createElement('div');
               previewItem.classList.add('mb-4');
               previewItem.innerHTML = `
@@ -787,7 +805,7 @@ ${lc.template.separator_template}${lc.ai_message()}`;
           
           // Add event listener to show full content
           function showFullContent(subject) {
-            alert(`Full content of "${subject}":\n\n${state.processedData[subject]}`);
+            alert(`Full content of "${subject}":\n\n${processedData[subject]}`);
           }
         // Initialize the application
         document.addEventListener('DOMContentLoaded', () => {

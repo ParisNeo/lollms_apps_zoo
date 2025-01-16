@@ -253,6 +253,7 @@ async def scrape_urls(request: ScrapeRequest):
     visited_urls = set()
     all_text = []
     scraper = WebScraper()
+    i = [0]
 
     async def crawl(url: str, depth: int):
         print(f"Processing depth: {depth}/{request.depth}")
@@ -264,7 +265,9 @@ async def scrape_urls(request: ScrapeRequest):
         if text:
             all_text.append(text)
             print(f"Text found")
-
+            with (STORAGE_DIR / f"file_{i[0]}.txt").open("w", encoding="utf-8") as f:
+                f.write(text)
+            i[0]+=1
             if depth > 0:
                 print(f"Stepping down")
                 links = await scraper.get_links(url)
@@ -277,8 +280,8 @@ async def scrape_urls(request: ScrapeRequest):
 
     combined_text = "\n\n".join(all_text)
     print(combined_text)
-    with (STORAGE_DIR / "raw_text.json").open("w", encoding="utf-8") as f:
-        json.dump({"text": combined_text}, f)
+    with (STORAGE_DIR / "raw_text.txt").open("w", encoding="utf-8") as f:
+        f.write(combined_text)
 
     return {
         "status": "success",
