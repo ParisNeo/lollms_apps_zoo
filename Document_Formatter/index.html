@@ -4,118 +4,257 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document Formatter</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="/lollms_assets/js/web.app.localizer"></script>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="min-h-screen bg-gradient-to-r from-blue-100 to-purple-100">
+
+    <!-- Loading Spinner -->
+    <div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-center items-center">
+        <div class="bg-white p-6 rounded-lg shadow-xl text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+            <p class="mt-4 text-indigo-600" data-translate="loading">Loading...</p>
+        </div>
+    </div>
+
+    <!-- Settings Panel -->
+    <div id="settingsPanel" class="fixed top-4 right-4 p-4 bg-white rounded-lg shadow-lg hidden">
+        <h3 class="text-lg font-bold mb-4" data-translate="settings">Settings</h3>
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium" data-translate="host">Lollms Host:</label>
+                <input type="text" id="hostInput" class="mt-1 w-full p-2 border rounded" value="http://localhost:9600">
+            </div>
+            <div>
+                <label class="block text-sm font-medium" data-translate="generation_format">Generation Format:</label>
+                <select id="formatSelect" class="mt-1 w-full p-2 border rounded">
+                    <option value="LOLLMS">LOLLMS</option>
+                    <option value="OPENAI">OpenAI</option>
+                    <option value="OLLAMA">Ollama</option>
+                    <option value="VLLM">VLLM</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium" data-translate="language">Language:</label>
+                <select id="languageSelect" class="mt-1 w-full p-2 border rounded">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
     <div class="container mx-auto p-6">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-blue-600">Document Formatter</h1>
-            <p class="text-lg text-gray-600">Easily reformat your documents with custom templates.</p>
+            <div class="flex justify-end mb-4">
+                <button id="settingsBtn" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </button>
+            </div>
+            <h1 class="text-4xl font-bold text-indigo-800" data-translate="title">Document Formatter</h1>
+            <p class="text-lg text-indigo-600" data-translate="subtitle">Easily reformat your documents with custom templates</p>
         </header>
 
-        <div class="bg-white p-6 rounded-lg shadow-lg">
-            <form id="formatterForm" class="space-y-6">
-                <!-- Content Document Upload or Text Input -->
-                <div>
-                    <label class="block text-lg font-medium text-gray-700">Upload Content Document or Enter Text</label>
-                    <input type="file" id="contentFile" accept=".pdf,.docx" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
-                    <textarea id="contentText" placeholder="Or enter your content here..." class="mt-2 p-2 border border-gray-300 rounded-md w-full h-32"></textarea>
+        <div class="bg-white p-8 rounded-xl shadow-2xl">
+            <form id="formatterForm" class="space-y-8">
+                <div class="grid gap-8 md:grid-cols-2">
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-indigo-800" data-translate="content_input">Content Input</label>
+                        <input type="file" id="contentFile" accept=".pdf,.docx" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <textarea id="contentText" class="w-full h-48 p-4 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-translate="content_placeholder" placeholder="Enter your content here..."></textarea>
+                    </div>
+
+                    <div class="space-y-4">
+                        <label class="block text-lg font-medium text-indigo-800" data-translate="template_input">Template Input</label>
+                        <input type="file" id="templateFile" accept=".docx,.tex" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                        <textarea id="templateText" class="w-full h-48 p-4 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent" data-translate="template_placeholder" placeholder="Enter your template here..."></textarea>
+                    </div>
                 </div>
 
-                <!-- Template Document Upload or Text Input -->
                 <div>
-                    <label class="block text-lg font-medium text-gray-700">Upload Template Document or Enter Template</label>
-                    <input type="file" id="templateFile" accept=".docx,.tex" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
-                    <textarea id="templateText" placeholder="Or enter your template here..." class="mt-2 p-2 border border-gray-300 rounded-md w-full h-32"></textarea>
-                </div>
-
-                <!-- Template Type Selection -->
-                <div>
-                    <label class="block text-lg font-medium text-gray-700">Select Template Type</label>
-                    <select id="templateType" class="mt-2 p-2 border border-gray-300 rounded-md w-full">
-                        <option value="docx">Word Template (.docx)</option>
-                        <option value="tex">LaTeX Template (.tex)</option>
-                        <option value="markdown">Markdown (.md)</option>
+                    <label class="block text-lg font-medium text-indigo-800 mb-2" data-translate="template_type">Template Type</label>
+                    <select id="templateType" class="w-full p-3 border-2 border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                        <option value="docx" data-translate="docx_option">Word Template (.docx)</option>
+                        <option value="tex" data-translate="tex_option">LaTeX Template (.tex)</option>
+                        <option value="markdown" data-translate="markdown_option">Markdown (.md)</option>
                     </select>
                 </div>
 
-                <!-- Action Buttons -->
-                <div class="flex justify-between">
-                    <button type="button" id="formatButton" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Format Document</button>
-                    <button type="reset" class="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700">Reset</button>
+                <div class="flex gap-4 justify-center">
+                    <button type="button" id="formatButton" class="flex-1 max-w-xs bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300 ease-in-out transform hover:scale-105" data-translate="format_button">Format Document</button>
+                    <button type="reset" class="flex-1 max-w-xs bg-gray-500 text-white px-6 py-3 rounded-lg hover:bg-gray-600 transition duration-300 ease-in-out transform hover:scale-105" data-translate="reset_button">Reset</button>
                 </div>
             </form>
         </div>
 
-        <!-- Output Section -->
-        <div id="outputSection" class="mt-8 hidden">
-            <h2 class="text-2xl font-bold text-gray-700">Formatted Document</h2>
-            <a id="downloadLink" href="#" download class="mt-4 inline-block bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">Download Formatted Document</a>
+        <div id="outputSection" class="mt-8 hidden bg-white p-8 rounded-xl shadow-2xl">
+            <h2 class="text-2xl font-bold text-indigo-800 mb-6" data-translate="output_title">Formatted Document</h2>
+            <a id="downloadLink" href="#" download class="inline-block bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out transform hover:scale-105" data-translate="download_button">Download Formatted Document</a>
         </div>
     </div>
 
-    <footer class="text-center mt-12 text-gray-600">
-        <p>Powered by Lollms</p>
-        <a href="#" class="text-blue-600 hover:underline">Privacy Policy</a> | 
-        <a href="#" class="text-blue-600 hover:underline">Terms of Service</a>
+    <footer class="text-center py-8 text-indigo-600">
+        <p data-translate="powered_by">Powered by Lollms</p>
+        <div class="mt-2 space-x-4">
+            <a href="#" class="text-indigo-600 hover:text-indigo-800" data-translate="privacy">Privacy Policy</a>
+            <span>|</span>
+            <a href="#" class="text-indigo-600 hover:text-indigo-800" data-translate="terms">Terms of Service</a>
+        </div>
     </footer>
 
     <script>
-        document.getElementById('formatButton').addEventListener('click', async function() {
-            const contentFile = document.getElementById('contentFile').files[0];
-            const templateFile = document.getElementById('templateFile').files[0];
-            const contentText = document.getElementById('contentText').value;
-            const templateText = document.getElementById('templateText').value;
-            const templateType = document.getElementById('templateType').value;
-
-            if ((!contentFile && !contentText) || (!templateFile && !templateText)) {
-                alert("Please provide both content and template, either by uploading files or entering text.");
-                return;
+        // Translations object
+        const translations = {
+            en: {
+                name: "English",
+                translations: {
+                    "loading": "Loading...",
+                    "settings": "Settings",
+                    "host": "Lollms Host:",
+                    "generation_format": "Generation Format:",
+                    "language": "Language:",
+                    "title": "Document Formatter",
+                    "subtitle": "Easily reformat your documents with custom templates",
+                    "content_input": "Content Input",
+                    "content_placeholder": "Enter your content here...",
+                    "template_input": "Template Input",
+                    "template_placeholder": "Enter your template here...",
+                    "template_type": "Template Type",
+                    "docx_option": "Word Template (.docx)",
+                    "tex_option": "LaTeX Template (.tex)",
+                    "markdown_option": "Markdown (.md)",
+                    "format_button": "Format Document",
+                    "reset_button": "Reset",
+                    "output_title": "Formatted Document",
+                    "download_button": "Download Formatted Document",
+                    "powered_by": "Powered by Lollms",
+                    "privacy": "Privacy Policy",
+                    "terms": "Terms of Service"
+                }
+            },
+            fr: {
+                name: "Français",
+                translations: {
+                    "loading": "Chargement...",
+                    "settings": "Paramètres",
+                    "host": "Hôte Lollms :",
+                    "generation_format": "Format de génération :",
+                    "language": "Langue :",
+                    "title": "Formateur de Documents",
+                    "subtitle": "Reformatez facilement vos documents avec des modèles personnalisés",
+                    "content_input": "Contenu",
+                    "content_placeholder": "Entrez votre contenu ici...",
+                    "template_input": "Modèle",
+                    "template_placeholder": "Entrez votre modèle ici...",
+                    "template_type": "Type de Modèle",
+                    "docx_option": "Modèle Word (.docx)",
+                    "tex_option": "Modèle LaTeX (.tex)",
+                    "markdown_option": "Markdown (.md)",
+                    "format_button": "Formater le Document",
+                    "reset_button": "Réinitialiser",
+                    "output_title": "Document Formaté",
+                    "download_button": "Télécharger le Document",
+                    "powered_by": "Propulsé par Lollms",
+                    "privacy": "Politique de Confidentialité",
+                    "terms": "Conditions d'Utilisation"
+                }
             }
+        };
 
-            // Initialize Lollms Client
-            const lc = new LollmsClient();
+        // Initialize localizer
+        const localizer = new WebAppLocalizer(translations, 'doc_formatter_', document.getElementById('languageSelect'));
+        localizer.apply();
 
-            // Load the content and template data
-            let contentFileData = contentText;
-            let templateFileData = templateText;
+        // Show/hide loading overlay
+        function showLoader() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
 
-            if (contentFile) {
-                contentFileData = await contentFile.text();
-            }
+        function hideLoader() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
 
-            if (templateFile) {
-                templateFileData = await templateFile.text();
-            }
-
-            // Construct the prompt
-            const system_prompt = `Format the following content using the provided template.`;
-            const user_prompt = `Content:\n${contentFileData}\n\nTemplate:\n${templateFileData}`;
-
-            let prompt = lc.system_message() + system_prompt + lc.template.separator_template + lc.user_message() + user_prompt + lc.template.separator_template + lc.ai_message();
-
-            // Generate the formatted document
-            let formattedDocument;
-            if (templateType === 'tex') {
-                prompt += "\n\nPlease generate a full LaTeX code and enclose it within LaTeX markdown tags.";
-                formattedDocument = await lc.generateCode(prompt);
-            } else if (templateType === 'markdown') {
-                prompt += "\n\nPlease generate the content in Markdown format.";
-                formattedDocument = await lc.generate(prompt);
-            } else if (templateType === 'docx') {
-                prompt += "\n\nPlease generate a Python code that creates a DOCX file with the formatted content.";
-                formattedDocument = await lc.generateCode(prompt);
-            }
-
-            // Create a download link for the formatted document
-            const outputSection = document.getElementById('outputSection');
-            const downloadLink = document.getElementById('downloadLink');
-            downloadLink.href = URL.createObjectURL(new Blob([formattedDocument], { type: templateType === 'docx' ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : "text/plain" }));
-            downloadLink.download = `formatted_document.${templateType === 'docx' ? 'docx' : templateType === 'markdown' ? 'md' : 'tex'}`;
-            outputSection.classList.remove('hidden');
+        // Settings panel toggle
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            const settingsPanel = document.getElementById('settingsPanel');
+            settingsPanel.classList.toggle('hidden');
         });
+
+        // Initialize Lollms client
+        const lc = new LollmsClient();
+
+        document.getElementById('formatButton').addEventListener('click', async function() {
+            showLoader();
+            try {
+                const contentFile = document.getElementById('contentFile').files[0];
+                const templateFile = document.getElementById('templateFile').files[0];
+                const contentText = document.getElementById('contentText').value;
+                const templateText = document.getElementById('templateText').value;
+                const templateType = document.getElementById('templateType').value;
+
+                if ((!contentFile && !contentText) || (!templateFile && !templateText)) {
+                    alert(localizer.translate("provide_both_inputs"));
+                    return;
+                }
+
+                // Update Lollms client settings
+                lc.updateSettings({
+                    host_address: document.getElementById('hostInput').value,
+                    default_generation_mode: document.getElementById('formatSelect').value
+                });
+
+                // Process files and generate formatted document
+                let contentFileData = contentText;
+                let templateFileData = templateText;
+
+                if (contentFile) {
+                    contentFileData = await contentFile.text();
+                }
+
+                if (templateFile) {
+                    templateFileData = await templateFile.text();
+                }
+
+                const system_prompt = `Format the following content using the provided template.`;
+                const user_prompt = `Content:\n${contentFileData}\n\nTemplate:\n${templateFileData}`;
+
+                let prompt = lc.system_message() + system_prompt + lc.template.separator_template + 
+                           lc.user_message() + user_prompt + lc.template.separator_template + lc.ai_message();
+
+                let formattedDocument;
+                if (templateType === 'tex') {
+                    formattedDocument = await lc.generateCode(prompt, null, "tex");
+                } else if (templateType === 'markdown') {
+                    formattedDocument = await lc.generateCode(prompt, null, "markdown");
+                } else if (templateType === 'docx') {
+                    formattedDocument = await lc.generateCode(prompt, null, "python");
+                }
+
+                const outputSection = document.getElementById('outputSection');
+                const downloadLink = document.getElementById('downloadLink');
+                const blob = new Blob([formattedDocument], {
+                    type: templateType === 'docx' ? 
+                          "application/vnd.openxmlformats-officedocument.wordprocessingml.document" : 
+                          "text/plain"
+                });
+                downloadLink.href = URL.createObjectURL(blob);
+                downloadLink.download = `formatted_document.${templateType}`;
+                outputSection.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error:', error);
+                alert(error.message);
+            } finally {
+                hideLoader();
+            }
+        });
+
+        // Initialize with English
+        localizer.setLanguage('en');
     </script>
 </body>
 </html>
