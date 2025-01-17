@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Focus Quest Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/lollms_assets/js/lollms_client_js"></script>
+    <script src="/lollms_assets/js/axios.min"></script>
+</head>
+<!-- In-Page Notification Popup -->
+<div id="notificationPopup" class="hidden fixed bottom-4 right-4 bg-indigo-600 text-white px-6 py-4 rounded-lg shadow-lg z-50">
+    <span id="notificationMessage"></span>
+    <button onclick="closeNotification()" class="ml-4 text-white font-bold">&times;</button>
+</div>
+<style>
+    #notificationPopup {
+        animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s;
+    }
+    
+    @keyframes slideIn {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes fadeOut {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }    
+
+</style>
+<body class="bg-gradient-to-r from-indigo-50 to-purple-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8">
+            <div class="flex justify-between items-center">
+                <h1 class="text-3xl font-bold text-indigo-800">Focus Quest Pro</h1>
+                <div class="flex items-center gap-4">
+                    <div class="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-lg font-bold">
+                        <span id="focusCoins">0</span> Focus Coins
+                    </div>
+                </div>                
+                <div class="flex gap-4">
+                    <button onclick="toggleStats()" class="bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-4 py-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Stats
+                    </button>
+                    <button onclick="toggleSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Settings
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Timer Modes -->
+        <div class="mb-8">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Daily Objective</h2>
+                <div class="flex items-center gap-4 mb-4">
+                    <input type="number" id="dailyObjective" placeholder="Set coin goal..." class="w-full px-4 py-2 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="setDailyObjective()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Set Goal</button>
+                </div>
+                <p id="objectiveStatus" class="text-indigo-600">No goal set yet.</p>
+            </div>            
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex gap-4 justify-center mb-4">
+                    <button onclick="setTimerMode('focus')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg">Focus Mode</button>
+                    <button onclick="setTimerMode('break')" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg">Break Mode</button>
+                    <button onclick="setTimerMode('longBreak')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg">Long Break</button>
+                </div>
+                <div class="text-6xl font-bold text-center text-indigo-900 mb-4" id="timer">25:00</div>
+                <div class="text-center text-lg text-indigo-600 mb-4" id="timerMode">Focus Time</div>
+                <div class="flex justify-center space-x-4">
+                    <button onclick="startTimer()" class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg">Start</button>
+                    <button onclick="pauseTimer()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-lg">Pause</button>
+                    <button onclick="resetTimer()" class="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg">Reset</button>
+                </div>
+                <div class="mt-4 text-center">
+                    <span class="text-indigo-600">Session Progress: </span>
+                    <span id="sessionCount" class="font-bold">0/4</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Task Manager -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Task Manager</h2>
+                <div class="mb-4">
+                    <input type="text" id="taskSearch" placeholder="Search tasks..." class="w-full px-4 py-2 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+                    <select id="taskCategory" class="w-full px-4 py-2 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-2">
+                        <option value="work">Work</option>
+                        <option value="personal">Personal</option>
+                        <option value="study">Study</option>
+                        <option value="health">Health</option>
+                    </select>
+                    <input type="text" id="taskInput" placeholder="Add a new task..." class="w-full px-4 py-2 border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div class="flex gap-2 mt-2">
+                        <input type="number" id="taskPriority" min="1" max="5" value="3" class="w-16 px-2 py-2 border border-indigo-300 rounded-lg" title="Priority (1-5)">
+                        <button onclick="addTask()" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">Add Task</button>
+                    </div>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <select id="taskFilter" class="px-4 py-2 border border-indigo-300 rounded-lg">
+                        <option value="all">All Tasks</option>
+                        <option value="active">Active</option>
+                        <option value="completed">Completed</option>
+                    </select>
+                    <button onclick="clearCompletedTasks()" class="text-red-500 hover:text-red-700">Clear Completed</button>
+                </div>
+                <ul id="taskList" class="space-y-2 max-h-64 overflow-y-auto"></ul>
+                <div class="mt-4 text-sm text-gray-600">
+                    <span id="taskStats">0 tasks remaining</span>
+                </div>
+            </div>
+
+            <!-- Progress Tracking -->
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Progress Tracking</h2>
+                <div class="bg-yellow-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-yellow-700">Total Focus Coins</h3>
+                    <p class="text-2xl font-bold" id="totalFocusCoins">0</p>
+                </div>
+                <div id="progressStats" class="space-y-4">
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-indigo-700">Today's Focus Time</h3>
+                        <p class="text-2xl font-bold" id="todayFocusTime">0h 0m</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-green-700">Tasks Completed</h3>
+                        <p class="text-2xl font-bold" id="tasksCompleted">0</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-purple-700">Focus Streak</h3>
+                        <p class="text-2xl font-bold" id="focusStreak">0 days</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Settings Modal -->
+        <div id="settingsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Settings</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 mb-2">Lollms Host</label>
+                        <input type="text" id="hostInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg" placeholder="http://localhost:9600">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Generation Format</label>
+                        <select id="formatSelect" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                            <option value="LOLLMS">LOLLMS</option>
+                            <option value="OPENAI">OpenAI</option>
+                            <option value="OLLAMA">Ollama</option>
+                            <option value="VLLM">VLLM</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Focus Timer Duration (minutes)</label>
+                        <input type="number" id="focusDuration" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="25" min="1" max="60">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Break Timer Duration (minutes)</label>
+                        <input type="number" id="breakDuration" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="5" min="1" max="30">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2">Long Break Duration (minutes)</label>
+                        <input type="number" id="longBreakDuration" class="w-full px-4 py-2 border border-gray-300 rounded-lg" value="15" min="1" max="60">
+                    </div>
+                    <button onclick="saveSettings()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg w-full">Save Settings</button>
+                    <button onclick="closeSettings()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg w-full">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Modal -->
+        <div id="statsModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-xl p-8 max-w-md w-full">
+                <h2 class="text-2xl font-semibold text-indigo-700 mb-4">Detailed Statistics</h2>
+                <div class="space-y-4">
+                    <div class="bg-indigo-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-indigo-700">Weekly Focus Hours</h3>
+                        <p class="text-2xl font-bold" id="weeklyFocusHours">0h</p>
+                    </div>
+                    <div class="bg-green-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-green-700">Weekly Tasks Completed</h3>
+                        <p class="text-2xl font-bold" id="weeklyTasksCompleted">0</p>
+                    </div>
+                    <div class="bg-purple-50 p-4 rounded-lg">
+                        <h3 class="font-semibold text-purple-700">Average Daily Focus Time</h3>
+                        <p class="text-2xl font-bold" id="avgDailyFocusTime">0h 0m</p>
+                    </div>
+                    <button onclick="closeStats()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg w-full">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let timeLeft = 1500; // 25 minutes in seconds
+        let timerId = null;
+        let currentMode = 'focus';
+        let sessionCount = 0;
+        let totalSessions = 4;
+        const lc = new LollmsClient();
+
+        // Timer settings
+        const timerSettings = {
+            focus: 1500, // 25 minutes
+            break: 300,  // 5 minutes
+            longBreak: 900 // 15 minutes
+        };
+
+        // Statistics tracking
+        let stats = {
+            todayFocusTime: 0,
+            tasksCompleted: 0,
+            focusStreak: 0,
+weeklyFocusHours: 0,
+            weeklyTasksCompleted: 0,
+            startTime: null,
+            pausedTime: 0
+        };
+
+        // Load stats from localStorage
+        function loadStats() {
+            const savedStats = localStorage.getItem('adhd_companion_stats');
+            if (savedStats) {
+                stats = JSON.parse(savedStats);
+                updateStatsDisplay();
+                updateFocusCoinsDisplay();
+                if (stats.dailyObjective) {
+                    document.getElementById('objectiveStatus').textContent = `Goal: Earn ${stats.dailyObjective} Focus Coins today!`;
+                }
+            }
+        }
+        
+
+        // Save stats to localStorage
+        function saveStats() {
+            localStorage.setItem('adhd_companion_stats', JSON.stringify(stats));
+            updateFocusCoinsDisplay();
+        }
+
+        // Timer functions
+        function setTimerMode(mode) {
+            currentMode = mode;
+            timeLeft = timerSettings[mode];
+            updateTimerDisplay();
+            updateTimerModeDisplay();
+        }
+
+        function startTimer() {
+            if (!timerId) {
+                stats.startTime = Date.now() - (stats.pausedTime || 0);
+                timerId = setInterval(updateTimer, 1000);
+            }
+        }
+
+        function pauseTimer() {
+            if (timerId) {
+                clearInterval(timerId);
+                timerId = null;
+                stats.pausedTime = Date.now() - stats.startTime;
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerId);
+            timerId = null;
+            timeLeft = timerSettings[currentMode];
+            stats.startTime = null;
+            stats.pausedTime = 0;
+            updateTimerDisplay();
+        }
+
+        function updateTimer() {
+            if (timeLeft > 0) {
+                timeLeft--;
+                updateTimerDisplay();
+            } else {
+                clearInterval(timerId);
+                timerId = null;
+                handleTimerComplete();
+            }
+        }
+
+        function handleTimerComplete() {
+            const notification = new Audio('/notification.mp3');
+            notification.play();
+
+            if (currentMode === 'focus') {
+                stats.todayFocusTime += timerSettings.focus;
+                sessionCount++;
+                stats.focusCoins = (stats.focusCoins || 0) + 10; // Earn 10 coins per session
+                if (sessionCount === totalSessions) {
+                    sendNotification("Focus Quest Pro", "Amazing! You've completed a full cycle! Here's a bonus of 50 Focus Coins!");
+                    stats.focusCoins += 50; // Bonus for completing all sessions
+                    setTimerMode('longBreak');
+                    sessionCount = 0;
+                } else {
+                    sendNotification("Focus Quest Pro", "Focus session complete! Time for a break!");
+                    setTimerMode('break');
+                }
+                updateFocusCoinsDisplay();
+                checkObjectiveCompletion();
+            } else {
+                sendNotification("Focus Quest Pro", "Break time is over! Ready to focus?");
+                setTimerMode('focus');
+            }
+            
+            updateStatsDisplay();
+            saveStats();
+        }
+
+        function updateTimerDisplay() {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            document.getElementById('timer').textContent = 
+                `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            document.getElementById('sessionCount').textContent = `${sessionCount}/${totalSessions}`;
+        }
+
+        function updateTimerModeDisplay() {
+            const modeText = {
+                focus: 'Focus Time',
+                break: 'Break Time',
+                longBreak: 'Long Break'
+            };
+            document.getElementById('timerMode').textContent = modeText[currentMode];
+        }
+
+        // Task management
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const category = document.getElementById('taskCategory').value;
+            const priority = document.getElementById('taskPriority').value;
+            const taskList = document.getElementById('taskList');
+            
+            if (input.value.trim()) {
+                const task = {
+                    id: Date.now(),
+                    text: input.value,
+                    category: category,
+                    priority: priority,
+                    completed: false,
+                    createdAt: new Date().toISOString()
+                };
+
+                const li = createTaskElement(task);
+                taskList.appendChild(li);
+                saveTasks();
+                input.value = '';
+                updateTaskStats();
+            }
+        }
+
+        function createTaskElement(task) {
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between bg-indigo-50 p-3 rounded-lg';
+            li.dataset.id = task.id;
+            li.dataset.priority = task.priority;
+            li.dataset.category = task.category;
+            
+            li.innerHTML = `
+                <span class="flex items-center">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} 
+                           class="mr-3 h-5 w-5 text-indigo-600" 
+                           onchange="toggleTask(${task.id})">
+                    <span class="flex flex-col">
+                        <span class="${task.completed ? 'line-through text-gray-500' : ''}">${task.text}</span>
+                        <span class="text-sm text-gray-500">
+                            ${task.category} • Priority ${task.priority}
+                        </span>
+                    </span>
+                </span>
+                <button onclick="deleteTask(${task.id})" class="text-red-500 hover:text-red-700">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            `;
+            return li;
+        }
+
+        function toggleTask(taskId) {
+            const taskElement = document.querySelector(`li[data-id="${taskId}"]`);
+            const textElement = taskElement.querySelector('span span:first-child');
+            const checkbox = taskElement.querySelector('input[type="checkbox"]');
+            
+            if (checkbox.checked) {
+                textElement.classList.add('line-through', 'text-gray-500');
+                stats.tasksCompleted++;
+            } else {
+                textElement.classList.remove('line-through', 'text-gray-500');
+                stats.tasksCompleted--;
+            }
+            
+            saveTasks();
+            updateStatsDisplay();
+            saveStats();
+        }
+
+        function deleteTask(taskId) {
+            const taskElement = document.querySelector(`li[data-id="${taskId}"]`);
+            taskElement.remove();
+            saveTasks();
+            updateTaskStats();
+        }
+
+        function saveTasks() {
+            const tasks = Array.from(document.getElementById('taskList').children).map(li => ({
+                id: parseInt(li.dataset.id),
+                text: li.querySelector('span span:first-child').textContent,
+                category: li.dataset.category,
+                priority: parseInt(li.dataset.priority),
+                completed: li.querySelector('input[type="checkbox"]').checked,
+                createdAt: new Date().toISOString()
+            }));
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+        }
+
+        function loadTasks() {
+            const savedTasks = localStorage.getItem('tasks');
+            if (savedTasks) {
+                const tasks = JSON.parse(savedTasks);
+                const taskList = document.getElementById('taskList');
+                taskList.innerHTML = '';
+                tasks.forEach(task => {
+                    taskList.appendChild(createTaskElement(task));
+                });
+                updateTaskStats();
+            }
+        }
+
+        // Settings management
+        function toggleSettings() {
+            document.getElementById('settingsModal').classList.toggle('hidden');
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.add('hidden');
+        }
+
+        function toggleStats() {
+            document.getElementById('statsModal').classList.toggle('hidden');
+        }
+
+        function closeStats() {
+            document.getElementById('statsModal').classList.add('hidden');
+        }
+
+        function saveSettings() {
+            const host = document.getElementById('hostInput').value;
+            const format = document.getElementById('formatSelect').value;
+            const focusDuration = parseInt(document.getElementById('focusDuration').value);
+            const breakDuration = parseInt(document.getElementById('breakDuration').value);
+            const longBreakDuration = parseInt(document.getElementById('longBreakDuration').value);
+            
+            timerSettings.focus = focusDuration * 60;
+            timerSettings.break = breakDuration * 60;
+            timerSettings.longBreak = longBreakDuration * 60;
+            
+            lc.updateSettings({
+                host_address: host || 'http://localhost:9600',
+                default_generation_mode: ELF_GENERATION_FORMAT[format]
+            });
+
+            localStorage.setItem('lollmsHost', host);
+            localStorage.setItem('generationFormat', format);
+            localStorage.setItem('timerSettings', JSON.stringify(timerSettings));
+            
+            closeSettings();
+            resetTimer();
+        }
+
+        function updateStatsDisplay() {
+            document.getElementById('todayFocusTime').textContent = formatTime(stats.todayFocusTime);
+            document.getElementById('tasksCompleted').textContent = stats.tasksCompleted;
+            document.getElementById('focusStreak').textContent = `${stats.focusStreak} days`;
+            document.getElementById('weeklyFocusHours').textContent = `${Math.round(stats.weeklyFocusHours)}h`;
+            document.getElementById('weeklyTasksCompleted').textContent = stats.weeklyTasksCompleted;
+            document.getElementById('avgDailyFocusTime').textContent = formatTime(stats.weeklyFocusHours * 3600 / 7);
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            return `${hours}h ${minutes}m`;
+        }
+
+        function updateTaskStats() {
+            const tasks = document.querySelectorAll('#taskList li');
+            const activeTasks = Array.from(tasks).filter(task => 
+                !task.querySelector('input[type="checkbox"]').checked
+            ).length;
+            document.getElementById('taskStats').textContent = `${activeTasks} tasks remaining`;
+        }
+        // Request notification permission
+        if (Notification.permission !== 'granted') {
+            Notification.requestPermission().then(permission => {
+                if (permission === 'granted') {
+                    console.log('Notification permission granted.');
+                } else {
+                    console.log('Notification permission denied.');
+                }
+            });
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', () => {
+            const savedHost = localStorage.getItem('lollmsHost');
+            const savedFormat = localStorage.getItem('generationFormat');
+            const savedTimerSettings = localStorage.getItem('timerSettings');
+            
+            if (savedHost) document.getElementById('hostInput').value = savedHost;
+            if (savedFormat) document.getElementById('formatSelect').value = savedFormat;
+            if (savedTimerSettings) Object.assign(timerSettings, JSON.parse(savedTimerSettings));
+            
+            document.getElementById('focusDuration').value = Math.floor(timerSettings.focus / 60);
+            document.getElementById('breakDuration').value = Math.floor(timerSettings.break / 60);
+            document.getElementById('longBreakDuration').value = Math.floor(timerSettings.longBreak / 60);
+            
+            loadStats();
+            loadTasks();
+            updateTimerDisplay();
+            updateTimerModeDisplay();
+        });
+        function setDailyObjective() {
+            const goal = parseInt(document.getElementById('dailyObjective').value);
+            if (goal > 0) {
+                stats.dailyObjective = goal;
+                stats.objectiveAchieved = false;
+                document.getElementById('objectiveStatus').textContent = `Goal: Earn ${goal} Focus Coins today!`;
+                saveStats();
+            } else {
+                sendNotification("Focus Quest Pro", "Please enter a valid goal.");
+            }
+        }
+        
+        function checkObjectiveCompletion() {
+            if (stats.dailyObjective && !stats.objectiveAchieved && stats.focusCoins >= stats.dailyObjective) {
+                sendNotification("Focus Quest Pro", "Congratulations! You've achieved your daily goal! Here's a bonus of 100 Focus Coins!");
+                stats.focusCoins += 100; // Bonus for achieving the goal
+                stats.objectiveAchieved = true;
+                updateFocusCoinsDisplay();
+                saveStats();
+            }            
+        }
+        function sendNotification(title, message) {
+            if (Notification.permission === 'granted') {
+                const notification = new Notification(title, {
+                    body: message,
+                    icon: '/apps/ADHD_Companion/icon.png' // Optional: Add an icon for the notification
+                });
+        
+                // Play bell sound
+                const bell = new Audio('/apps/ADHD_Companion/bell.wav');
+                bell.play();
+            } else {
+                // Fallback to in-page notification
+                showNotification(`${title}: ${message}`);
+                const bell = new Audio('/apps/ADHD_Companion/bell.wav');
+                bell.play();
+            }
+        }
+        
+        function showNotification(message) {
+            const popup = document.getElementById('notificationPopup');
+            const messageElement = document.getElementById('notificationMessage');
+            messageElement.textContent = message;
+            popup.classList.remove('hidden');
+        
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                popup.classList.add('hidden');
+            }, 5000);
+        }
+        
+        function closeNotification() {
+            const popup = document.getElementById('notificationPopup');
+            popup.classList.add('hidden');
+        }
+                
+        function updateFocusCoinsDisplay() {
+            document.getElementById('focusCoins').textContent = stats.focusCoins || 0;
+            document.getElementById('totalFocusCoins').textContent = stats.focusCoins || 0;
+        }
+    </script>
+</body>
+</html>
