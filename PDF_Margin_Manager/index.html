@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Margin Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-purple-100 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-indigo-800 mb-4">PDF Margin Manager</h1>
+            <p class="text-gray-600">Add custom margins to your PDF documents</p>
+        </header>
+
+        <main class="max-w-2xl mx-auto bg-white shadow-lg rounded-lg p-8">
+            <form id="pdfForm" class="space-y-6">
+                <div class="flex flex-col space-y-2">
+                    <label class="text-gray-700 font-semibold">Upload PDF</label>
+                    <input type="file" 
+                           id="pdfFile" 
+                           accept=".pdf"
+                           class="border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-2">
+                        <label class="text-gray-700 font-semibold">Top Margin (in)</label>
+                        <input type="number" 
+                               id="topMargin" 
+                               step="0.1" 
+                               min="0"
+                               value="0"
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-gray-700 font-semibold">Bottom Margin (in)</label>
+                        <input type="number" 
+                               id="bottomMargin" 
+                               step="0.1" 
+                               min="0"
+                               value="0"
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-gray-700 font-semibold">Left Margin (in)</label>
+                        <input type="number" 
+                               id="leftMargin" 
+                               step="0.1" 
+                               min="0"
+                               value="0"
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-gray-700 font-semibold">Right Margin (in)</label>
+                        <input type="number" 
+                               id="rightMargin" 
+                               step="0.1" 
+                               min="0"
+                               value="0"
+                               class="w-full border border-indigo-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                </div>
+
+                <button type="submit" 
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 flex items-center justify-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Process PDF
+                </button>
+            </form>
+
+            <div id="processingMessage" class="hidden mt-4 text-center text-indigo-600">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                <p class="mt-2">Processing your PDF...</p>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('pdfForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('pdfFile');
+            if (!fileInput.files.length) {
+                alert('Please select a PDF file');
+                return;
+            }
+
+            const processingMessage = document.getElementById('processingMessage');
+            processingMessage.classList.remove('hidden');
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            const margins = {
+                top: parseFloat(document.getElementById('topMargin').value),
+                bottom: parseFloat(document.getElementById('bottomMargin').value),
+                left: parseFloat(document.getElementById('leftMargin').value),
+                right: parseFloat(document.getElementById('rightMargin').value)
+            };
+            formData.append('margins', JSON.stringify(margins));
+
+            try {
+                const response = await axios.post('http://localhost:8000/api/add-margins', formData, {
+                    responseType: 'blob',
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    }
+                });
+
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `processed_${fileInput.files[0].name}`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+            } catch (error) {
+                alert('Error processing PDF: ' + error.message);
+            } finally {
+                processingMessage.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
