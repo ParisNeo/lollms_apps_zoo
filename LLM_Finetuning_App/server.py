@@ -710,6 +710,8 @@ class QuantizationConfig(BaseModel):
 async def quantize_model_endpoint(config: QuantizationConfig):
     try:
         ASCIIColors.green("Starting model quantization process")
+        output_path = Path(config.output_path)
+        output_path.mkdir(parents=True, exist_ok=True)
         if config.quantization_tool=="bitsandbytes":
             # Load the model
             ASCIIColors.green("1 - Loading and quantizing model")
@@ -722,8 +724,6 @@ async def quantize_model_endpoint(config: QuantizationConfig):
             
             # Save the quantized model
             ASCIIColors.green("3 - Saving quantized model")
-            output_path = Path(config.output_path)
-            output_path.mkdir(parents=True, exist_ok=True)
             quantized_model.save_pretrained(output_path)
             
             # Save the tokenizer
@@ -782,7 +782,7 @@ async def quantize_model_endpoint(config: QuantizationConfig):
                 'quantized': 1024,       # Assuming 'quantized' is guessed
                 'q3_k_xs': 11            # Assuming 'q3_k_xs' maps to the same as 'q3_k_s'
             }
-            result = llama_cpp.llama_model_quantize(config.model_path.encode("utf-8"), output_path.encode("utf-8"), llama_model_quantize_params(0),quantization_to_ftype[config.quantization_bits],True, True, False)
+            result = llama_cpp.llama_model_quantize(config.model_path.encode("utf-8"), str(output_path).encode("utf-8"), llama_model_quantize_params(0),quantization_to_ftype[config.quantization_bits],True, True, False)
         else:
             ASCIIColors.error("Unknown tool!!")
     except Exception as e:
