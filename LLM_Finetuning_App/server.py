@@ -710,9 +710,10 @@ class QuantizationConfig(BaseModel):
 async def quantize_model_endpoint(config: QuantizationConfig):
     try:
         ASCIIColors.green("Starting model quantization process")
-        output_path = Path(config.output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
         if config.quantization_tool=="bitsandbytes":
+            output_path = Path(config.output_path)
+            output_path.mkdir(parents=True, exist_ok=True)
+
             # Load the model
             ASCIIColors.green("1 - Loading and quantizing model")
             quantization_config = BitsAndBytesConfig(load_in_8bit=True if config.quantization_bits=="q8_0" else False, load_in_4bit=True if config.quantization_bits=="q4_0" else False)
@@ -740,6 +741,8 @@ async def quantize_model_endpoint(config: QuantizationConfig):
             
             return {"message": f"Model quantization to {config.quantization_bits} bits completed successfully", "output_path": str(output_path)}
         elif config.quantization_tool=="gguf":
+            output_path = Path(config.output_path)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
             if not pm.is_installed("llama_cpp"):
                 import platform
                 os_name = platform.system()
