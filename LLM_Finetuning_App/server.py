@@ -798,6 +798,10 @@ async def quantize_model_endpoint(config: QuantizationConfig):
             }))
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/")
+async def serve_index():
+    return FileResponse("index.html")
+
 if __name__ == "__main__":
     # Create an argument parser
     parser = argparse.ArgumentParser(description="Run a Uvicorn server with configurable host and port.")
