@@ -84,7 +84,9 @@
             <button id="fuseDSBtn" class="bg-yellow-400 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="preprocessButton">Fuse datasets</button>
             <button id="trainBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="trainButton">Train</button>
             <button id="fuseBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="fuseButton">Fuse</button>
+            <button id="testBtn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="testButton">Test</button>
             <button id="quantizeBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="quantizeButton">Quantize</button>
+            <button id="pushToHFBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="pushToHFButton">Push to Hugging face</button>
         </div>
 
         <!-- Download Model Form -->
@@ -371,7 +373,28 @@
                 </div>
             </form>
         </div>
-
+        <div id="testForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
+            <h2 class="text-2xl font-bold mb-4" data-translate="titleTitle">Test</h2>
+            <form id="testingForm">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathTest" data-translate="modelPathTestLabel">Model Path</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="modelPathTest" type="text" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="testQuery" data-translate="testQUery">Query</label>
+                    <textarea id="testQuery" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </textarea>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="quryButton">Query</button>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="testResponse" data-translate="testResponse">Response</label>
+                    <textarea id="testResponse" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </textarea>
+                </div>
+            </form>
+        </div>
         <div id="quantizeForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
             <h2 class="text-2xl font-bold mb-4" data-translate="quantizeTitle">Quantize</h2>
             <form id="quantizationForm">
@@ -401,7 +424,22 @@
                 </div>
             </form>
         </div>
-        
+        <div class="border-t pt-4 mt-4">
+            <form name="push2HFForm">
+                <h3 class="text-lg font-semibold mb-4">Push to Hugging Face</h3>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="huggingfaceUsername">Hugging Face Username</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="huggingfaceUsername" type="text" required>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="huggingfaceToken">Hugging Face Token</label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="huggingfaceToken" type="password" required>
+                </div>
+                <div class="flex items-center justify-between">
+                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" id="pushToHuggingface" data-translate="pushToHuggingface">Push to Hugging Face</button>
+                </div>
+            </form>
+        </div>        
         <div id="progressContainer" class="hidden bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
             <h2 class="text-xl font-semibold mb-4" data-translate="progressTitle">Progress</h2>
             <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mb-4">
@@ -802,7 +840,7 @@
         // Initialize help buttons when the document is loaded
         document.addEventListener('DOMContentLoaded', function() {
             addHelpButtons();
-            const forms = ['downloadModelForm', 'preprocessForm', 'fusedbs-Form', 'finetuneForm', 'fusionForm', 'quantizationForm'];
+            const forms = ['downloadModelForm', 'preprocessForm', 'fusedbs-Form', 'finetuneForm', 'fusionForm', 'testingForm', 'quantizationForm', 'push2HFForm'];
             
             // Load saved states
             forms.forEach(formId => loadFormState(formId));
@@ -885,6 +923,7 @@
         const fusedbsForm = document.getElementById('fusedbs-Form');
         const trainForm = document.getElementById('trainForm');
         const fuseForm = document.getElementById('fuseForm');
+        const testForm = document.getElementById('testForm');
         const quantizeForm = document.getElementById('quantizeForm');
         const progressContainer = document.getElementById('progressContainer');
         const progressBar = document.getElementById('progressBar');
@@ -894,8 +933,11 @@
         const preprocessBtn = document.getElementById('preprocessBtn');
         const fuseDSBtn = document.getElementById('fuseDSBtn');
         const trainBtn = document.getElementById('trainBtn');
+        const testBtn = document.getElementById('testBtn');
         const fuseBtn = document.getElementById('fuseBtn');
         const quantizeBtn = document.getElementById('quantizeBtn');
+        const pushToHFBtn = document.getElementById('pushToHFBtn');
+        
 
         let socket;
 
@@ -929,6 +971,7 @@
             fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
 
@@ -938,6 +981,7 @@
             fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
 
@@ -947,6 +991,7 @@
             fusedbsForm.style.display = 'block';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
 
@@ -956,6 +1001,7 @@
             fusedbsForm.style.display = 'none';
             trainForm.style.display = 'block';
             fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
             quantizeForm.style.display = 'none';
         });
         
@@ -966,6 +1012,18 @@
             fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'block';
+            testForm.style.display = 'none';
+            quantizeForm.style.display = 'none';
+        });
+
+        
+        testBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
+            trainForm.style.display = 'none';
+            fuseForm.style.display = 'none';
+            testForm.style.display = 'block';
             quantizeForm.style.display = 'none';
         });
 
@@ -975,7 +1033,19 @@
             fusedbsForm.style.display = 'none';
             trainForm.style.display = 'none';
             fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
             quantizeForm.style.display = 'block';
+        });
+
+        pushToHFBtn.addEventListener('click', () => {
+            downloadForm.style.display = 'none';
+            preprocessForm.style.display = 'none';
+            fusedbsForm.style.display = 'none';
+            trainForm.style.display = 'none';
+            fuseForm.style.display = 'none';
+            testForm.style.display = 'none';
+            quantizeForm.style.display = 'block';
+
         });
         
 
@@ -1179,6 +1249,35 @@
             hideLoadingOverlay();
         });
 
+
+        document.getElementById('testingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            showLoadingOverlay();
+            const jsonData = {
+                input_text: document.getElementById('testQuery').value,
+                model_path: document.getElementById('modelPathTest').value,
+                temperature: 0.1,
+            };
+
+            try {
+                const response = await fetch('http://localhost:8000/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(jsonData),
+                });
+                document.getElementById('testResponse').value = response.json().data.output_text
+                progressContainer.classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while starting the fusion process.');
+            }
+            hideLoadingOverlay();
+        });
+        
+
         document.getElementById('quantizationForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             showLoadingOverlay();
@@ -1190,7 +1289,7 @@
             };
 
             try {
-                const response = await fetch('/quantize', {
+                const response = await fetch('http://localhost:8000/quantize', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
