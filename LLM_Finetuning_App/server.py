@@ -570,7 +570,10 @@ async def train_model(config: TrainingConfig):
             peft_config = None  # No PEFT config for full fine-tuning
 
         # Prepare training arguments
-        training_args = transformers.TrainingArguments(
+        training_args = trl.SFTConfig(
+            dataset_text_field="text",
+            max_seq_length=config.max_seq_length,
+
             output_dir=Path(config.output_model_path).parent,
             learning_rate=config.learning_rate,
             num_train_epochs=config.num_train_epochs,
@@ -604,9 +607,8 @@ async def train_model(config: TrainingConfig):
                 train_dataset=tokenized_dataset["train"],
                 eval_dataset=tokenized_dataset["validation"] if config.do_validation else None,
                 peft_config=peft_config,
-                dataset_text_field="text",
                 args=training_args,
-                max_seq_length=config.max_seq_length,
+                
                 callbacks=callbacks
             )
         else:
@@ -628,6 +630,60 @@ async def train_model(config: TrainingConfig):
         trainer.model.save_pretrained(config.output_model_path)
 
         return {"message": "Training completed successfully"}
+
+    except Exception as e:
+        trace_exception(e)
+        raise HTTPException(status_code=500, detail=str(e))
+
+class InferenceRequest(BaseModel):
+    input_text: str
+    model_path: str
+    temperature: float = 0.1
+    max_tokens: int = 2048
+    device: str = "cuda:0"
+    max_seq_length: int = 2048
+    model_config: dict = {"protected_namespaces": ()}
+
+class InferenceResponse(BaseModel):
+    output_text: str
+
+@app.post("/query", response_model=InferenceResponse)
+async def query_endpoint(request: InferenceRequest):
+    try:
+        # Load the model
+        model = AutoModelForCausalLM.from_pretrained(request.model_path)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(request.model_path)
+
+        # Set device
+        device = torch.device(request.device if torch.cuda.is_available() else "cpu")
+        model.to(device)
+
+        # Tokenize input with attention mask
+        inputs = tokenizer(
+            request.input_text,
+            return_tensors="pt",
+            max_length=request.max_seq_length,
+            truncation=True,
+            return_attention_mask=True
+        )
+
+        # Generate output with attention mask
+        try:
+            ASCIIColors.yellow('Starting generation')
+            outputs = model.generate(
+                input_ids=inputs["input_ids"].to(device),
+                attention_mask=inputs["attention_mask"].to(device),
+                do_sample=True,
+                temperature=request.temperature,
+                max_new_tokens=request.max_tokens
+            )
+            ASCIIColors.green('Generation done')
+        except Exception as ex:
+            trace_exception(ex)
+
+        # Decode output
+        output_text = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        return InferenceResponse(output_text=output_text)
 
     except Exception as e:
         trace_exception(e)
@@ -679,11 +735,13 @@ async def fuse_model(config: FusionConfig):
         
         # Send success message through WebSocket
         for websocket in active_websockets:
-            await websocket.send_text(json.dumps({
-                "status": "success",
-                "message": "Model fusion completed successfully"
-            }))
-        
+            try:
+                await websocket.send_text(json.dumps({
+                    "status": "success",
+                    "message": "Model fusion completed successfully"
+                }))
+            except Exception as ex:
+                trace_exception(ex)        
         return {"message": "Model fusion completed successfully", "output_path": str(output_path)}
     
     except Exception as e:
@@ -705,6 +763,49 @@ class QuantizationConfig(BaseModel):
     model_config = {
         "protected_namespaces": ()
     }
+
+from huggingface_hub import Repository
+import torch
+
+def push_model_to_hf(model, model_name, model_class, tokenizer=None, hf_username="your_username", hf_token="your_token"):
+    """
+    Push a trained model to Hugging Face model hub.
+    
+    Args:
+        model: The trained model to push.
+        model_name: The name of your model on Hugging Face.
+        model_class: The class of your model (e.g., CausalLM).
+        tokenizer: Optional tokenizer to push alongside the model.
+        hf_username: Your Hugging Face username.
+        hf_token: Your Hugging Face access token.
+    """
+    # Initialize the repository
+    repo = Repository(
+        local_dir="./",
+        repo_type="model",
+        repo_id=f"{hf_username}/{model_name}",
+    )
+    
+    # Login using the access token
+    repo.git_config.username = hf_username
+    repo.git_config.password = hf_token
+    
+    # Create a model card if it doesn't exist
+    model_card = f"""
+    # {model_name}
+    
+    This is a causal language model trained on [your dataset or training details].
+    """
+    with open("model_card.md", "w") as f:
+        f.write(model_card)
+    
+    # Save the model
+    model.save_pretrained("./")
+    
+    # Push the model to Hugging Face
+    repo.push_to_hub(commit_message=f"Initial commit of {model_name}")
+    
+    print(f"Model pushed successfully to https://huggingface.co/{hf_username}/{model_name}")
 
 @app.post("/quantize")
 async def quantize_model_endpoint(config: QuantizationConfig):
