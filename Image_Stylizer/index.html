@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portrait Stylization</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, button {
+            margin: 10px;
+            padding: 8px;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+        #loading {
+            display: none;
+            font-style: italic;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Portrait Stylization</h1>
+        <p>Upload a portrait and choose a style!</p>
+
+        <form id="uploadForm" enctype="multipart/form-data">
+            <label for="portrait">Portrait Image:</label><br>
+            <input type="file" id="portrait" name="file" accept="image/*" required><br>
+
+            <label for="styleOption">Style Option:</label><br>
+            <input type="radio" id="textStyle" name="styleOption" value="text" checked>
+            <label for="textStyle">Text Prompt</label>
+            <input type="radio" id="imageStyle" name="styleOption" value="image">
+            <label for="imageStyle">Style Image</label><br>
+
+            <div id="textInput" style="display: block;">
+                <label for="prompt">Style Prompt:</label><br>
+                <input type="text" id="prompt" name="prompt" placeholder="e.g., in the style of Van Gogh" value="in the style of Van Gogh"><br>
+            </div>
+
+            <div id="imageInput" style="display: none;">
+                <label for="styleFile">Style Image:</label><br>
+                <input type="file" id="styleFile" name="style_file" accept="image/*"><br>
+            </div>
+
+            <button type="submit">Stylize!</button>
+        </form>
+
+        <div id="loading">Processing... Please wait.</div>
+        <div id="result">
+            <h2>Stylized Image</h2>
+            <img id="outputImage" src="" alt="Stylized result will appear here">
+        </div>
+    </div>
+
+    <script>
+        // Toggle between text prompt and style image input
+        document.querySelectorAll('input[name="styleOption"]').forEach(option => {
+            option.addEventListener('change', function() {
+                document.getElementById('textInput').style.display = this.value === 'text' ? 'block' : 'none';
+                document.getElementById('imageInput').style.display = this.value === 'image' ? 'block' : 'none';
+            });
+        });
+
+        // Handle form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            const portraitFile = document.getElementById('portrait').files[0];
+            formData.append('file', portraitFile);
+
+            const styleOption = document.querySelector('input[name="styleOption"]:checked').value;
+            if (styleOption === 'text') {
+                const prompt = document.getElementById('prompt').value;
+                if (prompt) formData.append('prompt', prompt);
+            } else {
+                const styleFile = document.getElementById('styleFile').files[0];
+                if (styleFile) formData.append('style_file', styleFile);
+            }
+
+            // Show loading message
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+
+            try {
+                const response = await fetch('/stylize/', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (response.ok) {
+                    document.getElementById('outputImage').src = result.stylized_image;
+                    document.getElementById('result').style.display = 'block';
+                } else {
+                    alert('Error: ' + result.detail);
+                }
+            } catch (error) {
+                alert('Failed to stylize image: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
