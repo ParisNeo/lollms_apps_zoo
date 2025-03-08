@@ -1,5 +1,28 @@
 import io
 import base64
+import sys
+import subprocess
+
+# Bootstrap pipmaster installation
+from pipmaster import install_if_missing
+
+# Install required packages using pipmaster
+REQUIRED_PACKAGES = {
+    "fastapi": "0.110.0",
+    "uvicorn": "0.29.0",
+    "torch": "2.2.1",
+    "diffusers": "0.26.3",
+    "pillow": "10.2.0",
+    "opencv-python": "4.9.0.80",
+    "numpy": "1.26.4",
+    "transformers": "4.38.2",
+    "accelerate": "0.28.0"
+}
+
+for pkg, version in REQUIRED_PACKAGES.items():
+    install_if_missing(pkg, version)
+
+# Now import the libraries
 from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -13,7 +36,7 @@ import os
 # Initialize FastAPI app
 app = FastAPI(title="Portrait Stylization Server")
 
-# Serve static files (place index.html in a 'static' folder)
+# Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Load models
@@ -25,7 +48,6 @@ pipe = StableDiffusionControlNetPipeline.from_pretrained(
 device = "cuda" if torch.cuda.is_available() else "cpu"
 pipe = pipe.to(device)
 
-# Serve the HTML UI at the root
 @app.get("/", response_class=HTMLResponse)
 async def serve_ui():
     with open("static/index.html", "r") as f:
@@ -47,7 +69,7 @@ async def stylize_portrait(file: UploadFile, style_file: UploadFile = None, prom
         if style_file:
             style_data = await style_file.read()
             style_image = Image.open(io.BytesIO(style_data)).convert("RGB").resize((512, 512))
-            prompt = prompt or "stylized portrait"  # Fallback prompt
+            prompt = prompt or "stylized portrait"
         elif not prompt:
             prompt = "in the style of a modern painting"
 
@@ -73,7 +95,6 @@ async def stylize_portrait(file: UploadFile, style_file: UploadFile = None, prom
 
 if __name__ == "__main__":
     import uvicorn
-    # Ensure 'static' directory exists
     if not os.path.exists("static"):
         os.makedirs("static")
     uvicorn.run(app, host="0.0.0.0", port=8000)
