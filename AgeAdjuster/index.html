@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Age Adjuster</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center justify-center p-6">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-full max-w-2xl">
+        <h1 class="text-3xl font-bold text-gray-800 text-center mb-6">Face Age Adjuster</h1>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Upload a Face Image</label>
+            <input type="file" id="imageUpload" accept="image/*" class="block w-full text-sm text-gray-500 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-700 mb-2">Original Image</p>
+                <img id="originalImage" src="" alt="Original" class="w-full rounded-md shadow-md hidden">
+            </div>
+            <div class="text-center">
+                <p class="text-sm font-medium text-gray-700 mb-2">Adjusted Image</p>
+                <img id="outputImage" src="" alt="Adjusted" class="w-full rounded-md shadow-md hidden">
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-gray-700">Current Age: <span id="currAgeValue" class="font-semibold text-blue-600">40</span></label>
+            <input type="range" id="currAgeSlider" min="10" max="90" value="40" disabled class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <div class="mt-2">
+            <label class="block text-sm font-medium text-gray-700">Target Age: <span id="ageValue" class="font-semibold text-blue-600">40</span></label>
+            <input type="range" id="ageSlider" min="10" max="90" value="40" disabled class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+        </div>
+
+        <button id="updateButton" disabled class="mt-4 w-full py-2 px-4 bg-blue-600 text-white font-semibold rounded-md shadow hover:bg-blue-700 disabled:bg-gray-400">Update</button>
+        <button id="saveButton" class="mt-2 w-full py-2 px-4 bg-green-600 text-white font-semibold rounded-md shadow hover:bg-green-700 hidden">Save Image</button>
+
+        <p id="errorMessage" class="text-red-500 text-sm mt-2 hidden">Error: No face detected</p>
+    </div>
+
+    <script>
+        const uploadInput = document.getElementById('imageUpload');
+        const currAgeSlider = document.getElementById('currAgeSlider');
+        const ageSlider = document.getElementById('ageSlider');
+        const currAgeValue = document.getElementById('currAgeValue');
+        const ageValue = document.getElementById('ageValue');
+        const updateButton = document.getElementById('updateButton');
+        const originalImage = document.getElementById('originalImage');
+        const outputImage = document.getElementById('outputImage');
+        const errorMessage = document.getElementById('errorMessage');
+        const saveButton = document.getElementById('saveButton');
+
+        uploadInput.addEventListener('change', async () => {
+            const file = uploadInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            originalImage.classList.add('hidden');
+            outputImage.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            saveButton.classList.add('hidden');
+            currAgeSlider.disabled = true;
+            ageSlider.disabled = true;
+            updateButton.disabled = true;
+
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.error) {
+                    errorMessage.textContent = `Error: ${data.error}`;
+                    errorMessage.classList.remove('hidden');
+                    return;
+                }
+                originalImage.src = `data:image/png;base64,${data.image}`;
+                originalImage.classList.remove('hidden');
+                currAgeSlider.value = data.initial_age;
+                ageValue.textContent = data.initial_age;
+                currAgeSlider.disabled = false;
+                ageSlider.disabled = false;
+                updateButton.disabled = false;
+            } catch (error) {
+                errorMessage.textContent = 'Error: Failed to upload image';
+                errorMessage.classList.remove('hidden');
+            }
+        });
+
+        ageSlider.addEventListener('input', () => ageValue.textContent = ageSlider.value);
+        currAgeSlider.addEventListener('input', () => currAgeValue.textContent = currAgeSlider.value);
+
+        updateButton.addEventListener('click', async () => {
+            const file = uploadInput.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('source_age', currAgeSlider.value);
+            formData.append('target_age', ageSlider.value);
+            updateButton.disabled = true;
+            try {
+                const response = await fetch('/adjust_age', { method: 'POST', body: formData });
+                const data = await response.json();
+                if (data.error) {
+                    errorMessage.textContent = `Error: ${data.error}`;
+                    errorMessage.classList.remove('hidden');
+                    outputImage.classList.add('hidden');
+                    saveButton.classList.add('hidden');
+                } else {
+                    errorMessage.classList.add('hidden');
+                    outputImage.src = `data:image/png;base64,${data.image}`;
+                    outputImage.classList.remove('hidden');
+                    saveButton.classList.remove('hidden');
+                }
+            } catch (error) {
+                errorMessage.textContent = 'Error: Failed to adjust age';
+                errorMessage.classList.remove('hidden');
+                outputImage.classList.add('hidden');
+                saveButton.classList.add('hidden');
+            } finally {
+                updateButton.disabled = false;
+            }
+        });
+
+        saveButton.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.href = outputImage.src;
+            link.download = 'adjusted_image.png';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    </script>
+</body>
+</html>
