@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quoridor 3D - Full Game (Revised)</title>
+    <style>
+        /* Basic Reset & Body Styles */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; } /* Ensure body takes full height */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: #333;
+            color: #eee;
+            overflow: hidden; /* Prevent scrollbars from body */
+            /* Flexbox for menus is set dynamically by showView */
+        }
+
+        /* View Containers */
+        .view { display: none; /* Hide all views initially */ width: 100%; height: 100%; }
+        #main-menu, #settings-menu, #leaderboard-menu {
+            display: flex; /* Use flexbox for centering content */
+            flex-direction: column;
+            justify-content: center; /* Center vertically */
+            align-items: center; /* Center horizontally */
+            height: 100%; /* Take full viewport height */
+        }
+        .menu-content { /* Wrapper for menu items to control width */
+            background-color: rgba(50, 55, 65, 0.9);
+            padding: 30px 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 90%;
+            max-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #game-area {
+             /* Shown via JS, takes full screen */
+            position: absolute;
+            top: 0; left: 0;
+        }
+
+        /* Menu Styles */
+        h1, h2 { text-align: center; margin-bottom: 20px; color: #fff; font-weight: 600; }
+        h1 { font-size: 2em; }
+        h2 { font-size: 1.5em; }
+        .menu-button {
+            background-color: #5c677d;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            margin: 8px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease;
+            width: 100%; /* Make buttons fill container */
+        }
+        .menu-button:hover { background-color: #74819a; }
+        .menu-button:active { background-color: #4a5468; }
+
+        /* Settings/Leaderboard Specific */
+        .form-group { margin-bottom: 15px; width: 100%; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; }
+        .form-group input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #777;
+            background-color: #444;
+            color: #eee;
+            border-radius: 4px;
+        }
+        #leaderboard-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        #leaderboard-table th, #leaderboard-table td {
+            border: 1px solid #666;
+            padding: 8px;
+            text-align: left;
+        }
+        #leaderboard-table th { background-color: #555; }
+        #leaderboard-table tr:nth-child(even) { background-color: #484848; }
+
+        /* Game UI */
+        #game-info {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background-color: rgba(40, 40, 45, 0.85);
+            padding: 15px 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            min-width: 220px; /* Wider */
+        }
+         #game-info h2 { font-size: 1.1em; margin: 0 0 10px 0; padding-bottom: 5px; border-bottom: 1px solid rgba(255, 255, 255, 0.2); color: #fff; text-align: left;}
+         #game-info p { margin: 8px 0; font-size: 0.95em; line-height: 1.4; }
+         #game-info span { font-weight: bold; }
+         #currentPlayerName { font-weight: bold; } /* Player name display */
+         #p1WallsLeft { color: #ff7b7b; }
+         #p2WallsLeft { color: #7b7bff; }
+         #gameMessage { font-weight: bold; min-height: 1.4em; }
+         .error-msg { color: #ff8888; }
+         .win-msg { color: #90ee90; font-size: 1.1em;}
+         #controls-error { font-size: 0.8em; opacity: 0.7;}
+
+        /* Win Overlay */
+        #win-overlay {
+            position: absolute;
+            top: 0; left: 0;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: flex; /* Use flex to center content */
+            justify-content: center;
+            align-items: center;
+            z-index: 200; /* Above game info */
+            text-align: center;
+        }
+        #win-overlay-content {
+            background-color: #4a5468;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+             display: flex;
+             flex-direction: column; /* Stack elements vertically */
+             align-items: center;
+        }
+        #win-message {
+            font-size: 2em;
+            color: #90ee90; /* Light Green */
+            margin-bottom: 25px;
+        }
+        .overlay-button { /* Reuse menu button style or customize */
+            background-color: #74819a;
+            color: white;
+            border: none; padding: 12px 25px; margin: 10px; border-radius: 5px;
+            cursor: pointer; font-size: 1em; transition: background-color 0.2s ease;
+            min-width: 150px; /* Give buttons some width */
+         }
+         .overlay-button:hover { background-color: #8a98b5; }
+
+        /* Canvas - make sure it's behind overlays */
+        #game-canvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 1; /* Below UI elements */
+        }
+
+    </style>
+</head>
+<body>
+
+    <!-- Main Menu View -->
+    <div id="main-menu" class="view">
+        <div class="menu-content">
+            <h1>Quoridor 3D</h1>
+            <button id="start-game-button" class="menu-button">Start Game</button>
+            <button id="settings-button" class="menu-button">Settings</button>
+            <button id="leaderboard-button" class="menu-button">Leaderboard</button>
+        </div>
+    </div>
+
+    <!-- Settings View -->
+    <div id="settings-menu" class="view">
+        <div class="menu-content">
+            <h2>Settings</h2>
+            <div class="form-group">
+                <label for="player1-name">Player 1 Name:</label>
+                <input type="text" id="player1-name" value="Player 1">
+            </div>
+            <div class="form-group">
+                <label for="player2-name">Player 2 Name:</label>
+                <input type="text" id="player2-name" value="Player 2">
+            </div>
+            <button id="save-settings-button" class="menu-button">Save & Back</button>
+            <button id="back-to-main-settings" class="menu-button">Back to Main Menu</button>
+        </div>
+    </div>
+
+    <!-- Leaderboard View -->
+    <div id="leaderboard-menu" class="view">
+        <div class="menu-content">
+            <h2>Leaderboard</h2>
+            <table id="leaderboard-table">
+                <thead><tr><th>Rank</th><th>Name</th><th>Wins</th></tr></thead>
+                <tbody id="leaderboard-body"></tbody>
+            </table>
+            <button id="clear-leaderboard-button" class="menu-button" style="margin-top: 20px; background-color: #c06161;">Clear Leaderboard</button>
+            <button id="back-to-main-leaderboard" class="menu-button">Back to Main Menu</button>
+        </div>
+    </div>
+
+    <!-- Game Area -->
+    <div id="game-area" class="view">
+        <div id="game-canvas"></div> <!-- Three.js canvas goes here -->
+        <div id="game-info">
+             <h2>Game Status</h2>
+             <p>Turn: <span id="currentPlayerName">Player 1</span></p>
+             <p>P1 Walls: <span id="p1WallsLeft">10</span></p>
+             <p>P2 Walls: <span id="p2WallsLeft">10</span></p>
+             <p id="gameMessage"></p>
+             <p id="controls-error" class="error-msg"></p>
+        </div>
+         <!-- Win Overlay (Initially Hidden) -->
+        <div id="win-overlay" class="view"> <!-- Initially display: none -->
+            <div id="win-overlay-content">
+                <p id="win-message">Player X Wins!</p>
+                <button id="play-again-button" class="overlay-button">Play Again</button>
+                <button id="back-to-main-win" class="overlay-button">Main Menu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- Constants (Global or passed to class) ---
+        const GLOBAL_BOARD_SIZE = 9;
+        const GLOBAL_SQUARE_SIZE = 10;
+        const GLOBAL_GAP_SIZE = 1;
+        const GLOBAL_PLAYER_COLORS = { 1: 0xff0000, 2: 0x0000ff };
+        const GLOBAL_WALL_COLORS = { 1: 0x9a3e3e, 2: 0x5c5c9a };
+        const GLOBAL_GLOW_COLOR = { 1: new THREE.Color(0xff7070), 2: new THREE.Color(0x7070ff) };
+        const GLOBAL_BASE_EMISSIVE = new THREE.Color(0x000000);
+        const LOCAL_STORAGE_SETTINGS_KEY = 'quoridorSettings';
+        const LOCAL_STORAGE_LEADERBOARD_KEY = 'quoridorLeaderboard';
+
+        // --- Global App State ---
+        let currentView = 'main-menu';
+        let gameSettings = { player1Name: 'Player 1', player2Name: 'Player 2' };
+        let leaderboardData = [];
+        let threeApp = null; // Holds the ThreeJSApp instance
+
+        // --- UI View Management ---
+        function showView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            const viewToShow = document.getElementById(viewId);
+            if (viewToShow) {
+                 // Apply correct display based on view type
+                 if (viewId === 'game-area') {
+                     viewToShow.style.display = 'block'; // Game area takes full screen
+                     document.body.style.display = 'block'; // Let body be block for absolute positioning
+                 } else if (viewId === 'win-overlay') {
+                      viewToShow.style.display = 'flex'; // Overlay uses flex for centering its content
+                      // Keep body block if game is still visible underneath
+                 }
+                 else {
+                     viewToShow.style.display = 'flex'; // Menus use flex for centering
+                     document.body.style.display = 'flex'; // Set body to flex for menu centering
+                     document.body.style.justifyContent = 'center';
+                     document.body.style.alignItems = 'center';
+                 }
+
+                currentView = viewId;
+                 console.log("Showing view:", currentView);
+
+                // Stop animation loop if not in game view
+                 if (currentView !== 'game-area' && threeApp && threeApp.animationFrameId) {
+                     cancelAnimationFrame(threeApp.animationFrameId);
+                     threeApp.animationFrameId = null;
+                     console.log("Animation loop stopped.");
+                 }
+                 // Restart animation loop if entering game view and it's not running
+                 else if (currentView === 'game-area' && threeApp && !threeApp.animationFrameId) {
+                      console.log("Restarting animation loop.");
+                      threeApp.animate();
+                 }
+            } else {
+                console.error("View not found:", viewId);
+            }
+        }
+
+        // --- Settings ---
+        function loadSettings() {
+            const storedSettings = localStorage.getItem(LOCAL_STORAGE_SETTINGS_KEY);
+            if (storedSettings) {
+                try { gameSettings = JSON.parse(storedSettings); } catch (e) { console.error("Failed to parse settings", e); gameSettings = { player1Name: 'Player 1', player2Name: 'Player 2' }; }
+            }
+            document.getElementById('player1-name').value = gameSettings.player1Name;
+            document.getElementById('player2-name').value = gameSettings.player2Name;
+        }
+
+        function saveSettings() {
+            gameSettings.player1Name = document.getElementById('player1-name').value.trim() || 'Player 1';
+            gameSettings.player2Name = document.getElementById('player2-name').value.trim() || 'Player 2';
+            localStorage.setItem(LOCAL_STORAGE_SETTINGS_KEY, JSON.stringify(gameSettings));
+            alert("Settings Saved!");
+            showView('main-menu');
+        }
+
+        // --- Leaderboard ---
+        function loadLeaderboard() {
+            const storedLeaderboard = localStorage.getItem(LOCAL_STORAGE_LEADERBOARD_KEY);
+            if (storedLeaderboard) { try { leaderboardData = JSON.parse(storedLeaderboard); } catch (e) { console.error("Failed to parse leaderboard", e); leaderboardData = [];} } else { leaderboardData = []; }
+            leaderboardData.sort((a, b) => b.wins - a.wins);
+            populateLeaderboardTable();
+        }
+
+        function populateLeaderboardTable() {
+            const tbody = document.getElementById('leaderboard-body');
+            tbody.innerHTML = ''; // Clear existing rows
+            if (leaderboardData.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; opacity: 0.7;">No scores yet!</td></tr>'; return; }
+            leaderboardData.forEach((entry, index) => {
+                const row = tbody.insertRow(); row.insertCell().textContent = index + 1; row.insertCell().textContent = entry.name; row.insertCell().textContent = entry.wins;
+            });
+        }
+
+        function saveLeaderboard() {
+            leaderboardData.sort((a, b) => b.wins - a.wins);
+            localStorage.setItem(LOCAL_STORAGE_LEADERBOARD_KEY, JSON.stringify(leaderboardData));
+        }
+
+        function addToLeaderboard(winnerName) {
+            if (!winnerName) return;
+            const existingEntry = leaderboardData.find(entry => entry.name === winnerName);
+            if (existingEntry) { existingEntry.wins++; } else { leaderboardData.push({ name: winnerName, wins: 1 }); }
+            saveLeaderboard();
+        }
+
+        function clearLeaderboard() {
+            if (confirm("Are you sure you want to clear the leaderboard?")) {
+                leaderboardData = []; localStorage.removeItem(LOCAL_STORAGE_LEADERBOARD_KEY); populateLeaderboardTable();
+            }
+        }
+
+        // --- Game Management ---
+        function startGame() {
+            console.log("Starting game...");
+            if (!threeApp) {
+                console.log("Initializing Three.js app.");
+                // Pass global constants to the constructor
+                threeApp = new ThreeJSApp(
+                    GLOBAL_BOARD_SIZE, GLOBAL_SQUARE_SIZE, GLOBAL_GAP_SIZE,
+                    GLOBAL_PLAYER_COLORS, GLOBAL_WALL_COLORS, GLOBAL_GLOW_COLOR, GLOBAL_BASE_EMISSIVE
+                );
+                threeApp.init();
+            } else {
+                console.log("Resetting existing game.");
+                threeApp.resetGame();
+            }
+            document.getElementById('win-overlay').style.display = 'none'; // Ensure win overlay is hidden
+            showView('game-area');
+
+            if (!threeApp.animationFrameId) { // Start animation if not already running
+                threeApp.animate();
+            }
+        }
+
+        function showWinScreen(winnerPlayerNum) {
+             const winnerName = winnerPlayerNum === 1 ? gameSettings.player1Name : gameSettings.player2Name;
+             document.getElementById('win-message').textContent = `${winnerName} Wins!`;
+             addToLeaderboard(winnerName);
+             showView('win-overlay'); // Use showView to display overlay
+        }
+
+        function goToMainMenu() {
+            showView('main-menu');
+             // Animation loop is stopped by showView
+        }
+
+        // --- Three.js Game Class ---
+        class ThreeJSApp {
+            // Constructor now accepts configuration
+            constructor(boardSize, squareSize, gapSize, playerColors, wallColors, glowColor, baseEmissive) {
+                // Store configuration
+                this.boardSize = boardSize;
+                this.squareSize = squareSize;
+                this.gapSize = gapSize;
+                this.playerColors = playerColors;
+                this.wallColors = wallColors;
+                this.glowColor = glowColor;
+                this.baseEmissive = baseEmissive;
+
+                // Calculate dependent properties
+                this.totalBoardDim = this.boardSize * this.squareSize + (this.boardSize - 1) * this.gapSize;
+                this.wallThickness = 0.5; // Can be made configurable too
+                this.wallLength = this.squareSize * 2 + this.gapSize;
+                this.wallHeight = 4; // Can be configurable
+                this.boardOffset = -this.totalBoardDim / 2;
+
+                // Core Three.js objects
+                this.scene = null; this.camera = null; this.renderer = null; this.controls = null; this.clock = null; this.boardGroup = null;
+
+                // Game Objects
+                this.pawns = {}; this.placedWallObjects = []; this.wallPlaceholders = [];
+
+                // Game State
+                this.currentPlayer = 1;
+                this.playerPositions = { // Initialize using passed boardSize
+                    1: { r: this.boardSize - 1, c: Math.floor(this.boardSize / 2) },
+                    2: { r: 0, c: Math.floor(this.boardSize / 2) }
+                };
+                this.playerWallCounts = { 1: 10, 2: 10 };
+                this.placedWallKeys = new Set();
+                this.gameOver = false;
+
+                // Raycasting
+                this.raycaster = new THREE.Raycaster(); this.mouse = new THREE.Vector2();
+
+                this.animationFrameId = null;
+            }
+
+            init() {
+                this.clock = new THREE.Clock();
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x333840);
+                this.scene.fog = new THREE.Fog(this.scene.background, 150, 350);
+
+                this.camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 1, 1000);
+                this.camera.position.set(0, 110, this.totalBoardDim * 0.75);
+                this.camera.lookAt(0, 0, 0);
+
+                const canvasContainer = document.getElementById('game-canvas');
+                if (!canvasContainer) { console.error("Game canvas container not found!"); return; }
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                this.renderer.outputEncoding = THREE.sRGBEncoding;
+                canvasContainer.innerHTML = ''; // Clear container before appending
+                canvasContainer.appendChild(this.renderer.domElement);
+
+                // Lighting
+                 this.scene.add(new THREE.AmbientLight(0xffffff, 0.4));
+                 const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5); hemiLight.position.set(0, 200, 0); this.scene.add(hemiLight);
+                 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); directionalLight.position.set(60, 100, 70);
+                 directionalLight.castShadow = true; directionalLight.shadow.mapSize.width = 2048; directionalLight.shadow.mapSize.height = 2048;
+                 const shadowCamSize = this.totalBoardDim * 0.8;
+                 directionalLight.shadow.camera.left = -shadowCamSize; directionalLight.shadow.camera.right = shadowCamSize; directionalLight.shadow.camera.top = shadowCamSize; directionalLight.shadow.camera.bottom = -shadowCamSize;
+                 directionalLight.shadow.camera.near = 10; directionalLight.shadow.camera.far = 300; directionalLight.shadow.bias = -0.001;
+                 this.scene.add(directionalLight);
+
+                this.boardGroup = new THREE.Group();
+                this.scene.add(this.boardGroup);
+
+                this.createBoardAndPawns(); // Create initial board state
+
+                // Controls
+                if (typeof THREE.OrbitControls !== 'undefined') {
+                    this.controls = new THREE.OrbitControls(this.camera, this.renderer.domElement);
+                    this.controls.target.set(0, 0, 0); this.controls.enablePan = false;
+                    this.controls.maxPolarAngle = Math.PI / 2 - 0.05; this.controls.minDistance = 40; this.controls.maxDistance = 250;
+                    this.controls.enableDamping = true; this.controls.dampingFactor = 0.1;
+                } else { document.getElementById('controls-error').textContent = 'Warning: OrbitControls failed. Camera controls disabled.'; }
+
+                // Event Listeners
+                window.addEventListener('resize', this.onWindowResize.bind(this));
+                this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
+
+                this.updateUI(); // Initial UI update for the game screen
+                 console.log("ThreeJSApp initialized.");
+            }
+
+            createBoardAndPawns() {
+                 // Clear existing objects from boardGroup
+                 while(this.boardGroup.children.length > 0){ this.boardGroup.remove(this.boardGroup.children[0]); }
+                 this.pawns = {}; this.placedWallObjects = []; this.wallPlaceholders = [];
+
+                 // --- Create Board Elements ---
+                const squareGeo = new THREE.BoxGeometry(this.squareSize, 1, this.squareSize);
+                const matDark = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.8, metalness: 0.1 });
+                const matLight = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.8, metalness: 0.1 });
+                // Use invisible material for placeholders, but keep them interactable
+                const placeholderMat = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, visible: true });
+                const wallPlaceholderHGeo = new THREE.PlaneGeometry(this.wallLength, this.gapSize);
+                const wallPlaceholderVGeo = new THREE.PlaneGeometry(this.gapSize, this.wallLength);
+
+                for (let r = 0; r < this.boardSize; r++) {
+                    for (let c = 0; c < this.boardSize; c++) {
+                        const squareMat = (r + c) % 2 === 0 ? matLight : matDark;
+                        const square = new THREE.Mesh(squareGeo, squareMat.clone());
+                        square.position.set( this.boardOffset + c * (this.squareSize + this.gapSize) + this.squareSize / 2, -0.5, this.boardOffset + r * (this.squareSize + this.gapSize) + this.squareSize / 2 );
+                        square.receiveShadow = true; square.userData = { type: 'square', r: r, c: c }; this.boardGroup.add(square);
+
+                        // Invisible Placeholders for wall clicking
+                         if (r < this.boardSize - 1 && c < this.boardSize -1) {
+                             const wallH = new THREE.Mesh(wallPlaceholderHGeo, placeholderMat); wallH.rotation.x = -Math.PI / 2;
+                             wallH.position.set( this.boardOffset + c * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2, 0.1, this.boardOffset + r * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2 );
+                             wallH.userData = { type: 'wall_slot', orientation: 'h', r: r, c: c }; this.boardGroup.add(wallH); this.wallPlaceholders.push(wallH);
+                         }
+                         if (c < this.boardSize - 1 && r < this.boardSize -1) {
+                             const wallV = new THREE.Mesh(wallPlaceholderVGeo, placeholderMat); wallV.rotation.x = -Math.PI / 2;
+                             wallV.position.set( this.boardOffset + c * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2, 0.1, this.boardOffset + r * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2 );
+                             wallV.userData = { type: 'wall_slot', orientation: 'v', r: r, c: c }; this.boardGroup.add(wallV); this.wallPlaceholders.push(wallV);
+                         }
+                    }
+                }
+
+                // Create Pawns
+                const pawnGeo = new THREE.CylinderGeometry(this.squareSize * 0.3, this.squareSize * 0.3, 5, 24);
+                const pawnMat1 = new THREE.MeshStandardMaterial({ color: this.playerColors[1], roughness: 0.4, metalness: 0.2 });
+                const pawnMat2 = new THREE.MeshStandardMaterial({ color: this.playerColors[2], roughness: 0.4, metalness: 0.2 });
+                this.pawns[1] = new THREE.Mesh(pawnGeo, pawnMat1); this.pawns[2] = new THREE.Mesh(pawnGeo, pawnMat2);
+                this.pawns[1].castShadow = true; this.pawns[2].castShadow = true;
+                this.pawns[1].userData = { type: 'pawn', player: 1 }; this.pawns[2].userData = { type: 'pawn', player: 2 };
+                this.placePawn(1, this.playerPositions[1].r, this.playerPositions[1].c);
+                this.placePawn(2, this.playerPositions[2].r, this.playerPositions[2].c);
+                this.boardGroup.add(this.pawns[1]); this.boardGroup.add(this.pawns[2]);
+            }
+
+            resetGame() {
+                console.log("Resetting ThreeJSApp game state...");
+                this.currentPlayer = 1;
+                // Reset positions using the stored boardSize
+                this.playerPositions = {
+                    1: { r: this.boardSize - 1, c: Math.floor(this.boardSize / 2) },
+                    2: { r: 0, c: Math.floor(this.boardSize / 2) }
+                };
+                this.playerWallCounts = { 1: 10, 2: 10 };
+                this.placedWallKeys.clear();
+                this.gameOver = false;
+                this.setMessage("");
+
+                // Remove old walls, recreate board and pawns
+                this.createBoardAndPawns();
+
+                // Update UI
+                this.updateUI();
+
+                // Hide win overlay if needed
+                document.getElementById('win-overlay').style.display = 'none';
+
+                if(this.controls) this.controls.reset(); // Reset camera view
+
+                console.log("Game reset complete.");
+                 if (!this.animationFrameId) { // Ensure animation restarts if stopped
+                     this.animate();
+                 }
+            }
+
+            // --- Game Logic Methods (using this.* for properties) ---
+            get3DPosition(r, c) { /* Uses this.boardOffset, this.squareSize, this.gapSize */
+                 return { x: this.boardOffset + c * (this.squareSize + this.gapSize) + this.squareSize / 2, y: 2.5, z: this.boardOffset + r * (this.squareSize + this.gapSize) + this.squareSize / 2 };
+            }
+            placePawn(player, r, c) { /* Uses this.pawns, this.get3DPosition, this.playerPositions */
+                if (!this.pawns[player]) return; const pos = this.get3DPosition(r, c); this.pawns[player].position.set(pos.x, pos.y, pos.z); this.playerPositions[player] = { r: Math.round(r), c: Math.round(c) };
+                 if (!this.pawns[player].userData) this.pawns[player].userData = {}; this.pawns[player].userData.type = 'pawn'; this.pawns[player].userData.player = player;
+            }
+            switchTurn() { /* Uses this.gameOver, this.currentPlayer, this.updateUI */
+                if (this.gameOver) return; this.currentPlayer = this.currentPlayer === 1 ? 2 : 1; this.updateUI();
+            }
+            updateUI() { /* Uses this.currentPlayer, gameSettings, this.playerWallCounts */
+                 const p1Name = gameSettings.player1Name || 'Player 1'; const p2Name = gameSettings.player2Name || 'Player 2';
+                 const currentPlayerName = this.currentPlayer === 1 ? p1Name : p2Name;
+                 document.getElementById('currentPlayerName').textContent = currentPlayerName; document.getElementById('currentPlayerName').style.color = this.currentPlayer === 1 ? '#ff7b7b' : '#7b7bff';
+                 document.getElementById('p1WallsLeft').textContent = this.playerWallCounts[1]; document.getElementById('p2WallsLeft').textContent = this.playerWallCounts[2];
+                 const messageElement = document.getElementById('gameMessage');
+                 if (!this.gameOver && messageElement.className !== 'win-msg') { /* Let setMessage handle */ }
+            }
+            checkWinCondition(player) { /* Uses this.playerPositions, this.boardSize, this.gameOver, showWinScreen */
+                const targetRow = player === 1 ? 0 : this.boardSize - 1;
+                if (Math.round(this.playerPositions[player].r) === targetRow) {
+                    this.gameOver = true; this.setMessage(""); showWinScreen(player);
+                }
+            }
+             getWallKey(orientation, r, c) { return `${orientation}-${Math.round(r)}-${Math.round(c)}`; }
+             isWallBlocking(pr, pc, tr, tc) { /* Uses this.placedWallKeys, this.getWallKey */
+                 pr = Math.round(pr); pc = Math.round(pc); tr = Math.round(tr); tc = Math.round(tc);
+                 if (pr !== tr) { const wallR = Math.min(pr, tr); if (this.placedWallKeys.has(this.getWallKey('h', wallR, pc - 1)) || this.placedWallKeys.has(this.getWallKey('h', wallR, pc))) { return true; } }
+                 else if (pc !== tc) { const wallC = Math.min(pc, tc); if (this.placedWallKeys.has(this.getWallKey('v', pr - 1, wallC)) || this.placedWallKeys.has(this.getWallKey('v', pr, wallC))) { return true; } }
+                 return false;
+             }
+              isValidMove(player, targetR, targetC) { /* Uses this.boardSize, this.playerPositions, this.isWallBlocking */
+                targetR = Math.round(targetR); targetC = Math.round(targetC); if (targetR < 0 || targetR >= this.boardSize || targetC < 0 || targetC >= this.boardSize) return false;
+                const currentPos = this.playerPositions[player]; const dr = Math.abs(targetR - currentPos.r); const dc = Math.abs(targetC - currentPos.c);
+                if (!((dr === 1 && dc === 0) || (dr === 0 && dc === 1))) return false; // No jump
+                const opponent = player === 1 ? 2 : 1; const opponentPos = this.playerPositions[opponent]; if (opponentPos.r === targetR && opponentPos.c === targetC) return false; // No jump
+                if (this.isWallBlocking(currentPos.r, currentPos.c, targetR, targetC)) return false; return true;
+            }
+            placeWall3D(orientation, r_raw, c_raw) { /* Uses this.* extensively */
+                 const r = Math.round(r_raw); const c = Math.round(c_raw);
+                 if (this.playerWallCounts[this.currentPlayer] <= 0) { this.setMessage(`No walls left`, true); return false; } if (this.gameOver) { this.setMessage("Game is over", true); return false; }
+                 if (r < 0 || r >= this.boardSize - 1 || c < 0 || c >= this.boardSize - 1) { this.setMessage("Invalid wall coords", true); return false; }
+                 const wallKey = this.getWallKey(orientation, r, c); if (this.placedWallKeys.has(wallKey)) { this.setMessage("Wall already exists here", true); return false; }
+                 const crossingWallKey = orientation === 'h' ? this.getWallKey('v', r, c) : this.getWallKey('h', r, c); if (this.placedWallKeys.has(crossingWallKey)) { this.setMessage("Cannot cross another wall", true); return false; }
+                 if (orientation === 'h') { if ((c > 0 && this.placedWallKeys.has(this.getWallKey('h', r, c - 1))) || (c < this.boardSize - 2 && this.placedWallKeys.has(this.getWallKey('h', r, c + 1)))) { this.setMessage("Cannot place wall parallel adjacent", true); return false; } }
+                 else { if ((r > 0 && this.placedWallKeys.has(this.getWallKey('v', r - 1, c))) || (r < this.boardSize - 2 && this.placedWallKeys.has(this.getWallKey('v', r + 1, c)))) { this.setMessage("Cannot place wall parallel adjacent", true); return false; } }
+                 // Pathfinding check still needed here
+                 const wallGeo = new THREE.BoxGeometry( orientation === 'h' ? this.wallLength : this.wallThickness, this.wallHeight, orientation === 'h' ? this.wallThickness : this.wallLength );
+                 const wallMat = new THREE.MeshStandardMaterial({ color: this.wallColors[this.currentPlayer], roughness: 0.7, metalness: 0.1 });
+                 const wallMesh = new THREE.Mesh(wallGeo, wallMat); wallMesh.castShadow = true;
+                 wallMesh.position.set( this.boardOffset + c * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2, this.wallHeight / 2, this.boardOffset + r * (this.squareSize + this.gapSize) + this.squareSize + this.gapSize/2 );
+                 wallMesh.userData = { type: 'wall', orientation: orientation, r: r, c: c, placedBy: this.currentPlayer };
+                 this.boardGroup.add(wallMesh); this.placedWallObjects.push(wallMesh); this.placedWallKeys.add(wallKey);
+                 this.playerWallCounts[this.currentPlayer]--; this.setMessage(""); this.updateUI(); return true;
+             }
+             setMessage(text, isError = false) { /* Uses currentView, this.gameOver */
+                 if (currentView !== 'game-area') return; const messageElement = document.getElementById('gameMessage'); if (this.gameOver && messageElement.className === 'win-msg') return;
+                 messageElement.textContent = text; messageElement.className = isError ? 'error-msg' : ''; messageElement.style.color = isError ? '#ff8888' : '#eee';
+                 if (text !== "") { setTimeout(() => { if (messageElement.textContent === text && !this.gameOver) { messageElement.textContent = ""; messageElement.className = ''; } }, 2500); }
+             }
+
+             // --- Event Handlers (bound to the class instance) ---
+            onWindowResize() { /* Uses this.camera, this.renderer */
+                 if (!this.camera || !this.renderer) return; this.camera.aspect = window.innerWidth / window.innerHeight; this.camera.updateProjectionMatrix(); this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+            onPointerDown(event) { /* Uses this.* extensively */
+                 if (this.gameOver || currentView !== 'game-area') return;
+                 const rect = this.renderer.domElement.getBoundingClientRect(); this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1; this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+                 this.raycaster.setFromCamera(this.mouse, this.camera); const intersects = this.raycaster.intersectObjects(this.boardGroup.children, true);
+                 if (intersects.length > 0) {
+                     let clickedObject = null; let clickedData = null;
+                     for (let i = 0; i < intersects.length; i++) {
+                         const obj = intersects[i].object; const data = obj.userData; if (event.shiftKey && data && data.type === 'wall_slot') { clickedObject = obj; clickedData = data; break; } if (!event.shiftKey && data && data.type === 'square') { clickedObject = obj; clickedData = data; break; }
+                     }
+                     if (clickedObject && clickedData) {
+                          if (event.shiftKey && clickedData.type === 'wall_slot') { if (this.placeWall3D(clickedData.orientation, clickedData.r, clickedData.c)) { this.switchTurn(); } }
+                          else if (!event.shiftKey && clickedData.type === 'square') {
+                             this.setMessage(""); if (this.isValidMove(this.currentPlayer, clickedData.r, clickedData.c)) { this.placePawn(this.currentPlayer, clickedData.r, clickedData.c); this.checkWinCondition(this.currentPlayer); if (!this.gameOver) { this.switchTurn(); } } else { this.setMessage("Invalid move", true); }
+                         }
+                     }
+                 }
+            }
+
+            // --- Animation Loop ---
+            animate() { /* Uses this.* */
+                 if (currentView !== 'game-area') { this.animationFrameId = null; return; } // Stop if view changed
+                 this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+                 const delta = this.clock.getDelta(); const elapsed = this.clock.getElapsedTime();
+                 if (this.controls && this.controls.enableDamping) { this.controls.update(); }
+
+                 // Pawn Glow
+                 if (!this.gameOver && this.pawns[1] && this.pawns[2]) {
+                    const glowIntensity = (Math.sin(elapsed * 4) + 1) / 2; const activePawn = this.pawns[this.currentPlayer]; const inactivePlayer = this.currentPlayer === 1 ? 2 : 1; const inactivePawn = this.pawns[inactivePlayer];
+                    if(activePawn?.material.emissive) { activePawn.material.emissive.lerpColors(this.baseEmissive, this.glowColor[this.currentPlayer], glowIntensity * 0.8 + 0.2); }
+                    if(inactivePawn?.material.emissive) { inactivePawn.material.emissive.copy(this.baseEmissive); }
+                 } else if (this.pawns[1]?.material.emissive && this.pawns[2]?.material.emissive) { // Game over
+                     this.pawns[1].material.emissive.copy(this.baseEmissive); this.pawns[2].material.emissive.copy(this.baseEmissive);
+                 }
+
+                 if (this.renderer && this.scene && this.camera) { // Check objects exist before rendering
+                     this.renderer.render(this.scene, this.camera);
+                 } else {
+                    console.warn("Render called but scene/camera/renderer missing.");
+                    cancelAnimationFrame(this.animationFrameId); // Stop loop if core objects are gone
+                    this.animationFrameId = null;
+                 }
+            }
+        } // --- End of ThreeJSApp Class ---
+
+
+        // --- Initial Setup & Event Listeners for Menus ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadSettings(); loadLeaderboard();
+
+            // Main Menu Buttons
+            document.getElementById('start-game-button').addEventListener('click', startGame);
+            document.getElementById('settings-button').addEventListener('click', () => showView('settings-menu'));
+            document.getElementById('leaderboard-button').addEventListener('click', () => { loadLeaderboard(); showView('leaderboard-menu'); });
+
+            // Settings Menu Buttons
+            document.getElementById('save-settings-button').addEventListener('click', saveSettings);
+            document.getElementById('back-to-main-settings').addEventListener('click', goToMainMenu);
+
+            // Leaderboard Menu Buttons
+             document.getElementById('clear-leaderboard-button').addEventListener('click', clearLeaderboard);
+             document.getElementById('back-to-main-leaderboard').addEventListener('click', goToMainMenu);
+
+             // Win Overlay Buttons
+             document.getElementById('play-again-button').addEventListener('click', () => {
+                 // Don't start a completely new app, just reset the existing one
+                 if (threeApp) {
+                     threeApp.resetGame();
+                     showView('game-area'); // Go back to game view
+                 } else { startGame(); } // Fallback if app somehow got nullified
+             });
+             document.getElementById('back-to-main-win').addEventListener('click', goToMainMenu);
+
+            showView('main-menu'); // Show main menu initially
+        });
+
+    </script>
+</body>
+</html>
