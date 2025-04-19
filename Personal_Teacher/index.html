@@ -3,887 +3,1345 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LOLLMS Personal Teacher</title>
+    <title>LOLLMS Personal Teacher Enhanced</title>
+    <!-- Assets -->
     <script src="/lollms_assets/js/tailwindcss"></script>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
     <script src="/lollms_assets/js/lollms_client_js"></script>
     <script src="/lollms_assets/js/axios.min"></script>
-    <script src="/lollms_assets/js/web.app.localizer"></script>
+    <script src="/lollms_assets/js/web.app.localizer.js"></script> <!-- Assumed available -->
+    <!-- External Libs -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dexie@3.0.3/dist/dexie.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/dexie@3.2.2/dist/dexie.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+    <!-- LOLLMS Renderer -->
     <link rel="stylesheet" type="text/css" href="/lollms_assets/css/lollms_markdown_renderer">
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
-    <link rel="stylesheet" href="/lollms_assets/css/hilight.js.default.min">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+    <!-- Math & Diagrams -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
-    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/themes/prism.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-markup.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-c.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-cpp.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-java.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-latex.min.js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/python/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/htmlmixed/htmlmixed.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/css/css.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/katex@0.13.11/dist/katex.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.4.0/lib/p5.js"></script>
+    <!-- Animation & P5 -->
+    <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.js"></script>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        .hidden { display: none; }
-        .blurred-bg { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+        :root {
+            --primary-color: #4f46e5; /* Indigo-600 */
+            --secondary-color: #ec4899; /* Pink-500 */
+            --background-light: #f3f4f6; /* Gray-100 */
+            --background-dark: #1f2937; /* Gray-800 */
+            --text-light: #111827; /* Gray-900 */
+            --text-dark: #f9fafb; /* Gray-50 */
+            --card-bg-light: #ffffff;
+            --card-bg-dark: #374151; /* Gray-700 */
+            --border-light: #e5e7eb; /* Gray-200 */
+            --border-dark: #4b5563; /* Gray-600 */
+            --success-light: #d1fae5; /* Green-100 */
+            --success-dark: #065f46; /* Green-800 */
+             --success-text-light: #065f46; /* Green-800 */
+             --success-text-dark: #6ee7b7; /* Green-300 */
+            --error-light: #fee2e2; /* Red-100 */
+            --error-dark: #991b1b; /* Red-800 */
+             --error-text-light: #991b1b; /* Red-800 */
+             --error-text-dark: #fca5a5; /* Red-300 */
+        }
+        /* Base styles */
+        html { scroll-behavior: smooth; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--background-light); color: var(--text-light); transition: background-color 0.3s ease, color 0.3s ease; font-size: 16px; }
+        .dark body { background-color: var(--background-dark); color: var(--text-dark); }
+        .card { background-color: var(--card-bg-light); border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); transition: background-color 0.3s ease; overflow: hidden; }
+        .dark .card { background-color: var(--card-bg-dark); }
+        /* Buttons */
+        .btn { font-weight: 600; padding: 0.75rem 1.5rem; border-radius: 8px; transition: background-color 0.3s ease, transform 0.1s ease, opacity 0.2s ease; cursor: pointer; border: none; display: inline-flex; align-items: center; justify-content: center; line-height: 1.25; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: #4338ca; transform: translateY(-1px); }
+        .btn-secondary { background-color: var(--secondary-color); color: white; padding: 0.5rem 1rem; }
+        .btn-secondary:hover:not(:disabled) { background-color: #db2777; transform: translateY(-1px); }
+        .btn-icon { background-color: transparent; color: var(--primary-color); padding: 0.5rem; border-radius: 50%; transition: background-color 0.2s ease; }
+        .dark .btn-icon { color: #a5b4fc; }
+        .btn-icon:hover:not(:disabled) { background-color: rgba(79, 70, 229, 0.1); }
+        .dark .btn-icon:hover:not(:disabled) { background-color: rgba(165, 180, 252, 0.2); }
+        /* Inputs & Textarea */
+        input[type="text"], select, textarea { border: 1px solid var(--border-light); border-radius: 8px; padding: 0.75rem; width: 100%; transition: border-color 0.3s ease, background-color 0.3s ease, box-shadow 0.2s ease; background-color: var(--card-bg-light); color: var(--text-light); }
+        .dark input[type="text"], .dark select, .dark textarea { border-color: var(--border-dark); background-color: var(--card-bg-dark); color: var(--text-dark); }
+        input[type="text"]:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3); }
+        textarea { min-height: 80px; resize: vertical; }
+        ::placeholder { color: #9ca3af; } /* Gray-400 */
+        .dark ::placeholder { color: #6b7280; } /* Gray-500 */
+        /* Utils */
+        .hidden { display: none !important; }
+        .blurred-bg { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); background-color: rgba(0, 0, 0, 0.4); }
+        .dark .blurred-bg { background-color: rgba(20, 20, 30, 0.5); }
+        /* Tabs */
+        .tab-button { padding: 0.75rem 1.5rem; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -1px; transition: border-color 0.3s ease, color 0.3s ease; color: #6b7280; font-weight: 500; }
+        .dark .tab-button { color: #9ca3af; }
+        .tab-button.active { border-color: var(--primary-color); color: var(--primary-color); }
+        .dark .tab-button.active { color: #a5b4fc; border-color: #a5b4fc; }
+        .tab-content { padding-top: 1.5rem; border-top: 1px solid var(--border-light); }
+        .dark .tab-content { border-top-color: var(--border-dark); }
+        /* Markdown & Code */
+        .prose { max-width: none; font-size: 1rem; line-height: 1.7; color: var(--text-light); }
+        .dark .prose { color: var(--text-dark); }
+        .prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 { color: var(--text-light); font-weight: 600; margin-top: 1.5em; margin-bottom: 0.8em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border-light); }
+        .dark .prose h1, .dark .prose h2, .dark .prose h3, .dark .prose h4, .dark .prose h5, .dark .prose h6 { color: var(--text-dark); border-bottom-color: var(--border-dark); }
+        .prose a { color: var(--primary-color); text-decoration: underline; }
+        .dark .prose a { color: #a5b4fc; }
+        .prose code:not(pre > code) { background-color: rgba(0, 0, 0, 0.05); padding: 0.2em 0.4em; margin: 0 0.1em; border-radius: 4px; font-size: 0.9em; font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; color: #c0392b; }
+        .dark .prose code:not(pre > code) { background-color: rgba(255, 255, 255, 0.1); color: #f1c40f; }
+        .prose pre { border-radius: 8px; margin-top: 1.5em; margin-bottom: 1.5em; padding: 1em; overflow-x: auto; background: #f3f4f6; }
+        .dark .prose pre { background: #1e1e1e; }
+        .prose pre code { background-color: transparent !important; padding: 0 !important; margin: 0 !important; border-radius: 0 !important; font-size: 0.9em !important; color: inherit !important; }
+        .prose blockquote { border-left: 4px solid var(--primary-color); padding-left: 1em; margin: 1em 0; font-style: italic; color: #6b7280; background-color: #f9fafb; }
+        .dark .prose blockquote { border-left-color: #a5b4fc; color: #9ca3af; background-color: #374151;}
+        .prose ul, .prose ol { margin-top: 1em; margin-bottom: 1em; padding-left: 1.5em;}
+        .prose li > p { margin-top: 0.5em; margin-bottom: 0.5em; }
+        /* Spinner */
+        .loader { border-top-color: var(--primary-color); animation: spinner 1.5s linear infinite; }
+        @keyframes spinner { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* Iframe */
+        iframe { background-color: white; }
+        .dark iframe { background-color: #111827; }
+        /* Settings Popup */
+        #settings-popup .neumorphic { background-color: var(--card-bg-light); border-radius: 12px; box-shadow: 5px 5px 10px #d1d5db, -5px -5px 10px #ffffff; }
+        .dark #settings-popup .neumorphic { background: var(--card-bg-dark); box-shadow: 5px 5px 10px #1a202c, -5px -5px 10px #4b5563; }
+        #settings-popup label { color: var(--text-light); font-weight: 500; }
+        .dark #settings-popup label { color: var(--text-dark); }
+        #settings-popup input, #settings-popup select { background-color: #e5e7eb; box-shadow: inset 2px 2px 5px #bdbfc1, inset -2px -2px 5px #ffffff; border: none; color: var(--text-light); }
+        .dark #settings-popup input, .dark #settings-popup select { background-color: #4b5563; box-shadow: inset 2px 2px 5px #374151, inset -2px -2px 5px #5c6777; color: var(--text-dark); }
+        #settings-popup button#close-settings { background: var(--primary-color); color: white; box-shadow: 3px 3px 6px #d1d5db, -3px -3px 6px #ffffff; }
+        .dark #settings-popup button#close-settings { box-shadow: 3px 3px 6px #1a202c, -3px -3px 6px #4b5563; }
+        /* Quiz specific styles */
+        .quiz-option-label { display: flex; align-items: center; space-x-3; cursor: pointer; padding: 0.75rem; border-radius: 6px; transition: background-color 0.2s ease; border: 1px solid var(--border-light); }
+        .dark .quiz-option-label { border-color: var(--border-dark); }
+        .quiz-option-label:hover { background-color: rgba(79, 70, 229, 0.05); }
+        .dark .quiz-option-label:hover { background-color: rgba(165, 180, 252, 0.1); }
+        .quiz-option-label.correct { background-color: var(--success-light) !important; border-color: var(--success-text-light) !important; color: var(--success-text-light); font-weight: 500;}
+        .dark .quiz-option-label.correct { background-color: var(--success-dark) !important; border-color: var(--success-text-dark) !important; color: var(--success-text-dark);}
+        .quiz-option-label.incorrect { background-color: var(--error-light) !important; border-color: var(--error-text-light) !important; color: var(--error-text-light); }
+        .dark .quiz-option-label.incorrect { background-color: var(--error-dark) !important; border-color: var(--error-text-dark) !important; color: var(--error-text-dark); }
+        .quiz-result-feedback { font-weight: 600; }
+        .quiz-result-feedback.excellent { color: var(--success-text-light); }
+        .dark .quiz-result-feedback.excellent { color: var(--success-text-dark); }
+        .quiz-result-feedback.good { color: #d97706; } /* Amber-600 */
+        .dark .quiz-result-feedback.good { color: #f59e0b; } /* Amber-500 */
+        .quiz-result-feedback.retry { color: var(--error-text-light); }
+        .dark .quiz-result-feedback.retry { color: var(--error-text-dark); }
+        /* Ideas Section */
+        .ideas-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+        .idea-card { background-color: var(--card-bg-light); border: 1px solid var(--border-light); border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.2s ease; }
+        .dark .idea-card { background-color: var(--card-bg-dark); border-color: var(--border-dark); }
+        .idea-card:hover { transform: translateY(-3px); box-shadow: 0 4px 10px rgba(0,0,0,0.08); border-color: var(--primary-color); }
+        .dark .idea-card:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        .idea-card h4 { font-weight: 600; color: var(--primary-color); margin-bottom: 0.5rem; }
+        .dark .idea-card h4 { color: #a5b4fc; }
+        .idea-card p { font-size: 0.9rem; color: #6b7280; }
+        .dark .idea-card p { color: #9ca3af; }
     </style>
 </head>
-<body class="bg-gradient-to-r from-blue-100 to-purple-100 font-sans text-gray-800 dark:text-gray-200 min-h-screen transition-colors duration-300">
-    <div class="container mx-auto px-4 py-8">
-        <nav class="flex justify-between items-center mb-8">
-            <h1 data-translate="appTitle" class="text-4xl font-bold text-indigo-800">LOLLMS Personal Teacher</h1>
-            <div class="flex space-x-4">
-                <button id="toggleSavedCourses" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">📚 Saved Courses</button>
-                <button id="darkModeToggle" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">🌙</button>
-                <button id="settings-button" data-translate="settingsButton" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">⚙️ Settings</button>
-                <button id="exportData" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Export Data</button>
-                <input type="file" id="importData" class="hidden" accept=".json">
-                <button id="importDataBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Import Data</button>
+<body class="bg-background-light dark:bg-background-dark text-text-light dark:text-text-dark min-h-screen transition-colors duration-300">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-10 pb-4 border-b border-border-light dark:border-border-dark">
+            <h1 data-translate="appTitle" class="text-3xl font-bold text-primary-color dark:text-indigo-400 mb-4 sm:mb-0">Personal Teacher</h1>
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <button id="toggleSavedCourses" title="Saved Courses" class="btn btn-icon"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" /></svg></button>
+                <button id="settings-button" title="Settings" class="btn btn-icon"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></button>
+                <button id="darkModeToggle" title="Toggle Dark Mode" class="btn btn-icon">
+                    <svg id="sunIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                    <svg id="moonIcon" xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                </button>
             </div>
-        </nav>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div class="md:col-span-3">
-                <div class="bg-white shadow-lg rounded-lg p-6 mb-8">
-                    <h2 class="text-4xl font-bold text-indigo-800 mb-4">Generate New Course</h2>
-                    <div class="mb-4">
-                        <label for="topic" data-translate="whatWouldYouLikeToLearn" class="block mb-2 font-semibold">What would you like to learn?</label>
-                        <input type="text" id="topic" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Enter a topic or subject">
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Course Generation Form -->
+            <div class="card p-6 mb-8">
+                <h2 class="text-2xl font-semibold text-primary-color dark:text-indigo-400 mb-5" data-translate="generateCourseTitle">Create Your Lesson</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                    <div>
+                        <label for="topic" data-translate="whatWouldYouLikeToLearn" class="block mb-2 font-medium">What topic do you want to learn?</label>
+                        <input type="text" id="topic" placeholder="e.g., Python functions, Photosynthesis, French Revolution">
                     </div>
-                    <div class="mb-4">
-                        <label for="difficulty" data-translate="difficultyLevel" class="block mb-2 font-semibold">Difficulty Level</label>
-                        <select id="difficulty" class="w-full p-2 border border-indigo-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div>
+                        <label for="difficulty" data-translate="difficultyLevel" class="block mb-2 font-medium">Select difficulty level:</label>
+                        <select id="difficulty">
                             <option value="beginner">Beginner</option>
                             <option value="intermediate">Intermediate</option>
                             <option value="advanced">Advanced</option>
+                            <option value="expert">Expert</option>
                         </select>
                     </div>
-                    <button id="generateCourse" data-translate="generateCourse" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded transition duration-300">Generate Course</button>
                 </div>
-                <button id="exportButton" class="w-full mb-8 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-opacity-50">
-                    Export course
+                <div class="mb-6">
+                     <label for="details" data-translate="optionalDetails" class="block mb-2 font-medium">Any specific details or focus points? (Optional)</label>
+                     <textarea id="details" placeholder="e.g., Focus on decorators in Python, explain the Calvin cycle, compare causes with American Revolution..." class="w-full"></textarea>
+                </div>
+                <button id="generateCourse" class="btn btn-primary w-full md:w-auto">Generate Course</button>
+                 <div id="generationStatus" class="mt-4 text-sm text-gray-600 dark:text-gray-400 min-h-[1.25rem]"></div>
+            </div>
+
+            <!-- Ideas Section -->
+            <div class="mb-12">
+                 <h3 class="text-xl font-semibold mb-4 text-gray-700 dark:text-gray-300" data-translate="ideasTitle">Need Inspiration?</h3>
+                 <div class="ideas-grid">
+                     <div class="idea-card" onclick="setTopic('Introduction to Quantum Computing')">
+                         <h4 data-translate="ideaQuantumTitle">Quantum Computing</h4>
+                         <p data-translate="ideaQuantumDesc">Understand qubits, superposition, and entanglement.</p>
+                     </div>
+                     <div class="idea-card" onclick="setTopic('Beginners Guide to Investing')">
+                         <h4 data-translate="ideaInvestingTitle">Investing Basics</h4>
+                         <p data-translate="ideaInvestingDesc">Learn about stocks, bonds, and mutual funds.</p>
+                     </div>
+                     <div class="idea-card" onclick="setTopic('Learn Basic Japanese Phrases')">
+                          <h4 data-translate="ideaJapaneseTitle">Basic Japanese</h4>
+                          <p data-translate="ideaJapaneseDesc">Master essential greetings and useful phrases.</p>
+                     </div>
+                     <div class="idea-card" onclick="setTopic('History of Ancient Egypt')">
+                          <h4 data-translate="ideaEgyptTitle">Ancient Egypt</h4>
+                          <p data-translate="ideaEgyptDesc">Explore pharaohs, pyramids, and hieroglyphs.</p>
+                     </div>
+                 </div>
+            </div>
+
+
+            <!-- Course Display Area (Tabs) -->
+            <div id="courseDisplayArea" class="card p-6 hidden">
+                 <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                    <h2 id="courseTitle" class="text-2xl font-semibold text-primary-color dark:text-indigo-400 flex-grow">Course Content</h2>
+                     <button id="exportButton" class="btn btn-secondary text-sm flex-shrink-0" title="Export current course view as HTML">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        <span>Export View</span>
+                    </button>
+                 </div>
+
+                <!-- Tab Buttons -->
+                <div class="border-b border-border-light dark:border-border-dark mb-6">
+                    <nav class="-mb-px flex space-x-4 sm:space-x-6 overflow-x-auto" aria-label="Tabs">
+                        <button id="tabBtnLesson" class="tab-button active flex-shrink-0" onclick="switchTab('lesson')">Lesson</button>
+                        <button id="tabBtnDemo" class="tab-button flex-shrink-0" onclick="switchTab('demo')">Interactive Demo</button>
+                        <button id="tabBtnQuiz" class="tab-button flex-shrink-0" onclick="switchTab('quiz')">Quiz</button>
+                    </nav>
+                </div>
+
+                <!-- Tab Content Panes -->
+                <div id="tabContent">
+                    <div id="lessonTab" class="tab-pane">
+                        <div id="markdown-content" class="prose dark:prose-invert max-w-none">
+                            <!-- Rendered Markdown content goes here -->
+                        </div>
+                    </div>
+                    <div id="demoTab" class="tab-pane hidden">
+                         <p id="demoStatus" class="text-center text-gray-500 dark:text-gray-400 my-4 min-h-[1.25rem]"></p>
+                        <div id="demo-content" class="relative" style="min-height: 400px;">
+                           <!-- Iframe for demo will be added here -->
+                        </div>
+                    </div>
+                    <div id="quizTab" class="tab-pane hidden">
+                         <p id="quizStatus" class="text-center text-gray-500 dark:text-gray-400 my-4 min-h-[1.25rem]"></p>
+                        <div id="quiz-content">
+                           <!-- Quiz form and results will be generated here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Saved Courses Popup -->
+    <div id="savedCoursesPopup" class="fixed inset-0 blurred-bg hidden flex items-center justify-center p-4 z-40">
+        <div class="card w-full max-w-lg max-h-[80vh] flex flex-col">
+             <div class="flex justify-between items-center p-5 border-b border-border-light dark:border-border-dark">
+                <h2 class="text-xl font-semibold" data-translate="savedCoursesTitle">Saved Courses</h2>
+                <button id="closeSavedCourses" class="btn btn-icon text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 -mr-2" title="Close">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                <div id="targetDiv">
-                    <div id="courseContent" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
-                        <h2 class="text-4xl font-bold text-indigo-800 mb-4" data-translate="courseContent">Course Content</h2>
-                        <div id="markdown-content" class="prose"></div>
-                    </div>
-                    <div id="demo" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
-                        <h2 class="text-4xl font-bold text-indigo-800 mb-4">Interactive Demo</h2>
-                        <div id="demo-content"></div>
-                    </div>
-                    <div id="quiz" class="bg-white shadow-lg rounded-lg p-6 mb-8 hidden">
-                        <h2 class="text-4xl font-bold text-indigo-800 mb-4">Quiz</h2>
-                        <div id="quiz-content"></div>
-                    </div>
-                </div>
             </div>
+            <div class="p-5">
+                <input type="text" id="courseSearch" class="w-full p-2 border rounded mb-4 dark:bg-gray-600 dark:border-gray-500 focus:ring-primary-color focus:border-primary-color" placeholder="Search courses by topic...">
+            </div>
+            <ul id="courseList" class="space-y-1 overflow-y-auto flex-grow p-5">
+                <!-- Course list items populated by JS -->
+            </ul>
+             <div class="p-5 border-t border-border-light dark:border-border-dark flex justify-end space-x-2">
+                 <button id="exportData" class="btn btn-secondary text-sm">Export All</button>
+                 <input type="file" id="importData" class="hidden" accept=".json">
+                 <button id="importDataBtn" class="btn btn-primary text-sm">Import</button>
+             </div>
         </div>
     </div>
-    <div id="savedCoursesPopup" class="fixed inset-0 bg-black bg-opacity-50 blurred-bg hidden">
-        <div class="relative top-20 mx-auto p-8 border w-96 shadow-lg rounded-lg bg-white">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-bold">Saved Courses</h2>
-                <button id="closeSavedCourses" class="text-gray-600 hover:text-gray-900 transition">✖️</button>
-            </div>
-            <input type="text" id="courseSearch" class="w-full p-2 border rounded mb-4" placeholder="Search courses...">
-            <ul id="courseList" class="space-y-2"></ul>
-        </div>
-    </div>
-    <div id="settings-popup" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full hidden">
-        <div class="relative top-20 mx-auto p-8 border w-96 shadow-lg rounded-lg neumorphic bg-gray-800">
+
+    <!-- Settings Popup -->
+    <div id="settings-popup" class="fixed inset-0 bg-black bg-opacity-75 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 sm:top-20 mx-auto p-6 border w-full max-w-md shadow-lg rounded-lg neumorphic bg-gray-100 dark:bg-gray-800">
+             <button id="close-settings-icon" class="absolute top-3 right-3 btn btn-icon text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100" title="Close settings">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+             </button>
             <div class="mt-3 text-center">
-                <h3 class="text-2xl leading-6 font-medium text-yellow-400 mb-6">Settings</h3>
-                <div class="mb-8">
-                    <label id="language-select-label" for="language-select" class="text-lg font-semibold text-yellow-400 mb-2 block">Select Language:</label>
-                    <select id="language-select" class="neumorphic bg-gray-700 text-yellow-400 rounded-lg px-4 py-2 w-full focus:outline-none focus:ring-2 focus:ring-yellow-400 transition duration-300">
-                        <option value="ar">Arabic</option>
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="zh">Chinese</option>
+                <h3 class="text-2xl leading-6 font-medium text-primary-color dark:text-indigo-400 mb-6" data-translate="settingsButton">Settings</h3>
+                <div class="mb-8 text-left">
+                    <label id="language-select-label" for="language-select" class="text-lg font-semibold mb-2 block">Language</label>
+                    <select id="language-select" class="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-color transition duration-300">
+                        <!-- Language options added by JS -->
                     </select>
                 </div>
-                <div class="mb-8">
-                    <h4 class="text-lg font-semibold text-yellow-400 mb-4">LOLLMS Settings</h4>
-                    <div class="space-y-4">
-                        <div>
-                            <label for="host_address" class="block text-yellow-400">Host Address</label>
-                            <input type="text" id="host_address" class="w-full p-2 border rounded bg-gray-700 text-yellow-400">
-                        </div>
-                        <div>
-                            <label for="model_name" class="block text-yellow-400">Model Name</label>
-                            <input type="text" id="model_name" class="w-full p-2 border rounded bg-gray-700 text-yellow-400">
-                        </div>
-                        <div>
-                            <label for="ctx_size" class="block text-yellow-400">Context Size</label>
-                            <input type="number" id="ctx_size" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="4096">
-                        </div>
-                        <div>
-                            <label for="personality" class="block text-yellow-400">Personality</label>
-                            <input type="number" id="personality" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="-1">
-                        </div>
-                        <div>
-                            <label for="n_predict" class="block text-yellow-400">Number of Predictions</label>
-                            <input type="number" id="n_predict" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="4096">
-                        </div>
-                        <div>
-                            <label for="temperature" class="block text-yellow-400">Temperature</label>
-                            <input type="number" step="0.01" id="temperature" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="0.1">
-                        </div>
-                        <div>
-                            <label for="top_k" class="block text-yellow-400">Top K</label>
-                            <input type="number" id="top_k" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="50">
-                        </div>
-                        <div>
-                            <label for="top_p" class="block text-yellow-400">Top P</label>
-                            <input type="number" step="0.01" id="top_p" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="0.95">
-                        </div>
-                        <div>
-                            <label for="repeat_penalty" class="block text-yellow-400">Repeat Penalty</label>
-                            <input type="number" step="0.01" id="repeat_penalty" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="0.8">
-                        </div>
-                        <div>
-                        <div>
-                            <label for="repeat_last_n" class="block text-yellow-400">Repeat Last N</label>
-                            <input type="number" id="repeat_last_n" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="40">
-                        </div>
-                        <div>
-                            <label for="seed" class="block text-yellow-400">Seed</label>
-                            <input type="number" id="seed" class="w-full p-2 border rounded bg-gray-700 text-yellow-400">
-                        </div>
-                        <div>
-                            <label for="n_threads" class="block text-yellow-400">Number of Threads</label>
-                            <input type="number" id="n_threads" class="w-full p-2 border rounded bg-gray-700 text-yellow-400" value="8">
-                        </div>
-                        <div>
-                            <label for="service_key" class="block text-yellow-400">Service Key</label>
-                            <input type="text" id="service_key" class="w-full p-2 border rounded bg-gray-700 text-yellow-400">
-                        </div>
-                        <div>
-                            <label for="default_generation_mode" class="block text-yellow-400">Default Generation Mode</label>
-                            <select id="default_generation_mode" class="w-full p-2 border rounded bg-gray-700 text-yellow-400">
-                                <option value="LOLLMS">LOLLMS</option>
-                                <option value="OTHER_MODE">Other Mode</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
                 <div class="items-center px-4 py-3 mt-6">
-                    <button id="close-settings" data-translate="closeSettings" class="w-full neumorphic electric-border bg-gray-600 text-yellow-400 px-6 py-3 rounded-full hover:bg-gray-500 transition duration-300 font-medium">
-                        Close
-                    </button>
+                    <button id="close-settings" class="w-full btn btn-primary px-6 py-3 rounded-full font-medium">Close</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Global Spinner -->
+    <div id="spinner" class="hidden fixed top-0 left-0 right-0 bottom-0 w-full h-screen z-[100] overflow-hidden bg-gray-700 bg-opacity-75 flex flex-col items-center justify-center">
+        <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
+        <h2 id="spinner-message" class="text-center text-white text-xl font-semibold">Loading...</h2>
+        <p class="w-1/3 text-center text-white text-sm">Please wait while the content is being generated.</p>
+    </div>
+
+    <!-- HTML Templates -->
+    <template id="quizQuestionTemplate">
+        <div class="quiz-question-container bg-gray-100 dark:bg-gray-700 p-4 rounded-lg shadow-sm">
+            <p class="question-text font-semibold text-lg mb-3"></p>
+            <div class="options-container space-y-2"></div>
+        </div>
+    </template>
+
+    <template id="quizOptionTemplate">
+        <label class="quiz-option-label">
+            <input type="radio" class="form-radio h-4 w-4 text-primary-color focus:ring-primary-color border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-900">
+            <span class="option-text"></span>
+        </label>
+    </template>
+
+    <template id="courseListItemTemplate">
+        <li class="border-b border-border-light dark:border-border-dark last:border-b-0">
+            <div class="flex justify-between items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition duration-150 rounded-md">
+                <div class="course-info-container flex-grow mr-2 cursor-pointer overflow-hidden">
+                    <span class="course-title font-medium text-primary-color dark:text-indigo-400 block truncate"></span>
+                    <span class="course-details text-sm text-gray-500 dark:text-gray-400 block"></span>
+                </div>
+                <button class="delete-course-button btn btn-icon text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-100 dark:hover:bg-red-900 transition flex-shrink-0" title="Delete Course">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>
+        </li>
+    </template>
+
+
     <script>
+        // --- Configuration & Initialization ---
         const languageSelect = document.getElementById('language-select');
-        document.getElementById('settings-button').addEventListener('click', function() {
-            document.getElementById('settings-popup').classList.toggle('hidden');
-        });
-        document.getElementById('close-settings').addEventListener('click', function() {
-            document.getElementById('settings-popup').classList.add('hidden');
-        });
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const generationStatus = document.getElementById('generationStatus');
+        const courseDisplayArea = document.getElementById('courseDisplayArea');
+        const courseTitle = document.getElementById('courseTitle');
+        const topicInput = document.getElementById('topic');
+        const detailsInput = document.getElementById('details'); // Added optional details input
+        const quizQuestionTemplate = document.getElementById('quizQuestionTemplate');
+        const quizOptionTemplate = document.getElementById('quizOptionTemplate');
+        const courseListItemTemplate = document.getElementById('courseListItemTemplate');
+
+        // --- Translations Object (with added keys) ---
         const translations = {
-            en: {
+             en: {
                 name: "English",
                 translations: {
-                    appTitle: "LOLLMS Personal Teacher",
-                    settingsButton: "Settings",
-                    whatWouldYouLikeToLearn: "What would you like to learn?",
-                    difficultyLevel: "Difficulty level",
-                    generateCourse: "Generate course",
-                    courseContent: "Course content",
-                    closeSettings: "Close"
-                },
+                    appTitle: "Personal Teacher", settingsButton: "Settings", whatWouldYouLikeToLearn: "What topic do you want to learn?",
+                    difficultyLevel: "Select difficulty level:", generateCourse: "Generate Course", courseContent: "Course Content",
+                    closeSettings: "Close", savedCoursesTitle: "Saved Courses", exportButton: "Export View",
+                    statusGeneratingCourse: "Generating course content...", statusGeneratingDemo: "Creating interactive demo...", statusGeneratingQuiz: "Building quiz...", statusDone: "Course generated successfully!",
+                    tabLesson: "Lesson", tabDemo: "Interactive Demo", tabQuiz: "Quiz",
+                    demoUnavailable: "No interactive demo available for this topic or format.",
+                    quizUnavailable: "Could not generate quiz. The format might be incorrect.",
+                    quizResultTitle: "Quiz Results", quizScore: "You scored {score} out of {totalQuestions}",
+                    quizFeedbackExcellent: "Excellent work!", quizFeedbackGood: "Good effort, keep learning!", quizFeedbackRetry: "Review the material and try again.",
+                    yourAnswer: "Your answer", correctAnswer: "Correct answer", notAnswered: "Not answered", submitQuiz: "Submit Quiz",
+                    loadingCourses: "Loading courses...", noSavedCourses: "No saved courses found.", errorLoadingCourses: "Error loading courses.",
+                    confirmDeleteMessage: "Are you sure you want to delete the course \"{title}\"? This action cannot be undone.",
+                    courseDeleted: "Course deleted.", errorDeleting: "Error deleting course.", errorSavingCourse: "Error saving the course.",
+                    courseNotFound: "Course not found.", errorLoadingCourse: "Error loading the course.",
+                    exportingData: "Exporting data...", noCoursesToExport: "No courses to export.", errorExporting: "Error exporting course data.",
+                    importingData: "Importing data...", importSuccess: "Successfully imported/updated {count} courses.", importError: "Error importing courses: {message}", importInvalidFormat: "Imported file is not a valid course array.", importReadError: "Error reading the import file.",
+                    importNoValidCourses: "No valid courses found in the imported file.",
+                    alertEnterTopic: "Please enter a topic to learn.", loadingCourse: "Loading course...",
+                    generateCourseTitle: "Create Your Lesson",
+                    optionalDetails: "Any specific details or focus points? (Optional)",
+                    detailsPlaceholder: "e.g., Focus on decorators in Python, explain the Calvin cycle, compare causes with American Revolution...",
+                    topicPlaceholder: "e.g., Python functions, Photosynthesis, French Revolution",
+                    ideasTitle: "Need Inspiration?",
+                    ideaQuantumTitle: "Quantum Computing", ideaQuantumDesc: "Understand qubits, superposition, and entanglement.",
+                    ideaInvestingTitle: "Investing Basics", ideaInvestingDesc: "Learn about stocks, bonds, and mutual funds.",
+                    ideaJapaneseTitle: "Basic Japanese", ideaJapaneseDesc: "Master essential greetings and useful phrases.",
+                    ideaEgyptTitle: "Ancient Egypt", ideaEgyptDesc: "Explore pharaohs, pyramids, and hieroglyphs."
+                 },
                 promptTranslations: {
-                    coursePrompt: `Generate a comprehensive {difficulty} level course on "{topic}" with the following structure:
+                    coursePrompt: `You are an expert educator AI. Generate a comprehensive, engaging, and well-structured course for a {difficulty} level learner on the topic: "{topic}".
 
-1. Course Objectives
-   - List at least 3 specific, measurable learning objectives
+Follow this structure strictly:
 
-2. Key Concepts
-   - List and briefly explain at least 5 essential concepts related to the topic
+1.  **Course Title:** A clear and concise title for the course.
+2.  **Target Audience:** Briefly describe who this {difficulty} level course is for.
+3.  **Prerequisites:** List any prior knowledge or skills recommended (if any).
+4.  **Learning Objectives:** Provide 3-5 specific, measurable, achievable, relevant, and time-bound (SMART) objectives.
+5.  **Key Concepts:** List and concisely explain 5-7 core concepts crucial to understanding the topic.
+6.  **Detailed Content:** This is the main part. Divide into logical sections (at least 3-5). For each section:
+    *   Use clear headings (Markdown H2 or H3).
+    *   Explain concepts thoroughly but accessibly for the {difficulty} level.
+    *   Use examples, analogies, or case studies.
+    *   Include relevant code snippets (\`\`\`language ... \`\`\`), Mermaid diagrams (\`\`\`mermaid ... \`\`\`), or SVG (\`\`\`svg ... \`\`\`) where appropriate and valuable.
+7.  **Practical Exercises/Activities:** Include 2-3 practical exercises or thought-provoking questions.
+8.  **Summary & Key Takeaways:** Briefly recap main points.
+9.  **Further Learning (Optional):** Suggest 1-2 resources.
 
-3. Detailed Content (with subsections)
-   - Divide the content into at least 3 main sections
-   - For each section, and in one or many paragraphs provide the following if applicable:
-     a) A clear explanation of the subtopic
-     b) Relevant examples or case studies
-     c) Any important formulas, theories, or principles
-     d) Real-world applications
+**User Request Consideration:**
+{user_details_section}
 
-4. Exercises
-   - Include at least 3 practical exercises or assignments
-   - Provide clear instructions and expected outcomes for each exercise
+**Formatting Instructions:**
+*   Use Markdown for all formatting.
+*   Ensure language is clear, engaging, and appropriate for {difficulty}.
+*   Break down complex ideas. Prioritize accuracy.
 
-5. Summary
-   - Recap the main points covered in the course
-   - Highlight key takeaways
-
-Format the content in markdown.
-Where appropriate, illustrate concepts using mermaid diagrams and svg drawings. Write the mermaid code inside a mermaid markdown tag and the svg inside an svg markdown tag.
-
-Ensure that each section contains substantial, accurate, and relevant information related to the topic. The content should be educational, engaging, and provide real value to the learner.`,
-                    quizPrompt:`Generate a 5-question multiple-choice quiz for the {difficulty} level course on "{topic}". Format the quiz as a JSON object with the following structure:
-{
-  "questions": [
-    {
-      "question": "Question text here",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
-      "correctAnswer": 0
-    },
-    // ... more questions
-  ]
-}
-Only provide the JSON object without any additional text or comments.`,
-                    demoPrompt: `Based on the {difficulty} level course about "{topic}", create an interactive demo or example to illustrate a key concept. Make sure to add annotations and an explanation card. Use tailwindcss for styling and make it a slick interface. Make sure the animation takes as mushspace as it needs. If possible make it interactive. Use p5.js library in your html for the interactive demo. Put the demo code inside a html markdown tag like this:
-                    \`\`\`html
-                    <!-- your code here --> 
-                    \`\`\``
+Generate *only* the markdown content for the course.`,
+                    quizPrompt:`Generate a 5-question multiple-choice quiz for the {difficulty} level course on "{topic}". Test key concepts. Format *strictly* as a JSON object (no text outside JSON). Root key "questions" (array). Each question object needs keys: "question" (String), "options" (Array of 4 Strings), "correctAnswer" (Integer, 0-based index), "explanation" (String). Ensure relevance to {topic} at {difficulty} level.`,
+                    demoPrompt: `You are an AI assistant specialized in creating simple, interactive web demos. Based on a {difficulty} level course about "{topic}", create a self-contained HTML snippet that demonstrates a *single key concept* from the topic in an interactive or visual way. Requirements: 1. Focus: ONE core concept. 2. Technology: HTML, CSS (Tailwind/inline/<style>), vanilla JS or p5.js (instance mode). 3. Interactivity/Visualization: Interactive (sliders/buttons) or visual (animation/diagram). 4. Clarity: Minimal explanatory text inside. 5. Self-Contained: All HTML/CSS/JS in the code block. 6. Simplicity: Clear, focused code. 7. Placeholder: If not feasible, output *only* \`<!-- No suitable interactive demo for this topic/difficulty -->\` inside the code block. Output Format: Provide *only* the HTML code block, starting strictly with \`\`\`html and ending strictly with \`\`\`. Inside the block: * HTML comment identifying concept: \`<!-- Demo for: [Concept Name] -->\` * A single root \`<div>\`. * Inside root div: HTML elements, optional \`<style>\`, and a \`<script>\` (vanilla JS or p5.js instance mode). Important: Do NOT add any text outside the final \`\`\`html ... \`\`\` code block.`
                 }
             },
-
-            fr: {
+             fr: {
                 name: "Français",
                 translations: {
-                    appTitle: "LOLLMS Professeur Personnel",
-                    settingsButton: "Paramètres",
-                    whatWouldYouLikeToLearn: "Que voulez-vous apprendre ?",
-                    difficultyLevel: "Niveau de difficulté",
-                    generateCourse: "Générer le cours",
-                    courseContent: "Contenu du cours",
-                    closeSettings: "Fermer"
-                },
+                    appTitle: "Professeur Personnel", settingsButton: "Paramètres", whatWouldYouLikeToLearn: "Quel sujet souhaitez-vous apprendre ?",
+                    difficultyLevel: "Sélectionnez le niveau :", generateCourse: "Générer le cours", courseContent: "Contenu du cours",
+                    closeSettings: "Fermer", savedCoursesTitle: "Cours sauvegardés", exportButton: "Exporter la vue",
+                    statusGeneratingCourse: "Génération du contenu...", statusGeneratingDemo: "Création de la démo...", statusGeneratingQuiz: "Construction du quiz...", statusDone: "Cours généré avec succès !",
+                    tabLesson: "Leçon", tabDemo: "Démo Intéractive", tabQuiz: "Quiz",
+                    demoUnavailable: "Aucune démo interactive disponible.",
+                    quizUnavailable: "Impossible de générer le quiz.",
+                    quizResultTitle: "Résultats du Quiz", quizScore: "Votre score : {score}/{totalQuestions}",
+                    quizFeedbackExcellent: "Excellent travail !", quizFeedbackGood: "Bon effort !", quizFeedbackRetry: "Revoyez et réessayez.",
+                    yourAnswer: "Votre réponse", correctAnswer: "Réponse correcte", notAnswered: "Non répondu", submitQuiz: "Soumettre",
+                    loadingCourses: "Chargement...", noSavedCourses: "Aucun cours sauvegardé.", errorLoadingCourses: "Erreur chargement cours.",
+                    confirmDeleteMessage: "Supprimer le cours \"{title}\" ?", courseDeleted: "Cours supprimé.", errorDeleting: "Erreur suppression.", errorSavingCourse: "Erreur sauvegarde.",
+                    courseNotFound: "Cours introuvable.", errorLoadingCourse: "Erreur chargement.",
+                    exportingData: "Exportation...", noCoursesToExport: "Aucun cours à exporter.", errorExporting: "Erreur exportation.",
+                    importingData: "Importation...", importSuccess: "{count} cours importés/mis à jour.", importError: "Erreur importation : {message}", importInvalidFormat: "Format invalide.", importReadError: "Erreur lecture fichier.",
+                    importNoValidCourses: "Aucun cours valide trouvé.",
+                    alertEnterTopic: "Veuillez entrer un sujet.", loadingCourse: "Chargement...",
+                    generateCourseTitle: "Créez Votre Leçon",
+                    optionalDetails: "Détails spécifiques ou points focus ? (Optionnel)",
+                    detailsPlaceholder: "Ex : Focus sur les décorateurs Python, cycle de Calvin, comparer causes avec Révolution Américaine...",
+                    topicPlaceholder: "Ex : Fonctions Python, Photosynthèse, Révolution française",
+                    ideasTitle: "Besoin d'Inspiration ?",
+                    ideaQuantumTitle: "Informatique Quantique", ideaQuantumDesc: "Comprendre qubits, superposition, intrication.",
+                    ideaInvestingTitle: "Bases Investissement", ideaInvestingDesc: "Actions, obligations, fonds mutuels.",
+                    ideaJapaneseTitle: "Japonais de Base", ideaJapaneseDesc: "Salutations et phrases utiles.",
+                    ideaEgyptTitle: "Égypte Ancienne", ideaEgyptDesc: "Pharaons, pyramides, hiéroglyphes."
+                 },
                 promptTranslations: {
-                    coursePrompt: `Générez un cours complet de niveau {difficulty} sur "{topic}" avec la structure suivante :
-
-1. Objectifs du cours
-   - Énumérez au moins 3 objectifs d'apprentissage spécifiques et mesurables
-
-2. Concepts clés
-   - Énumérez et expliquez brièvement au moins 5 concepts essentiels liés au sujet
-
-3. Contenu détaillé (avec sous-sections)
-   - Divisez le contenu en au moins 3 sections principales
-   - Pour chaque section, et en un ou plusieurs paragraphes, fournissez les éléments suivants si applicable :
-     a) Une explication claire du sous-sujet
-     b) Des exemples ou études de cas pertinents
-     c) Toute formule, théorie ou principe important
-     d) Applications dans le monde réel
-
-4. Exercices
-   - Incluez au moins 3 exercices pratiques ou devoirs
-   - Fournissez des instructions claires et les résultats attendus pour chaque exercice
-
-5. Résumé
-   - Récapitulez les points principaux abordés dans le cours
-   - Mettez en évidence les points clés à retenir
-
-Formatez le contenu en markdown.
-Lorsque cela est approprié, illustrez les concepts à l'aide de diagrammes mermaid et de dessins svg. Écrivez le code mermaid à l'intérieur d'une balise markdown mermaid et le svg à l'intérieur d'une balise markdown svg.
-
-Assurez-vous que chaque section contient des informations substantielles, précises et pertinentes liées au sujet. Le contenu doit être éducatif, engageant et apporter une réelle valeur à l'apprenant.
-`,
-                    quizPrompt: "Générez un quiz à choix multiples de 5 questions pour le cours de niveau {difficulty} sur \"{topic}\". Formatez le quiz comme un objet JSON avec la structure suivante :\n{\n  \"questions\": [\n    {\n      \"question\": \"Texte de la question ici\",\n      \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n      \"correctAnswer\": 0\n    },\n    // ... plus de questions\n  ]\n}\nFournissez uniquement l'objet JSON sans texte ni commentaires supplémentaires.",
-                    demoPrompt: `En se basant sur le cours de niveau {difficulty} sur "{topic}", créez une démonstration ou un exemple interactif pour illustrer un concept clé. S'il s'agit d'un sujet de programmation, fournissez du code exécutable. S'il s'agit d'un sujet théorique, fournissez un diagramme ou une explication interactive. Placez le code de démonstration dans une balise markdown html comme ceci :
-                    \`\`\`html
-                    <!-- votre code ici -->
-                    \`\`\``
+                    coursePrompt: `Vous êtes une IA éducatrice experte. Générez un cours complet, engageant et structuré pour un apprenant de niveau {difficulty} sur : "{topic}". Structure stricte : 1. Titre 2. Public cible 3. Prérequis 4. Objectifs (3-5 SMART) 5. Concepts clés (5-7) 6. Contenu détaillé (3-5 sections, titres, explications, exemples, code/Mermaid/SVG optionnels) 7. Exercices (2-3) 8. Résumé 9. Pour aller plus loin (Optionnel). Considération Requête Utilisateur : {user_details_section}. Format : Markdown. Langage clair pour {difficulty}. Priorité à l'exactitude. Générez *uniquement* le contenu markdown.`,
+                    quizPrompt: `Générez un quiz QCM de 5 questions pour le cours niveau {difficulty} sur "{topic}". Testez les concepts clés. Format *strictement* JSON (rien en dehors). Clé racine "questions" (tableau). Chaque objet question : "question" (String), "options" (Tableau 4 Strings), "correctAnswer" (Integer, index 0), "explanation" (String). Pertinence pour {topic} et {difficulty}.`,
+                    demoPrompt: `Vous êtes un assistant IA spécialisé dans la création de démos web simples et interactives. Basé sur un cours de niveau {difficulty} sur "{topic}", créez un extrait HTML autonome qui démontre un *concept clé unique* du sujet de manière interactive ou visuelle. Exigences : 1. Focus : UN concept clé. 2. Technologie : HTML, CSS (Tailwind/inline/<style>), JS vanilla ou p5.js (mode instance). 3. Interactivité/Visualisation : Interactif (curseurs/boutons) ou visuel (animation/diagramme). 4. Clarté : Minimum de texte explicatif à l'intérieur. 5. Autonome : Tout HTML/CSS/JS dans le bloc de code. 6. Simplicité : Code clair et ciblé. 7. Espace réservé : Si non réalisable, sortez *uniquement* \`<!-- Aucune démo interactive adaptée pour ce sujet/difficulté -->\` dans le bloc. Format de sortie : Fournissez *uniquement* le bloc de code HTML (\`\`\`html ... \`\`\`). À l'intérieur : * Commentaire HTML : \`<!-- Démo pour : [Nom Concept] -->\` * Un unique \`<div>\` racine. * Dans le div : Éléments HTML, optionnel \`<style>\`, et un \`<script>\`. Important : AUCUN texte en dehors du bloc de code \`\`\`html ... \`\`\`.`
                 }
-            },
-            it: {
-                name: "Italiano",
-                translations: {
-                    appTitle: "LOLLMS Insegnante Personale",
-                    settingsButton: "Impostazioni",
-                    whatWouldYouLikeToLearn: "Cosa vorresti imparare?",
-                    difficultyLevel: "Livello di difficoltà",
-                    generateCourse: "Genera corso",
-                    courseContent: "Contenuto del corso",
-                    closeSettings: "Chiudi"
-                },
-                promptTranslations: {
-                    coursePrompt: `Genera un corso completo di livello {difficulty} su "{topic}" con la seguente struttura:
-
-1. Obiettivi del corso
-   - Elenca almeno 3 obiettivi di apprendimento specifici e misurabili
-
-2. Concetti chiave
-   - Elenca e spiega brevemente almeno 5 concetti essenziali relativi all'argomento
-
-3. Contenuto dettagliato (con sottosezioni)
-   - Dividi il contenuto in almeno 3 sezioni principali
-   - Per ciascuna sezione, e in uno o più paragrafi, fornisci quanto segue se applicabile:
-     a) Una chiara spiegazione del sottotema
-     b) Esempi o casi di studio rilevanti
-     c) Eventuali formule, teorie o principi importanti
-     d) Applicazioni nel mondo reale
-
-4. Esercizi
-   - Includi almeno 3 esercizi pratici o compiti
-   - Fornisci istruzioni chiare e risultati attesi per ciascun esercizio
-
-5. Riepilogo
-   - Ricapitola i punti principali trattati nel corso
-   - Evidenzia i punti chiave
-
-Formatta il contenuto in markdown.
-Dove appropriato, illustra i concetti utilizzando diagrammi mermaid e disegni svg. Scrivi il codice mermaid all'interno di un tag markdown mermaid e il codice svg all'interno di un tag markdown svg.
-
-Assicurati che ogni sezione contenga informazioni sostanziali, accurate e pertinenti relative all'argomento. Il contenuto dovrebbe essere educativo, coinvolgente e fornire un reale valore per l'apprendente.
-`,
-                    quizPrompt: "Genera un quiz a scelta multipla di 5 domande per il corso di livello {difficulty} su \"{topic}\". Formatta il quiz come un oggetto JSON con la seguente struttura:\n{\n  \"questions\": [\n    {\n      \"question\": \"Testo della domanda qui\",\n      \"options\": [\"Opzione A\", \"Opzione B\", \"Opzione C\", \"Opzione D\"],\n      \"correctAnswer\": 0\n    },\n    // ... altre domande\n  ]\n}\nFornisci solo l'oggetto JSON senza testo aggiuntivo o commenti.",
-                    demoPrompt: `Basandosi sul corso di livello {difficulty} su "{topic}", crea una demo o un esempio interattivo per illustrare un concetto chiave. Se si tratta di un argomento di programmazione, fornisci codice eseguibile. Se si tratta di un argomento teorico, fornisci un diagramma o una spiegazione interattiva. Inserisci il codice della demo all'interno di un tag markdown html come questo:
-                    \`\`\`html
-                    <!-- il tuo codice qui -->
-                    \`\`\``
-                }
-            },
-            de: {
-                name: "Deutsch",
-                translations: {
-                    appTitle: "LOLLMS Persönlicher Lehrer",
-                    settingsButton: "Einstellungen",
-                    whatWouldYouLikeToLearn: "Was möchten Sie lernen?",
-                    difficultyLevel: "Schwierigkeitsgrad",
-                    generateCourse: "Kurs generieren",
-                    courseContent: "Kursinhalt",
-                    closeSettings: "Schließen"
-                },
-                promptTranslations: {
-                    coursePrompt: `Erstellen Sie einen umfassenden Kurs auf {difficulty}-Niveau zu "{topic}" mit der folgenden Struktur:
-
-1. Kursziele
-   - Listen Sie mindestens 3 spezifische, messbare Lernziele auf
-
-2. Schlüsselkonzepte
-   - Listen Sie mindestens 5 wesentliche Konzepte auf und erklären Sie diese kurz, die mit dem Thema zusammenhängen
-
-3. Detaillierter Inhalt (mit Unterabschnitten)
-   - Teilen Sie den Inhalt in mindestens 3 Hauptabschnitte auf
-   - Für jeden Abschnitt und in einem oder mehreren Absätzen geben Sie Folgendes an, falls zutreffend:
-     a) Eine klare Erklärung des Unterthemas
-     b) Relevante Beispiele oder Fallstudien
-     c) Wichtige Formeln, Theorien oder Prinzipien
-     d) Anwendungen in der realen Welt
-
-4. Übungen
-   - Fügen Sie mindestens 3 praktische Übungen oder Aufgaben hinzu
-   - Geben Sie klare Anweisungen und erwartete Ergebnisse für jede Übung an
-
-5. Zusammenfassung
-   - Fassen Sie die wichtigsten Punkte des Kurses zusammen
-   - Heben Sie die wichtigsten Erkenntnisse hervor
-
-Formatieren Sie den Inhalt in Markdown.
-Wo es angebracht ist, veranschaulichen Sie Konzepte mit Mermaid-Diagrammen und SVG-Zeichnungen. Schreiben Sie den Mermaid-Code in eine Mermaid-Markdown-Tag und den SVG-Code in eine SVG-Markdown-Tag.
-
-Stellen Sie sicher, dass jeder Abschnitt wesentliche, genaue und relevante Informationen zum Thema enthält. Der Inhalt sollte lehrreich, ansprechend und für den Lernenden von echtem Wert sein.
-`,
-                    quizPrompt: "Erstellen Sie ein Multiple-Choice-Quiz mit 5 Fragen für den Kurs der Stufe {difficulty} zum Thema \"{topic}\". Formatieren Sie das Quiz als JSON-Objekt mit der folgenden Struktur:\n{\n  \"questions\": [\n    {\n      \"question\": \"Fragetext hier\",\n      \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"],\n      \"correctAnswer\": 0\n    },\n    // ... weitere Fragen\n  ]\n}\nGeben Sie nur das JSON-Objekt ohne zusätzlichen Text oder Kommentare an.",
-                    demoPrompt: `Basierend auf dem {difficulty}-Level-Kurs über "{topic}", erstellen Sie eine interaktive Demo oder ein Beispiel, um ein Schlüsselkonzept zu veranschaulichen. Wenn es sich um ein Programmierungsthema handelt, stellen Sie ausführbaren Code bereit. Wenn es sich um ein theoretisches Thema handelt, stellen Sie ein Diagramm oder eine interaktive Erklärung bereit. Setzen Sie den Demo-Code in einen html-Markdown-Tag wie folgt:
-                    \`\`\`html
-                    <!-- Ihr Code hier -->
-                    \`\`\``
-                }
-            },
-            ar: {
-                name: "العربية",
-                translations: {
-                    appTitle: "LOLLMS المعلم الشخصي",
-                    settingsButton: "الإعدادات",
-                    whatWouldYouLikeToLearn: "ماذا تريد أن تتعلم؟",
-                    difficultyLevel: "مستوى الصعوبة",
-                    generateCourse: "إنشاء الدورة",
-                    courseContent: "محتوى الدورة",
-                    closeSettings: "إغلاق"
-                },
-                promptTranslations: {
-                    coursePrompt: `قم بإنشاء دورة شاملة بمستوى {difficulty} حول "{topic}" بالهيكل التالي:
-
-1. أهداف الدورة
-   - قم بتحديد 3 أهداف تعليمية محددة وقابلة للقياس على الأقل
-
-2. المفاهيم الأساسية
-   - قم بتحديد وشرح بإيجاز 5 مفاهيم أساسية على الأقل تتعلق بالموضوع
-
-3. المحتوى التفصيلي (مع الأقسام الفرعية)
-   - قم بتقسيم المحتوى إلى 3 أقسام رئيسية على الأقل
-   - لكل قسم، وفي فقرة أو أكثر، قدم ما يلي إذا كان ذلك ممكنًا:
-     a) شرح واضح للموضوع الفرعي
-     b) أمثلة أو دراسات حالة ذات صلة
-     c) أي صيغ أو نظريات أو مبادئ مهمة
-     d) تطبيقات في العالم الحقيقي
-
-4. التمارين
-   - قم بتضمين 3 تمارين عملية أو مهام على الأقل
-   - قدم تعليمات واضحة والنتائج المتوقعة لكل تمرين
-
-5. الملخص
-   - قم بتلخيص النقاط الرئيسية التي تم تناولها في الدورة
-   - أبرز النقاط الرئيسية
-
-قم بتنسيق المحتوى باستخدام Markdown.
-عند الاقتضاء، قم بتوضيح المفاهيم باستخدام مخططات Mermaid ورسومات SVG. اكتب كود Mermaid داخل علامة Markdown Mermaid وكود SVG داخل علامة Markdown SVG.
-
-تأكد من أن كل قسم يحتوي على معلومات جوهرية ودقيقة وذات صلة بالموضوع. يجب أن يكون المحتوى تعليميًا وجذابًا ويوفر قيمة حقيقية للمتعلم.
-`,
-                    quizPrompt: "قم بإنشاء اختبار متعدد الخيارات مكون من 5 أسئلة لدورة المستوى {difficulty} حول \"{topic}\". قم بتنسيق الاختبار ككائن JSON بالهيكل التالي:\n{\n  \"questions\": [\n    {\n      \"question\": \"نص السؤال هنا\",\n      \"options\": [\"الخيار أ\", \"الخيار ب\", \"الخيار ج\", \"الخيار د\"],\n      \"correctAnswer\": 0\n    },\n    // ... المزيد من الأسئلة\n  ]\n}\nقدم كائن JSON فقط دون أي نص إضافي أو تعليقات.",
-                    demoPrompt: `بناءً على الدورة التدريبية بمستوى {difficulty} حول "{topic}"، قم بإنشاء عرض توضيحي تفاعلي أو مثال لتوضيح مفهوم رئيسي. إذا كان الموضوع يتعلق بالبرمجة، قدم كودًا قابلاً للتنفيذ. إذا كان الموضوع نظريًا، قدم رسمًا تخطيطيًا أو شرحًا تفاعليًا. ضع كود العرض التوضيحي داخل علامة markdown html كما يلي:
-                    \`\`\`html
-                    <!-- ضع الكود الخاص بك هنا -->
-                    \`\`\``
-                }
-            },
-            zh: {
-                name: "中文",
-                translations: {
-                    appTitle: "LOLLMS 个人教师",
-                    settingsButton: "设置",
-                    whatWouldYouLikeToLearn: "你想学什么？",
-                    difficultyLevel: "难度等级",
-                    generateCourse: "生成课程",
-                    courseContent: "课程内容",
-                    closeSettings: "关闭"
-                },
-                promptTranslations: {
-                    coursePrompt: `生成一个关于 "{topic}" 的全面 {difficulty} 级别课程，结构如下：
-
-1. 课程目标
-   - 列出至少 3 个具体的、可衡量的学习目标
-
-2. 关键概念
-   - 列出并简要解释至少 5 个与主题相关的重要概念
-
-3. 详细内容（含子部分）
-   - 将内容分为至少 3 个主要部分
-   - 对于每个部分，在一个或多个段落中提供以下内容（如适用）：
-     a) 对子主题的清晰解释
-     b) 相关的示例或案例研究
-     c) 任何重要的公式、理论或原则
-     d) 现实世界中的应用
-
-4. 练习
-   - 包含至少 3 个实际练习或作业
-   - 为每个练习提供明确的说明和预期结果
-
-5. 总结
-   - 回顾课程中涵盖的主要要点
-   - 强调关键要点
-
-使用 Markdown 格式化内容。
-在适当的情况下，使用 Mermaid 图表和 SVG 绘图来说明概念。将 Mermaid 代码写在 Mermaid Markdown 标签内，将 SVG 代码写在 SVG Markdown 标签内。
-
-确保每个部分包含与主题相关的实质性、准确和相关的信息。内容应具有教育性、吸引力，并为学习者提供真正的价值。
-`
-                },
-                quizPrompt: "为{difficulty}级别的\"{topic}\"课程生成一个包含5个选择题的测验。将测验格式化为具有以下结构的JSON对象：\n{\n  \"questions\": [\n    {\n      \"question\": \"在此处填写问题文本\",\n      \"options\": [\"选项A\", \"选项B\", \"选项C\", \"选项D\"],\n      \"correctAnswer\": 0\n    },\n    // ... 更多问题\n  ]\n}\n仅提供JSON对象，不要包含任何额外的文本或注释。",
-                demoPrompt: `基于{difficulty}级别的"{topic}"课程，创建一个交互式演示或示例来说明一个关键概念。如果是编程主题，请提供可运行的代码。如果是理论主题，请提供图表或交互式解释。将演示代码放在html markdown标签中，如下所示：
-                \`\`\`html
-                <!-- 在此处放置您的代码 -->
-                \`\`\``
-            }            
+             }
+             // Add other languages (it, de, ar, zh) here following the same structure
         };
-        const localizer = new WebAppLocalizer(translations, 'personalTeacher_', languageSelect);
-        const mr = new MarkdownRenderer()
-        mr.initMermaid()
-        const lc = new LollmsClient();
-        const tl = new TasksLibrary(lc);
-        let db;
-        function initDB() {
-            db = new Dexie('LOLLMSTeacherDB');
-            db.version(1).stores({
-                courses: '++id, topic, content, difficulty, created, lastAccessed, rating'
-            });
+
+        // Instantiate the localizer globally
+        let localizer;
+        try {
+            localizer = new WebAppLocalizer(translations, 'personalTeacher_', languageSelect);
+        } catch (e) {
+             console.error("Failed to initialize WebAppLocalizer. Check if the script loaded correctly.", e);
+             alert("Localization library failed to load. UI text might not appear correctly.");
+             // Create a dummy localizer to prevent further errors
+             localizer = {
+                 translate: (key, vals = {}) => key,
+                 formatPrompt: (key, vals = {}) => `Error: Localizer failed. Prompt: ${key}`,
+                 setLanguage: () => {},
+                 apply: () => {},
+                 getCurrentLanguage: () => 'en',
+                 getAvailableLanguages: () => [{code: 'en', name: 'English'}]
+             };
         }
-        initDB();
-        document.getElementById('toggleSavedCourses').addEventListener('click', function() {
-            const savedCoursesPopup = document.getElementById('savedCoursesPopup');
-            savedCoursesPopup.classList.toggle('hidden');
-        });
-        document.getElementById('closeSavedCourses').addEventListener('click', function() {
-            const savedCoursesPopup = document.getElementById('savedCoursesPopup');
-            savedCoursesPopup.classList.add('hidden');
-        });
-        const darkModeToggle = document.getElementById('darkModeToggle');
-        darkModeToggle.addEventListener('click', () => {
-            document.body.classList.toggle('dark');
-            darkModeToggle.textContent = document.body.classList.contains('dark') ? '☀️' : '🌙';
-        });
+
+        const mr = new MarkdownRenderer();
+        mr.initMermaid();
+        const lc = new LollmsClient();
+        let db;
+        let currentCourseId = null;
+
+        // --- Database Handling ---
+        function initDB() {
+            db = new Dexie('LOLLMSTeacherDB_V2');
+            db.version(1).stores({
+                courses: '++id, &topic_difficulty, title, topic, difficulty, content, demoContent, quizContent, created, lastAccessed'
+            });
+             db.open().catch(err => {
+                console.error("Failed to open Dexie DB:", err);
+                alert("Error initializing local storage. Saved courses may not work.");
+             });
+        }
+
+        // --- UI Functions ---
+        function showSpinner(message = 'Loading...') {
+            document.getElementById('spinner-message').textContent = message;
+            document.getElementById('spinner').classList.remove('hidden');
+        }
+        function hideSpinner() {
+            document.getElementById('spinner').classList.add('hidden');
+        }
+        function updateStatus(message) {
+            generationStatus.textContent = message;
+            generationStatus.className = 'mt-4 text-sm text-gray-600 dark:text-gray-400 min-h-[1.25rem]';
+        }
+        function updateStatusSuccess(message) {
+            updateStatus(message);
+            generationStatus.classList.add('text-green-600', 'dark:text-green-400');
+        }
+         function updateStatusError(message) {
+            updateStatus(message);
+            generationStatus.classList.add('text-red-600', 'dark:text-red-400');
+        }
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
+            document.querySelectorAll('.tab-button').forEach(button => button.classList.remove('active'));
+            const pane = document.getElementById(`${tabName}Tab`);
+            const button = document.getElementById(`tabBtn${tabName.charAt(0).toUpperCase() + tabName.slice(1)}`);
+            if(pane) pane.classList.remove('hidden');
+            if(button) button.classList.add('active');
+        }
+        function applyDarkMode(isDark) {
+             document.documentElement.classList.toggle('dark', isDark);
+             moonIcon.classList.toggle('hidden', !isDark);
+             sunIcon.classList.toggle('hidden', isDark);
+             localStorage.setItem('darkMode', isDark);
+             if (typeof mermaid !== 'undefined') {
+                 try {
+                    mermaid.initialize({ startOnLoad: false, theme: isDark ? 'dark' : 'default' });
+                    document.querySelectorAll('.mermaid[data-processed="true"]').forEach(el => {
+                        el.removeAttribute('data-processed');
+                        const code = el.textContent;
+                        el.innerHTML = '';
+                        if (!el.id) { el.id = `mermaid-${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+                        mermaid.render(el.id, code, (svgCode) => {
+                             if(!el.hasAttribute('data-processed')){
+                                el.innerHTML = svgCode;
+                                el.setAttribute('data-processed', 'true');
+                             }
+                        }, el);
+                    });
+                 } catch (e) { console.error("Mermaid re-initialization/render error:", e); }
+             }
+             document.querySelectorAll('pre code').forEach((block) => {
+                 hljs.highlightElement(block);
+             });
+        }
+        function setupDarkMode() {
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const savedMode = localStorage.getItem('darkMode');
+            applyDarkMode(savedMode !== null ? JSON.parse(savedMode) : prefersDark);
+            darkModeToggle.addEventListener('click', () => applyDarkMode(!document.documentElement.classList.contains('dark')));
+        }
+        function populateLanguageSelector() {
+            if (!localizer || typeof localizer.getAvailableLanguages !== 'function') {
+                 console.error("Localizer not ready for populateLanguageSelector");
+                 return;
+            }
+            languageSelect.innerHTML = '';
+            localizer.getAvailableLanguages().forEach(lang => {
+                 const option = document.createElement('option');
+                 option.value = lang.code;
+                 option.textContent = lang.name;
+                 languageSelect.appendChild(option);
+            });
+            languageSelect.value = localizer.getCurrentLanguage();
+        }
+
+        // Function to set topic from idea cards
+        function setTopic(topic) {
+            topicInput.value = topic;
+            // Optional: scroll to the input field or focus it
+            topicInput.focus();
+            // Optional: clear details if a new topic is selected from ideas
+            detailsInput.value = '';
+        }
+
+
+        // --- Course Generation & Display ---
+        async function generateAndDisplayCourse() {
+            const topic = topicInput.value.trim();
+            const difficulty = document.getElementById('difficulty').value;
+            const userDetails = detailsInput.value.trim();
+
+            if (!topic) {
+                alert(localizer.translate('alertEnterTopic'));
+                return;
+            }
+
+            const genButton = document.getElementById('generateCourse');
+            genButton.disabled = true;
+            showSpinner(localizer.translate('statusGeneratingCourse'));
+            updateStatus(localizer.translate('statusGeneratingCourse'));
+            courseDisplayArea.classList.add('hidden');
+            currentCourseId = null;
+
+            let rawCourseContent = '', courseContentToRender = '', demoContent = '', quizContent = '', courseTitleText = topic;
+
+            try {
+                // 1. Generate Course Content
+                let userDetailsSection = userDetails ? `\n**User Specific Request:** Please focus on or include the following details: ${userDetails}\n` : "No specific user details provided.";
+                const coursePromptPayload = { difficulty, topic, user_details_section: userDetailsSection };
+                const coursePrompt = localizer.formatPrompt("coursePrompt", coursePromptPayload);
+
+                console.log("Generating Course...");
+                rawCourseContent = await lc.generate(coursePrompt, 8192);
+                console.log("Raw course content received.");
+
+                // *** DETECT AND REMOVE MARKDOWN FENCES ***
+                let processedCourseContent = rawCourseContent.trim();
+                // Check if it starts with ```markdown and ends with ```
+                 // Allow for optional language specifier like ```markdown or just ```
+                if (processedCourseContent.startsWith('```') && processedCourseContent.endsWith('```')) {
+                     console.log("Detected markdown fences, removing them.");
+                     // Find the first newline after the opening fence
+                     const firstNewlineIndex = processedCourseContent.indexOf('\n');
+                     // Find the last newline before the closing fence
+                     const lastNewlineIndex = processedCourseContent.lastIndexOf('\n');
+
+                     if (firstNewlineIndex !== -1 && lastNewlineIndex !== -1 && lastNewlineIndex > firstNewlineIndex) {
+                         processedCourseContent = processedCourseContent.substring(firstNewlineIndex + 1, lastNewlineIndex).trim();
+                     } else {
+                          // Fallback: simple fence removal if no newlines found correctly (e.g., ```content```)
+                          processedCourseContent = processedCourseContent.slice(3, -3).trim();
+                     }
+                }
+                 // Assign the processed content for rendering and saving
+                 courseContentToRender = processedCourseContent;
+
+                const titleMatch = courseContentToRender.match(/^#\s*(.*)/); // Check processed content for title
+                if (titleMatch && titleMatch[1]) courseTitleText = titleMatch[1].trim();
+                courseTitle.textContent = courseTitleText;
+
+                const markdownContainer = document.getElementById('markdown-content');
+                markdownContainer.innerHTML = '';
+                markdownContainer.innerHTML = await mr.renderMarkdown(courseContentToRender); // Render the processed content
+                console.log("Markdown rendered.");
+
+                // 2. Generate Interactive Demo
+                updateStatus(localizer.translate('statusGeneratingDemo'));
+                showSpinner(localizer.translate('statusGeneratingDemo'));
+                const demoPrompt = localizer.formatPrompt("demoPrompt", { difficulty, topic });
+                console.log("Generating Demo...");
+                const rawDemoOutput = await lc.generate(demoPrompt, 4096);
+                console.log("Raw Demo Output:", rawDemoOutput);
+                const demoCodeBlocks = lc.extractCodeBlocks(rawDemoOutput);
+                const demoContainer = document.getElementById('demo-content');
+                const demoStatusEl = document.getElementById('demoStatus');
+                const demoTabButton = document.getElementById('tabBtnDemo');
+                demoContainer.innerHTML = ''; demoStatusEl.textContent = '';
+                const htmlDemoBlock = demoCodeBlocks?.find(block => block.type.toLowerCase() === 'html');
+                if (htmlDemoBlock) {
+                    demoContent = htmlDemoBlock.content;
+                    if (demoContent.includes('<!-- No suitable interactive demo')) {
+                        demoStatusEl.textContent = localizer.translate('demoUnavailable');
+                        demoContent = '';
+                        demoTabButton.style.display = 'none';
+                    } else {
+                        const iframe = document.createElement('iframe');
+                        iframe.style.cssText = 'width: 100%; height: 500px; border: 1px solid var(--border-light); border-radius: 8px; background-color: white;';
+                        iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                        demoContainer.appendChild(iframe);
+                        iframe.srcdoc = demoContent;
+                        demoTabButton.style.display = 'inline-block';
+                        demoStatusEl.textContent = '';
+                    }
+                } else {
+                    demoStatusEl.textContent = localizer.translate('demoUnavailable');
+                    demoTabButton.style.display = 'none';
+                }
+
+                // 3. Generate Quiz
+                updateStatus(localizer.translate('statusGeneratingQuiz'));
+                showSpinner(localizer.translate('statusGeneratingQuiz'));
+                const quizPrompt = localizer.formatPrompt("quizPrompt", { difficulty, topic });
+                console.log("Generating Quiz...");
+                const rawQuizJson = await lc.generate(quizPrompt, 2048);
+                console.log("Raw Quiz JSON:", rawQuizJson);
+                const quizContainer = document.getElementById('quiz-content');
+                const quizStatusEl = document.getElementById('quizStatus');
+                const quizTabButton = document.getElementById('tabBtnQuiz');
+                quizContainer.innerHTML = ''; quizStatusEl.textContent = '';
+                let quizData = null;
+                try {
+                    const jsonMatch = rawQuizJson.match(/```json\s*(\{[\s\S]*\})\s*```|\{[\s\S]*\}/);
+                    if (!jsonMatch) throw new Error("No JSON object found.");
+                    const jsonString = jsonMatch[1] || jsonMatch[0];
+                    quizData = JSON.parse(jsonString);
+                    if (!quizData?.questions?.length) throw new Error("Invalid JSON quiz format.");
+                    quizContent = JSON.stringify(quizData);
+                    createQuiz(quizData);
+                    quizTabButton.style.display = 'inline-block';
+                    quizStatusEl.textContent = '';
+                } catch (error) {
+                    console.error('Error processing quiz JSON:', error, "Raw:", rawQuizJson);
+                    quizStatusEl.textContent = localizer.translate('quizUnavailable');
+                    quizContent = '';
+                    quizTabButton.style.display = 'none';
+                }
+
+                // 4. Save Course (Use the processed content without fences)
+                await saveCourse(topic, difficulty, courseTitleText, courseContentToRender, demoContent, quizContent);
+
+                updateStatusSuccess(localizer.translate('statusDone'));
+                courseDisplayArea.classList.remove('hidden');
+                switchTab('lesson');
+
+            } catch (error) {
+                console.error("Error during course generation:", error);
+                updateStatusError(`Error: ${error.message}. Please check console or try again.`);
+            } finally {
+                hideSpinner();
+                genButton.disabled = false;
+            }
+        }
+
+        // --- Quiz Creation (Using Templates) ---
         function createQuiz(quizData) {
             const quizContainer = document.getElementById('quiz-content');
-            quizContainer.innerHTML = '<h1 class="text-3xl font-bold mb-6 text-center text-indigo-600">Quiz</h1>';
+            quizContainer.innerHTML = '';
+            const quizStatusEl = document.getElementById('quizStatus');
+            quizStatusEl.textContent = '';
+
+             if (!quizData || !quizData.questions || quizData.questions.length === 0) {
+                quizStatusEl.textContent = localizer.translate('quizUnavailable');
+                return;
+             }
+
             const form = document.createElement('form');
             form.id = 'quiz-form';
             form.className = 'space-y-6';
+
             quizData.questions.forEach((q, index) => {
-                const questionDiv = document.createElement('div');
-                questionDiv.className = 'bg-gray-50 p-4 rounded-lg shadow';
-                const questionText = document.createElement('p');
-                questionText.className = 'font-semibold text-lg mb-3';
-                questionText.textContent = `${index + 1}. ${q.question}`;
-                questionDiv.appendChild(questionText);
-                const optionsDiv = document.createElement('div');
-                optionsDiv.className = 'space-y-2';
+                const questionFragment = quizQuestionTemplate.content.cloneNode(true);
+                const questionTextEl = questionFragment.querySelector('.question-text');
+                const optionsContainer = questionFragment.querySelector('.options-container');
+                questionTextEl.textContent = `${index + 1}. ${q.question}`;
                 q.options.forEach((option, optionIndex) => {
-                    const label = document.createElement('label');
-                    label.className = 'flex items-center space-x-2 cursor-pointer';
-                    const radio = document.createElement('input');
-                    radio.type = 'radio';
+                    const optionFragment = quizOptionTemplate.content.cloneNode(true);
+                    const label = optionFragment.querySelector('label');
+                    const radio = optionFragment.querySelector('input[type="radio"]');
+                    const optionTextEl = optionFragment.querySelector('.option-text');
                     radio.name = `question${index}`;
                     radio.value = optionIndex;
-                    radio.className = 'form-radio text-indigo-600';
-                    const optionText = document.createElement('span');
-                    optionText.textContent = option;
-                    label.appendChild(radio);
-                    label.appendChild(optionText);
-                    optionsDiv.appendChild(label);
+                    radio.id = `q${index}_opt${optionIndex}`;
+                    label.setAttribute('for', radio.id);
+                    optionTextEl.textContent = option;
+                    optionsContainer.appendChild(optionFragment);
                 });
-                questionDiv.appendChild(optionsDiv);
-                form.appendChild(questionDiv);
+                form.appendChild(questionFragment);
             });
+
             const submitButton = document.createElement('button');
             submitButton.type = 'submit';
-            submitButton.textContent = 'Submit Quiz';
-            submitButton.className = 'w-full bg-indigo-600 text-white py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300 mt-6';
+            submitButton.textContent = localizer.translate('submitQuiz');
+            submitButton.className = 'w-full btn btn-primary mt-6';
             form.appendChild(submitButton);
+
             quizContainer.appendChild(form);
+
+            const resultContainer = document.createElement('div');
+            resultContainer.id = 'quiz-result-container';
+            resultContainer.className = 'mt-8';
+            quizContainer.appendChild(resultContainer);
+
             form.addEventListener('submit', (e) => {
                 e.preventDefault();
-                calculateScore(quizData);
+                calculateScore(quizData, form);
+                submitButton.disabled = true;
             });
         }
-        function calculateScore(quizData) {
+
+        // --- Quiz Score Calculation (Using DOM Elements) ---
+        function calculateScore(quizData, form) {
             let score = 0;
             const totalQuestions = quizData.questions.length;
+            const resultContainer = document.getElementById('quiz-result-container');
+            resultContainer.innerHTML = '';
+
             const resultDiv = document.createElement('div');
-            resultDiv.className = 'mt-8 p-6 bg-gray-50 rounded-lg shadow';
-            const results = quizData.questions.map((q, index) => {
-                const selectedAnswer = document.querySelector(`input[name="question${index}"]:checked`);
-                const isCorrect = selectedAnswer && parseInt(selectedAnswer.value) === q.correctAnswer;
+            resultDiv.className = 'p-6 bg-gray-100 dark:bg-gray-700 rounded-lg shadow';
+
+             const resultsTitle = document.createElement('h2');
+             resultsTitle.className = 'text-2xl font-bold mb-4';
+             resultsTitle.textContent = localizer.translate('quizResultTitle');
+             resultDiv.appendChild(resultsTitle);
+
+             const scoreSummaryP = document.createElement('p');
+             scoreSummaryP.className = 'text-xl mb-2';
+             resultDiv.appendChild(scoreSummaryP);
+
+             const feedbackP = document.createElement('p');
+             feedbackP.className = 'mb-6 font-semibold';
+             resultDiv.appendChild(feedbackP);
+
+             const detailsContainer = document.createElement('div');
+             detailsContainer.className = 'space-y-4';
+             resultDiv.appendChild(detailsContainer);
+
+            quizData.questions.forEach((q, index) => {
+                const selectedRadio = form.querySelector(`input[name="question${index}"]:checked`);
+                const selectedAnswerIndex = selectedRadio ? parseInt(selectedRadio.value) : -1;
+                const isCorrect = selectedAnswerIndex === q.correctAnswer;
                 if (isCorrect) score++;
-                return {
-                    question: q.question,
-                    isCorrect,
-                    correctAnswer: q.options[q.correctAnswer],
-                    userAnswer: selectedAnswer ? q.options[parseInt(selectedAnswer.value)] : 'Not answered'
-                };
-            });
-            const scorePercentage = (score / totalQuestions) * 100;
-            let feedbackClass, feedbackMessage;
-            if (scorePercentage >= 80) {
-                feedbackClass = 'text-green-600';
-                feedbackMessage = 'Excellent job!';
-            } else if (scorePercentage >= 60) {
-                feedbackClass = 'text-yellow-600';
-                feedbackMessage = 'Good effort, but there\'s room for improvement.';
-            } else {
-                feedbackClass = 'text-red-600';
-                feedbackMessage = 'You might want to study more and try again.';
-            }
-            resultDiv.innerHTML = `
-                <h2 class="text-2xl font-bold mb-4">Quiz Results</h2>
-                <p class="text-xl mb-2">You scored <span class="${feedbackClass} font-bold">${score} out of ${totalQuestions}</span></p>
-                <p class="mb-4 ${feedbackClass} font-semibold">${feedbackMessage}</p>
-                <div class="space-y-4">
-                    ${results.map((result, index) => `
-                        <div class="border-b pb-2">
-                            <p class="font-semibold">${index + 1}. ${result.question}</p>
-                            <p class="text-sm">Your answer: <span class="${result.isCorrect ? 'text-green-600' : 'text-red-600'}">${result.userAnswer}</span></p>
-                            ${!result.isCorrect ? `<p class="text-sm text-green-600">Correct answer: ${result.correctAnswer}</p>` : ''}
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-            document.getElementById('quiz-content').appendChild(resultDiv);
-        }
-        document.getElementById('generateCourse').addEventListener('click', async () => {
-            const topic = document.getElementById('topic').value;
-            const difficulty = document.getElementById('difficulty').value;
-            if (!topic) return;
-            showSpinner();
-            console.log("languageSelect",languageSelect.value)
-            console.log("translations[languageSelect.value]",translations[languageSelect.value])
-            const coursePrompt = localizer.formatPrompt("coursePrompt", {
-                difficulty: difficulty,
-                topic: topic
-            });
-            console.log("coursePrompt",coursePrompt)
-            const courseContent = await lc.generate(coursePrompt);
-            document.getElementById('markdown-content').innerHTML = await mr.renderMarkdown(courseContent);
-            document.getElementById('courseContent').classList.remove('hidden');
-            const demoPrompt = localizer.formatPrompt("demoPrompt", {
-                difficulty: difficulty,
-                topic: topic
-            });
-            const demoContent = await lc.generate(demoPrompt);
-            const code_blocks = tl.extractCodeBlocks(demoContent)
-            const demo = code_blocks;
-            console.log("demo code", demo)
-            if(demo && demo.length>0){
-                // Create an iframe
-                const iframe = document.createElement('iframe');
 
-                // Set some attributes for the iframe
-                iframe.style.width = '100%';
-                iframe.style.height = '700px'; // Adjust as needed
-                iframe.style.border = 'none';
-
-                // Append the iframe to the container
-                const container = document.getElementById('demo-content');
-                container.appendChild(iframe);
-
-                // Write the content to the iframe
-                iframe.contentWindow.document.open();
-                iframe.contentWindow.document.write(demo[0].content);
-                iframe.contentWindow.document.close();
-                //iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
-                document.getElementById('demo').classList.remove('hidden');
-            }
-            const quizPrompt = localizer.formatPrompt("quizPrompt", {
-                difficulty: difficulty,
-                topic: topic
-            });
-            const quizJSON = await lc.generate(quizPrompt);
-            let quizData = {"questions": []}
-            try {
-                quizData = JSON.parse(quizJSON);
-                createQuiz(quizData);
-            } catch (error) {
-                console.error('Error parsing quiz JSON:', error);
-                document.getElementById('quiz-content').textContent = 'Error creating quiz. Please try again.';
-            }
-            document.getElementById('quiz').classList.remove('hidden');
-            await saveCourse(topic, courseContent, demoContent, quizData, difficulty);
-            hideSpinner();
-        });
-        async function saveCourse(topic, content, demoContent, quizContent, difficulty) {
-            await db.courses.add({
-                topic,
-                content,
-                demoContent, 
-                quizContent,
-                difficulty,
-                created: new Date(),
-                lastAccessed: new Date(),
-                rating: 0
-            });
-            updateCourseList();
-        }
-        async function updateCourseList() {
-            const courseList = document.getElementById('courseList');
-            courseList.innerHTML = '';
-            const courses = await db.courses.reverse().toArray();
-            courses.forEach(course => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200">${course.topic}</span>
-                        <div>
-                            <span class="text-sm text-gray-500">${course.difficulty}</span>
-                            <button class="ml-2 text-red-500 hover:text-red-700">🗑️</button>
-                        </div>
-                    </div>
-                `;
-                li.querySelector('span').addEventListener('click', () => loadCourse(course.id));
-                li.querySelector('button').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteCourse(course.id);
+                const questionDiv = form.querySelectorAll('.quiz-question-container')[index];
+                questionDiv.querySelectorAll('label.quiz-option-label').forEach((label, optIndex) => {
+                    label.classList.remove('correct', 'incorrect');
+                    const radioInput = label.querySelector('input[type="radio"]');
+                    if (radioInput) radioInput.disabled = true;
+                    if (optIndex === q.correctAnswer) { label.classList.add('correct'); }
+                    if (selectedAnswerIndex === optIndex && !isCorrect) { label.classList.add('incorrect'); }
                 });
-                courseList.appendChild(li);
+
+                 const details = document.createElement('details');
+                 details.className = 'border-b dark:border-gray-600 pb-3 mb-3';
+                 const summary = document.createElement('summary');
+                 summary.className = 'font-semibold cursor-pointer hover:text-primary-color dark:hover:text-indigo-400 list-none flex items-center gap-2';
+                 summary.innerHTML = `
+                     <span class="inline-block w-5 text-lg flex-shrink-0">${isCorrect ? '✅' : '❌'}</span>
+                     <span class="flex-1">${index + 1}. ${escapeHtml(q.question)} -
+                         <span class="${isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}">
+                             ${isCorrect ? 'Correct' : 'Incorrect'}
+                         </span>
+                     </span>`;
+                 details.appendChild(summary);
+
+                 const explanationDiv = document.createElement('div');
+                 explanationDiv.className = 'mt-2 pl-10 text-sm space-y-1';
+                 const userAnswerP = document.createElement('p');
+                 userAnswerP.innerHTML = `${localizer.translate('yourAnswer')}: <span class="${isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}">${selectedAnswerIndex !== -1 ? escapeHtml(q.options[selectedAnswerIndex]) : localizer.translate('notAnswered')}</span>`;
+                 explanationDiv.appendChild(userAnswerP);
+
+                 if (!isCorrect) {
+                     const correctAnswerP = document.createElement('p');
+                     correctAnswerP.innerHTML = `${localizer.translate('correctAnswer')}: <span class="text-green-700 dark:text-green-300">${escapeHtml(q.options[q.correctAnswer])}</span>`;
+                     explanationDiv.appendChild(correctAnswerP);
+                 }
+                 const explanationP = document.createElement('p');
+                 explanationP.className = 'text-gray-600 dark:text-gray-400 mt-1';
+                 explanationP.innerHTML = `<em>Explanation:</em> ${escapeHtml(q.explanation || "No explanation provided.")}`;
+                 explanationDiv.appendChild(explanationP);
+
+                 details.appendChild(explanationDiv);
+                 detailsContainer.appendChild(details);
             });
+
+            const scorePercentage = totalQuestions > 0 ? (score / totalQuestions) * 100 : 0;
+            let feedbackClass = 'retry';
+            let feedbackMessage = localizer.translate('quizFeedbackRetry');
+
+            if (scorePercentage >= 80) { feedbackClass = 'excellent'; feedbackMessage = localizer.translate('quizFeedbackExcellent'); }
+            else if (scorePercentage >= 50) { feedbackClass = 'good'; feedbackMessage = localizer.translate('quizFeedbackGood'); }
+
+            scoreSummaryP.innerHTML = `${localizer.translate('quizScore', { score: score, totalQuestions: totalQuestions })} (<span class="font-bold quiz-result-feedback ${feedbackClass}">${scorePercentage.toFixed(0)}%</span>)`;
+            feedbackP.textContent = feedbackMessage;
+            feedbackP.className = `mb-6 font-semibold quiz-result-feedback ${feedbackClass}`;
+
+            resultContainer.appendChild(resultDiv);
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
-        async function loadCourse(id) {
-            const course = await db.courses.get(id);
-            console.log(course.content)
-            document.getElementById('markdown-content').innerHTML = await mr.renderMarkdown(course.content);
-            document.getElementById('courseContent').classList.remove('hidden');
-            const code_blocks = tl.extractCodeBlocks(course.demoContent)
-            document.getElementById('demo').classList.add('hidden');
-            if(code_blocks&&code_blocks.length>0){
-                const demo = code_blocks[0];
-                console.log("demo code", demo.content)
-                // Create an iframe
-                const iframe = document.createElement('iframe');
 
-                // Set some attributes for the iframe
-                iframe.style.width = '100%';
-                iframe.style.height = '700px'; // Adjust as needed
-                iframe.style.border = 'none';
 
-                // Append the iframe to the container
-                const container = document.getElementById('demo-content');
-                container.appendChild(iframe);
-
-                // Write the content to the iframe
-                iframe.contentWindow.document.open();
-                iframe.contentWindow.document.write(demo.content);
-                iframe.contentWindow.document.close();
-                //iframe.style.height = iframe.contentWindow.document.body.scrollHeight + 'px';
-                document.getElementById('demo').classList.remove('hidden');
+        // --- Course Persistence (Dexie) ---
+        async function saveCourse(topic, difficulty, title, content, demoContentStr, quizContentStr) {
+            if (!db) { console.error("DB not initialized, cannot save course."); return null; }
+            if (!topic || !difficulty || !content) { console.error("Cannot save course with missing topic, difficulty, or content."); return null; }
+            const newCourse = {
+                topic_difficulty: `${topic.toLowerCase()}_${difficulty}`, title: title || topic, topic, difficulty, content, // Save the processed content
+                demoContent: demoContentStr || '', quizContent: quizContentStr || '',
+                created: new Date(), lastAccessed: new Date()
+            };
+            try {
+                const id = await db.courses.put(newCourse);
+                console.log(`Course "${title}" saved/updated with ID: ${id}`);
+                currentCourseId = id;
+                updateCourseList();
+                return id;
+            } catch (error) {
+                 if (error.name === 'ConstraintError') {
+                    console.warn(`Course with topic "${topic}" and difficulty "${difficulty}" likely already exists and was updated by 'put'.`);
+                    const existing = await db.courses.get({topic_difficulty: newCourse.topic_difficulty});
+                    if (existing) currentCourseId = existing.id;
+                 } else {
+                    console.error("Failed to save course:", error);
+                    alert(localizer.translate('errorSavingCourse'));
+                 }
+                 return null;
             }
-            createQuiz(course.quizContent);
-            document.getElementById('quiz').classList.remove('hidden');
-            await db.courses.update(id, { lastAccessed: new Date() });
+        }
+
+        // --- Course List Update (Using Template) ---
+        async function updateCourseList(filteredCourses = null) {
+            if (!db) { console.error("DB not initialized"); return; }
+            const courseList = document.getElementById('courseList');
+            const loadingLi = document.createElement('li');
+            loadingLi.className = 'text-center text-gray-500 dark:text-gray-400 p-4';
+            loadingLi.textContent = localizer.translate('loadingCourses');
+            courseList.innerHTML = '';
+            courseList.appendChild(loadingLi);
+
+            try {
+                 const courses = filteredCourses ? filteredCourses : await db.courses.orderBy('lastAccessed').reverse().toArray();
+                 courseList.innerHTML = '';
+                 if (courses.length === 0) {
+                    const emptyLi = document.createElement('li');
+                    emptyLi.className = 'text-center text-gray-500 dark:text-gray-400 p-4';
+                    emptyLi.textContent = localizer.translate('noSavedCourses');
+                    courseList.appendChild(emptyLi);
+                    return;
+                 }
+                courses.forEach(course => {
+                    const courseFragment = courseListItemTemplate.content.cloneNode(true);
+                    const titleEl = courseFragment.querySelector('.course-title');
+                    const detailsEl = courseFragment.querySelector('.course-details');
+                    const infoContainer = courseFragment.querySelector('.course-info-container');
+                    const deleteButton = courseFragment.querySelector('.delete-course-button');
+                    titleEl.textContent = course.title || course.topic;
+                    detailsEl.textContent = `${course.difficulty} - Accessed: ${course.lastAccessed.toLocaleDateString()}`;
+                    infoContainer.addEventListener('click', () => loadCourse(course.id));
+                    deleteButton.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        confirmDeleteCourse(course.id, course.title || course.topic);
+                    });
+                    courseList.appendChild(courseFragment);
+                });
+            } catch (error) {
+                 console.error("Failed to update course list:", error);
+                 courseList.innerHTML = '';
+                 const errorLi = document.createElement('li');
+                 errorLi.className = 'text-center text-red-500 p-4';
+                 errorLi.textContent = localizer.translate('errorLoadingCourses');
+                 courseList.appendChild(errorLi);
+            }
+        }
+
+        // --- Load Course ---
+        async function loadCourse(id) {
+            if (!db) { console.error("DB not initialized"); return; }
+            showSpinner(localizer.translate('loadingCourse') || "Loading course...");
+            try {
+                const course = await db.courses.get(id);
+                if (!course) {
+                    alert(localizer.translate('courseNotFound'));
+                    hideSpinner();
+                    return;
+                }
+                currentCourseId = id;
+                topicInput.value = course.topic;
+                document.getElementById('difficulty').value = course.difficulty;
+                detailsInput.value = ''; // Clear details field when loading
+                courseTitle.textContent = course.title || course.topic;
+
+                // Render SAVED Lesson Content (already processed)
+                const markdownContainer = document.getElementById('markdown-content');
+                markdownContainer.innerHTML = ''; // Clear previous
+                markdownContainer.innerHTML = await mr.renderMarkdown(course.content); // Render saved content
+                console.log("Saved Markdown rendered.");
+
+
+                 // Render Demo
+                 const demoContainer = document.getElementById('demo-content');
+                 const demoStatusEl = document.getElementById('demoStatus');
+                 const demoTabButton = document.getElementById('tabBtnDemo');
+                 demoContainer.innerHTML = ''; demoStatusEl.textContent = '';
+                 if (course.demoContent && !course.demoContent.includes('<!-- No suitable interactive demo')) {
+                    const iframe = document.createElement('iframe');
+                    iframe.style.cssText = 'width: 100%; height: 500px; border: 1px solid var(--border-light); border-radius: 8px; background-color: white;';
+                    iframe.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                    demoContainer.appendChild(iframe);
+                    iframe.srcdoc = course.demoContent;
+                    demoTabButton.style.display = 'inline-block';
+                 } else {
+                    demoStatusEl.textContent = localizer.translate('demoUnavailable');
+                    demoTabButton.style.display = 'none';
+                 }
+
+                // Render Quiz
+                const quizContainer = document.getElementById('quiz-content');
+                const quizStatusEl = document.getElementById('quizStatus');
+                const quizTabButton = document.getElementById('tabBtnQuiz');
+                 quizContainer.innerHTML = ''; quizStatusEl.textContent = '';
+                 if (course.quizContent) {
+                     try {
+                         const quizData = JSON.parse(course.quizContent);
+                         if (!quizData?.questions?.length) throw new Error("Invalid quiz format");
+                         createQuiz(quizData);
+                         quizTabButton.style.display = 'inline-block';
+                     } catch (e) {
+                         console.error("Failed to parse stored quiz JSON:", e);
+                         quizStatusEl.textContent = localizer.translate('quizUnavailable');
+                         quizTabButton.style.display = 'none';
+                     }
+                 } else {
+                    quizStatusEl.textContent = localizer.translate('quizUnavailable');
+                     quizTabButton.style.display = 'none';
+                 }
+
+                courseDisplayArea.classList.remove('hidden');
+                switchTab('lesson');
+                document.getElementById('savedCoursesPopup').classList.add('hidden');
+
+                db.courses.update(id, { lastAccessed: new Date() }).catch(err => console.error("Failed to update lastAccessed time:", err));
+
+            } catch (error) {
+                console.error("Failed to load course:", error);
+                alert(localizer.translate('errorLoadingCourse'));
+            } finally {
+                hideSpinner();
+            }
+        }
+
+        // --- Delete Course ---
+        function confirmDeleteCourse(id, title) {
+             const message = localizer.translate('confirmDeleteMessage', { title: title });
+             if (confirm(message)) {
+                 deleteCourse(id);
+             }
         }
         async function deleteCourse(id) {
-            await db.courses.delete(id);
-            updateCourseList();
+             if (!db) { console.error("DB not initialized"); return; }
+             try {
+                 await db.courses.delete(id);
+                 console.log("Course deleted:", id);
+                 if (currentCourseId === id) {
+                     courseDisplayArea.classList.add('hidden');
+                     topicInput.value = '';
+                     detailsInput.value = '';
+                     currentCourseId = null;
+                 }
+                 updateCourseList();
+             } catch (error) {
+                 console.error("Failed to delete course:", error);
+                 alert(localizer.translate('errorDeleting'));
+             }
         }
+
+        // --- Course Search ---
         document.getElementById('courseSearch').addEventListener('input', async (e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            const courses = await db.courses.toArray();
-            const filteredCourses = courses.filter(course => 
-                course.topic.toLowerCase().includes(searchTerm) || 
-                course.content.toLowerCase().includes(searchTerm)
-            );
-            updateCourseListWithSearch(filteredCourses);
+            const searchTerm = e.target.value.toLowerCase().trim();
+            if (!db) return;
+            if (searchTerm === '') { updateCourseList(); return; }
+            try {
+                 const allCourses = await db.courses.toArray();
+                 const filteredCourses = allCourses.filter(course =>
+                    (course.title && course.title.toLowerCase().includes(searchTerm)) ||
+                    (course.topic && course.topic.toLowerCase().includes(searchTerm))
+                 ).sort((a, b) => b.lastAccessed - a.lastAccessed);
+                 updateCourseList(filteredCourses);
+            } catch (error) {
+                console.error("Error searching courses:", error);
+                 document.getElementById('courseList').innerHTML = `<li class="text-center text-red-500 p-4">${localizer.translate('errorLoadingCourses')}</li>`;
+            }
         });
-        function updateCourseListWithSearch(courses) {
-            const courseList = document.getElementById('courseList');
-            courseList.innerHTML = '';
-            courses.forEach(course => {
-                const li = document.createElement('li');
-                li.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="cursor-pointer text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200">${course.topic}</span>
-                        <div>
-                            <span class="text-sm text-gray-500">${course.difficulty}</span>
-                            <button class="ml-2 text-red-500 hover:text-red-700">🗑️</button>
-                        </div>
-                    </div>
-                `;
-                li.querySelector('span').addEventListener('click', () => loadCourse(course.id));
-                li.querySelector('button').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    deleteCourse(course.id);
-                });
-                courseList.appendChild(li);
-            });
-        }
+
+        // --- Import/Export ---
         document.getElementById('exportData').addEventListener('click', async () => {
-            const courses = await db.courses.toArray();
-            const dataStr = JSON.stringify(courses);
-            const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
-            const exportFileDefaultName = 'lollms_courses.json';
-            const linkElement = document.createElement('a');
-            linkElement.setAttribute('href', dataUri);
-            linkElement.setAttribute('download', exportFileDefaultName);
-            linkElement.click();
+            if (!db) { alert("Database not ready."); return; }
+            showSpinner(localizer.translate('exportingData'));
+            try {
+                const courses = await db.courses.toArray();
+                if (courses.length === 0) {
+                    alert(localizer.translate('noCoursesToExport'));
+                    hideSpinner();
+                    return;
+                }
+                const dataStr = JSON.stringify(courses, null, 2);
+                const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
+                const linkElement = document.createElement('a');
+                linkElement.href = url;
+                linkElement.download = `lollms_teacher_courses_${new Date().toISOString().slice(0,10)}.json`;
+                document.body.appendChild(linkElement);
+                linkElement.click();
+                document.body.removeChild(linkElement);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Failed to export data:", error);
+                alert(localizer.translate('errorExporting'));
+            } finally {
+                hideSpinner();
+            }
         });
+
         document.getElementById('importDataBtn').addEventListener('click', () => {
+            document.getElementById('importData').value = '';
             document.getElementById('importData').click();
         });
+
         document.getElementById('importData').addEventListener('change', async (event) => {
             const file = event.target.files[0];
+            if (!file || !db) return;
+            showSpinner(localizer.translate('importingData'));
             const reader = new FileReader();
             reader.onload = async (e) => {
-                const courses = JSON.parse(e.target.result);
-                await db.courses.bulkAdd(courses);
-                updateCourseList();
+                try {
+                    const coursesToImport = JSON.parse(e.target.result);
+                    if (!Array.isArray(coursesToImport)) {
+                        throw new Error(localizer.translate('importInvalidFormat'));
+                    }
+                    const validCourses = coursesToImport.filter(c => c.topic && c.difficulty && c.content);
+                    if (validCourses.length !== coursesToImport.length) {
+                         console.warn("Some imported courses were filtered out due to missing required fields (topic, difficulty, content).");
+                    }
+                    if(validCourses.length > 0) {
+                        const count = await db.courses.bulkPut(validCourses);
+                        alert(localizer.translate('importSuccess', { count: count }));
+                        updateCourseList();
+                    } else {
+                        alert(localizer.translate('importNoValidCourses'));
+                    }
+                } catch (error) {
+                    console.error("Failed to import data:", error);
+                    alert(localizer.translate('importError', { message: error.message }));
+                } finally {
+                     hideSpinner();
+                }
             };
+            reader.onerror = () => {
+                 alert(localizer.translate('importReadError'));
+                 hideSpinner();
+            }
             reader.readAsText(file);
         });
-        function showSpinner() {
-            const spinner = document.createElement('div');
-            spinner.id = 'spinner';
-            spinner.innerHTML = `
-                <div class="fixed top-0 left-0 right-0 bottom-0 w-full h-screen z-50 overflow-hidden bg-gray-700 opacity-75 flex flex-col items-center justify-center">
-                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mb-4"></div>
-                    <h2 class="text-center text-white text-xl font-semibold">Loading...</h2>
-                    <p class="w-1/3 text-center text-white">This may take a few seconds, please don't close this page.</p>
-                </div>
-            `;
-            document.body.appendChild(spinner);
+
+        // --- Helper function ---
+        function escapeHtml(unsafe) {
+             if (typeof unsafe !== 'string') return '';
+             return unsafe
+                 .replace(/&/g, "&")
+                 .replace(/</g, "<")
+                 .replace(/>/g, ">")
+                 .replace(/"/g, "\"")
+                 .replace(/'/g, "'");
         }
-        function hideSpinner() {
-            const spinner = document.getElementById('spinner');
-            if (spinner) {
-                spinner.remove();
-            }
-        }
-        updateCourseList();
+
+        // --- Export Current View (using DOM manipulation) ---
         document.getElementById('exportButton').addEventListener('click', function() {
-            var targetDiv = document.getElementById('targetDiv');
-            var blob = new Blob([targetDiv.outerHTML], {type: 'text/html'});
-            var url = window.URL.createObjectURL(blob);
-            var a = document.createElement('a');
+            const lessonContentSource = document.getElementById('markdown-content');
+            const demoContentSource = document.getElementById('demo-content');
+            const demoStatusSource = document.getElementById('demoStatus');
+            const quizContentSource = document.getElementById('quiz-content');
+            const quizStatusSource = document.getElementById('quizStatus');
+            const titleText = courseTitle.textContent || 'Exported Course';
+
+            const exportDoc = document.implementation.createHTMLDocument(titleText);
+            const exportHtml = exportDoc.documentElement;
+            const exportHead = exportDoc.head;
+            const exportBody = exportDoc.body;
+
+            const metaCharset = exportDoc.createElement('meta');
+            metaCharset.setAttribute('charset', 'UTF-8');
+            exportHead.appendChild(metaCharset);
+
+            const titleEl = exportDoc.createElement('title');
+            titleEl.textContent = titleText;
+            exportHead.appendChild(titleEl);
+
+            const styleEl = exportDoc.createElement('style');
+            styleEl.textContent = `
+                body { font-family: system-ui, sans-serif; line-height: 1.6; padding: 20px; max-width: 800px; margin: auto; color: #333; }
+                h1, h2, h3 { margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #eee; padding-bottom: 0.3em; color: #111; }
+                pre { background: #2d2d2d; color: #ccc; padding: 1em; border-radius: 5px; overflow-x: auto; font-size: 0.9em; }
+                code { font-family: 'Courier New', Courier, monospace; }
+                blockquote { border-left: 3px solid #ccc; padding-left: 1em; margin: 1em 0; font-style: italic; color: #555; background-color: #f9f9f9; }
+                .section { margin-top: 2em; padding-top: 1em; }
+                .prose { /* Basic prose styles */ }
+                iframe { width: 100%; min-height: 400px; border: 1px solid #ddd; }
+                 .quiz-question-container { border: 1px solid #eee; padding: 1em; margin-bottom: 1em; background: #f9f9f9; border-radius: 4px; }
+                 .quiz-option-label { display: block; margin-bottom: 0.5em; }
+                 .question-text { font-weight: bold; margin-bottom: 0.8em; }
+                 details { border: 1px solid #eee; padding: 0.5em; margin-bottom: 1em; border-radius: 4px; } summary { cursor: pointer; font-weight: bold;}
+                 .correct { background-color: #e0f2e9; border-left: 3px solid #4caf50; padding-left: 5px;}
+                 .incorrect { background-color: #ffebee; border-left: 3px solid #f44336; padding-left: 5px;}
+            `;
+            exportHead.appendChild(styleEl);
+
+            const highlightCSS = exportDoc.createElement('link');
+            highlightCSS.rel = 'stylesheet';
+            highlightCSS.href = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css';
+            exportHead.appendChild(highlightCSS);
+            const highlightJS = exportDoc.createElement('script');
+            highlightJS.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+            highlightJS.defer = true;
+            exportHead.appendChild(highlightJS);
+            const highlightInit = exportDoc.createElement('script');
+            highlightInit.textContent = `document.addEventListener('DOMContentLoaded', () => { try { document.querySelectorAll('pre code').forEach((el) => hljs.highlightElement(el)); } catch(e){ console.error('Highlight.js failed:', e); } });`;
+            highlightInit.defer = true;
+            exportHead.appendChild(highlightInit);
+
+            const mainTitle = exportDoc.createElement('h1');
+            mainTitle.textContent = titleText;
+            exportBody.appendChild(mainTitle);
+
+            const lessonSection = exportDoc.createElement('div');
+            lessonSection.className = 'section';
+            const lessonTitle = exportDoc.createElement('h2');
+            lessonTitle.textContent = 'Lesson Content';
+            lessonSection.appendChild(lessonTitle);
+            const lessonDiv = exportDoc.createElement('div');
+            lessonDiv.className = 'prose';
+            lessonDiv.innerHTML = lessonContentSource.innerHTML;
+            lessonSection.appendChild(lessonDiv);
+            exportBody.appendChild(lessonSection);
+
+            const demoIframe = demoContentSource.querySelector('iframe');
+            const demoStatus = demoStatusSource.textContent;
+            if (demoIframe || demoStatus) {
+                const demoSection = exportDoc.createElement('div');
+                demoSection.className = 'section';
+                const demoTitle = exportDoc.createElement('h2');
+                demoTitle.textContent = 'Interactive Demo';
+                demoSection.appendChild(demoTitle);
+                if (demoIframe && demoIframe.srcdoc) {
+                    const demoIframeClone = exportDoc.createElement('iframe');
+                    demoIframeClone.setAttribute('srcdoc', demoIframe.srcdoc);
+                    demoIframeClone.style.cssText = 'width: 100%; height: 500px; border: 1px solid #ddd;';
+                    demoIframeClone.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+                    const comment = exportDoc.createComment(' Demo content below might require a server or specific browser settings to run correctly due to srcdoc usage. ');
+                    demoSection.appendChild(comment);
+                    demoSection.appendChild(demoIframeClone);
+                } else if (demoStatus) {
+                    const statusP = exportDoc.createElement('p');
+                    statusP.textContent = demoStatus;
+                    demoSection.appendChild(statusP);
+                }
+                exportBody.appendChild(demoSection);
+            }
+
+            const quizStatus = quizStatusSource.textContent;
+            if (quizContentSource.innerHTML.trim() && !quizStatus) {
+                const quizSection = exportDoc.createElement('div');
+                quizSection.className = 'section';
+                const quizTitle = exportDoc.createElement('h2');
+                quizTitle.textContent = 'Quiz';
+                quizSection.appendChild(quizTitle);
+                const quizClone = quizContentSource.cloneNode(true);
+                const resultContainerClone = quizClone.querySelector('#quiz-result-container');
+                if(resultContainerClone) resultContainerClone.remove();
+                const submitButtonClone = quizClone.querySelector('button[type="submit"]');
+                if(submitButtonClone) { submitButtonClone.textContent += " (Exported - Disabled)"; submitButtonClone.disabled = true; }
+                quizClone.querySelectorAll('input[type="radio"]').forEach(radio => radio.disabled = true);
+                quizSection.appendChild(quizClone);
+                exportBody.appendChild(quizSection);
+            } else if (quizStatus) {
+                 const quizSection = exportDoc.createElement('div');
+                 quizSection.className = 'section';
+                 const quizTitle = exportDoc.createElement('h2');
+                 quizTitle.textContent = 'Quiz';
+                 quizSection.appendChild(quizTitle);
+                 const statusP = exportDoc.createElement('p');
+                 statusP.textContent = quizStatus;
+                 quizSection.appendChild(statusP);
+                 exportBody.appendChild(quizSection);
+            }
+
+            const doctype = '<!DOCTYPE html>';
+            const finalHtmlString = doctype + '\n' + exportHtml.outerHTML;
+
+            const blob = new Blob([finalHtmlString], { type: 'text/html;charset=utf-8' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
             a.href = url;
-            a.download = 'exported_div.html';
+            a.download = `${titleText.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_export.html`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         });
+
+
+        // --- Event Listeners ---
+        document.getElementById('generateCourse').addEventListener('click', generateAndDisplayCourse);
+        document.getElementById('toggleSavedCourses').addEventListener('click', () => {
+            updateCourseList();
+            document.getElementById('savedCoursesPopup').classList.toggle('hidden');
+        });
+        document.getElementById('closeSavedCourses').addEventListener('click', () => {
+            document.getElementById('savedCoursesPopup').classList.add('hidden');
+        });
+        document.getElementById('settings-button').addEventListener('click', () => {
+            populateLanguageSelector();
+            document.getElementById('settings-popup').classList.remove('hidden');
+        });
+        document.getElementById('close-settings').addEventListener('click', () => {
+            document.getElementById('settings-popup').classList.add('hidden');
+        });
+        document.getElementById('close-settings-icon').addEventListener('click', () => {
+            document.getElementById('settings-popup').classList.add('hidden');
+        });
+        languageSelect.addEventListener('change', (e) => {
+             localizer.setLanguage(e.target.value); // Calls apply() internally
+             // Manually update non-data-translate elements
+             document.getElementById('generateCourse').textContent = localizer.translate('generateCourse');
+             document.getElementById('close-settings').textContent = localizer.translate('closeSettings');
+             document.getElementById('tabBtnLesson').textContent = localizer.translate('tabLesson');
+             document.getElementById('tabBtnDemo').textContent = localizer.translate('tabDemo');
+             document.getElementById('tabBtnQuiz').textContent = localizer.translate('tabQuiz');
+             document.querySelector('#exportButton span').textContent = localizer.translate('exportButton');
+             document.getElementById('topic').placeholder = localizer.translate('topicPlaceholder');
+             document.getElementById('details').placeholder = localizer.translate('detailsPlaceholder');
+             // Note: Idea card text content uses data-translate now.
+        });
+
+
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ensure localizer is defined before proceeding
+             if (typeof WebAppLocalizer === 'undefined') {
+                console.error("FATAL: WebAppLocalizer script not loaded!");
+                alert("Core localization library failed to load. Application cannot function.");
+                return; // Stop further execution
+             }
+
+             initDB();
+             setupDarkMode();
+
+             try {
+                // Initialize localizer after its definition is confirmed loaded
+                // localizer = new WebAppLocalizer(translations, 'personalTeacher_', languageSelect); // Already defined globally
+
+                populateLanguageSelector(); // Populate <select>
+                localizer.apply(); // Apply initial translations
+
+                // Manually translate elements without data-translate attributes after apply()
+                document.getElementById('generateCourse').textContent = localizer.translate('generateCourse');
+                document.getElementById('close-settings').textContent = localizer.translate('closeSettings');
+                document.getElementById('tabBtnLesson').textContent = localizer.translate('tabLesson');
+                document.getElementById('tabBtnDemo').textContent = localizer.translate('tabDemo');
+                document.getElementById('tabBtnQuiz').textContent = localizer.translate('tabQuiz');
+                document.querySelector('#exportButton span').textContent = localizer.translate('exportButton');
+                // Translate placeholders
+                document.getElementById('topic').placeholder = localizer.translate('topicPlaceholder');
+                document.getElementById('details').placeholder = localizer.translate('detailsPlaceholder');
+
+
+             } catch (e) {
+                 console.error("Error during initialization (Localizer likely failed):", e);
+                 // Attempt to provide minimal functionality or better error message
+             }
+
+             console.log("Personal Teacher Initialized");
+        });
+
+        // Make globally accessible
+        window.switchTab = switchTab;
+        window.setTopic = setTopic; // Make idea card function global
+
     </script>
-    <style>
-        .loader {
-            border-top-color: #3498db;
-            -webkit-animation: spinner 1.5s linear infinite;
-            animation: spinner 1.5s linear infinite;
-        }
-        @-webkit-keyframes spinner {
-            0% { -webkit-transform: rotate(0deg); }
-            100% { -webkit-transform: rotate(360deg); }
-        }
-        @keyframes spinner {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .hljs {
-            display: block;
-            overflow-x: auto;
-            padding: 0.5em;
-            background: #f0f0f0;
-            color: #444;
-        }
-        .dark .hljs {
-            background: #1e1e1e;
-            color: #dcdcdc;
-        }
-        .prose {
-            max-width: 65ch;
-            font-size: 1.1rem;
-            line-height: 1.75;
-        }
-        .prose h1, .prose h2, .prose h3, .prose h4 {
-            margin-top: 2em;
-            margin-bottom: 1em;
-        }
-        .prose ul, .prose ol {
-            padding-left: 1.5em;
-        }
-        .prose code {
-            background-color: rgba(0, 0, 0, 0.05);
-            padding: 0.2em 0.4em;
-            border-radius: 3px;
-            font-size: 0.9em;
-        }
-        .dark .prose code {
-            background-color: rgba(255, 255, 255, 0.1);
-        }
-    </style>
 </body>
 </html>
