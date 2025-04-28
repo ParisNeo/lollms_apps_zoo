@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processor</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="file"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box; /* Important for padding */
+        }
+        input[type="checkbox"] {
+            margin-right: 5px;
+        }
+        button {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        .flash-messages {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 15px;
+        }
+        .flash-messages li {
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            background-color: #f8d7da; /* Reddish for errors */
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .loader {
+            display: none; /* Hidden by default */
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            z-index: 9999;
+            text-align: center;
+        }
+        .loader::after {
+            content: '';
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            margin-top: 20%;
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Processor</h1>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <ul class="flash-messages">
+                {% for message in messages %}
+                    <li>{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Processing Loader -->
+        <div class="loader" id="loader"></div>
+
+        <form action="{{ url_for('process_video') }}" method="post" enctype="multipart/form-data" id="video-form">
+            <div class="form-group">
+                <label for="video">Select Video File:</label>
+                <input type="file" id="video" name="video" accept="video/*" required>
+                <small>Max file size: 100 MB. Allowed types: mp4, mov, avi, mkv, webm, flv</small>
+            </div>
+
+            <div class="form-group">
+                <label for="compress">
+                    <input type="checkbox" id="compress" name="compress" value="on">
+                    Compress Video (Reduces size, uses CRF 28)
+                </label>
+            </div>
+
+            <div class="form-group">
+                <label for="resolution">Change Resolution:</label>
+                <select id="resolution" name="resolution">
+                    <option value="original" selected>Keep Original</option>
+                    <option value="1080p">1080p (max height)</option>
+                    <option value="720p">720p (max height)</option>
+                    <option value="480p">480p (max height)</option>
+                    <option value="360p">360p (max height)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="crop">Crop Aspect Ratio (Center Crop):</label>
+                <select id="crop" name="crop">
+                    <option value="none" selected>None</option>
+                    <option value="16:9">16:9 (Widescreen)</option>
+                    <option value="9:16">9:16 (Vertical)</option>
+                    <option value="1:1">1:1 (Square)</option>
+                    <option value="4:3">4:3 (Standard)</option>
+                </select>
+            </div>
+
+            <button type="submit">Process Video</button>
+        </form>
+    </div>
+
+    <script>
+        // Show loader on form submit
+        const form = document.getElementById('video-form');
+        const loader = document.getElementById('loader');
+
+        form.addEventListener('submit', function() {
+            // Basic check if file input is not empty
+            const fileInput = document.getElementById('video');
+            if (fileInput.files.length > 0) {
+                 loader.style.display = 'block';
+            }
+            // Form submission will continue normally
+        });
+
+        // Optional: Hide loader if back button is used or navigation occurs before completion
+         window.addEventListener('pageshow', function(event) {
+             if (loader.style.display === 'block') {
+                loader.style.display = 'none';
+             }
+         });
+    </script>
+</body>
+</html>
