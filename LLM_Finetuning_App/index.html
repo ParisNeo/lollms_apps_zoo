@@ -5,1468 +5,1175 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LLM Finetuning App</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/lollms_assets/js/web.app.localizer"></script>
-</head>
-<body class="bg-gray-100 min-h-screen">
+    <!-- Ensure this path is correct relative to where index.html is served -->
+    <script src="/static/js/web.app.localizer.js"></script>
     <style>
+        /* Custom Scrollbar for Log Output - Optional but nice */
+        #logOutput::-webkit-scrollbar {
+            width: 8px;
+        }
+        #logOutput::-webkit-scrollbar-track {
+            background: #2d3748; /* dark:bg-gray-700 */
+        }
+        #logOutput::-webkit-scrollbar-thumb {
+            background: #4a5568; /* dark:bg-gray-600 */
+            border-radius: 4px;
+        }
+        #logOutput::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* dark:bg-gray-500 */
+        }
+
+        /* Active Tab Button Style */
+        .tab-button.active {
+            background-color: #2563eb; /* blue-600 */
+            color: white;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .tab-button {
+            transition: background-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+
+        /* Toast Notification Styles */
+        #toastContainer {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            padding: 1rem 1.5rem;
+            border-radius: 0.375rem; /* rounded-md */
+            color: white;
+            font-size: 0.875rem; /* text-sm */
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+            opacity: 0;
+            transform: translateX(100%);
+            transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: #10b981; /* green-500 */ }
+        .toast.error   { background-color: #ef4444; /* red-500 */ }
+        .toast.warning { background-color: #f59e0b; /* amber-500 */ }
+        .toast.info    { background-color: #3b82f6; /* blue-500 */ }
+
+        /* Loading Overlay Styles */
+        #loadingOverlay {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(2px);
+            z-index: 999; /* Below toast, above everything else */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #loadingOverlay.hidden { display: none; }
+        .spinner {
+            width: 56px; height: 56px;
+            border-radius: 50%;
+            border: 8px solid #e5e7eb; /* gray-200 */
+            border-top: 8px solid #3b82f6; /* blue-500 */
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 1rem;
+            color: #3b82f6; /* blue-500 */
+            font-weight: 600; /* semibold */
+            font-size: 1.125rem; /* text-lg */
+        }
+
+        /* Help Popup (keeping existing styles as requested) */
         .help-button {
-            background-color: #4A5568;
+            background-color: #a0aec0; /* gray-400 */
             color: white;
             border-radius: 50%;
-            width: 24px;
-            height: 24px;
-            font-size: 14px;
+            width: 1.25rem; /* w-5 */
+            height: 1.25rem; /* h-5 */
+            font-size: 0.75rem; /* text-xs */
+            font-weight: bold;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            margin-left: 8px;
+            margin-left: 0.5rem; /* ml-2 */
             cursor: pointer;
-            border: none;
+            transition: background-color 0.2s;
         }
-        
-        .help-button:hover {
-            background-color: #2D3748;
-        }
-        
+        .help-button:hover { background-color: #718096; /* gray-500 */ }
         .popup-overlay {
-            display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.6);
             z-index: 1000;
+            display: none; /* Initially hidden */
+            justify-content: center;
+            align-items: center;
         }
-        
+        .popup-overlay.active { display: flex; }
         .popup-content {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
             background-color: white;
-            padding: 2rem;
-            border-radius: 8px;
-            max-width: 600px;
+            padding: 2rem; /* p-8 */
+            border-radius: 0.5rem; /* rounded-lg */
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
             width: 90%;
+            max-width: 600px; /* Adjust as needed */
             max-height: 80vh;
             overflow-y: auto;
-            z-index: 1001;
         }
-        
         .popup-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1rem;
+            margin-bottom: 1rem; /* mb-4 */
+            border-bottom: 1px solid #e2e8f0; /* border-gray-300 */
+            padding-bottom: 0.5rem; /* pb-2 */
         }
-        
+        .popup-header h3 {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* font-semibold */
+        }
         .popup-close {
             background: none;
             border: none;
-            font-size: 1.5rem;
+            font-size: 1.5rem; /* text-2xl */
+            font-weight: bold;
             cursor: pointer;
-            color: #4A5568;
+            color: #718096; /* gray-500 */
         }
-        
-        .popup-close:hover {
-            color: #2D3748;
-        }
-        </style>
-        
-    <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold mb-8 text-center text-blue-600" data-translate="title">LLM Finetuning App</h1>
-        
+        .popup-close:hover { color: #2d3748; /* gray-700 */ }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen font-sans">
+    <div id="toastContainer"></div> <!-- For toast notifications -->
+
+    <header class="bg-white shadow-sm sticky top-0 z-40">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-blue-600" data-translate="title">LLM Finetuning App</h1>
+            <select id="languageSelector" class="bg-white border border-gray-300 text-gray-700 py-2 px-3 rounded-md leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"></select>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <!-- Tab Navigation -->
-        <div class="flex justify-center mb-8">
-            <button id="downloadBtn" class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="downloadButton">Download Model</button>
-            <button id="preprocessBtn" class="bg-yellow-400 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="preprocessButton">Preprocess dataset</button>
-            <button id="fuseDSBtn" class="bg-yellow-400 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-l focus:outline-none focus:shadow-outline" data-translate="preprocessButton">Fuse datasets</button>
-            <button id="trainBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="trainButton">Train</button>
-            <button id="fuseBtn" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="fuseButton">Fuse</button>
-            <button id="testBtn" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 focus:outline-none focus:shadow-outline" data-translate="testButton">Test</button>
-            <button id="quantizeBtn" class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="quantizeButton">Quantize</button>
-            <button id="pushToHFBtn" class="bg-orange-500 hover:bg-orange-700 text-white font-bold py-2 px-4 rounded-r focus:outline-none focus:shadow-outline" data-translate="pushToHFButton">Push to Hugging face</button>
-        </div>
-
-        <!-- Download Model Form -->
-        <div id="downloadForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <h2 class="text-2xl font-bold mb-4" data-translate="downloadTitle">Download Model</h2>
-            <form id="downloadModelForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadModelName" data-translate="downloadModelNameLabel">Model Name (Hugging Face path or local model path)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="downloadModelName" type="text" placeholder="e.g., bert-base-uncased" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadTargetDir" data-translate="downloadTargetDirLabel">Target Directory</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="downloadTargetDir" type="text" placeholder="e.g., /path/to/save/model" required>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startDownloadButton">Download Model</button>
-                </div>
-            </form>
-        </div>
-
-
-
-        <div id="preprocessForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="preprocessTitle" id="preprocessTitle">Preprocess Dataset</h2>
-            <form id="preprocessForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="preprocess-datasetSourceLabel">Dataset Source</label>
-                    <div class="mt-2">
-                        <label class="inline-flex items-center">
-                            <input type="radio" class="form-radio" name="preprocess-datasetSource" value="huggingface" checked>
-                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
-                        </label>
-                        <label class="inline-flex items-center ml-6">
-                            <input type="radio" class="form-radio" name="preprocess-datasetSource" value="local">
-                            <span class="ml-2" data-translate="localOption">Local</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="preprocess-datasetNameLabel">Dataset in Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-datasetInName" type="text" placeholder="Dataset in name or local path" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetOutName" data-translate="preprocess-datasetNameLabel">Dataset out Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="preprocess-datasetOutName" type="text" placeholder="Dataset out name or local path" required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocess-dataset-format" data-translate="datasetFormatLabel">Dataset Format</label>
-                    <select id="preprocess-dataset-format" name="dataset-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" onchange="togglepreprocessCustomFormat()">
-                        <option value="single_text" data-translate="singleTextOption">Single Text</option>
-                        <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
-                        <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
-                        <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
-                        <option value="lollms_smart_router" data-translate="questionAnswerOption">Lollms smart router</option>
-                        <option value="custom" data-translate="customOption">Custom</option>
-                    </select>
-                </div>
-
-                <div id="preprocess-custom-format-group" class="mb-4" style="display: none;">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocess-custom-format" data-translate="customFormatLabel">Custom Format</label>
-                    <textarea type="text" id="preprocess-custom-format" name="preprocess-custom-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="e.g. {field1} {field2}: {field3}"></textarea>
-                </div>
-                        
-                <div class="flex items-center justify-between">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="preprocessButton">Preprocess Database</button>
-                </div>
-            </form>
-        </div>
-
-
-        <div id="fusedbs-Form" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="fusedbs-Title" id="fusedbs-Title">Preprocess Dataset</h2>
-            <form id="fusedbs-Form">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fusedbs-datasetSource1Label">Dataset 1 Source</label>
-                    <div class="mt-2">
-                        <label class="inline-flex items-center">
-                            <input type="radio" class="form-radio" name="fusedbs-dataset1Source" value="huggingface" checked>
-                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
-                        </label>
-                        <label class="inline-flex items-center ml-6">
-                            <input type="radio" class="form-radio" name="fusedbs-dataset1Source" value="local">
-                            <span class="ml-2" data-translate="localOption">Local</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="fusedbs-dataset1NameLabel">Dataset 1 Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-dataset1Name" type="text" placeholder="Dataset in name or local path" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fusedbs-dataset2SourceLabel">Dataset 2 Source</label>
-                    <div class="mt-2">
-                        <label class="inline-flex items-center">
-                            <input type="radio" class="form-radio" name="fusedbs-dataset2Source" value="huggingface" checked>
-                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
-                        </label>
-                        <label class="inline-flex items-center ml-6">
-                            <input type="radio" class="form-radio" name="fusedbs-dataset2Source" value="local">
-                            <span class="ml-2" data-translate="localOption">Local</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetInName" data-translate="fusedbs-dataset2NameLabel">Dataset 2 Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-dataset2Name" type="text" placeholder="Dataset in name or local path" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="fusedbs-datasetOutName" data-translate="fusedbs-datasetNameLabel">Dataset out Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedbs-datasetOutName" type="text" placeholder="Dataset out name or local path" required>
-                </div>
-                        
-                <div class="flex items-center justify-between">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="fusedbsButton">Fuse Databases</button>
-                </div>
-            </form>
-        </div>
-
-
-        <div id="trainForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="trainTitle" id="trainTitle">Train</h2>
-            <form id="finetuneForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="modelName" data-translate="modelNameLabel">Model Name (Hugging Face path)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="modelName" type="text" placeholder="e.g., bert-base-uncased" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="datasetSourceLabel">Dataset Source</label>
-                    <div class="mt-2">
-                        <label class="inline-flex items-center">
-                            <input type="radio" class="form-radio" name="datasetSource" value="huggingface" checked>
-                            <span class="ml-2" data-translate="huggingFaceOption">Hugging Face</span>
-                        </label>
-                        <label class="inline-flex items-center ml-6">
-                            <input type="radio" class="form-radio" name="datasetSource" value="local">
-                            <span class="ml-2" data-translate="localOption">Local</span>
-                        </label>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetName" data-translate="datasetNameLabel">Dataset Name/Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="datasetName" type="text" placeholder="Dataset name or local path" required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="dataset-format" data-translate="datasetFormatLabel">Dataset Format</label>
-                    <select id="dataset-format" name="dataset-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" onchange="toggleCustomFormat()">
-                        <option value="single_text" data-translate="singleTextOption">Single Text (preprocessed datasets have this format)</option>
-                        <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
-                        <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
-                        <option value="lollms" data-translate="questionAnswerOption">Lollms discussion</option>
-                        <option value="custom" data-translate="customOption">Custom</option>
-                    </select>
-                </div>
-
-                <div id="custom-format-group" class="mb-4" style="display: none;">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="custom-format" data-translate="customFormatLabel">Custom Format</label>
-                    <textarea type="text" id="custom-format" name="custom-format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="e.g. {field1} {field2}: {field3}"></textarea>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="outputModelPath" data-translate="outputModelPathLabel">Output Model Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="outputModelPath" type="text" placeholder="Output Model Path" required>
-                </div>
-
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="learningRate" data-translate="learningRateLabel">Learning Rate</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="learningRate" type="number" step="0.0001" value="3e-4" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="numEpochs" data-translate="numEpochsLabel">Number of Epochs</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="numEpochs" type="number" value="3" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="batchSize" data-translate="batchSizeLabel">Batch Size</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="batchSize" type="number" value="4" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="gradAccumSteps" data-translate="gradAccumStepsLabel">Gradient Accumulation Steps</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gradAccumSteps" type="number" value="4" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxGradNorm" data-translate="maxGradNormLabel">Max Gradient Norm</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxGradNorm" type="number" step="0.1" value="0.3" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="weightDecay" data-translate="weightDecayLabel">Weight Decay</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="weightDecay" type="number" step="0.001" value="0.001" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="loraAlpha" data-translate="loraAlphaLabel">LoRA Alpha</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraAlpha" type="number" value="16" required>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="loraDropout" data-translate="loraDropoutLabel">LoRA Dropout</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraDropout" type="number" step="0.01" value="0.1" required>
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="loraR" data-translate="loraRLabel">LoRA R</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraR" type="number" value="8" required>
-                </div>
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxSeqLength" data-translate="maxSeqLengthLabel">Max sequence length</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxSeqLength" type="number" value="128000" required>
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="gpuIds" data-translate="gpuIdsLabel">GPU IDs (comma-separated)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="gpuIds" type="text" placeholder="e.g., 0,1,2">
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxMemoryPerGpu" data-translate="maxMemoryPerGpuLabel">Max memory per GPU (e.g., 10GiB)</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxMemoryPerGpu" type="text" placeholder="e.g., 10GiB,8GiB">
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxCpuMemory" data-translate="maxCpuMemoryLabel">Max CPU memory</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="maxCpuMemory" type="text" placeholder="e.g., 30GiB">
-                </div>
-                
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="fp16" data-translate="fp16Label">Enable FP16 (Mixed Precision)</label>
-                    <input class="mr-2 leading-tight" type="checkbox" id="fp16" checked>
-                </div>
-                <!-- Training Method Dropdown -->
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="training_method" data-translate="trainingMethodLabel">Training Method</label>
-                    <select id="training_method" class="block appearance-none w-full bg-white border border-gray-400 hover:border-gray-500 px-4 py-2 pr-8 rounded shadow leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="lora" selected>LoRA Fine-tuning</option>
-                        <option value="full">Full Fine-tuning</option>
-                    </select>
-                </div>
-
-                <!-- Do Validation Checkbox -->
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="do_validation" data-translate="doValidationLabel">Enable Validation</label>
-                    <input class="mr-2 leading-tight" type="checkbox" id="do_validation">
-                </div>
-
-                <!-- Export Best Model Only Checkbox -->
-                <div class="mb-6">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="export_best_model_only" data-translate="exportBestModelOnlyLabel">Export Best Model Only</label>
-                    <input class="mr-2 leading-tight" type="checkbox" id="export_best_model_only" checked>
-                </div>
-                        
-                <div class="flex items-center justify-between">
-                    <button class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startTrainingButton">Start Training</button>
-                </div>
-            </form>
-        </div>
-
-        <div id="fuseForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="fuseTitle">Fuse</h2>
-            <form id="fusionForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="baseModelPath" data-translate="baseModelPathLabel">Base Model Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="baseModelPath" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="loraModelPath" data-translate="loraModelPathLabel">LoRA Model Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="loraModelPath" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="fusedOutputPath" data-translate="fusedOutputPathLabel">Fused Output Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="fusedOutputPath" type="text" required>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startFusionButton">Start Fusion</button>
-                </div>
-            </form>
-        </div>
-        <div id="testForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="titleTitle">Test</h2>
-            <form id="testingForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathTest" data-translate="modelPathTestLabel">Model Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="modelPathTest" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="testQuery" data-translate="testQUery">Query</label>
-                    <textarea id="testQuery" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    </textarea>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="quryButton">Query</button>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="testResponse" data-translate="testResponse">Response</label>
-                    <textarea id="testResponse" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    </textarea>
-                </div>
-            </form>
-        </div>
-        <div id="quantizeForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4" style="display: none;">
-            <h2 class="text-2xl font-bold mb-4" data-translate="quantizeTitle">Quantize</h2>
-            <form id="quantizationForm">
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathQuantize" data-translate="modelPathQuantizeLabel">Model Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="modelPathQuantize" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizedOutputPath" data-translate="quantizedOutputPathLabel">Quantized Output Path</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="quantizedOutputPath" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationBits" data-translate="quantizationBitsLabel">Quantization Bits</label>
-                    <select id="quantizationBits" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    <!-- Options will be dynamically populated based on the selected quantization tool -->
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationTool" data-translate="quantizationBitsLabel">Quantization Bits</label>
-                    <select id="quantizationTool" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="bitsandbytes">bitsandbytes</option>
-                        <option value="gguf">GGUF</option>
-                    </select>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" data-translate="startQuantizationButton">Start Quantization</button>
-                </div>
-            </form>
-        </div>
-        <div class="border-t pt-4 mt-4">
-            <form name="push2HFForm">
-                <h3 class="text-lg font-semibold mb-4">Push to Hugging Face</h3>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="huggingfaceUsername">Hugging Face Username</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="huggingfaceUsername" type="text" required>
-                </div>
-                <div class="mb-4">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="huggingfaceToken">Hugging Face Token</label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="huggingfaceToken" type="password" required>
-                </div>
-                <div class="flex items-center justify-between">
-                    <button class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" type="submit" id="pushToHuggingface" data-translate="pushToHuggingface">Push to Hugging Face</button>
-                </div>
-            </form>
-        </div>        
-        <div id="progressContainer" class="hidden bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <h2 class="text-xl font-semibold mb-4" data-translate="progressTitle">Progress</h2>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700 mb-4">
-                <div id="progressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+        <nav class="mb-8">
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-3">
+                <button id="downloadBtn" class="tab-button bg-yellow-500 hover:bg-yellow-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400" data-translate="downloadButton">Download Model</button>
+                <button id="preprocessBtn" class="tab-button bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400" data-translate="preprocessButton">Preprocess Dataset</button>
+                <button id="fuseDSBtn" class="tab-button bg-teal-500 hover:bg-teal-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-400" data-translate="fuseDatasetsButton">Fuse Datasets</button>
+                <button id="trainBtn" class="tab-button bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400" data-translate="trainButton">Train</button>
+                <button id="fuseBtn" class="tab-button bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-green-400" data-translate="fuseButton">Fuse LoRA</button>
+                <button id="testBtn" class="tab-button bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-red-400" data-translate="testButton">Test Model</button>
+                <button id="quantizeBtn" class="tab-button bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400" data-translate="quantizeButton">Quantize</button>
+                <button id="pushToHFBtn" class="tab-button bg-orange-500 hover:bg-orange-600 text-white font-semibold py-2 px-4 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400" data-translate="pushToHFButton">Push to HF</button>
             </div>
-            <pre id="logOutput" class="bg-gray-100 p-4 rounded-lg text-sm h-64 overflow-auto"></pre>
-        </div>
-    </div>
-    <!-- Add this just before the closing body tag -->
+        </nav>
+
+        <!-- Container for Forms and Progress -->
+        <div id="contentArea">
+            <div id="formsContainer">
+                <!-- Download Model Form -->
+                <div id="downloadForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="downloadTitle">Download Model</h2>
+                    <form id="downloadModelForm_actual">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadModelName" data-translate="downloadModelNameLabel">Model Name (Hugging Face path)</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="downloadModelName" type="text" placeholder="e.g., meta-llama/Llama-2-7b-chat-hf" required>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="downloadTargetDir" data-translate="downloadTargetDirLabel">Target Directory (Optional)</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="downloadTargetDir" type="text" placeholder="e.g., ./models/downloaded_model">
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2" type="submit" data-translate="startDownloadButton">Download</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Preprocess Dataset Form -->
+                <div id="preprocessForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="preprocessTitle">Preprocess Dataset</h2>
+                    <form id="preprocessDatasetForm_actual">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="preprocessDatasetSourceLabel">Dataset Source</label>
+                            <div class="mt-2 space-x-4">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" class="form-radio text-indigo-600 focus:ring-indigo-500" name="preprocessDatasetSource" value="huggingface" checked>
+                                    <span class="ml-2 text-gray-700" data-translate="huggingFaceOption">Hugging Face</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" class="form-radio text-indigo-600 focus:ring-indigo-500" name="preprocessDatasetSource" value="local">
+                                    <span class="ml-2 text-gray-700" data-translate="localOption">Local</span>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocessDatasetInName" data-translate="preprocessDatasetInNameLabel">Input Dataset Name/Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="preprocessDatasetInName" type="text" placeholder="e.g., timdettmers/openassistant-guanaco or ./my_data.jsonl" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocessDatasetOutName" data-translate="preprocessDatasetOutNameLabel">Output Dataset Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="preprocessDatasetOutName" type="text" placeholder="e.g., ./processed_dataset" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocessBaseModelName" data-translate="preprocessBaseModelNameLabel">Base Model Name/Path (for Chat Templating)</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="preprocessBaseModelName" type="text" placeholder="e.g., meta-llama/Llama-2-7b-chat-hf or ./my_local_model_dir">
+                            <p class="text-xs text-gray-600 mt-1" data-translate="preprocessBaseModelNameHelp">Optional. Provide if your dataset format (Q&A, Instruction, Lollms) needs specific chat templating based on this model. Can be HF path or local directory.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocessDatasetFormat" data-translate="preprocessDatasetFormatLabel">Input Dataset Format</label>
+                            <select id="preprocessDatasetFormat" name="preprocessDatasetFormat" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="single_text" data-translate="singleTextOption">Single Text Field ('text')</option>
+                                <option value="instruction_input_output" data-translate="instructionInputOutputOption">Instruction-Input-Output</option>
+                                <option value="question_answer" data-translate="questionAnswerOption">Question-Answer</option>
+                                <option value="lollms" data-translate="lollmsOption">Lollms Discussion</option>
+                                <option value="lollms_smart_router" data-translate="lollmsSmartRouterOption">Lollms Smart Router</option>
+                                <option value="custom" data-translate="customOption">Custom</option>
+                            </select>
+                        </div>
+                        <div id="preprocessCustomFormatGroup" class="mb-6" style="display: none;">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="preprocessCustomFormat" data-translate="customFormatLabel">Custom Format String</label>
+                            <textarea id="preprocessCustomFormat" name="preprocessCustomFormat" rows="3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., User: {user_msg} Assistant: {assistant_msg}"></textarea>
+                            <p class="text-xs text-gray-600 mt-1">Use curly braces {} to denote fields. Output will be a single 'text' field.</p>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button class="bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2" type="submit" data-translate="startPreprocessButton">Preprocess</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Fuse Datasets Form -->
+                <div id="fuseDSForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="fuseDatasetsTitle">Fuse Datasets</h2>
+                    <form id="fuseDatasetsForm_actual">
+                        <p class="text-sm text-gray-600 mb-6">Combine two datasets (preprocessed or compatible) into one.</p>
+                         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div>
+                                <h3 class="text-lg font-medium mb-2 text-gray-700">Dataset 1</h3>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fuseDs1SourceLabel">Source</label>
+                                <select name="fuseDs1Source" id="fuseDs1Source" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <option value="huggingface" data-translate="huggingFaceOption">Hugging Face</option>
+                                    <option value="local" data-translate="localOption">Local</option>
+                                </select>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="fuseDs1Path" data-translate="fuseDs1PathLabel">Name/Path</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="fuseDs1Path" type="text" placeholder="Dataset 1 Name or Path" required>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-medium mb-2 text-gray-700">Dataset 2</h3>
+                                 <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="fuseDs2SourceLabel">Source</label>
+                                <select name="fuseDs2Source" id="fuseDs2Source" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <option value="huggingface" data-translate="huggingFaceOption">Hugging Face</option>
+                                    <option value="local" data-translate="localOption">Local</option>
+                                 </select>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="fuseDs2Path" data-translate="fuseDs2PathLabel">Name/Path</label>
+                                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="fuseDs2Path" type="text" placeholder="Dataset 2 Name or Path" required>
+                            </div>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="fuseDsOutputPath" data-translate="fuseDsOutputPathLabel">Output Dataset Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="fuseDsOutputPath" type="text" placeholder="e.g., ./fused_dataset" required>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button class="bg-teal-500 hover:bg-teal-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-400 focus:ring-offset-2" type="submit" data-translate="startFuseDatasetsButton">Fuse Datasets</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Train Model Form -->
+                <div id="trainForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                     <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="trainTitle">Train Model</h2>
+                    <form id="finetuneForm_actual">
+                        <fieldset class="mb-6 border border-gray-300 p-4 rounded-md">
+                            <legend class="text-lg font-medium text-gray-700 px-2" data-translate="modelDatasetConfig">Model & Dataset Configuration</legend>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mt-2">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="modelName" data-translate="modelNameLabel">Base Model Name/Path</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="modelName" type="text" placeholder="e.g., meta-llama/Llama-2-7b-chat-hf" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="outputModelPath" data-translate="outputModelPathLabel">Output Adapter/Model Path</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="outputModelPath" type="text" placeholder="e.g., ./models/my_finetuned_adapter" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" data-translate="datasetSourceLabel">Dataset Source</label>
+                                    <select name="datasetSource" id="datasetSource" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                        <option value="huggingface" data-translate="huggingFaceOption">Hugging Face</option>
+                                        <option value="local" data-translate="localOption">Local</option>
+                                     </select>
+                                 </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="datasetName" data-translate="datasetNameLabel">Dataset Name/Path</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="datasetName" type="text" placeholder="e.g., timdettmers/openassistant-guanaco or ./processed_dataset" required>
+                                    <p class="text-xs text-gray-600 mt-1">Assumes dataset has a 'text' field (use Preprocess if not).</p>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-6 border border-gray-300 p-4 rounded-md">
+                            <legend class="text-lg font-medium text-gray-700 px-2" data-translate="trainingHyperparams">Training Hyperparameters</legend>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 mt-2">
+                                <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="learningRate" data-translate="learningRateLabel">Learning Rate</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="learningRate" type="number" step="1e-6" value="2e-4" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="numEpochs" data-translate="numEpochsLabel">Epochs</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="numEpochs" type="number" value="1" min="1" required>
+                                </div>
+                                <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="batchSize" data-translate="batchSizeLabel">Batch Size</label>
+                                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="batchSize" type="number" value="4" min="1" required>
+                                </div>
+                                <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="gradAccumSteps" data-translate="gradAccumStepsLabel">Grad Accum</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="gradAccumSteps" type="number" value="1" min="1" required>
+                                </div>
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxGradNorm" data-translate="maxGradNormLabel">Max Grad Norm</label>
+                                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="maxGradNorm" type="number" step="0.1" value="0.3" required>
+                                </div>
+                                 <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="weightDecay" data-translate="weightDecayLabel">Weight Decay</label>
+                                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="weightDecay" type="number" step="0.001" value="0.001" required>
+                                 </div>
+                                 <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="maxSeqLength" data-translate="maxSeqLengthLabel">Max Seq Len</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="maxSeqLength" type="number" value="512" min="64" step="64" required>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-6 border border-gray-300 p-4 rounded-md">
+                            <legend class="text-lg font-medium text-gray-700 px-2" data-translate="loraParams">LoRA Parameters</legend>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-4 mt-2">
+                                 <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="loraR" data-translate="loraRLabel">LoRA R</label>
+                                     <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="loraR" type="number" value="8" min="1" required>
+                                 </div>
+                                 <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="loraAlpha" data-translate="loraAlphaLabel">LoRA Alpha</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="loraAlpha" type="number" value="16" min="1" required>
+                                 </div>
+                                <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="loraDropout" data-translate="loraDropoutLabel">LoRA Dropout</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="loraDropout" type="number" step="0.01" value="0.05" min="0" max="1" required>
+                                </div>
+                            </div>
+                        </fieldset>
+
+                        <fieldset class="mb-8 border border-gray-300 p-4 rounded-md">
+                            <legend class="text-lg font-medium text-gray-700 px-2" data-translate="hardwareOtherSettings">Hardware & Other Settings</legend>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 mt-2">
+                                <div>
+                                    <label class="block text-gray-700 text-sm font-bold mb-2" for="gpuIds" data-translate="gpuIdsLabel">GPU IDs</label>
+                                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="gpuIds" type="text" placeholder="e.g., 0,1 (uses CUDA_VISIBLE_DEVICES)">
+                                </div>
+                                 <div>
+                                     <label class="block text-gray-700 text-sm font-bold mb-2" for="trainingMethod" data-translate="trainingMethodLabel">Training Method</label>
+                                    <select id="trainingMethod" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                        <option value="lora" selected>LoRA Fine-tuning</option>
+                                        <option value="full">Full Fine-tuning</option>
+                                     </select>
+                                 </div>
+                                 <div class="flex items-center pt-6">
+                                     <input class="form-checkbox h-5 w-5 text-blue-600 rounded focus:ring-blue-500" type="checkbox" id="fp16" checked>
+                                     <label class="ml-2 text-gray-700 text-sm font-bold" for="fp16" data-translate="fp16Label">Enable FP16</label>
+                                 </div>
+                            </div>
+                        </fieldset>
+
+                        <div class="flex items-center justify-end">
+                            <button class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2" type="submit" data-translate="startTrainingButton">Start Training</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Fuse LoRA Form -->
+                <div id="fuseForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="fuseTitle">Fuse LoRA Adapter</h2>
+                    <form id="fusionForm_actual">
+                        <p class="text-sm text-gray-600 mb-6">Merge a trained LoRA adapter into the base model.</p>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="baseModelPathFuse" data-translate="baseModelPathLabel">Base Model Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="baseModelPathFuse" type="text" placeholder="Path to original base model" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="loraModelPathFuse" data-translate="loraModelPathLabel">LoRA Adapter Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="loraModelPathFuse" type="text" placeholder="Path to trained LoRA adapter" required>
+                        </div>
+                        <div class="mb-6">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="fusedOutputPath" data-translate="fusedOutputPathLabel">Fused Output Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="fusedOutputPath" type="text" placeholder="Path to save merged model" required>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2" type="submit" data-translate="startFusionButton">Start Fusion</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Test Model Form -->
+                <div id="testForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="testTitle">Test Model</h2>
+                    <form id="testingForm_actual">
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathTest" data-translate="modelPathTestLabel">Model Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="modelPathTest" type="text" placeholder="Path to base, fused, or quantized model" required>
+                        </div>
+                        <div class="mb-4">
+                             <label class="block text-gray-700 text-sm font-bold mb-2" for="testQuery" data-translate="testQueryLabel">Input Prompt</label>
+                            <textarea id="testQuery" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Enter your prompt here..." required></textarea>
+                        </div>
+                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                 <label class="block text-gray-700 text-sm font-bold mb-2" for="testMaxNewTokens" data-translate="maxNewTokens">Max New Tokens</label>
+                                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="testMaxNewTokens" type="number" value="100" min="10">
+                            </div>
+                            <div>
+                                 <label class="block text-gray-700 text-sm font-bold mb-2" for="testTemperature" data-translate="temperature">Temperature</label>
+                                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="testTemperature" type="number" step="0.1" value="0.7" min="0.0" max="2.0">
+                            </div>
+                             <div>
+                                 <label class="block text-gray-700 text-sm font-bold mb-2" for="testTopP" data-translate="topP">Top-P</label>
+                                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 focus:ring-2 focus:ring-blue-500" id="testTopP" type="number" step="0.05" value="0.9" min="0.0" max="1.0">
+                             </div>
+                        </div>
+                        <div class="flex items-center justify-end mb-6">
+                            <button class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-red-400 focus:ring-offset-2" type="submit" data-translate="queryButton">Generate</button>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="testResponse" data-translate="testResponseLabel">Generated Response</label>
+                            <textarea id="testResponse" rows="6" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 bg-gray-100 leading-tight focus:outline-none" readonly></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Quantize Model Form -->
+                <div id="quantizeForm" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="quantizeTitle">Quantize Model</h2>
+                    <form id="quantizationForm_actual">
+                         <p class="text-sm text-gray-600 mb-6">Reduce model size. GGUF requires llama.cpp.</p>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathQuantize" data-translate="modelPathQuantizeLabel">Input Model Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="modelPathQuantize" type="text" placeholder="Path to fused or base model" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizedOutputPath" data-translate="quantizedOutputPathLabel">Quantized Output Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="quantizedOutputPath" type="text" placeholder="Path for quantized model" required>
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                             <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationTool" data-translate="quantizationToolLabel">Quantization Tool</label>
+                                <select id="quantizationTool" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                     <option value="bitsandbytes">BitsAndBytes (4/8-bit)</option>
+                                    <option value="gguf">GGUF (via llama.cpp)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-gray-700 text-sm font-bold mb-2" for="quantizationBits" data-translate="quantizationBitsLabel">Method/Bits</label>
+                                <select id="quantizationBits" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                    <!-- Options populated by JS -->
+                                </select>
+                             </div>
+                        </div>
+                        <div class="flex items-center justify-end">
+                            <button class="bg-purple-500 hover:bg-purple-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-400 focus:ring-offset-2" type="submit" data-translate="startQuantizationButton">Quantize</button>
+                        </div>
+                    </form>
+                </div>
+
+                 <!-- Push to Hugging Face Form -->
+                <div id="pushToHFFormDiv" class="form-section bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6" style="display: none;">
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-700" data-translate="pushToHFTitle">Push to Hugging Face Hub</h2>
+                    <form id="pushToHFForm_actual">
+                         <p class="text-sm text-gray-600 mb-6">Upload your model to the Hub. Requires HF credentials.</p>
+                         <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="modelPathPush" data-translate="modelPathPushLabel">Local Model Path</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="modelPathPush" type="text" placeholder="e.g., ./models/my_fused_model" required>
+                        </div>
+                         <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="hfRepoName" data-translate="hfRepoNameLabel">Target HF Repo Name</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="hfRepoName" type="text" placeholder="e.g., my-awesome-model (under your username)" required>
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="hfUsername" data-translate="hfUsernameLabel">HF Username (Optional)</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="hfUsername" type="text" placeholder="Your HF username">
+                        </div>
+                        <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="hfToken" data-translate="hfTokenLabel">HF Token (Write Role)</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="hfToken" type="password" placeholder="Paste your HF write token" required>
+                        </div>
+                         <div class="mb-4">
+                            <label class="block text-gray-700 text-sm font-bold mb-2" for="commitMessage" data-translate="commitMessageLabel">Commit Message</label>
+                            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500" id="commitMessage" type="text" value="Upload model via LLM Finetuning App">
+                        </div>
+                         <div class="mb-6">
+                            <label class="inline-flex items-center">
+                                <input type="checkbox" class="form-checkbox h-5 w-5 text-orange-600 rounded focus:ring-orange-500" id="createPrivateRepo">
+                                <span class="ml-2 text-sm text-gray-700" data-translate="createPrivateRepoLabel">Create as Private Repo</span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-end">
+                             <button class="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-6 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-400 focus:ring-offset-2" type="submit" data-translate="startPushButton">Push to Hub</button>
+                        </div>
+                    </form>
+                </div>
+            </div> <!-- End Forms Container -->
+
+            <!-- Progress Container -->
+            <div id="progressContainer" class="hidden bg-white shadow-lg rounded-lg px-8 pt-6 pb-8 mb-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-700" data-translate="progressTitle">Task Progress</h2>
+                <div class="w-full bg-gray-200 rounded-full h-6 mb-4 relative overflow-hidden">
+                    <div id="progressBar" class="bg-blue-600 h-6 rounded-full text-xs font-medium text-blue-100 text-center p-1 leading-none transition-all duration-300 ease-out" style="width: 0%">0%</div>
+                </div>
+                <pre id="logOutput" class="bg-gray-800 text-gray-200 p-4 rounded-lg text-xs h-80 overflow-auto font-mono"></pre>
+            </div>
+        </div> <!-- End Content Area -->
+    </main>
+
+    <!-- Help Popup -->
     <div id="helpPopup" class="popup-overlay">
         <div class="popup-content">
             <div class="popup-header">
-                <h2 id="helpTitle" class="text-xl font-bold"></h2>
+                <h3 id="helpPopupTitle">Help</h3>
                 <button class="popup-close" onclick="closeHelpPopup()">×</button>
             </div>
-            <div id="helpContent" class="mt-4"></div>
+            <div id="helpPopupBody" class="text-gray-700 text-sm">
+                <p>Help content will appear here.</p>
+            </div>
         </div>
     </div>
-    <div id="loadingOverlay" class="fixed inset-0 bg-white bg-opacity-80 z-50 flex justify-center items-center hidden">
-        <div class="text-center text-pink-500">
-            <div class="text-6xl animate-spin">🌟</div>
-            <div class="mt-4">Processing (take a look at console for details) ...</div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="hidden">
+         <div class="text-center">
+            <div class="spinner"></div>
+            <div class="loading-text" data-translate="loadingText">Processing...</div>
         </div>
     </div>
 
     <script>
-        function showLoadingOverlay() {
-        document.getElementById('loadingOverlay').classList.remove('hidden');
-        }
+        // --- Configuration & Constants ---
+        const APP_CONFIG = {
+            API_BASE_URL: 'http://localhost:8000', // Change if needed
+            WS_URL: 'ws://localhost:8000/ws',
+            LOCALSTORAGE_FORM_PREFIX: 'llmAppFormState_',
+            TOAST_DEFAULT_DURATION: 4000,
+        };
 
-        function hideLoadingOverlay() {
-        document.getElementById('loadingOverlay').classList.add('hidden');
-        }
+        // --- DOM Elements ---
+        const DOM = {
+            body: document.body,
+            languageSelector: document.getElementById('languageSelector'),
+            contentArea: document.getElementById('contentArea'),
+            formsContainer: document.getElementById('formsContainer'),
+            formSections: document.querySelectorAll('.form-section'), // Used for show/hide
+            tabButtons: document.querySelectorAll('.tab-button'),
 
+            progressContainer: document.getElementById('progressContainer'),
+            progressBar: document.getElementById('progressBar'),
+            logOutput: document.getElementById('logOutput'),
+            loadingOverlay: document.getElementById('loadingOverlay'),
+            toastContainer: document.getElementById('toastContainer'),
 
-        // Help content dictionary
-        const helpContent = {
-            // Download section
-            "downloadModelName": {
-                title: "Model Name (Hugging Face path)",
-                content: "Enter the name or path of the model from Hugging Face Hub. For example: 'meta-llama/Llama-2-7b-chat-hf' or 'mistralai/Mistral-7B-v0.1'. Make sure you have the necessary permissions to access the model."
-            },
-            "downloadTargetDir": {
-                title: "Target Directory",
-                content: "Specify the local directory where you want to save the downloaded model. Make sure you have sufficient disk space available."
-            },
+            helpPopup: document.getElementById('helpPopup'),
+            helpPopupTitle: document.getElementById('helpPopupTitle'),
+            helpPopupBody: document.getElementById('helpPopupBody'),
 
-            // Training parameters
-            "trainForm": {
-                title: "Training Methods Guide",
-                content: `Comprehensive guide to different model training techniques with focus on LoRA.
-                         
-                         LoRA (Low-Rank Adaptation):
-                         -----------------------------
-                         Purpose:
-                         - Efficient fine-tuning of large language models
-                         - Reduces memory requirements significantly
-                         - Creates small, adaptable modules
-                         
-                         Best Use Cases for LoRA:
-                         - Limited computational resources
-                         - Need for multiple specialized adaptations
-                         - Quick iterations and experiments
-                         - Style transfer or specific domain adaptation
-                         - When you want to combine multiple fine-tunes
-                         
-                         Advantages:
-                         - Very memory efficient (typically 2-4GB GPU RAM)
-                         - Small checkpoint sizes (typically <100MB)
-                         - Can be merged with other LoRA adaptations
-                         - Faster training times
-                         - Original model remains unchanged
-                         
-                         Limitations:
-                         - May not capture very complex adaptations
-                         - Limited by base model capabilities
-                         - Not suitable for fundamental architecture changes
-                         
-                         Alternative Training Methods:
-                         -----------------------------
-                         1. Full Fine-tuning:
-                            When to use:
-                            - Have substantial computational resources
-                            - Need deep architectural changes
-                            - Want maximum adaptation capability
-                            - Have large, high-quality datasets
-                            
-                            Drawbacks:
-                            - Requires lots of GPU memory (16GB+)
-                            - Long training times
-                            - Large checkpoint sizes
-                            - Risk of catastrophic forgetting
-                         
-                         2. QLoRA (Quantized LoRA):
-                            When to use:
-                            - Even more limited resources than LoRA
-                            - Want to fine-tune larger models
-                            - Need similar results to full fine-tuning
-                            
-                            Advantages:
-                            - Even lower memory requirements
-                            - Comparable results to full fine-tuning
-                            
-                            Drawbacks:
-                            - Slightly slower training
-                            - Requires specific quantization-aware training
-                         
-                         3. Prefix/Prompt Tuning:
-                            When to use:
-                            - Need extremely lightweight adaptations
-                            - Focus on specific tasks
-                            - Want fastest possible training
-                            
-                            Limitations:
-                            - More limited in adaptation scope
-                            - May not capture complex patterns
-                         
-                         Best Practices for LoRA Training:
-                         --------------------------------
-                         1. Dataset Preparation:
-                            - Clean, high-quality data
-                            - Consistent formatting
-                            - Appropriate size (typically 100-10000 samples)
-                            
-                         2. Hyperparameter Selection:
-                            - Start with standard values (alpha=16, r=8)
-                            - Adjust based on results
-                            - Monitor training loss
-                            
-                         3. Training Duration:
-                            - Start with small epochs (3-5)
-                            - Use early stopping
-                            - Monitor for overfitting
-                         
-                         4. Model Selection:
-                            - Choose appropriate base model
-                            - Consider model size vs task complexity
-                            - Verify token limit requirements
-                         
-                         Common Pitfalls:
-                         ----------------
-                         - Overfitting on small datasets
-                         - Using too high alpha/r for simple tasks
-                         - Insufficient training data quality
-                         - Not validating results properly
-                         - Incorrect learning rate selection
-                         
-                         Optimization Tips:
-                         -----------------
-                         - Use gradient checkpointing for larger models
-                         - Implement proper validation
-                         - Start conservative with hyperparameters
-                         - Test on diverse inputs
-                         - Keep training data well-structured
-                         
-                         When to Switch Methods:
-                         ----------------------
-                         Consider full fine-tuning if:
-                         - LoRA results are insufficient
-                         - Need fundamental behavior changes
-                         - Have adequate computational resources
-                         
-                         Consider QLoRA if:
-                         - Need more adaptation power than LoRA
-                         - Have very limited resources
-                         - Working with larger base models
-                         
-                         Consider Prefix Tuning if:
-                         - Need extremely fast adaptation
-                         - Have very specific, narrow tasks
-                         - Want smallest possible footprint`
-            },
-        
-            "learningRate": {
-                title: "Learning Rate",
-                content: `The learning rate controls how much the model parameters are updated during training.
-                        - Too high: Training may be unstable or fail to converge
-                        - Too low: Training may be too slow
-                        - Recommended range: 1e-5 to 5e-4
-                        - Default: 3e-4 (0.0003)
-                        
-                        Examples:
-                        - 1e-4: Conservative learning rate, stable but slower training
-                        - 5e-4: Faster training but might be less stable
-                        - 2e-5: Very conservative, use for fine-tuning delicate tasks`
-            },
-            "numEpochs": {
-                title: "Number of Epochs",
-                content: `The number of times the model will iterate through the entire dataset.
-                        - Too few: Model might underfit
-                        - Too many: Model might overfit
-                        - Recommended range: 1-10
-                        
-                        Examples:
-                        - 1-2 epochs: Quick adaptation for similar tasks
-                        - 3-5 epochs: Standard fine-tuning
-                        - 5+ epochs: Deep specialization (watch for overfitting)`
-            },
-            "batchSize": {
-                title: "Batch Size",
-                content: `Number of training examples processed in one forward/backward pass.
-                        - Larger: Better training stability, more VRAM required
-                        - Smaller: Less VRAM required, potentially noisier training
-                        
-                        Examples:
-                        - 1: Minimum size, highest noise in gradients
-                        - 4: Good balance for most GPUs
-                        - 8+: For high-end GPUs, more stable training`
-            },
-            "loraAlpha": {
-                title: "LoRA Alpha",
-                content: `Scaling factor for LoRA adaptations.
-                        - Higher values: Stronger adaptation effect
-                        - Lower values: More conservative changes
-                        
-                        Examples:
-                        - 16: Standard value, good for most cases
-                        - 32: Stronger adaptation
-                        - 8: More conservative adaptation`
-            },
-            "loraR": {
-                title: "LoRA R",
-                content: `Rank of LoRA adaptations. Controls the capacity of the adaptation.
-                        - Higher values: More capacity but larger model
-                        - Lower values: More efficient but limited capacity
-                        
-                        Examples:
-                        - 8: Standard value, good balance
-                        - 16: Higher capacity, larger file size
-                        - 4: More efficient, limited capacity`
-            },
-            "weightDecay": {
-                title: "Weight Decay",
-                content: `Weight decay is a regularization technique that prevents model overfitting by adding a penalty for large weights.
-                        
-                        Technical Details:
-                        - Adds L2 regularization to the model's parameters
-                        - Helps prevent extreme parameter values
-                        - Makes the model more generalizable
-                        
-                        Recommended values:
-                        - 0.01: Strong regularization
-                        - 0.001: Standard value for most cases
-                        - 0.0001: Light regularization
-                        
-                        Effects:
-                        - Higher values: More aggressive regularization, simpler model
-                        - Lower values: Less regularization, model can be more expressive
-                        - Zero: No weight decay, maximum model flexibility (risk of overfitting)
-                        
-                        Use cases:
-                        - Small datasets: Use higher values (0.01-0.001)
-                        - Large datasets: Can use lower values (0.001-0.0001)
-                        - When overfitting: Increase the value
-                        - When underfitting: Decrease the value`
+            // Specific form elements for event handling or complex logic
+            preprocessDatasetFormat: document.getElementById('preprocessDatasetFormat'),
+            preprocessCustomFormatGroup: document.getElementById('preprocessCustomFormatGroup'),
+            quantizationTool: document.getElementById('quantizationTool'),
+            quantizationBits: document.getElementById('quantizationBits'),
+            testResponseTextarea: document.getElementById('testResponse'),
+        };
+
+        // --- State Variables ---
+        let currentTaskActive = false;
+        let activeFormId = null; // To track the currently displayed form's wrapper ID
+        let webSocket = null;
+        let localizer = null;
+
+        // --- Button to Form Mapping ---
+        // Key: Button ID, Value: Form Wrapper DIV ID
+        const BUTTON_FORM_MAP = {
+            'downloadBtn': 'downloadForm',
+            'preprocessBtn': 'preprocessForm',
+            'fuseDSBtn': 'fuseDSForm',
+            'trainBtn': 'trainForm',
+            'fuseBtn': 'fuseForm',
+            'testBtn': 'testForm',
+            'quantizeBtn': 'quantizeForm',
+            'pushToHFBtn': 'pushToHFFormDiv'
+        };
+        // Form Wrapper DIV ID to Actual Form Element ID
+        const ACTUAL_FORM_IDS = {
+            'downloadForm': 'downloadModelForm_actual',
+            'preprocessForm': 'preprocessDatasetForm_actual',
+            'fuseDSForm': 'fuseDatasetsForm_actual',
+            'trainForm': 'finetuneForm_actual',
+            'fuseForm': 'fusionForm_actual',
+            'testForm': 'testingForm_actual',
+            'quantizeForm': 'quantizationForm_actual',
+            'pushToHFFormDiv': 'pushToHFForm_actual'
+        };
+
+        // --- Quantization Options ---
+        const QUANTIZATION_OPTIONS = {
+             bitsandbytes: [
+                 { value: 'load_in_8bit', text: 'Save with 8-bit config (Requires BnB on load)' },
+                 { value: 'load_in_4bit', text: 'Save with 4-bit config (Requires BnB on load)' }
+             ],
+             gguf: [
+                 { value: 'Q4_K_M', text: 'Q4_K_M (Recommended)' }, { value: 'Q5_K_M', text: 'Q5_K_M' },
+                 { value: 'Q8_0', text: 'Q8_0' }, { value: 'Q4_0', text: 'Q4_0' },
+                 { value: 'Q5_0', text: 'Q5_0' }, { value: 'Q2_K', text: 'Q2_K' },
+                 { value: 'Q3_K_L', text: 'Q3_K_L' }, { value: 'Q3_K_M', text: 'Q3_K_M' },
+                 { value: 'Q3_K_S', text: 'Q3_K_S' }, { value: 'Q4_1', text: 'Q4_1' },
+                 { value: 'Q4_K_S', text: 'Q4_K_S' }, { value: 'Q5_1', text: 'Q5_1' },
+                 { value: 'Q5_K_S', text: 'Q5_K_S' }, { value: 'Q6_K', text: 'Q6_K' },
+                 { value: 'F16', text: 'F16 (Half Float)' }, { value: 'F32', text: 'F32 (Full Float)' },
+                 { value: 'IQ2_XXS', text: 'IQ2_XXS' }, { value: 'IQ2_XS', text: 'IQ2_XS' },
+                 { value: 'IQ3_XXS', text: 'IQ3_XXS' }, { value: 'Q3_K_XS', text: 'Q3_K_XS' }
+             ]
+         };
+
+        // --- UI Utilities ---
+        const UI = {
+            showLoadingOverlay: () => DOM.loadingOverlay.classList.remove('hidden'),
+            hideLoadingOverlay: () => DOM.loadingOverlay.classList.add('hidden'),
+
+            showToast: (message, type = 'info', duration = APP_CONFIG.TOAST_DEFAULT_DURATION) => {
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.textContent = message;
+                DOM.toastContainer.appendChild(toast);
+
+                // Trigger reflow for transition
+                requestAnimationFrame(() => {
+                    toast.classList.add('show');
+                });
+
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+                }, duration);
             },
 
-            "loraDropout": {
-                title: "LoRA Dropout",
-                content: `LoRA dropout is a regularization parameter specific to LoRA adapters that helps prevent overfitting.
-                        
-                        Technical Details:
-                        - Randomly drops connections in LoRA layers during training
-                        - Helps create more robust adaptations
-                        - Similar to standard dropout but specific to LoRA matrices
-                        
-                        Recommended values:
-                        - 0.1 (10%): Standard value, good for most cases
-                        - 0.2 (20%): Stronger regularization
-                        - 0.05 (5%): Lighter regularization
-                        
-                        Effects:
-                        - Higher values: More regularization, slower convergence
-                        - Lower values: Less regularization, faster convergence
-                        - Zero: No dropout (not recommended)
-                        
-                        When to adjust:
-                        - Increase if: Model is overfitting or memorizing
-                        - Decrease if: Model is struggling to learn
-                        - For very small datasets: Consider higher values (0.15-0.2)
-                        - For very large datasets: Can use lower values (0.05-0.1)`
+            showForm: (formIdToShow) => {
+                DOM.formSections.forEach(form => {
+                    form.style.display = form.id === formIdToShow ? 'block' : 'none';
+                });
+                DOM.tabButtons.forEach(btn => {
+                    btn.classList.toggle('active', BUTTON_FORM_MAP[btn.id] === formIdToShow);
+                });
+                if (formIdToShow) {
+                    DOM.progressContainer.classList.add('hidden');
+                    DOM.formsContainer.classList.remove('hidden');
+                    activeFormId = formIdToShow;
+                } else { // Showing progress view
+                    DOM.formsContainer.classList.add('hidden');
+                    DOM.progressContainer.classList.remove('hidden');
+                }
             },
 
-            "maxSeqLength": {
-                title: "Maximum Sequence Length",
-                content: `Defines the maximum number of tokens that can be processed in a single forward pass.
-                        
-                        Technical Details:
-                        - Affects both training and inference
-                        - Longer sequences require more memory
-                        - Must be <= model's architecture limit
-                        
-                        Common values:
-                        - 512: Standard for BERT-like models
-                        - 1024: Common for medium-length tasks
-                        - 2048: Standard for many LLMs
-                        - 4096-32000: Extended context models
-                        
-                        Effects:
-                        - Larger values:
-                        • Can process longer texts
-                        • Requires more GPU memory
-                        • Slower training and inference
-                        
-                        - Smaller values:
-                        • More memory efficient
-                        • Faster training
-                        • May truncate important context
-                        
-                        Considerations:
-                        - Check your GPU memory capacity
-                        - Consider your task's typical input length
-                        - Balance between context length and training efficiency`
+            updateQuantizationBits: () => {
+                const tool = DOM.quantizationTool.value;
+                DOM.quantizationBits.innerHTML = ''; // Clear existing
+                const options = QUANTIZATION_OPTIONS[tool] || [];
+                options.forEach(opt => {
+                    const optionEl = document.createElement('option');
+                    optionEl.value = opt.value;
+                    optionEl.textContent = opt.text;
+                    // Try to re-select if value was saved
+                    if (DOM.quantizationBits.dataset.savedValue === opt.value) {
+                        optionEl.selected = true;
+                    }
+                    DOM.quantizationBits.appendChild(optionEl);
+                });
             },
 
-            "fp16": {
-                title: "Enable FP16 (Mixed Precision)",
-                content: `Mixed precision training using 16-bit floating-point numbers alongside 32-bit floating-point.
-                        
-                        Technical Benefits:
-                        - Reduces memory usage (up to 50%)
-                        - Faster training (typically 2-3x)
-                        - Lower memory bandwidth usage
-                        
-                        When to use:
-                        - YES if:
-                        • Using modern NVIDIA GPU (Volta, Turing, Ampere, or newer)
-                        • Need to fit larger batches in memory
-                        • Want faster training
-                        
-                        - NO if:
-                        • Using older GPUs
-                        • Experiencing training instability
-                        • Working with very small or sensitive numbers
-                        
-                        Important Notes:
-                        - Maintains FP32 master weights for stability
-                        - Automatic loss scaling prevents underflow
-                        - May require slight hyperparameter adjustments
-                        - Some operations remain in FP32 for stability
-                        
-                        Debugging Tips:
-                        - If training becomes unstable, check for NaN values
-                        - Consider reducing learning rate slightly
-                        - Monitor loss scaling statistics`
+            togglePreprocessCustomFormat: () => {
+                DOM.preprocessCustomFormatGroup.style.display =
+                    (DOM.preprocessDatasetFormat.value === 'custom') ? 'block' : 'none';
+            },
+
+            resetProgress: () => {
+                DOM.progressBar.style.width = '0%';
+                DOM.progressBar.textContent = '0%';
+                DOM.progressBar.classList.remove('bg-red-600', 'bg-green-600');
+                DOM.progressBar.classList.add('bg-blue-600');
+                DOM.logOutput.textContent = '';
             }
         };
 
-        // Function to add help buttons to all form fields
+        // --- LocalStorage Manager ---
+        const LocalStorageManager = {
+            saveFormState: (formElementId) => {
+                if (!formElementId) return;
+                const form = document.getElementById(formElementId);
+                if (!form) return;
+
+                const formData = {};
+                form.querySelectorAll('input, select, textarea').forEach(el => {
+                    if (!el.id) return; // Skip elements without ID
+                    if (el.type === 'checkbox') {
+                        formData[el.id] = el.checked;
+                    } else if (el.type === 'radio') {
+                        if (el.checked) formData[el.name] = el.value;
+                    } else {
+                        formData[el.id] = el.value;
+                    }
+                });
+                localStorage.setItem(`${APP_CONFIG.LOCALSTORAGE_FORM_PREFIX}${formElementId}`, JSON.stringify(formData));
+            },
+
+            loadFormState: (formElementId) => {
+                if (!formElementId) return;
+                const form = document.getElementById(formElementId);
+                if (!form) return;
+
+                const savedState = localStorage.getItem(`${APP_CONFIG.LOCALSTORAGE_FORM_PREFIX}${formElementId}`);
+                if (savedState) {
+                    const formData = JSON.parse(savedState);
+                    Object.keys(formData).forEach(elementIdOrName => {
+                        const el = form.querySelector(`#${elementIdOrName}`) || form.querySelector(`[name="${elementIdOrName}"][value="${formData[elementIdOrName]}"]`);
+                        if (el) {
+                            if (el.type === 'checkbox') {
+                                el.checked = formData[elementIdOrName];
+                            } else if (el.type === 'radio') {
+                                if (el.value === formData[elementIdOrName]) {
+                                   el.checked = true;
+                                }
+                            } else {
+                                el.value = formData[elementIdOrName];
+                                // For select elements that might be dynamically populated (like quantizationBits)
+                                // store the desired value and re-apply after population if needed.
+                                if (el.tagName === 'SELECT') el.dataset.savedValue = formData[elementIdOrName];
+                            }
+                        }
+                    });
+                }
+            },
+
+            attachAutoSaveListeners: (formElementId) => {
+                const form = document.getElementById(formElementId);
+                if (!form) return;
+                form.addEventListener('input', () => LocalStorageManager.saveFormState(formElementId));
+                form.addEventListener('change', () => LocalStorageManager.saveFormState(formElementId)); // For selects, radios, checkboxes
+            }
+        };
+
+        // --- WebSocket Handling ---
+        const WebSocketManager = {
+            init: () => {
+                if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+                    console.log("WebSocket already open.");
+                    return;
+                }
+
+                webSocket = new WebSocket(APP_CONFIG.WS_URL);
+
+                webSocket.onopen = () => {
+                    console.log('WebSocket connection established');
+                    DOM.logOutput.textContent += "Backend connection established.\n";
+                };
+
+                webSocket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        WebSocketManager.updateProgress(data);
+                    } catch (error) {
+                        console.error("Failed to parse WebSocket message:", event.data, error);
+                        DOM.logOutput.textContent += `Error receiving update: ${event.data}\n`;
+                    }
+                };
+
+                webSocket.onerror = (error) => {
+                    console.error('WebSocket Error:', error);
+                    DOM.logOutput.textContent += `WebSocket Error: ${error}. Please check the server.\n`;
+                    UI.showToast('WebSocket connection error. See console/logs.', 'error');
+                    currentTaskActive = false;
+                    UI.hideLoadingOverlay();
+                    UI.showForm(activeFormId); // Show the form that was active before task
+                };
+
+                webSocket.onclose = (event) => {
+                    console.log('WebSocket connection closed:', event.reason, event.code, event.wasClean);
+                    DOM.logOutput.textContent += `Backend connection closed (Code: ${event.code}).\n`;
+                    if (currentTaskActive && !event.wasClean) {
+                        UI.showToast('Connection lost unexpectedly.', 'warning');
+                        UI.showForm(activeFormId); // Revert to form view
+                    }
+                    currentTaskActive = false; // Task is no longer active if WS closes
+                    UI.hideLoadingOverlay(); // Ensure overlay is hidden
+                    webSocket = null;
+                };
+            },
+
+            updateProgress: (data) => {
+                 if (data.error) {
+                     DOM.logOutput.textContent += `\n--- ERROR ---\n${data.error}\n--------------\n`;
+                     DOM.progressBar.style.width = '100%';
+                     DOM.progressBar.classList.remove('bg-blue-600', 'bg-green-600');
+                     DOM.progressBar.classList.add('bg-red-600');
+                     DOM.progressBar.textContent = 'Error';
+                     currentTaskActive = false;
+                     UI.hideLoadingOverlay();
+                     UI.showToast(`Task failed: ${data.error}`, 'error', 6000);
+                     // Don't switch form here, let user see logs, they can switch manually
+                     return;
+                 }
+
+                 if (data.log) {
+                     DOM.logOutput.textContent += data.log + '\n';
+                     DOM.logOutput.scrollTop = DOM.logOutput.scrollHeight; // Auto-scroll
+                 }
+
+                 if (data.progress !== undefined) {
+                     const progress = Math.max(0, Math.min(100, Math.round(data.progress)));
+                     DOM.progressBar.style.width = `${progress}%`;
+                     DOM.progressBar.textContent = `${progress}%`;
+                     DOM.progressBar.classList.remove('bg-red-600');
+                     DOM.progressBar.classList.add('bg-blue-600');
+                 }
+
+                 if (data.status === 'completed') {
+                     DOM.progressBar.style.width = '100%';
+                     DOM.progressBar.textContent = 'Completed';
+                     DOM.progressBar.classList.remove('bg-blue-600');
+                     DOM.progressBar.classList.add('bg-green-600');
+                     DOM.logOutput.textContent += "\n--- TASK COMPLETED ---\n";
+                     currentTaskActive = false;
+                     UI.hideLoadingOverlay();
+                     UI.showToast('Task completed successfully!', 'success');
+                     // webSocket?.close(1000, "Task completed"); // Optionally close WS
+                 }
+            }
+        };
+
+        // --- API Client ---
+        const API = {
+            submitTask: async (endpoint, formData, originatingFormWrapperId, need_overlay) => {
+                if (currentTaskActive) {
+                    UI.showToast("Another task is already running. Please wait.", 'warning');
+                    return;
+                }
+                if(need_overlay){ // Conditionally show overlay
+                    UI.showLoadingOverlay();
+                }
+                currentTaskActive = true;
+                UI.resetProgress();
+                UI.showForm(null); // Switch to progress view
+
+                DOM.logOutput.textContent = `Starting task: ${endpoint}...\n`;
+                WebSocketManager.init(); // Ensure WebSocket is ready
+
+                try {
+                    const response = await fetch(`${APP_CONFIG.API_BASE_URL}${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(formData),
+                    });
+
+                    const result = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
+                    }
+
+                    DOM.logOutput.textContent += `Task initiated: ${result.message}\nWaiting for progress updates...\n`;
+                    // Loading overlay hidden by WebSocket 'completed' or 'error'
+                } catch (error) {
+                    console.error(`Error starting task ${endpoint}:`, error);
+                    DOM.logOutput.textContent += `\n--- ERROR STARTING TASK ---\n${error.message}\n--------------\n`;
+                    UI.showToast(`Failed to start task: ${error.message}`, 'error', 6000);
+                    currentTaskActive = false;
+                    UI.hideLoadingOverlay(); // Always hide if initial POST fails
+                    UI.showForm(originatingFormWrapperId); // Show the original form again on initial failure
+                }
+            },
+
+            queryModel: async (formData) => {
+                 if (currentTaskActive) {
+                    UI.showToast("Cannot run test while another background task is active.", 'warning');
+                    return;
+                 }
+                 UI.showLoadingOverlay();
+                 DOM.testResponseTextarea.value = 'Generating...';
+
+                 try {
+                    const response = await fetch(`${APP_CONFIG.API_BASE_URL}/query/`, {
+                         method: 'POST',
+                         headers: { 'Content-Type': 'application/json' },
+                         body: JSON.stringify(formData),
+                     });
+                     const result = await response.json();
+
+                     if (!response.ok) {
+                        throw new Error(result.detail || `HTTP error! Status: ${response.status}`);
+                     }
+                     DOM.testResponseTextarea.value = result.output_text || 'No response generated.';
+                     UI.showToast('Query successful!', 'success');
+
+                 } catch (error) {
+                     console.error('Error during query:', error);
+                     DOM.testResponseTextarea.value = `Error: ${error.message}`;
+                     UI.showToast(`Query failed: ${error.message}`, 'error', 6000);
+                 } finally {
+                    UI.hideLoadingOverlay();
+                 }
+            }
+        };
+
+        // --- Form Handlers ---
+        const FormHandlers = {
+            init: () => {
+                document.getElementById(ACTUAL_FORM_IDS.downloadForm)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const data = {
+                        model_name: document.getElementById('downloadModelName').value,
+                        target_dir: document.getElementById('downloadTargetDir').value || null,
+                    };
+                    API.submitTask('/download_model/', data, 'downloadForm', true);
+                });
+
+                document.getElementById(ACTUAL_FORM_IDS.preprocessForm)?.addEventListener('submit', (e) => {
+                     e.preventDefault();
+                     const data = {
+                        dataset_source: document.querySelector('input[name="preprocessDatasetSource"]:checked').value,
+                        dataset_name: document.getElementById('preprocessDatasetInName').value,
+                        output_dataset_path: document.getElementById('preprocessDatasetOutName').value,
+                        dataset_format: DOM.preprocessDatasetFormat.value,
+                        custom_format: document.getElementById('preprocessCustomFormat').value,
+                        base_model_name: document.getElementById('preprocessBaseModelName').value || null,
+                     };
+                     API.submitTask('/preprocess/', data, 'preprocessForm', true);
+                 });
+
+                document.getElementById(ACTUAL_FORM_IDS.fuseDSForm)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const data = {
+                        dataset1_source: document.getElementById('fuseDs1Source').value,
+                        dataset1_path: document.getElementById('fuseDs1Path').value,
+                        dataset2_source: document.getElementById('fuseDs2Source').value,
+                        dataset2_path: document.getElementById('fuseDs2Path').value,
+                        output_dataset_path: document.getElementById('fuseDsOutputPath').value,
+                    };
+                    API.submitTask('/fuse_datasets/', data, 'fuseDSForm', true);
+                });
+
+                document.getElementById(ACTUAL_FORM_IDS.trainForm)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const gpuIdsRaw = document.getElementById('gpuIds').value.trim();
+                    const data = {
+                        model_name: document.getElementById('modelName').value,
+                        dataset_source: document.getElementById('datasetSource').value,
+                        dataset_name: document.getElementById('datasetName').value,
+                        output_model_path: document.getElementById('outputModelPath').value,
+                        learning_rate: parseFloat(document.getElementById('learningRate').value),
+                        num_train_epochs: parseInt(document.getElementById('numEpochs').value),
+                        per_device_train_batch_size: parseInt(document.getElementById('batchSize').value),
+                        gradient_accumulation_steps: parseInt(document.getElementById('gradAccumSteps').value),
+                        max_grad_norm: parseFloat(document.getElementById('maxGradNorm').value),
+                        weight_decay: parseFloat(document.getElementById('weightDecay').value),
+                        lora_alpha: parseInt(document.getElementById('loraAlpha').value),
+                        lora_dropout: parseFloat(document.getElementById('loraDropout').value),
+                        lora_r: parseInt(document.getElementById('loraR').value),
+                        max_seq_length: parseInt(document.getElementById('maxSeqLength').value),
+                        ...(gpuIdsRaw && { gpu_ids: gpuIdsRaw }),
+                        fp16: document.getElementById('fp16').checked,
+                        training_method: document.getElementById('trainingMethod').value,
+                    };
+                    API.submitTask('/train/', data, 'trainForm', false);
+                });
+
+                document.getElementById(ACTUAL_FORM_IDS.fuseForm)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const data = {
+                        base_model_path: document.getElementById('baseModelPathFuse').value,
+                        lora_model_path: document.getElementById('loraModelPathFuse').value,
+                        output_path: document.getElementById('fusedOutputPath').value
+                    };
+                    API.submitTask('/fuse/', data, 'fuseForm', true);
+                });
+
+                document.getElementById(ACTUAL_FORM_IDS.testingForm)?.addEventListener('submit', (e) => {
+                     e.preventDefault();
+                     const data = {
+                         model_path: document.getElementById('modelPathTest').value,
+                         input_text: document.getElementById('testQuery').value,
+                         max_new_tokens: parseInt(document.getElementById('testMaxNewTokens').value),
+                         temperature: parseFloat(document.getElementById('testTemperature').value),
+                         top_p: parseFloat(document.getElementById('testTopP').value),
+                     };
+                     API.queryModel(data);
+                 });
+
+                document.getElementById(ACTUAL_FORM_IDS.quantizeForm)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const data = {
+                        model_path: document.getElementById('modelPathQuantize').value,
+                        output_path: document.getElementById('quantizedOutputPath').value,
+                        quantization_tool: DOM.quantizationTool.value,
+                        quantization_method: DOM.quantizationBits.value,
+                    };
+                    API.submitTask('/quantize/', data, 'quantizeForm', true);
+                });
+
+                document.getElementById(ACTUAL_FORM_IDS.pushToHFFormDiv)?.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                     const data = {
+                         local_model_path: document.getElementById('modelPathPush').value,
+                         hf_repo_name: document.getElementById('hfRepoName').value,
+                         hf_username: document.getElementById('hfUsername').value || null,
+                         hf_token: document.getElementById('hfToken').value,
+                         commit_message: document.getElementById('commitMessage').value,
+                         private_repo: document.getElementById('createPrivateRepo').checked,
+                     };
+                     API.submitTask('/push_to_hf/', data, 'pushToHFFormDiv', true);
+                 });
+
+                // Listeners for dynamic UI updates based on selections
+                DOM.preprocessDatasetFormat?.addEventListener('change', UI.togglePreprocessCustomFormat);
+                DOM.quantizationTool?.addEventListener('change', UI.updateQuantizationBits);
+            }
+        };
+
+        // --- Navigation ---
+        const Navigation = {
+            init: () => {
+                DOM.tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        if (currentTaskActive) {
+                            UI.showToast("Cannot switch view while a task is running.", 'warning');
+                            return;
+                        }
+                        const formIdToShow = BUTTON_FORM_MAP[button.id];
+                        UI.showForm(formIdToShow);
+                    });
+                });
+            }
+        };
+
+        // --- Help Popup Logic (as provided) ---
+        const helpContent = {
+            default: "Detailed information about this field or section.",
+            modelName: "Enter the full Hugging Face model identifier, e.g., 'meta-llama/Llama-2-7b-chat-hf'. This model will be downloaded or used as a base for fine-tuning.",
+            outputModelPath: "Specify the local directory path where the fine-tuned model (or LoRA adapter) will be saved, e.g., './models/my_finetuned_model'.",
+            preprocessBaseModelName: "Provide the Hugging Face model name (e.g., 'meta-llama/Llama-2-7b-chat-hf') or a local path to a model directory. This model's tokenizer will be used to apply its specific chat template to your dataset if you select a format like Q&A, Instruction, or Lollms. This is crucial for instruction/chat-finetuned models to ensure correct formatting for training.",
+            // ... Add more specific help content for other fields as needed
+        };
         function addHelpButtons() {
             document.querySelectorAll('label[for]').forEach(label => {
-                const forAttribute = label.getAttribute('for');
-                if (helpContent[forAttribute]) {
+                const forAttr = label.getAttribute('for');
+                const inputElement = document.getElementById(forAttr);
+                if (inputElement && !label.querySelector('.help-button')) { // Avoid adding multiple buttons
                     const helpButton = document.createElement('button');
+                    helpButton.type = 'button'; // Important for forms
                     helpButton.className = 'help-button';
-                    helpButton.innerHTML = '?';
-                    helpButton.onclick = (e) => {
-                        e.preventDefault();
-                        showHelpPopup(forAttribute);
-                    };
+                    helpButton.textContent = '?';
+                    helpButton.setAttribute('aria-label', 'Help');
+                    helpButton.onclick = () => showHelpPopup(forAttr);
                     label.appendChild(helpButton);
                 }
             });
-            const train_title = document.getElementById("trainTitle")
-            const helpButton = document.createElement('button');
-            helpButton.className = 'help-button';
-            helpButton.innerHTML = '?';
-            helpButton.onclick = (e) => {
-                e.preventDefault();
-                showHelpPopup("trainForm");
-            };
-            train_title.appendChild(helpButton);
-
         }
-
-        // Function to show help popup
         function showHelpPopup(fieldId) {
-            const helpData = helpContent[fieldId];
-            if (helpData) {
-                document.getElementById('helpTitle').textContent = helpData.title;
-                document.getElementById('helpContent').innerHTML = helpData.content.replace(/\n/g, '<br>');
-                document.getElementById('helpPopup').style.display = 'block';
-            }
+            const label = document.querySelector(`label[for="${fieldId}"]`);
+            DOM.helpPopupTitle.textContent = label ? label.innerText.replace('?', '').trim() : 'Help';
+            DOM.helpPopupBody.innerHTML = `<p>${helpContent[fieldId] || helpContent.default}</p>`;
+            DOM.helpPopup.classList.add('active');
         }
-
-        // Function to close help popup
         function closeHelpPopup() {
-            document.getElementById('helpPopup').style.display = 'none';
+            DOM.helpPopup.classList.remove('active');
         }
+        // Close help popup if clicked outside content or Esc key
+        DOM.helpPopup.addEventListener('click', function(e) { if (e.target === this) closeHelpPopup(); });
+        document.addEventListener('keydown', (e) => { if (e.key === "Escape" && DOM.helpPopup.classList.contains('active')) closeHelpPopup(); });
 
-        // Close popup when clicking outside
-        document.getElementById('helpPopup').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeHelpPopup();
-            }
-        });
-
-        // Initialize help buttons when the document is loaded
-        document.addEventListener('DOMContentLoaded', function() {
-            addHelpButtons();
-            const forms = ['downloadModelForm', 'preprocessForm', 'fusedbs-Form', 'finetuneForm', 'fusionForm', 'testingForm', 'quantizationForm', 'push2HFForm'];
-            
-            // Load saved states
-            forms.forEach(formId => loadFormState(formId));
-            
-            // Save states on input change
-            forms.forEach(formId => {
-                const form = document.getElementById(formId);
-                if (form) {
-                    ['input', 'change'].forEach(eventType => {
-                        form.addEventListener(eventType, () => saveFormState(formId));
-                    });
-                }
-            });            
-        });
-
-
-        // Define the available options for each quantization tool
-        const quantizationOptions = {
-            bitsandbytes: [
-                { value: 'q8_0', text: 'q8_0' },
-                { value: 'q4_0', text: 'q4_0' }
-            ],
-            gguf: [
-                { value: 'fast_quantized', text: 'fast_quantized' },
-                { value: 'quantized', text: 'quantized' },
-                { value: 'f32', text: 'f32' },
-                { value: 'f16', text: 'f16' },
-                { value: 'q8_0', text: 'q8_0' },
-                { value: 'q4_k_m', text: 'q4_k_m' },
-                { value: 'q5_k_m', text: 'q5_k_m' },
-                { value: 'q2_k', text: 'q2_k' },
-                { value: 'q3_k_l', text: 'q3_k_l' },
-                { value: 'q3_k_m', text: 'q3_k_m' },
-                { value: 'q3_k_s', text: 'q3_k_s' },
-                { value: 'q4_0', text: 'q4_0' },
-                { value: 'q4_1', text: 'q4_1' },
-                { value: 'q4_k_s', text: 'q4_k_s' },
-                { value: 'q4_k', text: 'q4_k' },
-                { value: 'q5_k', text: 'q5_k' },
-                { value: 'q5_0', text: 'q5_0' },
-                { value: 'q5_1', text: 'q5_1' },
-                { value: 'q5_k_s', text: 'q5_k_s' },
-                { value: 'q6_k', text: 'q6_k' },
-                { value: 'iq2_xxs', text: 'iq2_xxs' },
-                { value: 'iq2_xs', text: 'iq2_xs' },
-                { value: 'iq3_xxs', text: 'iq3_xxs' },
-                { value: 'q3_k_xs', text: 'q3_k_xs' }
-            ]
-        };
-
-        // Function to populate the quantization bits dropdown based on the selected tool
-        function updateQuantizationBits() {
-            const quantizationTool = document.getElementById('quantizationTool').value;
-            const quantizationBits = document.getElementById('quantizationBits');
-
-            // Clear existing options
-            quantizationBits.innerHTML = '';
-
-            // Get the relevant options for the selected tool
-            const options = quantizationOptions[quantizationTool];
-
-            // Populate the dropdown with the new options
-            options.forEach(option => {
-                const opt = document.createElement('option');
-                opt.value = option.value;
-                opt.textContent = option.text;
-                quantizationBits.appendChild(opt);
-            });
-        }
-
-        // Add event listener to the quantization tool dropdown
-        document.getElementById('quantizationTool').addEventListener('change', updateQuantizationBits);
-
-        // Initialize the quantization bits dropdown on page load
-        updateQuantizationBits();
-
-
-        const downloadForm = document.getElementById('downloadForm');
-        const preprocessForm = document.getElementById('preprocessForm');
-        const fusedbsForm = document.getElementById('fusedbs-Form');
-        const trainForm = document.getElementById('trainForm');
-        const fuseForm = document.getElementById('fuseForm');
-        const testForm = document.getElementById('testForm');
-        const quantizeForm = document.getElementById('quantizeForm');
-        const progressContainer = document.getElementById('progressContainer');
-        const progressBar = document.getElementById('progressBar');
-        const logOutput = document.getElementById('logOutput');
-
-        const downloadBtn = document.getElementById('downloadBtn');
-        const preprocessBtn = document.getElementById('preprocessBtn');
-        const fuseDSBtn = document.getElementById('fuseDSBtn');
-        const trainBtn = document.getElementById('trainBtn');
-        const testBtn = document.getElementById('testBtn');
-        const fuseBtn = document.getElementById('fuseBtn');
-        const quantizeBtn = document.getElementById('quantizeBtn');
-        const pushToHFBtn = document.getElementById('pushToHFBtn');
-        
-
-        let socket;
-
-        function toggleCustomFormat() {
-            var formatSelect = document.getElementById('dataset-format');
-            var customFormatGroup = document.getElementById('custom-format-group');
-            
-            if (formatSelect.value === 'custom') {
-                customFormatGroup.style.display = 'block';
-            } else {
-                customFormatGroup.style.display = 'none';
-            }
-        }
-
-        function togglepreprocessCustomFormat() {
-            var formatSelect = document.getElementById('preprocess-dataset-format');
-            var customFormatGroup = document.getElementById('preprocess-custom-format-group');
-            
-            if (formatSelect.value === 'custom') {
-                customFormatGroup.style.display = 'block';
-            } else {
-                customFormatGroup.style.display = 'none';
-            }
-        }
-
-        
-
-        downloadBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'block';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'none';
-        });
-
-        preprocessBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'block';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'none';
-        });
-
-        fuseDSBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'block';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'none';
-        });
-
-        trainBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'block';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'none';
-        });
-        
-
-        fuseBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'block';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'none';
-        });
-
-        
-        testBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'block';
-            quantizeForm.style.display = 'none';
-        });
-
-        quantizeBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'block';
-        });
-
-        pushToHFBtn.addEventListener('click', () => {
-            downloadForm.style.display = 'none';
-            preprocessForm.style.display = 'none';
-            fusedbsForm.style.display = 'none';
-            trainForm.style.display = 'none';
-            fuseForm.style.display = 'none';
-            testForm.style.display = 'none';
-            quantizeForm.style.display = 'block';
-
-        });
-        
-
-        // Form submission logic for downloading the model
-        document.getElementById('downloadModelForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            const modelName = document.getElementById('downloadModelName').value;
-            const targetDir = document.getElementById('downloadTargetDir').value;
-
-            try {
-                const response = await fetch('http://localhost:8000/download_model/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        model_name: modelName,
-                        target_dir: targetDir,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.message);
-                } else {
-                    alert(`Error: ${result.detail}`);
-                }
-            } catch (error) {
-                console.error('Error downloading model:', error);
-                alert('An error occurred while downloading the model.');
-            }
-        });
-
-        // Preprocess a dataset
-        document.getElementById('preprocessForm').addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            try {
-                showLoadingOverlay();
-                const response = await fetch('http://localhost:8000/preprocess/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        dataset_source: document.querySelector('input[name="preprocess-datasetSource"]:checked').value,
-                        dataset_name: document.getElementById('preprocess-datasetInName').value,
-                        output_dataset_path: document.getElementById('preprocess-datasetOutName').value,
-                        dataset_format: document.getElementById('preprocess-dataset-format').value,
-                        custom_format: document.getElementById('preprocess-custom-format').value,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.message);
-                } else {
-                    alert(`Error: ${result.detail}`);
-                }
-            } catch (error) {
-                console.error('Error downloading model:', error);
-                alert('An error occurred while downloading the model.');
-            }
-            hideLoadingOverlay()
-        });
-
-        // Fuse datasets
-        fusedbsForm.addEventListener('submit', async function(event) {
-            event.preventDefault();
-
-            try {
-                showLoadingOverlay();
-                const dataset1_source= document.querySelector('input[name="fusedbs-dataset1Source"]:checked')
-                const dataset1_path= document.getElementById('fusedbs-dataset1Name')
-                const dataset2_source= document.querySelector('input[name="fusedbs-dataset1Source"]:checked')
-                const dataset2_path= document.getElementById('fusedbs-dataset2Name')
-                const output_dataset_path= document.getElementById('fusedbs-datasetOutName')
-                const response = await fetch('http://localhost:8000/fuse_datasets/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        dataset1_source: dataset1_source.value,
-                        dataset1_path: dataset1_path.value,
-                        dataset2_source: dataset2_source.value,
-                        dataset2_path: dataset2_path.value,
-                        output_dataset_path: output_dataset_path.value,
-                    }),
-                });
-
-                const result = await response.json();
-
-                if (response.ok) {
-                    alert(result.message);
-                } else {
-                    alert(`Error: ${result.detail}`);
-                }
-            } catch (error) {
-                console.error('Error downloading model:', error);
-                alert('An error occurred while downloading the model.');
-            }
-            hideLoadingOverlay();
-        });
-        
-
-        document.getElementById('finetuneForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoadingOverlay();
-            const jsonData = {
-                model_name: document.getElementById('modelName').value,
-                dataset_source: document.querySelector('input[name="datasetSource"]:checked').value,
-                dataset_name: document.getElementById('datasetName').value,
-                dataset_format: document.getElementById('dataset-format').value,
-                custom_format: document.getElementById('custom-format').value,
-                output_model_path: document.getElementById('outputModelPath').value,
-                learning_rate: parseFloat(document.getElementById('learningRate').value),
-                num_train_epochs: parseInt(document.getElementById('numEpochs').value),
-                per_device_train_batch_size: parseInt(document.getElementById('batchSize').value),
-                gradient_accumulation_steps: parseInt(document.getElementById('gradAccumSteps').value),
-                max_grad_norm: parseFloat(document.getElementById('maxGradNorm').value),
-                weight_decay: parseFloat(document.getElementById('weightDecay').value),
-                lora_alpha: parseInt(document.getElementById('loraAlpha').value),
-                lora_dropout: parseFloat(document.getElementById('loraDropout').value),
-                lora_r: parseInt(document.getElementById('loraR').value),
-                max_seq_length: parseInt(document.getElementById('maxSeqLength').value),
-                gpu_ids: document.getElementById('gpuIds').value.trim() !== '' ? document.getElementById('gpuIds').value.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)): undefined,
-                max_memory_per_gpu: document.getElementById('maxMemoryPerGpu').value.trim() !== '' 
-                ? document.getElementById('maxMemoryPerGpu').value.split(',').reduce((obj, val, index) => {
-                    const trimmedVal = val.trim();
-                    if (trimmedVal !== '') {
-                        obj[index] = trimmedVal;
-                    }
-                    return obj;
-                }, {})
-                : undefined,
-                max_cpu_memory: document.getElementById('maxCpuMemory').value.trim() !== '' 
-                ? document.getElementById('maxCpuMemory').value.trim()
-                : undefined,
-                fp16: document.getElementById('fp16').checked,
-                training_method: str = document.getElementById("training_method").value,
-                do_validation: document.getElementById("do_validation").checked,  
-                export_best_model_only:  document.getElementById("export_best_model_only").checked  
-            };
-
-            try {
-                const response = await fetch('http://localhost:8000/train', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(jsonData),
-                });
-                
-                if (response.ok) {
-                    progressContainer.classList.remove('hidden');
-                    trainForm.style.display = 'none';
-                    initWebSocket();
-                } else {
-                    throw new Error('Training initialization failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while starting the training process.');
-            }
-            hideLoadingOverlay();
-        });
-
-        document.getElementById('fusionForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoadingOverlay();
-            const jsonData = {
-                base_model_path: document.getElementById('baseModelPath').value,
-                lora_model_path: document.getElementById('loraModelPath').value,
-                output_path: document.getElementById('fusedOutputPath').value
-            };
-
-            try {
-                const response = await fetch('http://localhost:8000/fuse', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(jsonData),
-                });
-                
-                if (response.ok) {
-                    progressContainer.classList.remove('hidden');
-                    fuseForm.style.display = 'none';
-                    initWebSocket();
-                } else {
-                    throw new Error('Fusion initialization failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while starting the fusion process.');
-            }
-            hideLoadingOverlay();
-        });
-
-
-        document.getElementById('testingForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoadingOverlay();
-            const jsonData = {
-                input_text: document.getElementById('testQuery').value,
-                model_path: document.getElementById('modelPathTest').value,
-                temperature: 0.1,
-            };
-
-            try {
-                const response = await fetch('http://localhost:8000/query', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(jsonData),
-                });
-                document.getElementById('testResponse').value = response.json().data.output_text
-                progressContainer.classList.remove('hidden');
-                
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while starting the fusion process.');
-            }
-            hideLoadingOverlay();
-        });
-        
-
-        document.getElementById('quantizationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            showLoadingOverlay();
-            const jsonData = {
-                model_path: document.getElementById('modelPathQuantize').value,
-                output_path: document.getElementById('quantizedOutputPath').value,
-                quantization_bits: document.getElementById('quantizationBits').value,
-                quantization_tool: document.getElementById('quantizationTool').value
-            };
-
-            try {
-                const response = await fetch('http://localhost:8000/quantize', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(jsonData),
-                });
-                
-                if (response.ok) {
-                    progressContainer.classList.remove('hidden');
-                    quantizeForm.style.display = 'none';
-                    initWebSocket();
-                } else {
-                    throw new Error('Quantization initialization failed');
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('An error occurred while starting the quantization process.');
-            }
-            hideLoadingOverlay();
-        });
-
-        function initWebSocket() {
-            socket = new WebSocket('ws://localhost:8000/ws');
-            
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                updateProgress(data);
-            };
-            socket.onclose = () => {
-                console.log('WebSocket connection closed');
-            };
-        }
-
-        function updateProgress(data) {
-            if (data.progress !== undefined) {
-                progressBar.style.width = `${data.progress}%`;
-            }
-            if (data.log) {
-                logOutput.textContent += data.log + '\n';
-                logOutput.scrollTop = logOutput.scrollHeight;
-            }
-        }
-
-        const translations = {
-            en: {
+        // --- Localization ---
+        const TRANSLATIONS = {
+             en: {
                 name: "English",
-                translations: {
-                    "title": "LLM Finetuning App",
-                    "trainButton": "Train",
-                    "fuseButton": "Fuse",
-                    "quantizeButton": "Quantize",
-                    "trainTitle": "Train",
-                    "fuseTitle": "Fuse",
-                    "quantizeTitle": "Quantize",
-                    "modelNameLabel": "Model Name (Hugging Face path)",
-                    "datasetSourceLabel": "Dataset Source",
-                    "huggingFaceOption": "Hugging Face",
-                    "localOption": "Local",
-                    "datasetNameLabel": "Dataset Name/Path",
-                    "datasetFormatLabel": "Dataset Format",
-                    "singleTextOption": "Single Text",
-                    "instructionInputOutputOption": "Instruction-Input-Output",
-                    "questionAnswerOption": "Question-Answer",
-                    "customOption": "Custom",
-                    "customFormatLabel": "Custom Format",
-                    "outputModelPathLabel": "Output Model Path",
-                    "learningRateLabel": "Learning Rate",
-                    "numEpochsLabel": "Number of Epochs",
-                    "batchSizeLabel": "Batch Size",
-                    "gradAccumStepsLabel": "Gradient Accumulation Steps",
-                    "maxGradNormLabel": "Max Gradient Norm",
-                    "weightDecayLabel": "Weight Decay",
-                    "loraAlphaLabel": "LoRA Alpha",
-                    "loraDropoutLabel": "LoRA Dropout",
-                    "loraRLabel": "LoRA R",
+                translations: { /* All data-translate keys. Keep existing from prompt and add new ones. */
+                    "title": "LLM Finetuning App", "loadingText": "Processing...",
+                    "downloadButton": "Download Model", "preprocessButton": "Preprocess Dataset", "fuseDatasetsButton": "Fuse Datasets",
+                    "trainButton": "Train", "fuseButton": "Fuse LoRA", "testButton": "Test Model",
+                    "quantizeButton": "Quantize", "pushToHFButton": "Push to HF",
+                    "downloadTitle": "Download Model", "downloadModelNameLabel": "Model Name (Hugging Face path)",
+                    "downloadTargetDirLabel": "Target Directory (Optional)", "startDownloadButton": "Download",
+                    "preprocessTitle": "Preprocess Dataset", "preprocessDatasetSourceLabel": "Dataset Source",
+                    "huggingFaceOption": "Hugging Face", "localOption": "Local",
+                    "preprocessDatasetInNameLabel": "Input Dataset Name/Path", "preprocessDatasetOutNameLabel": "Output Dataset Path",
+                    "preprocessBaseModelNameLabel": "Base Model Name/Path (for Chat Templating)",
+                    "preprocessBaseModelNameHelp": "Optional. Provide if your dataset format (Q&A, Instruction, Lollms) needs specific chat templating based on this model. Can be HF path or local directory.",
+                    "preprocessDatasetFormatLabel": "Input Dataset Format", "singleTextOption": "Single Text Field ('text')",
+                    "instructionInputOutputOption": "Instruction-Input-Output", "questionAnswerOption": "Question-Answer",
+                    "lollmsOption": "Lollms Discussion", "lollmsSmartRouterOption": "Lollms Smart Router", "customOption": "Custom",
+                    "customFormatLabel": "Custom Format String", "startPreprocessButton": "Preprocess",
+                    "fuseDatasetsTitle": "Fuse Datasets", "fuseDs1SourceLabel": "Source", "fuseDs1PathLabel": "Name/Path",
+                    "fuseDs2SourceLabel": "Source", "fuseDs2PathLabel": "Name/Path", "fuseDsOutputPathLabel": "Output Dataset Path",
+                    "startFuseDatasetsButton": "Fuse Datasets",
+                    "trainTitle": "Train Model", "modelDatasetConfig": "Model & Dataset", "trainingHyperparams": "Training Hyperparameters", "loraParams": "LoRA Parameters", "hardwareOtherSettings": "Hardware & Other Settings",
+                    "modelNameLabel": "Base Model Name/Path", "outputModelPathLabel": "Output Adapter/Model Path",
+                    "datasetSourceLabel": "Dataset Source", "datasetNameLabel": "Dataset Name/Path",
+                    "learningRateLabel": "Learning Rate", "numEpochsLabel": "Epochs", "batchSizeLabel": "Batch Size",
+                    "gradAccumStepsLabel": "Grad Accum", "maxGradNormLabel": "Max Grad Norm", "weightDecayLabel": "Weight Decay",
+                    "maxSeqLengthLabel": "Max Seq Len", "loraRLabel": "LoRA R", "loraAlphaLabel": "LoRA Alpha", "loraDropoutLabel": "LoRA Dropout",
+                    "gpuIdsLabel": "GPU IDs", "trainingMethodLabel": "Training Method", "fp16Label": "Enable FP16",
                     "startTrainingButton": "Start Training",
-                    "baseModelPathLabel": "Base Model Path",
-                    "loraModelPathLabel": "LoRA Model Path",
-                    "fusedOutputPathLabel": "Fused Output Path",
-                    "startFusionButton": "Start Fusion",
-                    "modelPathQuantizeLabel": "Model Path",
-                    "quantizedOutputPathLabel": "Quantized Output Path",
-                    "quantizationBitsLabel": "Quantization Bits",
-                    "startQuantizationButton": "Start Quantization",
-                    "progressTitle": "Progress"
+                    "fuseTitle": "Fuse LoRA Adapter", "baseModelPathLabel": "Base Model Path", "loraModelPathLabel": "LoRA Adapter Path",
+                    "fusedOutputPathLabel": "Fused Output Path", "startFusionButton": "Start Fusion",
+                    "testTitle": "Test Model", "modelPathTestLabel": "Model Path", "testQueryLabel": "Input Prompt",
+                    "maxNewTokens": "Max New Tokens", "temperature": "Temperature", "topP": "Top-P",
+                    "queryButton": "Generate", "testResponseLabel": "Generated Response",
+                    "quantizeTitle": "Quantize Model", "modelPathQuantizeLabel": "Input Model Path", "quantizedOutputPathLabel": "Quantized Output Path",
+                    "quantizationToolLabel": "Quantization Tool", "quantizationBitsLabel": "Method/Bits", "startQuantizationButton": "Quantize",
+                    "pushToHFTitle": "Push to Hugging Face Hub", "modelPathPushLabel": "Local Model Path", "hfRepoNameLabel": "Target HF Repo Name",
+                    "hfUsernameLabel": "HF Username (Optional)", "hfTokenLabel": "HF Token (Write Role)",
+                    "commitMessageLabel": "Commit Message", "createPrivateRepoLabel": "Create as Private Repo", "startPushButton": "Push to Hub",
+                    "progressTitle": "Task Progress"
                 }
-            },
-            fr: {
-                name: "Français",
-                translations: {
-                    "title": "Application de Fine-tuning LLM",
-                    "trainButton": "Entraîner",
-                    "fuseButton": "Fusionner",
-                    "quantizeButton": "Quantifier",
-                    "trainTitle": "Entraînement",
-                    "fuseTitle": "Fusion",
-                    "quantizeTitle": "Quantification",
-                    "modelNameLabel": "Nom du modèle (chemin Hugging Face)",
-                    "datasetSourceLabel": "Source du jeu de données",
-                    "huggingFaceOption": "Hugging Face",
-                    "localOption": "Local",
-                    "datasetNameLabel": "Nom/Chemin du jeu de données",
-                    "datasetFormatLabel": "Format du jeu de données",
-                    "singleTextOption": "Texte simple",
-                    "instructionInputOutputOption": "Instruction-Entrée-Sortie",
-                    "questionAnswerOption": "Question-Réponse",
-                    "customOption": "Personnalisé",
-                    "customFormatLabel": "Format personnalisé",
-                    "outputModelPathLabel": "Chemin du modèle de sortie",
-                    "learningRateLabel": "Taux d'apprentissage",
-                    "numEpochsLabel": "Nombre d'époques",
-                    "batchSizeLabel": "Taille du lot",
-                    "gradAccumStepsLabel": "Étapes d'accumulation du gradient",
-                    "maxGradNormLabel": "Norme de gradient maximale",
-                    "weightDecayLabel": "Décroissance des poids",
-                    "loraAlphaLabel": "LoRA Alpha",
-                    "loraDropoutLabel": "LoRA Dropout",
-                    "loraRLabel": "LoRA R",
-                    "startTrainingButton": "Commencer l'entraînement",
-                    "baseModelPathLabel": "Chemin du modèle de base",
-                    "loraModelPathLabel": "Chemin du modèle LoRA",
-                    "fusedOutputPathLabel": "Chemin de sortie fusionné",
-                    "startFusionButton": "Commencer la fusion",
-                    "modelPathQuantizeLabel": "Chemin du modèle",
-                    "quantizedOutputPathLabel": "Chemin de sortie quantifié",
-                    "quantizationBitsLabel": "Bits de quantification",
-                    "startQuantizationButton": "Commencer la quantification",
-                    "progressTitle": "Progression"
-                }
-            }
-        };
+             },
+             fr: { name: "Français", translations: { /* Add French translations */ } }
+         };
 
-        const languageSelector = document.createElement('select');
-        languageSelector.id = 'languageSelector';
-        languageSelector.className = 'absolute top-4 right-4 bg-white border border-gray-300 text-gray-700 py-2 px-4 rounded leading-tight focus:outline-none focus:bg-white focus:border-gray-500';
-        document.body.appendChild(languageSelector);
+        function setupLocalization() {
+            localizer = new WebAppLocalizer(TRANSLATIONS, 'llm_finetuning_app_', DOM.languageSelector);
+            localizer.apply();
+        }
 
-        const localizer = new WebAppLocalizer(translations, 'llm_finetuning_app_', languageSelector);
-        localizer.apply();
+        // --- Initialization ---
+        document.addEventListener('DOMContentLoaded', () => {
+            setupLocalization();
+            addHelpButtons();
 
-
-
-
-        // Save form values to localStorage
-        function saveFormState(formId) {
-            const form = document.getElementById(formId);
-            if (!form) return;
-
-            const formData = {};
-            form.querySelectorAll('input, select, textarea').forEach(element => {
-                const value = element.type === 'checkbox' ? element.checked : element.value;
-                formData[element.id] = value;
+            // Load state and attach auto-save for all actual forms
+            Object.values(ACTUAL_FORM_IDS).forEach(formId => {
+                LocalStorageManager.loadFormState(formId);
+                LocalStorageManager.attachAutoSaveListeners(formId);
             });
-            localStorage.setItem(formId, JSON.stringify(formData));
-        }
 
-        // Load form values from localStorage
-        function loadFormState(formId) {
-            const form = document.getElementById(formId);
-            if (!form) return;
+            // Initial UI setup
+            UI.updateQuantizationBits(); // Populate quantization bits based on loaded or default tool
+            UI.togglePreprocessCustomFormat(); // Set custom format visibility based on loaded or default format
 
-            const savedData = localStorage.getItem(formId);
-            if (savedData) {
-                const formData = JSON.parse(savedData);
-                Object.entries(formData).forEach(([id, value]) => {
-                    const element = document.getElementById(id);
-                    if (element) {
-                        if (element.type === 'checkbox') {
-                            element.checked = value;
-                        } else {
-                            element.value = value;
-                        }
-                    }
-                });
-            }
-        }
+            Navigation.init();
+            FormHandlers.init();
 
+            // Show the first form by default (or a persisted one if desired, but downloadForm is simple)
+            const initialFormId = 'downloadForm';
+            UI.showForm(initialFormId);
+            activeFormId = initialFormId;
+        });
 
     </script>
 </body>
