@@ -3,64 +3,256 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PNG to ICO Converter</title>
+    <title>Enhanced PNG to ICO Converter</title>
     <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
     <style>
-        body { background-color: #f9fafb; }
+        body { background-color: #f3f4f6; /* Lighter gray */ }
+        .drop-zone {
+            border: 2px dashed #cbd5e1; /* Tailwind gray-300 */
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .drop-zone.drag-over {
+            background-color: #e0f2fe; /* Tailwind sky-100 */
+            border-color: #0284c7; /* Tailwind sky-600 */
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #fff;
+            animation: spin 1s ease infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen">
-    <div class="bg-white shadow-md rounded-lg p-8 max-w-md w-full">
-        <h1 class="text-2xl font-bold text-center mb-6">PNG to ICO Converter</h1>
-        <input type="file" id="fileInput" accept=".png" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-4">
-        <button id="convertBtn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-            </svg>
-            Convert to ICO
+<body class="flex flex-col items-center justify-center min-h-screen p-4">
+    <div class="bg-white shadow-xl rounded-lg p-6 md:p-8 max-w-lg w-full">
+        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">PNG to ICO Converter</h1>
+
+        <div id="dropZone" class="drop-zone p-6 mb-4 rounded-lg text-center cursor-pointer">
+            <p class="text-gray-600">Drag & Drop a PNG file here, or</p>
+            <label for="fileInput" class="mt-2 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition cursor-pointer">
+                Select File
+            </label>
+            <input type="file" id="fileInput" accept=".png" class="hidden">
+            <p id="fileNameDisplay" class="text-sm text-gray-500 mt-2"></p>
+        </div>
+
+        <div class="mb-4">
+            <label for="icoSize" class="block text-sm font-medium text-gray-700 mb-1">Select ICO Size:</label>
+            <select id="icoSize" class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                <option value="16">16x16 pixels</option>
+                <option value="24">24x24 pixels</option>
+                <option value="32" selected>32x32 pixels</option>
+                <option value="48">48x48 pixels</option>
+                <option value="64">64x64 pixels</option>
+                <option value="128">128x128 pixels</option>
+                <option value="256">256x256 pixels</option>
+            </select>
+        </div>
+
+        <button id="convertBtn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
+            <span id="buttonText">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m-15.357-2a8.001 8.001 0 0015.357 2M9 15h4.581" />
+                </svg>
+                Convert to ICO
+            </span>
+            <div id="spinner" class="spinner hidden"></div>
         </button>
-        <div id="output" class="mt-4 text-center"></div>
-        <div id="imageCard" class="mt-4 hidden">
-            <img id="convertedImage" class="w-full max-w-xs mx-auto" alt="Converted Image" />
+
+        <button id="clearBtn" class="mt-3 flex items-center justify-center w-full bg-gray-500 text-white font-semibold py-2.5 rounded-lg hover:bg-gray-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+            Clear
+        </button>
+
+        <div id="messageArea" class="mt-4 text-center text-sm"></div>
+
+        <div id="imageCard" class="mt-4 hidden bg-gray-50 p-4 rounded-lg border border-gray-200">
+            <h3 class="text-md font-semibold text-gray-700 mb-2 text-center">Image Preview (Resized)</h3>
+            <img id="convertedImage" class="w-auto max-w-xs mx-auto border border-gray-300 rounded" alt="Converted Image Preview" />
+            <div id="output" class="mt-3 text-center"></div>
         </div>
     </div>
-    <footer class="mt-6 text-center text-gray-600">
+
+    <footer class="mt-8 text-center text-gray-600 text-sm">
         Built on <a href="https://lollms.com" class="text-blue-600 hover:underline">Lollms</a> by <a href="https://github.com/parisneo" class="text-blue-600 hover:underline">ParisNeo</a>
     </footer>
+
     <script>
-        document.getElementById('convertBtn').onclick = function() {
-            const fileInput = document.getElementById('fileInput');
-            if (fileInput.files.length === 0) {
-                alert('Please select a PNG file.');
+        const fileInput = document.getElementById('fileInput');
+        const convertBtn = document.getElementById('convertBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const outputDiv = document.getElementById('output');
+        const messageArea = document.getElementById('messageArea');
+        const imageCard = document.getElementById('imageCard');
+        const convertedImage = document.getElementById('convertedImage');
+        const icoSizeSelect = document.getElementById('icoSize');
+        const dropZone = document.getElementById('dropZone');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const spinner = document.getElementById('spinner');
+        const buttonText = document.getElementById('buttonText');
+
+        let currentFile = null;
+
+        function displayMessage(message, type = 'info') {
+            messageArea.textContent = message;
+            messageArea.className = 'mt-4 text-center text-sm ';
+            if (type === 'error') {
+                messageArea.classList.add('text-red-600');
+            } else if (type === 'success') {
+                messageArea.classList.add('text-green-600');
+            } else {
+                messageArea.classList.add('text-gray-600');
+            }
+        }
+
+        function resetUI() {
+            fileInput.value = ''; // Clear file input
+            currentFile = null;
+            outputDiv.innerHTML = '';
+            imageCard.classList.add('hidden');
+            convertedImage.src = '';
+            displayMessage('');
+            fileNameDisplay.textContent = '';
+            convertBtn.disabled = false;
+            spinner.classList.add('hidden');
+            buttonText.classList.remove('hidden');
+        }
+
+        function handleFileSelect(file) {
+            if (file && file.type === 'image/png') {
+                currentFile = file;
+                fileNameDisplay.textContent = `Selected: ${file.name}`;
+                displayMessage('File selected. Ready to convert.', 'success');
+                
+                // Show a preview of the original image before conversion (optional)
+                // or wait for conversion to show resized preview
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    // You could show original here if needed, but we'll show resized later
+                }
+                reader.readAsDataURL(file);
+
+            } else {
+                currentFile = null;
+                fileNameDisplay.textContent = '';
+                displayMessage('Please select a valid PNG file.', 'error');
+            }
+        }
+
+        fileInput.onchange = function() {
+            handleFileSelect(this.files[0]);
+        };
+
+        clearBtn.onclick = resetUI;
+
+        // Drag and Drop
+        dropZone.onclick = () => fileInput.click(); // Make the whole zone clickable
+
+        dropZone.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        dropZone.addEventListener('drop', (event) => {
+            event.preventDefault();
+            dropZone.classList.remove('drag-over');
+            if (event.dataTransfer.files.length) {
+                handleFileSelect(event.dataTransfer.files[0]);
+            }
+        });
+
+        convertBtn.onclick = function() {
+            if (!currentFile) {
+                displayMessage('Please select a PNG file first.', 'error');
                 return;
             }
-            const file = fileInput.files[0];
+
+            convertBtn.disabled = true;
+            spinner.classList.remove('hidden');
+            buttonText.classList.add('hidden');
+            displayMessage('Converting...', 'info');
+            outputDiv.innerHTML = ''; // Clear previous download link
+            imageCard.classList.add('hidden');
+
+
+            const selectedSize = parseInt(icoSizeSelect.value);
+
             const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    canvas.width = selectedSize;
+                    canvas.height = selectedSize;
                     const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0);
+
+                    // Draw image maintaining aspect ratio (letterbox/pillarbox if necessary)
+                    // For a square ICO, it's often best to fill it, but this provides an alternative
+                    // For simplicity, we'll just stretch/squash for now.
+                    // For better quality, you might implement aspect ratio preservation here.
+                    ctx.drawImage(img, 0, 0, selectedSize, selectedSize);
+
+                    // Display the resized image as a preview
+                    convertedImage.src = canvas.toDataURL('image/png'); // Show a PNG preview of the resized image
+                    convertedImage.style.width = `${Math.min(selectedSize, 128)}px`; // Limit preview display size
+                    convertedImage.style.height = `${Math.min(selectedSize, 128)}px`;
+                    imageCard.classList.remove('hidden');
+
                     canvas.toBlob(function(blob) {
+                        if (!blob) {
+                            displayMessage('Error creating ICO blob. The browser might not support this size or format well.', 'error');
+                            resetConversionState();
+                            return;
+                        }
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        a.download = 'converted.ico';
-                        a.textContent = 'Download ICO';
-                        a.className = 'text-blue-600 hover:underline';
-                        document.getElementById('output').innerHTML = '';
-                        document.getElementById('output').appendChild(a);
-                    }, 'image/x-icon');
-                    document.getElementById('convertedImage').src = event.target.result;
-                    document.getElementById('imageCard').classList.remove('hidden');
+                        const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.'));
+                        a.download = `${baseName || 'converted'}.ico`;
+                        a.textContent = `Download ${a.download}`;
+                        a.className = 'text-blue-600 hover:underline font-semibold';
+                        
+                        outputDiv.innerHTML = ''; // Clear any old link
+                        outputDiv.appendChild(a);
+                        displayMessage('Conversion successful!', 'success');
+                        resetConversionState();
+
+                    }, 'image/x-icon', 1.0); // Quality argument, 1.0 is max for some types
+
                 };
+                img.onerror = function() {
+                    displayMessage('Could not load image. The file might be corrupted or not a valid PNG.', 'error');
+                    resetConversionState();
+                }
                 img.src = event.target.result;
             };
-            reader.readAsDataURL(file);
+            reader.onerror = function() {
+                displayMessage('Error reading file.', 'error');
+                resetConversionState();
+            }
+            reader.readAsDataURL(currentFile);
         };
+
+        function resetConversionState() {
+            convertBtn.disabled = false;
+            spinner.classList.add('hidden');
+            buttonText.classList.remove('hidden');
+        }
+
+        // Initialize
+        resetUI();
     </script>
 </body>
 </html>
