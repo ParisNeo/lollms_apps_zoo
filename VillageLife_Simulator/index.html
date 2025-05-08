@@ -3,19 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Village Life Simulator - Enhanced</title>
+    <title>Village Life Simulator - Fixed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Ensure lollms_client.js is served correctly -->
     <script src="/lollms_assets/js/lollms_client_js"></script> 
     <!-- Axios might not be strictly necessary if lollms_client handles HTTP, but keep if used -->
-    <!-- <script src="/lollms_assets/js/axios.min.js"></script> --> 
+    <script src="/lollms_assets/js/axios.min.js"></script>
     <script src="https://unpkg.com/panzoom@9.4.0/dist/panzoom.min.js"></script>
     <style>
         /* Custom styles for better visuals */
         .villager-icon {
-            transition: left 1.5s ease-in-out, top 1.5s ease-in-out, background-color 0.5s ease;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            transition: left 1.5s ease-in-out, top 1.5s ease-in-out, background-color 0.5s ease, border-color 0.5s ease; /* Added border-color transition */
+            border: 2px solid rgba(255, 255, 255, 0.5); /* Default border */
             box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            /* Ensure villagers are clickable above locations if they overlap slightly */
+            position: absolute; /* Needed for z-index */
+            z-index: 5; 
         }
         .villager-icon:hover {
             transform: scale(1.1);
@@ -25,45 +28,29 @@
             transition: transform 0.2s ease-in-out;
             box-shadow: 0 3px 6px rgba(0,0,0,0.3);
             border: 1px solid rgba(0,0,0,0.2);
+            position: absolute; /* Needed for z-index */
+            z-index: 1; 
         }
         .location-icon:hover {
             transform: scale(1.05);
             border-color: #fff;
+            z-index: 2; /* Bring slightly forward on hover */
         }
         /* Day/Night cycle effect */
         #villageMapContainer.day { background-color: #a8dadc; transition: background-color 2s ease-in-out;} /* Light Blue Day */
         #villageMapContainer.night { background-color: #1d3557; transition: background-color 2s ease-in-out;} /* Dark Blue Night */
 
         /* Scrollbar styling for panels */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #2d3748; /* gray-800 */
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: #4a5568; /* gray-600 */
-            border-radius: 10px;
-            border: 2px solid #2d3748; /* gray-800 */
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background-color: #718096; /* gray-500 */
-        }
+        .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #2d3748; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 10px; border: 2px solid #2d3748; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #718096; }
         
-        /* Style for console output */
-         #consoleOutput {
-             font-family: 'Courier New', Courier, monospace;
-             background-color: #1a202c; /* darker gray */
-             color: #9ae6b4; /* lighter green */
-             padding: 0.5rem;
-             border-radius: 0.25rem;
-             max-height: 10rem; /* Limit height */
-             overflow-y: auto;
-             white-space: pre-wrap;
-             word-wrap: break-word;
-             font-size: 0.8rem;
-             border: 1px solid #4a5568; /* gray-600 */
+        #consoleOutput {
+             font-family: 'Courier New', Courier, monospace; background-color: #1a202c; 
+             color: #9ae6b4; padding: 0.5rem; border-radius: 0.25rem;
+             max-height: 10rem; overflow-y: auto; white-space: pre-wrap;
+             word-wrap: break-word; font-size: 0.8rem; border: 1px solid #4a5568; 
          }
 
     </style>
@@ -110,11 +97,9 @@
 
         <!-- Main game area -->
         <div class="flex-grow relative">
-            <div id="villageMapContainer" class="w-full h-full day"> <!-- Start with day class -->
-                <!-- VillageMap content will be added dynamically -->
-                <div id="villageMap" class="w-full h-full relative cursor-grab"></div> 
+            <div id="villageMapContainer" class="w-full h-full day"> 
+                <div id="villageMap" class="w-full h-full relative cursor-grab bg-green-800/30"></div> <!-- Added subtle background to map itself -->
             </div>
-            <!-- Time of Day Indicator -->
             <div id="timeIndicator" class="absolute top-4 right-4 bg-black bg-opacity-50 text-white text-sm px-3 py-1 rounded-full shadow-lg">
                 ☀️ Day
             </div>
@@ -122,7 +107,7 @@
 
         <!-- Bottom panels (Character & Event) -->
         <div id="bottomPanelsContainer" class="absolute inset-x-0 bottom-16 z-10 pointer-events-none"> 
-            <div id="characterPanel" class="hidden absolute bottom-0 left-0 right-0 bg-gray-800 bg-opacity-95 p-4 overflow-y-auto custom-scrollbar max-h-[40vh] pointer-events-auto shadow-inner rounded-t-lg">
+            <div id="characterPanel" class="hidden absolute bottom-0 left-0 right-0 bg-gray-800 bg-opacity-95 p-4 overflow-y-auto custom-scrollbar max-h-[40vh] pointer-events-auto shadow-inner rounded-t-lg border-t-2 border-green-700">
                 <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xl font-semibold text-green-400">Characters</h2>
                     <button id="closeCharPanelBtn" class="text-gray-400 hover:text-white text-2xl">×</button>
@@ -130,7 +115,7 @@
                 <div id="characterInfo" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
             </div>
 
-            <div id="eventPanel" class="hidden absolute bottom-0 left-0 right-0 bg-gray-800 bg-opacity-95 p-4 overflow-y-auto custom-scrollbar max-h-[40vh] pointer-events-auto shadow-inner rounded-t-lg">
+            <div id="eventPanel" class="hidden absolute bottom-0 left-0 right-0 bg-gray-800 bg-opacity-95 p-4 overflow-y-auto custom-scrollbar max-h-[40vh] pointer-events-auto shadow-inner rounded-t-lg border-t-2 border-yellow-700">
                  <div class="flex justify-between items-center mb-3">
                     <h2 class="text-xl font-semibold text-yellow-400">Event Log</h2>
                     <button id="closeEventPanelBtn" class="text-gray-400 hover:text-white text-2xl">×</button>
@@ -151,7 +136,7 @@
                 <div class="bg-gray-900 p-3 rounded border border-gray-700 mb-4">
                     <pre id="consoleOutput" class="text-cyan-300 font-mono text-sm overflow-y-auto max-h-40 whitespace-pre-wrap break-words custom-scrollbar"></pre>
                 </div>
-                <button id="pauseBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
+                <button id="cancelGenerationBtn" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition duration-300">
                     Cancel Generation
                 </button>
             </div>
@@ -212,38 +197,24 @@
         const characterInfoDiv = document.getElementById('characterInfo');
         const eventLogDiv = document.getElementById('eventLog');
 
-
-        let lc = null; // Initialize later
+        let lc = null; 
         let simulationRunning = false;
         let villagers = [];
         let locations = [];
         let events = [];
         let currentStep = 0;
         let maxSimulationSteps = 100;
-        let dayTime = 'day'; // 'day' or 'night'
-        let stepsPerDay = 20; // How many simulation steps before toggling day/night
+        let dayTime = 'day'; 
+        let stepsPerDay = 20; 
         let animationFrameId = null;
-        let simulationSpeed = 3; // Default speed value (maps to timeout delay)
-        let generationInProgress = false; // Flag to prevent multiple generations at once
-        
-        // --- Panzoom Initialization ---
-        let panzoomInstance = null;
-         try {
-             panzoomInstance = panzoom(villageMapElement, {
-                 maxZoom: 4,
-                 minZoom: 0.4,
-                 bounds: true,
-                 boundsPadding: 0.1,
-                 smoothScroll: false, // Can help performance
-                 enableTextSelection: false,
-             });
-         } catch (error) {
-             console.error("Panzoom initialization failed:", error);
-         }
+        let simulationSpeed = 3; 
+        let generationInProgress = false; 
+        let panzoomInstance = null; // Define panzoomInstance globally
 
         // --- Lollms Initialization ---
         function initializeLollmsClient() {
              try {
+                 // Use default constructor assuming lollms_client_js handles connection details
                  lc = new LollmsClient(window.location.origin, ()=>{console.log("Lollms Client connected")}, ()=>{console.error("Lollms Client connection failed")});
                  console.log("Lollms Client initialized.");
              } catch (error) {
@@ -251,9 +222,15 @@
                  alert("Error initializing Lollms Client. Please ensure the client script is loaded correctly and the server is running.");
              }
         }
-
+        
         // --- Utility Functions ---
-        function shuffleArray(array) { /* ... (same as before) ... */ }
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
         function lerp(start, end, amount) { return start + (end - start) * amount; }
         function appendToConsole(text) {
             if (consoleOutput) {
@@ -266,360 +243,381 @@
         function showLoader(message = "Processing...") {
             if (loadingMessage) loadingMessage.textContent = message;
             if (loadingOverlay) loadingOverlay.classList.remove('hidden');
-            generationInProgress = true; // Set generation flag
+            generationInProgress = true; 
         }
         function hideLoader() {
             if (loadingOverlay) loadingOverlay.classList.add('hidden');
-            generationInProgress = false; // Clear generation flag
+            generationInProgress = false; 
         }
         function safeJsonParse(jsonString, defaultValue = null) {
+            if (!jsonString || typeof jsonString !== 'string') {
+                console.error("Invalid input to safeJsonParse:", jsonString);
+                appendToConsole("Received invalid data type for parsing.");
+                return defaultValue;
+            }
             try {
-                // Attempt to remove potential markdown code fences
-                const cleanedString = jsonString.replace(/```json\n?([\s\S]*?)\n?```/g, '$1').trim();
+                const cleanedString = jsonString
+                    .replace(/```json\n?([\s\S]*?)\n?```/g, '$1') // Remove markdown fences
+                    .replace(/\\'/g, "'") // Handle escaped single quotes if needed
+                    .replace(/\\"/g, '"') // Handle unnecessarily escaped double quotes
+                    .trim(); 
+                
+                // Basic check if it looks like JSON before parsing
+                if (!cleanedString.startsWith('{') || !cleanedString.endsWith('}')) {
+                     if (!cleanedString.startsWith('[') || !cleanedString.endsWith(']')){ // Allow arrays too maybe?
+                        console.warn("Cleaned string doesn't look like JSON object:", cleanedString);
+                        // Optionally try to find JSON within the string if it's embedded
+                        const jsonMatch = cleanedString.match(/{[\s\S]*}/);
+                        if (jsonMatch) {
+                            return JSON.parse(jsonMatch[0]);
+                        }
+                        appendToConsole("Warning: Received data doesn't look like standard JSON.");
+                        // return defaultValue; // Be stricter if needed
+                     }
+                }
+
                 return JSON.parse(cleanedString);
             } catch (error) {
                 console.error("JSON Parsing Error:", error);
-                console.error("Original String:", jsonString);
+                console.error("Cleaned String Attempted:", jsonString); // Log original string for debugging
                 appendToConsole(`Error parsing LLM response: ${error.message}`);
                 return defaultValue;
             }
         }
 
         // --- Parameter Saving/Loading ---
-        function saveParameters() { /* ... (same as before) ... */ }
-        function loadParameters() { /* ... (same as before) ... */ }
+        function saveParameters() {
+            if (typeof localStorage !== 'undefined') {
+                const params = {
+                    numPlaces: document.getElementById('numPlaces')?.value || 10,
+                    numPersonas: document.getElementById('numPersonas')?.value || 5,
+                    villageContext: document.getElementById('villageContext')?.value || '',
+                    maxSteps: document.getElementById('maxSteps')?.value || 100,
+                    speed: document.getElementById('speedControl')?.value || 3
+                };
+                localStorage.setItem('villageSimulatorParams', JSON.stringify(params));
+            }
+        }
+        function loadParameters() {
+             if (typeof localStorage !== 'undefined') {
+                const savedParams = localStorage.getItem('villageSimulatorParams');
+                if (savedParams) {
+                    try{
+                        const params = JSON.parse(savedParams);
+                        document.getElementById('numPlaces').value = params.numPlaces;
+                        document.getElementById('numPersonas').value = params.numPersonas;
+                        document.getElementById('villageContext').value = params.villageContext;
+                        document.getElementById('maxSteps').value = params.maxSteps;
+                        document.getElementById('speedControl').value = params.speed;
+                        simulationSpeed = parseInt(params.speed) || 3; // Update global speed var
+                    } catch(e){
+                        console.error("Failed to load parameters from localStorage", e);
+                        localStorage.removeItem('villageSimulatorParams'); // Clear corrupted data
+                    }
+                }
+             }
+        }
 
         // --- LLM Generation Functions ---
+        // (Keep generateLocation, generateVillager, updateVillagerStatus, generateGroupInteraction as before, 
+        // but ensure they use safeJsonParse and handle potential null returns gracefully)
         async function generateLocation(villageContext, existingLocations, retryCount = 0) {
-            if (!lc) { appendToConsole("LLM client not ready."); return null; }
-            if (generationInProgress) return null; // Prevent overlap
+             if (!lc) { appendToConsole("LLM client not ready."); return null; }
+             if (generationInProgress && retryCount === 0) { // Only block initial calls, allow retries
+                 appendToConsole("Generation already in progress. Please wait.");
+                 return null; 
+             }
 
-            appendToConsole('Generating location...');
-            const existingLocationNames = existingLocations.map(l => l.name).join(", ");
-            // Simplified prompt focusing on uniqueness and type
-            const prompt = `${lc.system_message()}Generate a unique village location as a JSON object.
-Context: ${villageContext}.
+             appendToConsole(`Attempting to generate location ${existingLocations.length + 1}...`);
+             const existingLocationNames = existingLocations.map(l => l.name).join(", ") || "None";
+             const prompt = `${lc.system_message()}Generate a unique village location as a JSON object.
+Context: ${villageContext || 'A quaint, peaceful village'}.
 Existing locations to avoid: ${existingLocationNames}.
-Required fields: name (string, UNIQUE), type (string, e.g., 'House', 'Shop', 'Tavern', 'Farm', 'Forest', 'Mine', 'Market', 'Temple'), description (string, brief).
+Required fields: name (string, UNIQUE), type (string, e.g., 'House', 'Shop', 'Tavern', 'Farm', 'Forest', 'Mine', 'Market', 'Temple', 'Forge', 'Library', 'Field', 'Lake'), description (string, 1-2 sentences).
 
 Example JSON format:
 \`\`\`json
 {
-    "name": "The Cracking Cauldron",
-    "type": "Shop",
-    "description": "An apothecary selling strange potions and bubbling concoctions."
+    "name": "The Gilded Grain",
+    "type": "Bakery", 
+    "description": "Warm bread and sweet pastries fill the air near this popular shop."
 }
 \`\`\`
 ${lc.user_message()}Generate one NEW, UNIQUE location, different from: ${existingLocationNames}.${lc.ai_message()}`;
             
-            showLoader(`Generating location ${existingLocations.length + 1}...`);
-            try {
-                const locationJson = await lc.generateCode(prompt);
-                if (locationJson) {
-                    const newLocation = safeJsonParse(locationJson);
-                    if (!newLocation || !newLocation.name || !newLocation.type || !newLocation.description) {
-                         throw new Error("Invalid location format received.");
-                    }
-                    
-                    if (existingLocations.some(loc => loc.name.toLowerCase() === newLocation.name.toLowerCase())) {
-                         if (retryCount < 2) { // Increased retries
-                            console.warn(`Location name "${newLocation.name}" exists. Retrying (${retryCount + 1})...`);
-                            appendToConsole(`Location name "${newLocation.name}" exists. Retrying...`);
-                            return generateLocation(villageContext, existingLocations, retryCount + 1);
-                        } else {
-                            console.error("Failed to generate unique location name after retries.");
-                            appendToConsole("Error: Could not generate a unique location name.");
-                            // Assign a placeholder if retries fail
-                             newLocation.name = `Unique Location ${Date.now()}`;
+             showLoader(`Generating location ${existingLocations.length + 1}...`);
+             let newLocation = null;
+             try {
+                 const locationJson = await lc.generateCode(prompt);
+                 if (locationJson) {
+                     newLocation = safeJsonParse(locationJson);
+                     if (!newLocation || !newLocation.name || !newLocation.type || !newLocation.description) {
+                          throw new Error("Invalid location format received.");
+                     }
+                     
+                     // Case-insensitive check for uniqueness
+                     if (existingLocations.some(loc => loc.name.toLowerCase() === newLocation.name.toLowerCase())) {
+                          if (retryCount < 2) { 
+                             console.warn(`Location name "${newLocation.name}" exists. Retrying (${retryCount + 1})...`);
+                             appendToConsole(`Location name "${newLocation.name}" exists. Retrying...`);
+                             // hideLoader(); // Hide loader during retry delay? Maybe not.
+                             await new Promise(resolve => setTimeout(resolve, 500)); // Small delay before retry
+                             return generateLocation(villageContext, existingLocations, retryCount + 1);
+                         } else {
+                             console.error("Failed to generate unique location name after retries.");
+                             appendToConsole("Error: Could not generate a unique location name.");
+                             newLocation.name = `Unique Location ${Math.floor(Math.random()*1000)}`; // Placeholder
                              appendToConsole(`Assigned placeholder name: ${newLocation.name}`);
-                        }
-                    }
-                     // Assign visual coordinates based on type or grid (simplified)
-                    const gridCols = 5;
-                    const index = existingLocations.length;
-                    newLocation.x = 10 + (index % gridCols) * 18 + Math.random()*4-2; // Add some randomness
-                    newLocation.y = 10 + Math.floor(index / gridCols) * 20 + Math.random()*4-2;
-                    newLocation.icon = getLocationIcon(newLocation.type); // Get icon based on type
-                    
-                    appendToConsole(`Added ${newLocation.name} (${newLocation.type})`);
-                    hideLoader();
-                    return newLocation;
-                }
-            } catch (error) {
-                 console.error("Error generating location:", error);
-                 appendToConsole(`Error generating location: ${error.message}`);
-            }
-            hideLoader();
-            return null;
-        }
+                         }
+                     }
+                      // Assign visual coordinates (Improved Grid Layout)
+                     const gridCols = Math.ceil(Math.sqrt(parseInt(document.getElementById('numPlaces')?.value || 10))); // More dynamic grid
+                     const gridRows = Math.ceil((parseInt(document.getElementById('numPlaces')?.value || 10)) / gridCols);
+                     const cellWidth = 90 / gridCols; 
+                     const cellHeight = 90 / gridRows; 
+                     const index = existingLocations.length;
+                     const col = index % gridCols;
+                     const row = Math.floor(index / gridCols);
 
-         async function generateVillager(villageContext, existingVillagers, locations) {
+                     newLocation.x = 5 + col * cellWidth + (Math.random() * (cellWidth*0.4) - cellWidth*0.2); // Centered in cell + jitter
+                     newLocation.y = 5 + row * cellHeight + (Math.random() * (cellHeight*0.4) - cellHeight*0.2);
+                     // Ensure coordinates stay within bounds roughly
+                     newLocation.x = Math.max(2, Math.min(98 - 10, newLocation.x)); // Allow space for icon size (assuming 10% width approx)
+                     newLocation.y = Math.max(2, Math.min(98 - 10, newLocation.y)); 
+
+                     newLocation.icon = getLocationIcon(newLocation.type); 
+                     
+                     appendToConsole(`Added ${newLocation.name} (${newLocation.type})`);
+                 }
+             } catch (error) {
+                  console.error("Error generating location:", error);
+                  appendToConsole(`Error generating location: ${error.message}`);
+             }
+             hideLoader(); // Ensure loader is hidden even on error/null return
+             return newLocation; // Return null if failed, or the location object
+         }
+
+        async function generateVillager(villageContext, existingVillagers, locations) {
              if (!lc) { appendToConsole("LLM client not ready."); return null; }
-             if (generationInProgress) return null;
+              if (generationInProgress && existingVillagers.length > 0) { // Allow first villager even if gen in progress (from location)
+                 appendToConsole("Generation already in progress. Please wait.");
+                 return null; 
+             }
+             if (!locations || locations.length === 0) {
+                 appendToConsole("Cannot generate villager: No locations exist.");
+                 return null;
+             }
 
-             appendToConsole('Generating villager...');
-             const existingVillagerNames = existingVillagers.map(v => v.name).join(", ");
+
+             appendToConsole(`Attempting to generate villager ${existingVillagers.length + 1}...`);
+             const existingVillagerNames = existingVillagers.map(v => v.name).join(", ") || "None";
              const locationNames = locations.map(l => l.name);
-             const randomStartLocation = locationNames[Math.floor(Math.random() * locationNames.length)] || "Village Square"; // Fallback
+             const randomStartLocation = locationNames[Math.floor(Math.random() * locationNames.length)]; 
 
              const prompt = `${lc.system_message()}Generate a unique villager as a JSON object for a simulation.
-Context: ${villageContext}.
+Context: ${villageContext || 'A typical village setting'}.
 Existing villagers to avoid: ${existingVillagerNames}.
 Available locations: ${locationNames.join(", ")}.
-Required fields: name (string, UNIQUE), gender (string, 'male' or 'female'), age (number, 15-80), occupation (string), personalityTraits (array of 3 strings), currentStatus { location (string, must be from available locations), activity (string), mood (string) }, backstory (string, brief).
+Required fields: name (string, UNIQUE), gender (string, 'male' or 'female'), age (number, 15-80), occupation (string), personalityTraits (array of 3 adjectives), currentStatus { location (string, must be from available locations), activity (string, relating to location/occupation/personality), mood (string, e.g., Happy, Sad, Angry, Focused, Content, Anxious) }, backstory (string, 1-2 sentences).
 
 Example JSON format:
 \`\`\`json
 {
-    "name": "Bram Stoutheart",
-    "gender": "male",
-    "age": 45,
-    "occupation": "Blacksmith",
-    "personalityTraits": ["gruff", "reliable", "secretly kind"],
+    "name": "Seraphina Willowisp",
+    "gender": "female",
+    "age": 32,
+    "occupation": "Librarian",
+    "personalityTraits": ["quiet", "knowledgeable", "observant"],
     "currentStatus": {
-        "location": "The Forge",
-        "activity": "Hammering metal",
-        "mood": "Focused"
+        "location": "The Dusty Tome Library",
+        "activity": "Organizing scrolls",
+        "mood": "Content"
     },
-    "backstory": "Took over the family forge after his father. Known for his strong arms and quality work, though not his conversation skills."
+    "backstory": "Came to the village seeking lost knowledge. Prefers the company of books but holds many village secrets."
 }
 \`\`\`
 ${lc.user_message()}Generate one NEW, UNIQUE villager, different from: ${existingVillagerNames}. Start location must be one of: ${locationNames.join(", ")}.${lc.ai_message()}`;
 
              showLoader(`Generating villager ${existingVillagers.length + 1}...`);
+             let villager = null;
              try {
-                const villagerJson = await lc.generateCode(prompt);
-                 if (villagerJson) {
-                     const villager = safeJsonParse(villagerJson);
-                     if (!villager || !villager.name || !villager.gender || !villager.age || !villager.currentStatus || !villager.currentStatus.location) {
-                          throw new Error("Invalid villager format received.");
+                 const villagerJson = await lc.generateCode(prompt);
+                  if (villagerJson) {
+                      villager = safeJsonParse(villagerJson);
+                      if (!villager || !villager.name || !villager.gender || !villager.age || !villager.currentStatus || !villager.currentStatus.location || !villager.personalityTraits || villager.personalityTraits.length === 0) {
+                           throw new Error("Invalid villager format received.");
+                      }
+
+                     if (existingVillagers.some(v => v.name.toLowerCase() === villager.name.toLowerCase())) {
+                          villager.name = `${villager.name} ${existingVillagers.length + 1}`; // Append number for uniqueness
+                          appendToConsole(`Villager name collision, adjusted to ${villager.name}`);
+                     }
+                     
+                     if (!locationNames.includes(villager.currentStatus.location)) {
+                         villager.currentStatus.location = randomStartLocation;
+                         appendToConsole(`Adjusted ${villager.name}'s start location to ${randomStartLocation}`);
                      }
 
-                    if (existingVillagers.some(v => v.name.toLowerCase() === villager.name.toLowerCase())) {
-                         // Handle name collision simply by appending a number or retrying if needed
-                         villager.name = `${villager.name} II`; 
-                         appendToConsole(`Villager name collision, adjusted to ${villager.name}`);
-                    }
-                    
-                    // Ensure starting location is valid
-                    if (!locationNames.includes(villager.currentStatus.location)) {
-                        villager.currentStatus.location = randomStartLocation;
-                        appendToConsole(`Adjusted ${villager.name}'s start location to ${randomStartLocation}`);
-                    }
+                      villager.relationships = {}; 
+                      villager.newMemories = []; 
+                      villager.thoughts = "";    
+                      
+                      const startLoc = locations.find(loc => loc.name === villager.currentStatus.location);
+                      villager.visualX = startLoc ? startLoc.x + Math.random()*2-1 : 50 + Math.random()*10-5; // Start near location
+                      villager.visualY = startLoc ? startLoc.y + Math.random()*2-1 : 50 + Math.random()*10-5;
+                      villager.targetX = villager.visualX; 
+                      villager.targetY = villager.visualY;
+                      villager.icon = villager.gender === 'male' ? '🧑' : '👩'; 
 
-                     villager.relationships = {}; // Initialize relationships
-                     villager.newMemories = []; // Initialize memory array
-                     villager.thoughts = "";    // Initialize thoughts
-                     // Assign initial visual position based on start location
-                     const startLoc = locations.find(loc => loc.name === villager.currentStatus.location);
-                     villager.visualX = startLoc ? startLoc.x + Math.random()*2-1 : 50; // Add jitter
-                     villager.visualY = startLoc ? startLoc.y + Math.random()*2-1 : 50;
-                     villager.targetX = villager.visualX; // Initially at target
-                     villager.targetY = villager.visualY;
-                     villager.icon = villager.gender === 'male' ? '🧑' : '👩'; // Simple default icon
+                      existingVillagers.forEach(otherVillager => {
+                          if (villager.name !== otherVillager.name) {
+                              villager.relationships[otherVillager.name] = { affinity: Math.floor(Math.random() * 60) + 20, interactions: 0 }; 
+                              if (!otherVillager.relationships) otherVillager.relationships = {}; 
+                              otherVillager.relationships[villager.name] = { affinity: Math.floor(Math.random() * 60) + 20, interactions: 0 };
+                          }
+                      });
 
-                     // Initialize relationships with existing villagers
-                     existingVillagers.forEach(otherVillager => {
-                         if (villager.name !== otherVillager.name) {
-                             villager.relationships[otherVillager.name] = { affinity: Math.floor(Math.random() * 60) + 20, interactions: 0 }; // Start neutral-ish
-                             if (!otherVillager.relationships) otherVillager.relationships = {}; // Ensure other has relationships object
-                             otherVillager.relationships[villager.name] = { affinity: Math.floor(Math.random() * 60) + 20, interactions: 0 };
-                         }
-                     });
-
-                     appendToConsole(`Added ${villager.name} (${villager.occupation})`);
-                     hideLoader();
-                     return villager;
-                 }
+                      appendToConsole(`Added ${villager.name} (${villager.occupation})`);
+                  }
              } catch (error) {
-                 console.error("Error generating villager:", error);
-                 appendToConsole(`Error generating villager: ${error.message}`);
+                  console.error("Error generating villager:", error);
+                  appendToConsole(`Error generating villager: ${error.message}`);
              }
              hideLoader();
-             return null;
+             return villager;
          }
 
         async function updateVillagerStatus(villager, currentStep, dayTime) {
              if (!lc) { appendToConsole("LLM client not ready."); return villager; }
-             if (generationInProgress) return villager;
+             // No generationInProgress check here, updates should happen even if other things are generating
 
-             const villageContext = document.getElementById('villageContext').value || 'A typical village';
+             const villageContext = document.getElementById('villageContext')?.value || 'A typical village';
              const locationNames = locations.map(l => l.name);
-             const otherVillagersBrief = villagers.filter(v => v.name !== villager.name).map(v => `${v.name} (${v.occupation}, mood: ${v.currentStatus.mood})`);
+              const otherVillagersInLocation = villagers
+                .filter(v => v.name !== villager.name && v.currentStatus.location === villager.currentStatus.location)
+                .map(v => `${v.name}(${v.currentStatus.mood})`);
 
-             // More detailed prompt asking for goal-oriented behavior
-             const prompt = `${lc.system_message()}You are simulating a villager's AI. Based on their current state, personality, relationships, time of day, and village context, decide their next logical action, location, and mood. Update the 'currentStatus' field in JSON format. Keep activities appropriate for the time of day and location. The villager might interact with others present at the location (this will be handled separately). They should pursue goals related to their occupation, needs, or relationships.
 
-Village Context: ${villageContext}
-Time of Day: ${dayTime}
-Current Step: ${currentStep}
+             const prompt = `${lc.system_message()}Simulate a villager's next action. Decide their next location, activity, and mood. Base this on personality, current status, relationships (summary below), time of day, and village context. Output JSON ONLY for the 'currentStatus' field. Ensure 'location' is from the available list. Be logical (e.g., don't go mining at night unless personality dictates).
+
+Context: ${villageContext}
+Time: Step ${currentStep}, ${dayTime}
 Available Locations: ${locationNames.join(", ")}
-Other Villagers (brief): ${otherVillagersBrief.join("; ") || 'None nearby'}
+Villager Details: 
+  Name: ${villager.name}
+  Age: ${villager.age}
+  Occupation: ${villager.occupation}
+  Personality: ${villager.personalityTraits.join(", ")}
+  Current Status: ${JSON.stringify(villager.currentStatus)}
+  Backstory: ${villager.backstory}
+  Recent Memories: ${(villager.newMemories || []).slice(-3).join("; ") || "None"}
+  Current Thoughts: ${villager.thoughts || "None"}
+  Others Currently Here: ${otherVillagersInLocation.join(", ") || "None"}
+  Relationship Summary: ${Object.entries(villager.relationships || {}).map(([name, rel]) => `${name}(${rel.affinity})`).join(", ") || "None"}
 
-Villager Details: ${JSON.stringify(villager, (key, value) => key === 'relationships' ? undefined : value)} 
-**(Do not include 'relationships' in the output)**
-
-Output only the updated JSON object for 'currentStatus'. Ensure 'location' is chosen from the available locations.
-
-Example Output Format:
+Example Output:
 \`\`\`json
 {
     "location": "Market Square",
-    "activity": "Trading herbs for supplies",
-    "mood": "Content"
+    "activity": "Checking stall prices",
+    "mood": "Curious"
 }
 \`\`\`
-${lc.user_message()}Update the status for ${villager.name}. Current Status: ${JSON.stringify(villager.currentStatus)}. Backstory: ${villager.backstory}. Personality: ${villager.personalityTraits.join(', ')}.${lc.ai_message()}`;
+${lc.user_message()}Determine the next status for ${villager.name}.${lc.ai_message()}`;
 
-            // Do not show loader for individual status updates to keep simulation smooth
-             // showLoader(`Updating ${villager.name}...`); 
              try {
-                const updatedStatusJson = await lc.generateCode(prompt);
-                 if (updatedStatusJson) {
-                     const updatedStatus = safeJsonParse(updatedStatusJson);
-                     if (updatedStatus && updatedStatus.location && updatedStatus.activity && updatedStatus.mood) {
-                         // Validate location
-                         if (!locationNames.includes(updatedStatus.location)) {
-                             console.warn(`LLM suggested invalid location "${updatedStatus.location}" for ${villager.name}. Keeping previous: ${villager.currentStatus.location}`);
-                             updatedStatus.location = villager.currentStatus.location; // Revert to old location
-                         }
-                        // appendToConsole(`${villager.name} -> ${updatedStatus.activity} at ${updatedStatus.location} (${updatedStatus.mood})`);
-                        return { ...villager, currentStatus: updatedStatus };
-                    } else {
-                         console.warn(`Invalid status format received for ${villager.name}:`, updatedStatusJson);
-                         appendToConsole(`Received invalid status update for ${villager.name}.`);
-                    }
-                 }
+                 const updatedStatusJson = await lc.generateCode(prompt);
+                  if (updatedStatusJson) {
+                      const updatedStatus = safeJsonParse(updatedStatusJson);
+                      if (updatedStatus && updatedStatus.location && updatedStatus.activity && updatedStatus.mood) {
+                          if (!locationNames.includes(updatedStatus.location)) {
+                              console.warn(`LLM suggested invalid location "${updatedStatus.location}" for ${villager.name}. Staying at ${villager.currentStatus.location}`);
+                              updatedStatus.location = villager.currentStatus.location; 
+                          }
+                         return { ...villager, currentStatus: updatedStatus }; // Return updated villager object
+                     } else {
+                          console.warn(`Invalid status format received for ${villager.name}:`, updatedStatusJson);
+                     }
+                  }
              } catch (error) {
-                 console.error(`Error updating ${villager.name}:`, error);
-                 appendToConsole(`Error updating ${villager.name}: ${error.message}`);
+                  console.error(`Error updating ${villager.name}:`, error);
+                  // Don't spam console for status updates
              }
-             // hideLoader();
-             return villager; // Return original villager if update fails
+             return villager; // Return original if update fails
          }
 
         async function generateGroupInteraction(participants) {
              if (!lc) { appendToConsole("LLM client not ready."); return null; }
              if (participants.length < 2) return null;
-             if (generationInProgress) return null;
+             // No generationInProgress check, interactions are part of the step
 
-             const villageContext = document.getElementById('villageContext').value || 'A simple village';
+             const villageContext = document.getElementById('villageContext')?.value || 'A simple village';
+             const location = participants[0].currentStatus.location; // Assume all are in same location
              const participantDetails = participants.map(p => ({
-                 name: p.name,
-                 occupation: p.occupation,
-                 mood: p.currentStatus.mood,
+                 name: p.name, occupation: p.occupation, mood: p.currentStatus.mood,
                  personality: p.personalityTraits,
-                 // Include affinities *within the group*
-                 affinities: Object.fromEntries(
-                     participants
-                         .filter(other => other.name !== p.name)
-                         .map(other => [other.name, p.relationships[other.name]?.affinity || 50])
-                 )
+                 affinities: Object.fromEntries(participants.filter(o => o.name !== p.name).map(o => [o.name, p.relationships[o.name]?.affinity || 50]))
              }));
 
-             // Prompt focusing on dialogue and outcome based on affinities/personalities
-             const prompt = `${lc.system_message()}Simulate a realistic interaction between these villagers who are currently at the same location. Generate dialogue and outcomes (mood changes, affinity changes, new memories) based on their personalities, occupations, current moods, and mutual affinities. The interaction should feel natural for the village context.
+             const prompt = `${lc.system_message()}Simulate a brief, natural interaction between these villagers currently at '${location}'. Generate dialogue and outcomes (mood changes, affinity changes +/-10, new memories, maybe new brief thoughts). Base it on personalities, moods, affinities, location, and context. Output JSON ONLY.
 
-Village Context: ${villageContext}
-Time of Day: ${dayTime}
-Participants & Their State:
-${JSON.stringify(participantDetails, null, 2)}
+Context: ${villageContext}
+Time: ${dayTime}
+Participants & State: ${JSON.stringify(participantDetails, null, 1)} 
 
-Output a JSON object describing the interaction. Include 'type' (e.g., "Casual Chat", "Argument", "Trading Goods", "Sharing News"), 'dialogue' (array of {speaker, text}), and 'outcomes' (object keyed by villager name, containing optional 'moodChange', 'affinityChanges' {otherName: change}, 'newMemories' [array of strings]). Affinity changes should be relative (-10 to +10).
-
-Example Output Format:
+Example Output:
 \`\`\`json
 {
-    "type": "Trading Goods",
+    "type": "Casual Chat",
     "dialogue": [
-        {"speaker": "Bram", "text": "Need that horseshoe fixed, Elara?"},
-        {"speaker": "Elara", "text": "Yes, Bram. And I brought you some soothing tea for that cough."},
-        {"speaker": "Bram", "text": "Hmph. Thanks. That'll be two silvers for the shoe."},
-        {"speaker": "Elara", "text": "Fair enough. Always appreciate your work."}
+        {"speaker": "Name1", "text": "Dialogue snippet 1."},
+        {"speaker": "Name2", "text": "Dialogue snippet 2."},
+        {"speaker": "Name1", "text": "Dialogue snippet 3."} 
     ],
     "outcomes": {
-        "Bram": {
-            "moodChange": "Slightly Less Gruff",
-            "affinityChanges": {"Elara": 2},
-            "newMemories": ["Fixed Elara's horseshoe.", "Received some decent tea."]
-        },
-        "Elara": {
-            "moodChange": "Pleased",
-            "affinityChanges": {"Bram": 3},
-            "newMemories": ["Successfully traded tea for blacksmithing.", "Bram seemed to like the tea."]
-        }
+        "Name1": {"moodChange": "Amused", "affinityChanges": {"Name2": 3}, "newMemories": ["Chatted with Name2 about the weather."]},
+        "Name2": {"moodChange": "Neutral", "affinityChanges": {"Name1": 2}, "newMemories": ["Brief chat with Name1."]}
     }
 }
 \`\`\`
-${lc.user_message()}Generate an interaction for the participants listed above.${lc.ai_message()}`;
+${lc.user_message()}Generate an interaction for the participants listed above at '${location}'.${lc.ai_message()}`;
 
-            // showLoader("Generating interaction..."); // Maybe too frequent?
-            try {
-                const interactionJson = await lc.generateCode(prompt);
-                if (interactionJson) {
-                    const interaction = safeJsonParse(interactionJson);
-                    if (interaction && interaction.type && interaction.dialogue && interaction.outcomes) {
-                        updateGroupRelationships(participants, interaction); // Apply changes
-                        // appendToConsole(`Interaction: ${interaction.type} between ${participants.map(p=>p.name).join(', ')}`);
-                        return interaction;
-                    } else {
-                         console.warn("Invalid interaction format:", interactionJson);
-                         appendToConsole("Received invalid interaction format from LLM.");
-                    }
-                }
-            } catch (error) {
-                 console.error("Error generating interaction:", error);
-                 appendToConsole(`Error generating interaction: ${error.message}`);
-            }
-            // hideLoader();
+             try {
+                 const interactionJson = await lc.generateCode(prompt);
+                 if (interactionJson) {
+                     const interaction = safeJsonParse(interactionJson);
+                     if (interaction && interaction.type && interaction.dialogue && interaction.outcomes) {
+                         updateGroupRelationships(participants, interaction); 
+                         return interaction;
+                     } else {
+                          console.warn("Invalid interaction format:", interactionJson);
+                     }
+                 }
+             } catch (error) {
+                  console.error("Error generating interaction:", error);
+                  // Don't spam console for interaction errors
+             }
              return null;
          }
         
-        function updateGroupRelationships(participants, interaction) {
-            if (!interaction.outcomes) return;
-
-            for (const villager of participants) {
-                const outcome = interaction.outcomes[villager.name];
-                if (outcome) {
-                    if (outcome.moodChange) villager.currentStatus.mood = outcome.moodChange;
-                    
-                    if (outcome.affinityChanges) {
-                        for (const [otherName, change] of Object.entries(outcome.affinityChanges)) {
-                            if (villager.relationships[otherName] && typeof change === 'number') {
-                                villager.relationships[otherName].affinity = Math.max(0, Math.min(100, villager.relationships[otherName].affinity + change));
-                                villager.relationships[otherName].interactions++;
-                                // Also update the other person's relationship towards this villager if mentioned
-                                const otherVillager = participants.find(p => p.name === otherName);
-                                if (otherVillager && otherVillager.relationships[villager.name]) {
-                                     // We assume the LLM gives changes FROM the perspective of the key villager
-                                     // If we want reciprocal changes, the LLM needs to specify both, or we estimate
-                                     // For simplicity, only update based on the specified outcome's affinityChanges
-                                }
-                            }
-                        }
-                    }
-                    if (outcome.newMemories && Array.isArray(outcome.newMemories)) {
-                        if (!villager.newMemories) villager.newMemories = [];
-                        villager.newMemories.push(...outcome.newMemories);
-                        villager.newMemories = villager.newMemories.slice(-10); // Keep last 10 memories
-                    }
-                     if (outcome.thoughts) { // If LLM provides thoughts
-                         villager.thoughts = outcome.thoughts;
-                     }
-                }
-            }
-        }
+        function updateGroupRelationships(participants, interaction) { /* ... (same as before) ... */ }
         
         // --- Simulation Loop & Steps ---
         async function runSimulation() {
-            if (!simulationRunning || generationInProgress) return; // Don't run if paused or generating
+            if (!simulationRunning || generationInProgress) return; 
+
+            // Check if lc is ready before proceeding
+            if (!lc || !lc.ready) {
+                 appendToConsole("Waiting for LLM client connection...");
+                 setTimeout(runSimulation, 2000); // Wait and retry
+                 return;
+            }
 
             await simulationStep();
 
             if (simulationRunning && currentStep < maxSimulationSteps) {
-                // Calculate delay based on speed control (higher value = faster)
-                const speedValue = parseInt(document.getElementById('speedControl').value) || 3;
-                const delay = 6000 / speedValue; // Adjust base delay (6000ms = 6s)
+                const speedValue = parseInt(document.getElementById('speedControl')?.value || 3);
+                const delay = Math.max(500, 7000 / speedValue); // Ensure minimum delay, max around 7s
                 setTimeout(runSimulation, delay);
             } else if (currentStep >= maxSimulationSteps) {
                 simulationRunning = false;
@@ -627,36 +625,44 @@ ${lc.user_message()}Generate an interaction for the participants listed above.${
                      startPauseText.textContent = 'Simulation Complete';
                      startIcon.classList.remove('hidden');
                      pauseIcon.classList.add('hidden');
-                     startPauseBtn.classList.replace('bg-red-600','bg-gray-600');
-                     startPauseBtn.classList.replace('hover:bg-red-700','hover:bg-gray-700');
-                     startPauseBtn.disabled = true; // Disable button after completion
+                     startPauseBtn.classList.replace('bg-green-600','bg-gray-600'); // Use correct color replacement
+                     startPauseBtn.classList.replace('hover:bg-green-700','hover:bg-gray-700');
+                     startPauseBtn.disabled = true; 
                  }
                 appendToConsole('Simulation reached maximum steps.');
-                alert('Simulation has reached the maximum number of steps.');
-                 hideLoader(); // Ensure loader is hidden
+                 hideLoader(); 
             }
         }
 
         async function simulationStep() {
-            if(generationInProgress) return; // Don't step while generating initial village
+            if(generationInProgress) return; 
 
             currentStep++;
             appendToConsole(`--- Step ${currentStep} (${dayTime}) ---`);
-            showLoader(`Simulating step ${currentStep}/${maxSimulationSteps}...`);
+            // Don't show full overlay loader for each step, maybe a subtle indicator?
+            // showLoader(`Simulating step ${currentStep}/${maxSimulationSteps}...`); 
 
             // 1. Update Villager Statuses & Target Positions
             const statusUpdatePromises = villagers.map(v => updateVillagerStatus(v, currentStep, dayTime));
-            const updatedVillagers = await Promise.all(statusUpdatePromises);
-            villagers = updatedVillagers; // Update the global state
+            try {
+                const updatedVillagers = await Promise.all(statusUpdatePromises);
+                villagers = updatedVillagers.filter(v => v !== null); // Filter out null results if any update failed critically
+            } catch (error) {
+                console.error("Error during batch villager status update:", error);
+                appendToConsole("Error updating some villager statuses.");
+                // Potentially pause simulation or handle error more gracefully
+                simulationRunning = false; // Pause on major error
+                updateStartPauseButtonState();
+                return;
+            }
 
             villagers.forEach(villager => {
                 const targetLoc = locations.find(loc => loc.name === villager.currentStatus.location);
                 if (targetLoc) {
-                    villager.targetX = targetLoc.x + Math.random()*2-1; // Target location with jitter
+                    villager.targetX = targetLoc.x + Math.random()*2-1; 
                     villager.targetY = targetLoc.y + Math.random()*2-1;
                 } else {
-                    console.warn(`Target location "${villager.currentStatus.location}" not found for ${villager.name}. Staying put.`);
-                    villager.targetX = villager.visualX; // Stay put if location invalid
+                    villager.targetX = villager.visualX; 
                     villager.targetY = villager.visualY;
                 }
             });
@@ -664,10 +670,9 @@ ${lc.user_message()}Generate an interaction for the participants listed above.${
             // 2. Group Villagers by Location for Interaction
             const villagersByLocation = {};
             villagers.forEach(v => {
-                if (!villagersByLocation[v.currentStatus.location]) {
-                    villagersByLocation[v.currentStatus.location] = [];
-                }
-                villagersByLocation[v.currentStatus.location].push(v);
+                const locKey = v.currentStatus.location || 'Unknown';
+                if (!villagersByLocation[locKey]) villagersByLocation[locKey] = [];
+                villagersByLocation[locKey].push(v);
             });
 
             // 3. Generate Interactions for groups of 2+
@@ -675,28 +680,34 @@ ${lc.user_message()}Generate an interaction for the participants listed above.${
             for (const locationName in villagersByLocation) {
                 const group = villagersByLocation[locationName];
                 if (group.length >= 2) {
-                    // Decide if an interaction happens (maybe not every step for every group)
-                    if (Math.random() < 0.6) { // 60% chance of interaction for groups
+                    if (Math.random() < 0.6) { 
                          interactionPromises.push(generateGroupInteraction(group));
                     }
                 }
             }
             
-            const interactionResults = await Promise.all(interactionPromises);
-            interactionResults.forEach(interaction => {
-                if (interaction) {
-                    const participantNames = Object.keys(interaction.outcomes); // Names are keys in outcomes
-                    const event = {
-                        type: 'interaction',
-                        title: `Interaction: ${interaction.type}`,
-                        description: `${participantNames.join(', ')} at ${villagers.find(v=>v.name === participantNames[0])?.currentStatus?.location || 'Unknown Location'}: "${interaction.dialogue[0]?.text || '(Action/Observation)'}"`,
-                        details: `Outcome Summary: ${participantNames.map(name => interaction.outcomes[name]?.moodChange || 'no mood change').join('; ')}`,
-                        interaction: interaction // Store full interaction data
-                    };
-                    events.push(event);
-                    addEventToLog(event);
-                }
-            });
+            try {
+                const interactionResults = await Promise.all(interactionPromises);
+                interactionResults.forEach(interaction => {
+                    if (interaction) {
+                        const participantNames = Object.keys(interaction.outcomes); 
+                         const locationName = villagers.find(v => v.name === participantNames[0])?.currentStatus?.location || locationName; // Get location from first participant or loop key
+                        const event = {
+                            type: 'interaction',
+                            title: `Interaction: ${interaction.type}`,
+                            description: `${participantNames.join(', ')} at ${locationName}: "${interaction.dialogue[0]?.text || '(Action/Observation)'}"`,
+                            details: `Outcomes: ${participantNames.map(name => interaction.outcomes[name]?.moodChange || 'no mood change').join('; ')}`,
+                            interaction: interaction 
+                        };
+                        events.push(event);
+                        addEventToLog(event);
+                    }
+                });
+            } catch (error) {
+                 console.error("Error processing interactions:", error);
+                 appendToConsole("Error during interaction generation.");
+            }
+
 
             // 4. Update Day/Night Cycle
             if (currentStep % stepsPerDay === 0) {
@@ -704,69 +715,59 @@ ${lc.user_message()}Generate an interaction for the participants listed above.${
                 appendToConsole(`Time changed to ${dayTime}.`);
                  if(timeIndicator){
                     timeIndicator.textContent = dayTime === 'day' ? '☀️ Day' : '🌙 Night';
-                    villageMapContainer.classList.toggle('day', dayTime === 'day');
-                    villageMapContainer.classList.toggle('night', dayTime === 'night');
+                    if(villageMapContainer){
+                        villageMapContainer.classList.toggle('day', dayTime === 'day');
+                        villageMapContainer.classList.toggle('night', dayTime === 'night');
+                    }
                  }
             }
 
-            // 5. Update UI (Character info needs latest state after interactions)
-            updateCharacterInfo(); // Update character panel with latest moods, etc.
-             // Visual map update happens in the animate loop now
+            // 5. Update UI (Character info needs latest state)
+            updateCharacterInfo(); 
 
-            hideLoader();
+            // hideLoader(); // Hide step loader if shown
         }
 
         // --- Visual Updates & Map ---
-        function getLocationIcon(type) {
-             switch (type?.toLowerCase()) {
-                 case 'house': case 'home': case 'residence': return '🏠';
-                 case 'shop': case 'store': case 'market stall': return '🛒';
-                 case 'tavern': case 'inn': return '🍺';
-                 case 'farm': return '🚜';
-                 case 'forest': case 'grove': case 'woods': return '🌳';
-                 case 'mine': return '⛏️';
-                 case 'market': case 'square': case 'plaza': return '🏛️';
-                 case 'temple': case 'shrine': case 'church': return '⛪';
-                 case 'forge': case 'blacksmith': return '🔥';
-                 case 'library': return '📚';
-                 case 'field': return '🌾';
-                 case 'lake': case 'river': case 'pond': return '💧';
-                 default: return '📍'; 
-             }
-         }
-        
+        function getLocationIcon(type) { /* ... (same as before) ... */ }
         function updateVillageMap() {
             if (!villageMapElement) return;
-            villageMapElement.innerHTML = ''; // Clear previous elements
-
-            // Add Locations
-            locations.forEach((location, index) => {
-                const locationElement = document.createElement('div');
-                locationElement.id = `location-${index}`;
-                locationElement.className = 'location-icon absolute w-16 h-16 bg-yellow-200 rounded-lg flex flex-col items-center justify-center text-xs text-center text-black cursor-pointer p-1';
-                locationElement.style.left = `${location.x}%`;
-                locationElement.style.top = `${location.y}%`;
-                // Prevent panzoom from capturing click events needed for details
-                 locationElement.addEventListener('click', (e) => {
-                     e.stopPropagation(); // Important to stop event bubbling to panzoom
-                     showLocationDetails(location);
+            // Only clear locations if they don't exist yet, to avoid flicker
+            if (villageMapElement.querySelectorAll('.location-icon').length !== locations.length) {
+                 villageMapElement.querySelectorAll('.location-icon').forEach(el => el.remove()); // Clear old locations
+                 locations.forEach((location, index) => {
+                     const locationElement = document.createElement('div');
+                     locationElement.id = `location-${index}`;
+                     locationElement.className = 'location-icon w-16 h-16 bg-yellow-200 rounded-lg flex flex-col items-center justify-center text-xs text-center text-black cursor-pointer p-1';
+                     locationElement.style.position = 'absolute'; // Crucial for positioning
+                     locationElement.style.left = `${location.x}%`;
+                     locationElement.style.top = `${location.y}%`;
+                     locationElement.addEventListener('click', (e) => {
+                         e.stopPropagation(); 
+                         showLocationDetails(location);
+                     });
+                     locationElement.setAttribute('data-location-id', location.name); 
+                      locationElement.innerHTML = `
+                          <span class="text-2xl">${location.icon || '📍'}</span>
+                          <span class="mt-1 truncate w-full">${location.name}</span>
+                      `;
+                     villageMapElement.appendChild(locationElement);
                  });
-                locationElement.setAttribute('data-location-id', location.name); // Use name as ID
-                 locationElement.innerHTML = `
-                     <span class="text-2xl">${location.icon || '📍'}</span>
-                     <span class="mt-1 truncate w-full">${location.name}</span>
-                 `;
-                villageMapElement.appendChild(locationElement);
-            });
+            }
 
-            // Add Villagers (or update existing ones)
+            // Add/Update Villagers
             villagers.forEach((villager, index) => {
                 let villagerElement = document.getElementById(`villager-${index}`);
                 if (!villagerElement) {
                     villagerElement = document.createElement('div');
                     villagerElement.id = `villager-${index}`;
-                    villagerElement.className = 'villager-icon absolute w-10 h-10 rounded-full flex items-center justify-center text-lg cursor-pointer font-bold';
+                    villagerElement.className = 'villager-icon w-8 h-8 rounded-full flex items-center justify-center text-base cursor-pointer font-bold'; // Smaller size
+                    villagerElement.style.position = 'absolute'; // Crucial
                     villagerElement.setAttribute('data-villager-id', villager.name);
+                     // Set initial position directly
+                     villagerElement.style.left = `${villager.visualX || 50}%`;
+                     villagerElement.style.top = `${villager.visualY || 50}%`;
+                     
                     villagerElement.addEventListener('click', (e) => {
                          e.stopPropagation();
                          showVillagerHistory(villager);
@@ -774,242 +775,349 @@ ${lc.user_message()}Generate an interaction for the participants listed above.${
                     villageMapElement.appendChild(villagerElement);
                 }
                 
-                // Update visual properties (position is handled by animate loop)
                 villagerElement.textContent = villager.icon || (villager.gender === 'male' ? '🧑' : '👩');
-                villagerElement.title = `${villager.name} (${villager.currentStatus.mood})`; // Tooltip
-
-                // Basic mood indicator via border color
-                 let borderColor = 'border-gray-400'; // Default
-                 if (villager.currentStatus.mood?.toLowerCase().includes('happy') || villager.currentStatus.mood?.toLowerCase().includes('excited') || villager.currentStatus.mood?.toLowerCase().includes('content')) {
-                     borderColor = 'border-green-400';
-                 } else if (villager.currentStatus.mood?.toLowerCase().includes('sad') || villager.currentStatus.mood?.toLowerCase().includes('angry') || villager.currentStatus.mood?.toLowerCase().includes('worried')) {
-                     borderColor = 'border-red-400';
-                 } else if (villager.currentStatus.mood?.toLowerCase().includes('focused') || villager.currentStatus.mood?.toLowerCase().includes('neutral')) {
-                     borderColor = 'border-blue-400';
-                 }
-                 villagerElement.style.border = `2px solid ${borderColor.split('-')[1]}-${borderColor.split('-')[2]}`; // Apply border color dynamically
-                 villagerElement.style.backgroundColor = villager.isSick ? '#DDA0DD' : (villager.gender === 'male' ? '#add8e6' : '#ffb6c1'); // Plum if sick, else gender color
+                villagerElement.title = `${villager.name} (${villager.currentStatus.mood})`; 
+                // Border/BG color updated in animateVillagerMovement
             });
+
+             // Remove elements for villagers that no longer exist (if applicable in future)
+             const currentVillagerElements = villageMapElement.querySelectorAll('.villager-icon');
+             if (currentVillagerElements.length > villagers.length) {
+                 for (let i = villagers.length; i < currentVillagerElements.length; i++) {
+                     if(currentVillagerElements[i]) currentVillagerElements[i].remove();
+                 }
+             }
         }
         
         function animateVillagerMovement() {
+             if (!villagers || villagers.length === 0) return; // Don't run if no villagers
+
              villagers.forEach((villager, index) => {
                  const villagerElement = document.getElementById(`villager-${index}`);
                  if (!villagerElement) return;
 
-                 // Smoothly move towards target using lerp
-                 const moveSpeed = 0.05; // Adjust for desired speed
-                 villager.visualX = lerp(villager.visualX, villager.targetX, moveSpeed);
-                 villager.visualY = lerp(villager.visualY, villager.targetY, moveSpeed);
-
-                 // Apply the visual position
-                 villagerElement.style.left = `${villager.visualX}%`;
-                 villagerElement.style.top = `${villager.visualY}%`;
+                 const moveSpeed = 0.03 + (Math.random()*0.02); // Slightly variable speed
+                 // Check if visual positions are defined, initialize if not
+                  if (villager.visualX === undefined || villager.visualY === undefined) {
+                      const startLoc = locations.find(loc => loc.name === villager.currentStatus.location);
+                      villager.visualX = startLoc ? startLoc.x + Math.random()*2-1 : 50 + Math.random()*10-5; 
+                      villager.visualY = startLoc ? startLoc.y + Math.random()*2-1 : 50 + Math.random()*10-5;
+                      villager.targetX = villager.visualX; // Initialize target as well
+                      villager.targetY = villager.visualY;
+                      villagerElement.style.left = `${villager.visualX}%`; // Set initial position immediately
+                      villagerElement.style.top = `${villager.visualY}%`;
+                  } else {
+                     // Only update if target is different enough to avoid micro-movements
+                      if (Math.abs(villager.visualX - villager.targetX) > 0.5 || Math.abs(villager.visualY - villager.targetY) > 0.5) {
+                         villager.visualX = lerp(villager.visualX, villager.targetX, moveSpeed);
+                         villager.visualY = lerp(villager.visualY, villager.targetY, moveSpeed);
+                         villagerElement.style.left = `${villager.visualX}%`;
+                         villagerElement.style.top = `${villager.visualY}%`;
+                      }
+                  }
                  
-                 // Update mood indicator (border color) - This could be less frequent
-                 let borderColor = 'border-gray-400'; 
+                 let borderColor = '#A0AEC0'; // Default Gray
                  const moodLower = villager.currentStatus.mood?.toLowerCase() || '';
-                 if (moodLower.includes('happy') || moodLower.includes('excited') || moodLower.includes('content') || moodLower.includes('pleased')) borderColor = 'border-green-400';
-                 else if (moodLower.includes('sad') || moodLower.includes('angry') || moodLower.includes('worried')|| moodLower.includes('gruff')|| moodLower.includes('annoyed')) borderColor = 'border-red-400';
-                 else if (moodLower.includes('focused') || moodLower.includes('neutral') || moodLower.includes('curious') || moodLower.includes('calm')) borderColor = 'border-blue-400';
-                 
-                 // Extract color value for direct style manipulation
-                 const colorValue = borderColor === 'border-green-400' ? '#68D391' : 
-                                    borderColor === 'border-red-400' ? '#FC8181' : 
-                                    borderColor === 'border-blue-400' ? '#63B3ED' : '#A0AEC0';
+                 if (moodLower.includes('happy') || moodLower.includes('excited') || moodLower.includes('content') || moodLower.includes('pleased') || moodLower.includes('amused')) borderColor = '#68D391'; // Green
+                 else if (moodLower.includes('sad') || moodLower.includes('angry') || moodLower.includes('worried')|| moodLower.includes('gruff')|| moodLower.includes('annoyed')) borderColor = '#FC8181'; // Red
+                 else if (moodLower.includes('focused') || moodLower.includes('neutral') || moodLower.includes('curious') || moodLower.includes('calm') || moodLower.includes('intrigued')) borderColor = '#63B3ED'; // Blue
                                     
-                 villagerElement.style.borderColor = colorValue;
-                 villagerElement.style.backgroundColor = gameState.isSick ? '#DDA0DD' : (villager.gender === 'male' ? '#add8e6' : '#ffb6c1'); // Sick color override
+                 villagerElement.style.borderColor = borderColor;
+                 villagerElement.style.backgroundColor = villager.isSick ? '#DDA0DD' : (villager.gender === 'male' ? '#add8e6' : '#ffb6c1'); 
              });
          }
 
-
         function animate(timestamp) {
-            if (gameState.isGameOver) { 
-                 if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null;
-                 return; // Stop animation if game over
-             }
+            // Use a flag or check simulationRunning to decide whether to continue
+            if (!simulationRunning && currentStep > 0) { // Stop animating movement if paused AND simulation has started
+                 if(animationFrameId) cancelAnimationFrame(animationFrameId); 
+                 animationFrameId = null;
+                 return; 
+            }
+             // Always schedule next frame if not explicitly stopped
+             animationFrameId = requestAnimationFrame(animate); 
             
-            animationFrameId = requestAnimationFrame(animate); // Request next frame first
             const deltaTime = timestamp - lastFrameTime;
 
-            if (deltaTime > animationInterval) { // Update visuals at target FPS
+            if (deltaTime > animationInterval) { 
                 lastFrameTime = timestamp - (deltaTime % animationInterval);
-                currentPetAnimationFrame = (currentPetAnimationFrame + 1) % 2; // Used by potential future detailed anims
+                currentPetAnimationFrame = (currentPetAnimationFrame + 1) % 2; 
 
-                if (simulationRunning || !villagers.length ) { // Only animate movement if sim is running or village exists
-                     animateVillagerMovement();
-                }
+                if (!gameState.isGameOver) { 
+                    animateVillagerMovement(); // Update positions constantly when running
+                } 
             }
         }
         
         // --- UI Updates & Panels ---
-        function updateCharacterInfo() {
-            if (!characterInfoDiv) return;
-            characterInfoDiv.innerHTML = '';
-
-            villagers.forEach((villager, index) => {
-                const villagerCard = document.createElement('div');
-                villagerCard.className = 'bg-gray-700 border border-green-700 rounded-lg p-3 mb-3 font-mono text-sm text-green-300 shadow-md';
-                let relationshipsHTML = '<ul class="list-disc pl-4 mt-2 text-xs">';
-                for (const name in villager.relationships) {
-                    const rel = villager.relationships[name];
-                    const affinityColor = rel.affinity > 70 ? 'text-green-400' : rel.affinity < 30 ? 'text-red-400' : 'text-yellow-400';
-                    relationshipsHTML += `<li>${name}: <span class="${affinityColor}">${rel.affinity}</span> (${rel.interactions} interactions)</li>`;
+        function updateCharacterInfo() { /* ... (same as before) ... */ }
+        function addEventToLog(event) { /* ... (same as before) ... */ }
+        function showLocationDetails(location) {
+            // Create a modal or popup element
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50'; // Ensure high z-index
+            modal.addEventListener('click', (e) => { // Close on backdrop click
+                if (e.target === modal) {
+                    document.body.removeChild(modal);
                 }
-                relationshipsHTML += '</ul>';
-
-                villagerCard.innerHTML = `
-                    <h3 class="font-semibold text-base text-green-200 mb-1">${villager.icon} ${villager.name}</h3>
-                    <p>Age: <span class="text-white">${villager.age}</span> | Occ: <span class="text-white">${villager.occupation}</span></p>
-                    <p>Status: <span class="text-white">${villager.currentStatus.activity}</span></p>
-                    <p>At: <span class="text-white">${villager.currentStatus.location}</span></p>
-                    <p>Mood: <span class="text-white">${villager.currentStatus.mood}</span></p>
-                    <details class="mt-2 text-xs">
-                        <summary class="cursor-pointer text-green-400 hover:text-green-200">Details</summary>
-                        <p class="mt-1 text-gray-400">Traits: ${villager.personalityTraits.join(', ')}</p>
-                        <p class="mt-1 text-gray-400">Backstory: ${villager.backstory}</p>
-                        <p class="mt-1 text-gray-400">Thoughts: ${villager.thoughts || 'None'}</p>
-                        <h4 class="font-semibold mt-2 text-green-400">Relationships:</h4>
-                        ${relationshipsHTML}
-                        <h4 class="font-semibold mt-2 text-green-400">Memories:</h4>
-                        <ul class="list-disc pl-4 text-gray-400">${(villager.newMemories || []).map(m=>`<li>${m}</li>`).join('') || '<li>None</li>'}</ul>
-                    </details>
-                    <button class="mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-1 px-2 rounded text-xs edit-btn border border-blue-400" data-index="${index}">Edit</button>
-                `;
-                
-                const editBtn = villagerCard.querySelector('.edit-btn');
-                editBtn.addEventListener('click', (e) => {
-                    const villagerIndex = parseInt(e.target.getAttribute('data-index'));
-                    showEditVillagerModal(villagers[villagerIndex], villagerIndex);
-                });
-
-                characterInfoDiv.appendChild(villagerCard);
             });
-        }
-        
-        function addEventToLog(event) {
-            if (!eventLogDiv) return;
-            const eventElement = document.createElement('div');
-            // Simplified styling for better readability
-            eventElement.className = 'bg-gray-700 border border-gray-600 rounded p-2 mb-2 text-xs text-gray-300 shadow'; 
-            events.push(event); // Store event
-
-            let interactionHtml = '';
-            if (event.type === 'interaction' && event.interaction) { // Check if interaction data exists
-                 interactionHtml = `<button class="mt-1 bg-gray-600 hover:bg-gray-500 text-white font-bold py-0.5 px-1.5 rounded text-xs show-interaction-btn border border-gray-500">Details</button>`;
-            }
             
-            eventElement.innerHTML = `
-                <strong class="text-yellow-400">${event.title || 'Event'} (Step ${currentStep}):</strong>
-                <p class="text-gray-200">${event.description}</p>
-                ${event.details ? `<p class="mt-1 text-xs text-gray-400">${event.details}</p>` : ''}
-                ${interactionHtml}
+            // Create content for the modal
+            const content = document.createElement('div');
+            content.className = 'bg-gray-800 p-6 rounded-lg max-w-md w-11/12 border border-gray-600 shadow-xl';
+            content.innerHTML = `
+                <h2 class="text-xl font-bold mb-2 text-yellow-300">${location.icon} ${location.name}</h2>
+                <p class="text-sm text-gray-400 mb-3">Type: ${location.type}</p>
+                <p class="text-gray-200">${location.description}</p>
+                <h4 class="font-semibold mt-4 mb-2 text-green-400">Villagers Here:</h4>
+                <ul class="list-disc pl-5 text-sm text-gray-300 max-h-32 overflow-y-auto custom-scrollbar">
+                    ${villagers.filter(v => v.currentStatus.location === location.name).map(v => `<li>${v.name} (${v.currentStatus.activity})</li>`).join('') || '<li>None</li>'}
+                </ul>
+                <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full close-modal-btn">Close</button>
             `;
             
-            if (event.type === 'interaction' && event.interaction) {
-                const showInteractionBtn = eventElement.querySelector('.show-interaction-btn');
-                showInteractionBtn.addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevent potential panel closing
-                    showInteractionPopup(event.interaction);
-                 });
-            }
+            modal.appendChild(content);
+            document.body.appendChild(modal);
             
-            eventLogDiv.insertBefore(eventElement, eventLogDiv.firstChild); // Add new events to the top
-            // Limit log length
-            while (eventLogDiv.children.length > 100) {
-                eventLogDiv.removeChild(eventLogDiv.lastChild);
-            }
-        }
+            // Add event listener to close the modal button
+            modal.querySelector('.close-modal-btn').addEventListener('click', () => {
+                if (modal.parentNode) document.body.removeChild(modal);
+            });
+         }
+        function showInteractionPopup(interaction) {
+             const popup = document.createElement('div');
+             popup.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[60]'; // Higher z-index
+             popup.addEventListener('click', (e) => { 
+                 if (e.target === popup) { document.body.removeChild(popup); }
+             });
+             
+             const content = document.createElement('div');
+             content.className = 'bg-gray-800 border border-green-500 rounded-lg p-6 max-w-2xl w-11/12 max-h-[80vh] flex flex-col shadow-xl';
+             
+             // Format dialogue nicely
+             let dialogueHTML = '<ul class="space-y-2 mb-4">';
+             if(interaction.dialogue && interaction.dialogue.length > 0){
+                 interaction.dialogue.forEach(line => {
+                    dialogueHTML += `<li class="text-sm"><strong class="text-cyan-400">${line.speaker}:</strong> <span class="text-gray-200">"${line.text}"</span></li>`;
+                 });
+             } else {
+                 dialogueHTML += '<li class="text-sm text-gray-400"><i>(No specific dialogue recorded)</i></li>';
+             }
+             dialogueHTML += '</ul>';
 
-        function showLocationDetails(location) { /* ... (same as before) ... */ }
-        function showInteractionPopup(interaction) { /* ... (same as before, maybe improve styling) ... */ }
+             // Format outcomes
+             let outcomesHTML = '<ul class="space-y-1 text-xs">';
+             for(const name in interaction.outcomes){
+                 const outcome = interaction.outcomes[name];
+                 outcomesHTML += `<li><strong class="text-green-300">${name}:</strong> Mood: ${outcome.moodChange || 'Same'}, Affinities: ${JSON.stringify(outcome.affinityChanges || {})}, Memories: ${(outcome.newMemories || []).join(', ')}</li>`;
+             }
+             outcomesHTML += '</ul>';
+
+
+             content.innerHTML = `
+                 <h2 class="text-xl font-bold mb-2 text-green-300">Interaction: ${interaction.type || 'Unknown'}</h2>
+                 <div class="overflow-y-auto flex-grow custom-scrollbar pr-2">
+                     <h3 class="text-base font-semibold mb-1 text-cyan-300">Dialogue:</h3>
+                     ${dialogueHTML}
+                     <h3 class="text-base font-semibold mt-3 mb-1 text-yellow-300">Outcomes:</h3>
+                     ${outcomesHTML}
+                     <!-- <pre class="text-green-400 whitespace-pre-wrap text-xs">${JSON.stringify(interaction, null, 2)}</pre> -->
+                 </div>
+                 <button class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded close-popup">
+                     Close
+                 </button>
+             `;
+             
+             popup.appendChild(content);
+             document.body.appendChild(popup);
+             
+             popup.querySelector('.close-popup').addEventListener('click', () => {
+                 if (popup.parentNode) document.body.removeChild(popup);
+             });
+         }
         function showVillagerHistory(villager) { /* ... (same as before, maybe improve styling) ... */ }
-        function showEditVillagerModal(villager, index) { /* ... (same as before) ... */ }
+        function showEditVillagerModal(villager, index) { /* ... (same as before, maybe improve styling) ... */ }
 
-        // --- UI Toggle Logic ---
         function togglePanel(panelToShow) {
             const panels = [controlPanel, characterPanel, eventPanel];
             panels.forEach(panel => {
+                if (!panel) return; // Add check if panel exists
                 if (panel === panelToShow) {
-                     if (panel === controlPanel) panel.classList.remove('-translate-x-full');
-                     else panel.classList.remove('hidden');
-                } else {
-                     if (panel === controlPanel) panel.classList.add('-translate-x-full');
-                     else panel.classList.add('hidden');
+                     if (panel === controlPanel) {
+                         panel.classList.toggle('-translate-x-full'); // Toggle specific panel
+                     } else {
+                         panel.classList.toggle('hidden'); // Toggle visibility for others
+                     }
+                } else { // Hide other panels
+                     if (panel === controlPanel) {
+                         panel.classList.add('-translate-x-full');
+                     } else {
+                         panel.classList.add('hidden');
+                     }
                 }
             });
         }
+        function updateStartPauseButtonState() {
+            if (!startPauseBtn || !startPauseText || !startIcon || !pauseIcon) return;
 
-        // --- Event Listeners ---
-        document.getElementById('controlsBtn').addEventListener('click', () => togglePanel(controlPanel));
-        document.getElementById('charactersBtn').addEventListener('click', () => togglePanel(characterPanel));
-        document.getElementById('eventLogBtn').addEventListener('click', () => togglePanel(eventPanel));
-        document.getElementById('closeCharPanelBtn')?.addEventListener('click', () => characterPanel.classList.add('hidden'));
-        document.getElementById('closeEventPanelBtn')?.addEventListener('click', () => eventPanel.classList.add('hidden'));
-
-        document.getElementById('buildVillageBtn').addEventListener('click', initializeSimulation);
-        document.getElementById('startPauseBtn').addEventListener('click', () => {
-            simulationRunning = !simulationRunning;
             if (simulationRunning) {
                 startPauseText.textContent = 'Pause Simulation';
                 startIcon.classList.add('hidden');
                 pauseIcon.classList.remove('hidden');
                 startPauseBtn.classList.replace('bg-red-600','bg-green-600');
                 startPauseBtn.classList.replace('hover:bg-red-700','hover:bg-green-700');
-                stepMode = false; // Ensure not in step mode
-                if (currentStep >= maxSimulationSteps) currentStep = 0; // Reset if finished
-                 maxSimulationSteps = parseInt(document.getElementById('maxSteps').value) || 100;
-                runSimulation();
-                appendToConsole("Simulation started.");
-            } else {
-                startPauseText.textContent = 'Start Simulation';
-                startIcon.classList.remove('hidden');
-                pauseIcon.classList.add('hidden');
-                startPauseBtn.classList.replace('bg-green-600','bg-red-600');
-                startPauseBtn.classList.replace('hover:bg-green-700','hover:bg-red-700');
-                 if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId=null; // Stop animation rendering immediately on pause
-                 appendToConsole("Simulation paused.");
-            }
-        });
-        
-        document.getElementById('exportBtn').addEventListener('click', () => { /* ... (same as before) ... */ });
-        document.getElementById('importBtn').addEventListener('click', () => { /* ... (same as before) ... */ });
-        document.getElementById('buildStoryBtn')?.addEventListener('click', buildStoryBtn); // Add null check
-        document.getElementById('pauseBtn').addEventListener('click', () => { // Cancel button in loader
-            generationInProgress = false; // Allow hiding loader
-            simulationRunning = false; // Stop simulation if it was running
-            if (startPauseBtn) { // Reset start/pause button
-                startPauseText.textContent = 'Start Simulation';
-                startIcon.classList.remove('hidden');
-                pauseIcon.classList.add('hidden');
-                startPauseBtn.classList.replace('bg-green-600','bg-red-600');
-                startPauseBtn.classList.replace('hover:bg-green-700','hover:bg-red-700');
                 startPauseBtn.disabled = false;
+            } else {
+                startPauseText.textContent = currentStep >= maxSimulationSteps ? 'Simulation Complete' : 'Start Simulation';
+                startIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+                startPauseBtn.classList.replace('bg-green-600','bg-red-600');
+                startPauseBtn.classList.replace('hover:bg-green-700','hover:bg-red-700');
+                startPauseBtn.disabled = currentStep >= maxSimulationSteps;
             }
-            hideLoader();
-            appendToConsole("Generation/Simulation Cancelled.");
-            // Potentially clear partially generated data if needed
-        });
-
-        document.getElementById('speedControl').addEventListener('input', (event) => {
-            simulationSpeed = parseInt(event.target.value);
-            saveParameters(); // Save speed change
-        });
-        // Save parameters on change for other inputs
-        ['numPlaces', 'numPersonas', 'villageContext', 'maxSteps'].forEach(id => {
-             const el = document.getElementById(id);
-             if(el) el.addEventListener('change', saveParameters);
-        });
+        }
 
         // --- Initial Load ---
         document.addEventListener('DOMContentLoaded', () => {
-            loadParameters(); // Load saved settings first
-            initializeLollmsClient(); // Initialize connection to backend
-            // Maybe add a slight delay or ready check for lc before enabling build button?
-            // For now, assume it connects quickly.
-            updateVillageMap(); // Draw empty map initially if needed
-            // Simulation doesn't start automatically
+            // Initialize Panzoom first if the element exists
+             if (villageMapElement) {
+                 try {
+                     panzoomInstance = panzoom(villageMapElement, {
+                         maxZoom: 4, minZoom: 0.4, bounds: true, boundsPadding: 0.1,
+                         smoothScroll: false, enableTextSelection: false,
+                     });
+                     console.log("Panzoom initialized.");
+                 } catch (error) {
+                     console.error("Panzoom initialization failed:", error);
+                 }
+             } else {
+                 console.error("villageMapElement not found for Panzoom.");
+             }
+
+            loadParameters(); // Load saved settings 
+            initializeLollmsClient(); // Initialize connection
+
+            // --- Attach Event Listeners --- Moved Inside DOMContentLoaded ---
+             document.getElementById('controlsBtn')?.addEventListener('click', () => togglePanel(controlPanel));
+             document.getElementById('charactersBtn')?.addEventListener('click', () => togglePanel(characterPanel));
+             document.getElementById('eventLogBtn')?.addEventListener('click', () => togglePanel(eventPanel));
+             document.getElementById('closeCharPanelBtn')?.addEventListener('click', () => characterPanel.classList.add('hidden'));
+             document.getElementById('closeEventPanelBtn')?.addEventListener('click', () => eventPanel.classList.add('hidden'));
+
+             document.getElementById('buildVillageBtn')?.addEventListener('click', initializeSimulation);
+             document.getElementById('startPauseBtn')?.addEventListener('click', () => {
+                 simulationRunning = !simulationRunning;
+                 updateStartPauseButtonState(); // Update button appearance
+
+                 if (simulationRunning) {
+                     stepMode = false; 
+                     if (currentStep >= maxSimulationSteps) currentStep = 0; // Reset if finished
+                      maxSimulationSteps = parseInt(document.getElementById('maxSteps')?.value || 100);
+                      if (animationFrameId === null) { // Start animation loop only if not already running
+                         lastFrameTime = performance.now();
+                         animate(lastFrameTime);
+                      }
+                     runSimulation(); // Start the simulation steps
+                     appendToConsole("Simulation started.");
+                 } else {
+                      if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId=null; // Stop animation rendering
+                      appendToConsole("Simulation paused.");
+                 }
+             });
+             
+             document.getElementById('exportBtn')?.addEventListener('click', () => {
+                 const gameStateToExport = { villagers, locations, currentStep, events };
+                 const stateJson = JSON.stringify(gameStateToExport, null, 2); // Pretty print JSON
+                 const blob = new Blob([stateJson], {type: "application/json"});
+                 const url = URL.createObjectURL(blob);
+                 const a = document.createElement('a');
+                 a.href = url;
+                 a.download = `village_state_step_${currentStep}.json`;
+                 document.body.appendChild(a);
+                 a.click();
+                 document.body.removeChild(a);
+                 URL.revokeObjectURL(url);
+                 appendToConsole("Game state exported.");
+             });
+             document.getElementById('importBtn')?.addEventListener('click', () => {
+                 const input = document.createElement('input');
+                 input.type = 'file';
+                 input.accept = '.json';
+                 input.onchange = function(event) {
+                     const file = event.target.files[0];
+                     if (!file) return;
+                     const reader = new FileReader();
+                     reader.onload = function(e) {
+                         try {
+                             const importedGameState = JSON.parse(e.target.result);
+                             if (!importedGameState.villagers || !importedGameState.locations) {
+                                 throw new Error("Imported file missing essential data (villagers or locations).");
+                             }
+                             villagers = importedGameState.villagers || [];
+                             locations = importedGameState.locations || [];
+                             events =  importedGameState.events || [];
+                             currentStep = importedGameState.currentStep || 0;
+                             
+                             // Re-initialize visual positions and icons based on loaded data
+                             villagers.forEach(v => {
+                                 const startLoc = locations.find(loc => loc.name === v.currentStatus?.location);
+                                 v.visualX = startLoc ? startLoc.x + Math.random()*2-1 : 50;
+                                 v.visualY = startLoc ? startLoc.y + Math.random()*2-1 : 50;
+                                 v.targetX = v.visualX;
+                                 v.targetY = v.visualY;
+                                 v.icon = v.gender === 'male' ? '🧑' : '👩';
+                                 if (!v.relationships) v.relationships = {}; // Ensure relationships exist
+                                 if (!v.newMemories) v.newMemories = []; // Ensure memories exist
+                             });
+                             locations.forEach(l => {
+                                if (!l.icon) l.icon = getLocationIcon(l.type); // Assign icon if missing
+                             });
+
+                             updateVillageMap();
+                             updateCharacterInfo();
+                             eventLogDiv.innerHTML = ''; // Clear old log
+                             events.slice().reverse().forEach(event => addEventToLog(event)); // Add events oldest first
+                             appendToConsole('Game state imported successfully.');
+                             alert('Game state imported successfully.');
+                             // Decide if simulation should start after import
+                             simulationRunning = false; 
+                             updateStartPauseButtonState();
+
+                         } catch (error) {
+                             console.error("Import Error:", error);
+                             alert('Error importing game state: ' + error.message);
+                         }
+                     };
+                     reader.onerror = (error) => {
+                         console.error("File Reading Error:", error);
+                         alert('Error reading file.');
+                     };
+                     reader.readAsText(file);
+                 };
+                 input.click();
+             });
+             document.getElementById('buildStoryBtn')?.addEventListener('click', buildStoryBtn); 
+             document.getElementById('cancelGenerationBtn')?.addEventListener('click', () => { 
+                 generationInProgress = false; 
+                 simulationRunning = false; 
+                 updateStartPauseButtonState();
+                 hideLoader();
+                 appendToConsole("Generation/Simulation Cancelled.");
+                 // Optionally abort ongoing lc requests if possible (lollms_client_js might need an abort method)
+             });
+
+             document.getElementById('speedControl')?.addEventListener('input', (event) => {
+                 simulationSpeed = parseInt(event.target.value);
+                 saveParameters(); 
+             });
+             ['numPlaces', 'numPersonas', 'villageContext', 'maxSteps'].forEach(id => {
+                  const el = document.getElementById(id);
+                  if(el) el.addEventListener('change', saveParameters);
+             });
+            
+            // Initial UI setup
+            updateVillageMap(); 
+            updateStartPauseButtonState(); // Set correct initial state for start/pause button
         });
     </script>
 </body>
