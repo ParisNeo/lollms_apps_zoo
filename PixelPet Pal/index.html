@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PixelCat Pal Deluxe Pro</title>
+    <title>PixelCat Pal Rescue</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -90,7 +90,7 @@
 
         .action-button {
             background-color: #ff69b4; color: white; border: 3px solid #c71585; padding: 9px 0;
-            font-family: 'Press Start 2P', cursive; font-size: 10px; /* Slightly smaller for more text */
+            font-family: 'Press Start 2P', cursive; font-size: 10px;
             border-radius: 8px; cursor: pointer;
             box-shadow: 0 3px #8b0000; transition: all 0.1s ease; line-height: 1.2;
             min-height: 45px; 
@@ -145,9 +145,9 @@
             gap: 12px; 
             width: 95%; 
             margin-top: 10px;
-            max-height: 400px; /* Allow scrolling for many items */
+            max-height: 400px; 
             overflow-y: auto;
-            padding-right: 5px; /* For scrollbar */
+            padding-right: 5px; 
         }
         .shop-item {
             background-color: #333; border: 2px solid #ff69b4; border-radius: 8px; padding: 10px;
@@ -198,7 +198,7 @@
         </div>
 
         <div id="screen-area">
-            <canvas id="pixel-pet-canvas" width="240" height="180"></canvas> <!-- Canvas size: logical 48x36 with scale 5 -->
+            <canvas id="pixel-pet-canvas" width="240" height="180"></canvas> 
             <div id="fact-bubble"></div>
         </div>
 
@@ -265,7 +265,7 @@
                 itemLaserPointer: "Laser Pointer", 
                 itemLaserPointerDesc: "+35 Happy, chases wildly",
                 itemCatnipMouse: "Catnip Mouse",
-                itemCatnipMouseDesc: "+40 Happy, very excited!",
+                itemCatnipMouseDesc: "+45 Happy, very excited!",
                 itemTinyCrown: "Tiny Crown", 
                 itemTinyCrownDesc: "A regal crown for a cat!",
                 itemCoolSunglasses: "Cool Shades",
@@ -366,7 +366,7 @@
                 itemLaserPointer: "Pointeur Laser", 
                 itemLaserPointerDesc: "+35 Bonheur, chasse follement",
                 itemCatnipMouse: "Souris à l'Herbe à Chat",
-                itemCatnipMouseDesc: "+40 Bonheur, très excité !",
+                itemCatnipMouseDesc: "+45 Bonheur, très excité !",
                 itemTinyCrown: "Petite Couronne", 
                 itemTinyCrownDesc: "Une couronne royale pour un chat !",
                 itemCoolSunglasses: "Lunettes Cool",
@@ -538,6 +538,7 @@
 
         let gameLoopInterval, ageInterval;
         let actionInProgress = false;
+        let animationFrameId = null; // To control the animation loop
 
         const shopItems = {
             basic_kibble: { nameKey: "itemBasicKibble", descKey: "itemBasicKibbleDesc", cost: 5, type: 'food', effect: { hunger: 15, happiness: 2 }, consumable: true },
@@ -547,7 +548,7 @@
             yarn_ball:      { nameKey: "itemYarnBall", descKey: "itemYarnBallDesc", cost: 20, type: 'toy', effect: { happiness: 20, hungerDecrease: 2 } },
             feather_wand:   { nameKey: "itemFeatherWand", descKey: "itemFeatherWandDesc", cost: 25, type: 'toy', effect: { happiness: 25, hungerDecrease: 3 } },
             laser_pointer:  { nameKey: "itemLaserPointer", descKey: "itemLaserPointerDesc", cost: 40, type: 'toy', effect: { happiness: 35, hungerDecrease: 4 } },
-            catnip_mouse:   { nameKey: "itemCatnipMouse", descKey: "itemCatnipMouseDesc", cost: 50, type: 'toy', effect: { happiness: 45, hungerDecrease: 2 }, oneTimeUse: true }, // Special toy, maybe one time super boost
+            catnip_mouse:   { nameKey: "itemCatnipMouse", descKey: "itemCatnipMouseDesc", cost: 50, type: 'toy', effect: { happiness: 45, hungerDecrease: 2 }, oneTimeUse: true },
 
             tiny_crown:     { nameKey: "itemTinyCrown", descKey: "itemTinyCrownDesc", cost: 70, type: 'accessory' },
             cool_sunglasses:{ nameKey: "itemCoolSunglasses", descKey: "itemCoolSunglassesDesc", cost: 60, type: 'accessory' },
@@ -566,16 +567,14 @@
             const savedState = localStorage.getItem('pixelPetGameStateDeluxe');
             if (savedState) {
                 const parsedState = JSON.parse(savedState);
-                // Deep merge with defaults to ensure new properties are added to old saves
                 gameState = { 
-                    ...JSON.parse(JSON.stringify(defaultGameState)), // Start with a fresh default structure
-                    ...parsedState,                                  // Overlay saved state
-                    catGenes: {                                      // Specifically merge catGenes
+                    ...JSON.parse(JSON.stringify(defaultGameState)), 
+                    ...parsedState,                                  
+                    catGenes: {                                      
                         ...defaultGameState.catGenes,
                         ...(parsedState.catGenes || {})
                     }
                 };
-
 
                 if (gameState.isRealTimeMode && gameState.lastUpdateTimestamp && !gameState.isGameOver) {
                     const timeOffline = Date.now() - gameState.lastUpdateTimestamp;
@@ -584,6 +583,7 @@
                     const ticksOffline = Math.floor(timeOffline / statInterval);
                     const ageIncrementsOffline = Math.floor(timeOffline / ageInt);
 
+                    let initialMessageAdded = false;
                     if (ticksOffline > 0) {
                         let wasAliveBeforeSim = gameState.hunger > 0 && gameState.happiness > 0 && gameState.health > 0;
                         for (let i = 0; i < ticksOffline; i++) {
@@ -594,10 +594,12 @@
                                 break; 
                             }
                         }
-                        if(wasAliveBeforeSim && !gameState.isGameOver && timeOffline > 60000){
+                        if(wasAliveBeforeSim && !gameState.isGameOver && timeOffline > 60000 && !initialMessageAdded){
                              addMessage(translate('welcomeMessagePixelCat') + ` Welcome back! Simulating ${Math.round(timeOffline / 60000)} min...`);
-                        } else if (gameState.isGameOver && wasAliveBeforeSim) {
+                             initialMessageAdded = true;
+                        } else if (gameState.isGameOver && wasAliveBeforeSim && !initialMessageAdded) {
                             addMessage("Oh no! It seems your pet didn't fare well while you were away...");
+                            initialMessageAdded = true;
                         }
                     }
                     if (ageIncrementsOffline > 0 && !gameState.isGameOver) {
@@ -605,6 +607,9 @@
                             if (gameState.isSleeping) break;
                             gameState.age++;
                         }
+                    }
+                     if (!initialMessageAdded && timeOffline > 60000 && !gameState.isGameOver) { // If no stat ticks but time passed
+                        addMessage(translate('welcomeMessagePixelCat') + ` Welcome back!`);
                     }
                 }
             } else {
@@ -637,9 +642,8 @@
             if (gameState.catGenes.pattern === 'solid') { 
                 gameState.catGenes.furColor2 = gameState.catGenes.furColor1;
             } else if (gameState.catGenes.pattern === 'tuxedo') {
-                // Tuxedo: primary color is often dark, secondary is white for chest/paws
-                if (gameState.catGenes.furColor1 === '#FFFFFF' || gameState.catGenes.furColor1 === '#F5F5DC' || gameState.catGenes.furColor1 === '#E6E6FA') {
-                    gameState.catGenes.furColor1 = '#000000'; // Default to black if primary is too light for tuxedo
+                if (['#FFFFFF', '#F5F5DC', '#E6E6FA', '#FFE4C4'].includes(gameState.catGenes.furColor1) ) {
+                    gameState.catGenes.furColor1 = '#000000'; 
                 }
                 gameState.catGenes.furColor2 = '#FFFFFF';
             }
@@ -649,15 +653,17 @@
         }
 
         function initGame(isRestart = false) {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); // Stop previous animation loop if any
+
             gameState.isGameOver = false;
             actionInProgress = false;
             
-            gameState.petName = petNameInput.value || defaultGameState.petName;
+            gameState.petName = petNameInput.value.trim() || defaultGameState.petName;
             gameState.isRealTimeMode = realTimeModeCheckbox.checked;
 
             if (isRestart) { 
                  gameState = JSON.parse(JSON.stringify(defaultGameState)); 
-                 gameState.petName = petNameInput.value || defaultGameState.petName; 
+                 gameState.petName = petNameInput.value.trim() || defaultGameState.petName; 
                  gameState.isRealTimeMode = realTimeModeCheckbox.checked; 
                  generateCatGenes(); 
             }
@@ -665,10 +671,11 @@
             petNameTextNode.nodeValue = ` ${gameState.petName} `;
             updateUI();
             
-            if(!isRestart || (isRestart && messageArea.children.length === 0) || (isRestart && !messageArea.textContent.includes(translate('petHatched', {petName: gameState.petName})))) {
-                 if(isRestart && messageArea.children.length > 0) messageArea.innerHTML = ''; // Clear if restarting
+            if(isRestart && messageArea.children.length > 0) messageArea.innerHTML = '';
+            if(!messageArea.textContent.includes(translate('petHatched', {petName: gameState.petName}))) {
                 addMessage(translate('petHatched', {petName: gameState.petName}));
             }
+
 
             const currentStatInterval = gameState.isRealTimeMode ? REAL_TIME_STAT_DECREASE_INTERVAL : BASE_STAT_DECREASE_INTERVAL;
             const currentAgeInterval = gameState.isRealTimeMode ? REAL_TIME_AGE_INTERVAL : BASE_AGE_INTERVAL;
@@ -684,22 +691,144 @@
             enableButtons();
             applyTranslations();
             saveGameState();
+
+            lastFrameTime = performance.now();
+            animate(lastFrameTime); // Start the animation loop
         }
         
-        function decreaseStats(isOfflineSim = false) { /* ... (same as before, ensure messages are not shown if isOfflineSim) ... */ }
-        function gameTick() { /* ... (same as before) ... */ }
-        function handleRandomEvent() { /* ... (same as before) ... */ }
-        function increaseAge() { /* ... (same as before) ... */ }
-        function checkGameOver() { /* ... (same as before) ... */ }
-        function endGame() { /* ... (same as before) ... */ }
-        function handleAction(actionFn) { /* ... (same as before) ... */ }
-        function setPetInteractionAnimation(state, duration) { /* ... (same as before) ... */ }
-        function getCurrentAnimationStateBasedOnStats() { /* ... (same as before) ... */ }
-        function updatePetAnimationState() { /* ... (same as before) ... */ }
-        function feedPet(itemKey = "basic_kibble") { // Default to basic kibble for generic feed button
+        function decreaseStats(isOfflineSim = false) {
+            if (gameState.isSleeping || gameState.isGameOver) return;
+
+            gameState.hunger = Math.max(0, gameState.hunger - HUNGER_DECREASE);
+            gameState.happiness = Math.max(0, gameState.happiness - HAPPINESS_DECREASE);
+            
+            if (!isOfflineSim && Math.random() < POOP_CHANCE && gameState.litterPiles < MAX_POOPS_IN_LITTER) {
+                gameState.litterPiles++;
+                if(!isOfflineSim) addMessage(translate('petMadeMess', {petName: gameState.petName}));
+            }
+            let litterPenalty = gameState.litterPiles * 3; 
+            gameState.cleanliness = Math.max(0, gameState.cleanliness - (CLEANLINESS_DECREASE_BASE + litterPenalty/10));
+
+            if (gameState.isSick) gameState.health = Math.max(0, gameState.health - HEALTH_DECREASE_IF_SICK);
+            if (gameState.hunger < 10 || gameState.cleanliness < 10) gameState.health = Math.max(0, gameState.health - HEALTH_DECREASE_LOW_STATS);
+            
+            if (gameState.hunger < 20) gameState.happiness = Math.max(0, gameState.happiness - 2);
+            if (gameState.cleanliness < 20) gameState.happiness = Math.max(0, gameState.happiness - 2); 
+            if (gameState.health < 30) gameState.happiness = Math.max(0, gameState.happiness - 3);
+
+            if (!isOfflineSim && !gameState.isSick) {
+                if (gameState.cleanliness < 20 && Math.random() < SICKNESS_CHANCE_LOW_CLEANLINESS) {
+                    gameState.isSick = true;
+                    if(!isOfflineSim) addMessage(translate('petSick', {petName: gameState.petName}), 'error');
+                } else if (gameState.hunger < 20 && gameState.cleanliness < 50 && Math.random() < SICKNESS_CHANCE_LOW_HUNGER) {
+                     gameState.isSick = true;
+                    if(!isOfflineSim) addMessage(translate('petSick', {petName: gameState.petName}), 'error');
+                }
+            }
+        }
+        function gameTick() {
+            if (gameState.isGameOver || gameState.isSleeping) return;
+            decreaseStats();
+            if (Math.random() < RANDOM_EVENT_CHANCE) handleRandomEvent();
+            updateUI();
+            checkGameOver();
+            saveGameState();
+        }
+        function handleRandomEvent() {
+            if(gameState.isGameOver) return;
+            const eventType = Math.random();
+            if (eventType < 0.5) { 
+                const amount = Math.floor(Math.random() * 10) + 5; 
+                gameState.lovePoints += amount;
+                addMessage(translate('randomEventFoundLP', {petName: gameState.petName, amount: amount}), 'event');
+            } else if (eventType < 0.7 && Object.keys(shopItems).length > 0) { 
+                const itemKeys = Object.keys(shopItems).filter(k => shopItems[k].type === 'food' || shopItems[k].type === 'toy');
+                if (itemKeys.length > 0) {
+                    const randomItemKey = itemKeys[Math.floor(Math.random() * itemKeys.length)];
+                    const item = shopItems[randomItemKey];
+                    addMessage(translate('randomEventGift', { itemName: translate(item.nameKey) }), 'event');
+                }
+            }
+        }
+        function increaseAge() {
+            if (gameState.isGameOver || gameState.isSleeping) return;
+            gameState.age++;
+            updateUI();
+            addMessage(translate('petAgeUp', {petName: gameState.petName, age: gameState.age}));
+            if (gameState.age > 0 && gameState.age % 5 === 0 && gameState.intelligence > 10) { 
+                showRandomFact();
+            }
+            saveGameState();
+        }
+        function checkGameOver() {
+            if(gameState.isGameOver) return; 
+            let reasonKey = null;
+            if (gameState.health <= 0) reasonKey = 'gameOverSick';
+            else if (gameState.hunger <= 0 && gameState.happiness <= 0 && gameState.cleanliness <= 0) reasonKey = 'gameOverOverwhelmed';
+            else if (gameState.hunger <= 0) reasonKey = 'gameOverHungry';
+            else if (gameState.happiness <= 0) reasonKey = 'gameOverSad';
+            
+            if (reasonKey) {
+                lastGameOverMessageKey = reasonKey;
+                if(gameOverMessage) gameOverMessage.textContent = translate(reasonKey, { petName: gameState.petName });
+                endGame();
+            }
+        }
+        function endGame() {
+            gameState.isGameOver = true;
+            if (gameLoopInterval) clearInterval(gameLoopInterval); gameLoopInterval = null;
+            if (ageInterval) clearInterval(ageInterval); ageInterval = null;
+            if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null;
+
+            if (finalAgeDisplay) finalAgeDisplay.textContent = gameState.age;
+            if (gameOverScreen) gameOverScreen.style.display = 'flex';
+            addMessage(translate('gameOverLived', {petName: gameState.petName, age: gameState.age}));
+            disableButtons();
+            applyTranslations();
+            localStorage.removeItem('pixelPetGameStateDeluxe'); 
+        }
+        function handleAction(actionFn) {
+            if (gameState.isGameOver || actionInProgress || gameState.isSleeping) return;
+            
+            actionInProgress = true;
+            disableButtons();
+            setTimeout(() => {
+                actionInProgress = false;
+                if (!gameState.isGameOver && !gameState.isSleeping) enableButtons();
+            }, ACTION_COOLDOWN);
+
+            actionFn();
+            updateUI();
+            saveGameState();
+        }
+        function setPetInteractionAnimation(state, duration) {
+            const oldStateBasedOnStats = getCurrentAnimationStateBasedOnStats();
+            petAnimationState = state; 
+            if (interactionAnimationTimeout) clearTimeout(interactionAnimationTimeout);
+            interactionAnimationTimeout = setTimeout(() => {
+                petAnimationState = oldStateBasedOnStats; 
+                interactionAnimationTimeout = null;
+            }, duration);
+        }
+        function getCurrentAnimationStateBasedOnStats() {
+            if (gameState.isSleeping) return 'sleeping';
+            if (gameState.isSick) return 'sick';
+            if (gameState.hunger < 30) return 'sad_hungry';
+            if (gameState.happiness < 30) return 'sad_general';
+            if (gameState.happiness > 80) return 'happy';
+            return 'idle';
+        }
+        function updatePetAnimationState() { 
+            if (interactionAnimationTimeout) { 
+                return;
+            }
+            petAnimationState = getCurrentAnimationStateBasedOnStats();
+        }
+        function feedPet(itemKey = "basic_kibble") { 
             handleAction(() => {
-                let foodEffect = shopItems[itemKey].effect;
-                let messageKey = shopItems[itemKey].nameKey.startsWith("itemGourmet") ? 'petAteSuper' : (shopItems[itemKey].nameKey.startsWith("itemTasty") ? 'petAte' : 'petAteKibble');
+                const foodItem = shopItems[itemKey] || shopItems.basic_kibble; // Fallback
+                let foodEffect = foodItem.effect;
+                let messageKey = itemKey === "gourmet_tuna" ? 'petAteSuper' : (itemKey === "tasty_fish" ? 'petAte' : 'petAteKibble');
                 let lovePointGain = itemKey === "gourmet_tuna" ? 5 : (itemKey === "tasty_fish" ? 3 : 2);
 
                 if (gameState.hunger < MAX_STAT) {
@@ -714,12 +843,15 @@
                 }
             });
         }
-        function playWithPet(itemKey = "yarn_ball") { // Default to yarn ball
+        function playWithPet(itemKey = "yarn_ball") { 
             handleAction(() => {
-                let playEffect = shopItems[itemKey].effect;
+                const toyItem = shopItems[itemKey] || shopItems.yarn_ball; // Fallback
+                let playEffect = toyItem.effect;
                 let messageKey = 'petPlayedWithToy';
-                let toyName = translate(shopItems[itemKey].nameKey);
-                let lovePointGain = itemKey === "laser_pointer" || itemKey === "catnip_mouse" ? 8 : 5;
+                let toyName = translate(toyItem.nameKey);
+                let lovePointGain = (itemKey === "laser_pointer" || itemKey === "catnip_mouse") ? 8 : 5;
+                 if (itemKey === "feather_wand") lovePointGain = 6;
+
 
                 if (gameState.happiness < MAX_STAT) {
                     gameState.happiness = Math.min(MAX_STAT, gameState.happiness + playEffect.happiness);
@@ -732,20 +864,135 @@
                 }
             });
         }
-        function giveMedicine() { /* ... (same as before) ... */ }
-        function cleanLitterBox() { /* ... (same as before) ... */ }
-        function learnWithPet() { /* ... (same as before) ... */ }
-        function toggleLights() { /* ... (same as before) ... */ }
-        function showRandomFact(forceShow = false) { /* ... (same as before) ... */ }
-        function updateUI() { /* ... (same as before) ... */ }
-        function addMessage(text, type = 'info') { /* ... (same as before) ... */ }
-        function enableButtons() { /* ... (same as before) ... */ }
-        function disableButtons(isSleepingOverride = false) { /* ... (same as before) ... */ }
-        function drawPixel(ctx, x, y, color, scale = PIXEL_SCALE) { /* ... (same as before) ... */ }
-        function drawPixelRect(ctx, x, y, w, h, color, scale = PIXEL_SCALE) { /* ... (same as before) ... */ }
+        function giveMedicine() { 
+             handleAction(() => {
+                if (gameState.isSick) {
+                    gameState.health = Math.min(MAX_STAT, gameState.health + 40);
+                    if(gameState.health > 70) gameState.isSick = false; 
+                    else gameState.isSick = true; 
+                    
+                    gameState.happiness = Math.min(MAX_STAT, gameState.happiness + 10); 
+                    gameState.lovePoints += 3;
+                    if(!gameState.isSick) addMessage(translate('petRecovered', {petName: gameState.petName}));
+                    else addMessage(`${gameState.petName} ${translate('feelsBitBetter')}`, 'event'); 
+                    setPetInteractionAnimation(gameState.isSick ? 'sick_improving' : 'happy', 1000); 
+                } else {
+                    addMessage(translate('petNoMedicineNeeded', {petName: gameState.petName}));
+                    gameState.happiness = Math.max(0, gameState.happiness - 3); 
+                }
+            });
+        }
+        function cleanLitterBox() { 
+             handleAction(() => {
+                if (gameState.litterPiles > 0) {
+                    gameState.litterPiles = 0;
+                    gameState.cleanliness = Math.min(MAX_STAT, gameState.cleanliness + 60); 
+                    gameState.lovePoints += 5; 
+                    addMessage(translate('petCleaned')); 
+                    setPetInteractionAnimation('happy', 1000); 
+                } else {
+                    addMessage(translate('petAlreadyClean'));
+                }
+            });
+        }
+        function learnWithPet() { 
+             handleAction(() => {
+                if (gameState.intelligence < 100) {
+                    gameState.intelligence += 5;
+                    gameState.happiness = Math.min(MAX_STAT, gameState.happiness + 10);
+                    gameState.hunger = Math.max(0, gameState.hunger - 3);
+                    gameState.lovePoints += 7; 
+                    addMessage(translate('petLearned', {petName: gameState.petName}));
+                    setPetInteractionAnimation('thinking', 1200); 
+                    showRandomFact(true);
+                } else {
+                    addMessage(translate('petGenius', {petName: gameState.petName}));
+                }
+            });
+        }
+        function toggleLights() { 
+            if (gameState.isGameOver) return;
+            gameState.isSleeping = !gameState.isSleeping;
+            if (gameState.isSleeping) {
+                addMessage(translate('petSleeping', {petName: gameState.petName}));
+                if (lightsButton) lightsButton.textContent = translate('btnLightsOff');
+                disableButtons(true);
+            } else {
+                addMessage(translate('petWokeUp', {petName: gameState.petName}));
+                if(lightsButton) lightsButton.textContent = translate('btnLightsOn');
+                enableButtons();
+                if (gameState.hunger < 50) gameState.happiness = Math.max(0, gameState.happiness - 10);
+                gameState.lastUpdateTimestamp = Date.now();
+            }
+            saveGameState();
+        }
+        function showRandomFact(forceShow = false) {
+            if (gameState.isSleeping || gameState.isGameOver || !currentEducationalFacts || currentEducationalFacts.length === 0) return;
+            if (forceShow || (Math.random() < 0.3 && gameState.intelligence > 10)) {
+                const fact = currentEducationalFacts[Math.floor(Math.random() * currentEducationalFacts.length)];
+                if(factBubble) {
+                    factBubble.textContent = fact;
+                    factBubble.classList.add('visible');
+                    setTimeout(() => { factBubble.classList.remove('visible'); }, 6000);
+                }
+            }
+        }
+        function updateUI() {
+            if(hungerBar) { hungerBar.style.width = `${gameState.hunger}%`; hungerBar.textContent = `${Math.round(gameState.hunger)}%`; }
+            if(happinessBar) { happinessBar.style.width = `${gameState.happiness}%`; happinessBar.textContent = `${Math.round(gameState.happiness)}%`; }
+            if(cleanlinessBar) { cleanlinessBar.style.width = `${gameState.cleanliness}%`; cleanlinessBar.textContent = `${Math.round(gameState.cleanliness)}%`; }
+            if(healthBar) { healthBar.style.width = `${gameState.health}%`; healthBar.textContent = `${Math.round(gameState.health)}%`; }
+            
+            if (petNameTextNode && petNameTextNode.nodeValue !== undefined) petNameTextNode.nodeValue = ` ${gameState.petName} `;
+            if (petAgeTextNode && petAgeTextNode.nodeValue !== undefined) petAgeTextNode.nodeValue = ` ${gameState.age} `;
+            if (petIntelTextNode && petIntelTextNode.nodeValue !== undefined) petIntelTextNode.nodeValue = ` ${gameState.intelligence}`;
+
+            if(lovePointsDisplay) lovePointsDisplay.textContent = translate('lovePoints', {points: gameState.lovePoints});
+
+            [hungerBar, happinessBar, cleanlinessBar, healthBar].forEach(bar => {
+                if (!bar) return;
+                const value = parseInt(bar.style.width);
+                if (value < 25) bar.style.backgroundColor = '#d9534f';
+                else if (value < 60) bar.style.backgroundColor = '#f0ad4e';
+                else bar.style.backgroundColor = '#306230';
+            });
+            if(lightsButton) lightsButton.textContent = gameState.isSleeping ? translate('btnLightsOff') : translate('btnLightsOn');
+            if(sicknessIcon) sicknessIcon.style.display = gameState.isSick ? 'inline' : 'none';
+        }
+        function addMessage(text, type = 'info') {
+            const maxMessages = 3;
+            const messageP = document.createElement('p');
+            messageP.textContent = `> ${text}`;
+            if (type === 'error') messageP.style.color = '#ff4444';
+            if (type === 'event') messageP.style.color = '#66ff66'; 
+            
+            if(messageArea) {
+                messageArea.insertBefore(messageP, messageArea.firstChild); 
+                while (messageArea.childElementCount > maxMessages) {
+                    messageArea.removeChild(messageArea.lastChild);
+                }
+            }
+        }
+        function enableButtons() {
+            [feedButton, playButton, cleanButton, learnButton, lightsButton, shopButton, medicineButton].forEach(btn => { if(btn) btn.classList.remove('disabled'); });
+        }
+        function disableButtons(isSleepingOverride = false) {
+             [feedButton, playButton, cleanButton, learnButton, shopButton, medicineButton].forEach(btn => { if(btn) btn.classList.add('disabled'); });
+            if (!isSleepingOverride && lightsButton) { 
+                lightsButton.classList.add('disabled');
+            }
+        }
+        function drawPixel(ctx, x, y, color, scale = PIXEL_SCALE) { 
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.floor(x * scale), Math.floor(y * scale), Math.ceil(scale), Math.ceil(scale)); // Use Math.floor and Math.ceil for consistency
+        }
+        function drawPixelRect(ctx, x, y, w, h, color, scale = PIXEL_SCALE) { 
+            ctx.fillStyle = color;
+            ctx.fillRect(Math.floor(x * scale), Math.floor(y * scale), Math.ceil(w * scale), Math.ceil(h * scale));
+        }
 
         function drawPixelPet() {
-            if (!petCtx) return;
+            if (!petCtx || !gameState || !gameState.catGenes) return; // Guard against missing context or gameState
             petCtx.clearRect(0, 0, pixelPetCanvas.width, pixelPetCanvas.height);
             
             updatePetAnimationState(); 
@@ -757,17 +1004,14 @@
             const canvasLogicalWidth = pixelPetCanvas.width / PIXEL_SCALE;
             const canvasLogicalHeight = pixelPetCanvas.height / PIXEL_SCALE;
 
-            const catSpriteWidth = 22; // Main body width in logical pixels
-            const catSpriteHeightTotal = 20; // Approximate total height
-
-            // Anchor cat to the bottom center of its "floor space"
-            const catAnchorX = Math.floor(canvasLogicalWidth / 2); // Center X for the sprite
-            const catAnchorY = canvasLogicalHeight - 3; // Where paws rest, 3px from bottom
+            const catSpriteWidth = 20; // Main body width in logical pixels
+            const catAnchorX = Math.floor(canvasLogicalWidth / 2); 
+            const catAnchorY = canvasLogicalHeight - 4; // Paws rest here, a bit higher
 
             const fur1 = genes.furColor1;
             let fur2 = (genes.pattern !== 'solid' && genes.pattern !== 'tuxedo') ? genes.furColor2 : (genes.pattern === 'tuxedo' ? '#FFFFFF' : fur1);
             if (genes.pattern === 'solid') fur2 = fur1;
-            if (genes.pattern === 'tuxedo' && (fur1 === '#FFFFFF' || fur1 === '#F5F5DC')) genes.furColor1 = '#000000'; // Ensure dark base for tuxedo
+            if (genes.pattern === 'tuxedo' && (fur1 === '#FFFFFF' || fur1 === '#F5F5DC')) genes.furColor1 = '#222222'; // Darker base for tuxedo
 
 
             const eyeColor = genes.eyeColor;
@@ -778,182 +1022,168 @@
             const shadowColor = 'rgba(0,0,0,0.1)';
 
             // --- Draw Environment ---
-            // Ground shadow
             petCtx.fillStyle = shadowColor;
             petCtx.beginPath();
-            petCtx.ellipse(catAnchorX * PIXEL_SCALE, (catAnchorY + 1) * PIXEL_SCALE, 10 * PIXEL_SCALE, 2 * PIXEL_SCALE, 0, 0, 2 * Math.PI);
+            petCtx.ellipse(catAnchorX * PIXEL_SCALE, (catAnchorY + 0.5) * PIXEL_SCALE, 9 * PIXEL_SCALE, 1.5 * PIXEL_SCALE, 0, 0, 2 * Math.PI);
             petCtx.fill();
 
-            // Litter Box (always visible)
-            const litterBoxLogicalX = 3;
-            const litterBoxLogicalY = canvasLogicalHeight - 8;
-            drawPixelRect(petCtx, litterBoxLogicalX, litterBoxLogicalY, 12, 5, '#B0C4DE'); // Box
-            drawPixelRect(petCtx, litterBoxLogicalX + 1, litterBoxLogicalY -1 , 10, 1, '#778899');  // Rim
+            const litterBoxLogicalX = 2;
+            const litterBoxLogicalY = canvasLogicalHeight - 7;
+            drawPixelRect(petCtx, litterBoxLogicalX, litterBoxLogicalY, 10, 4, '#B0C4DE'); 
+            drawPixelRect(petCtx, litterBoxLogicalX + 1, litterBoxLogicalY -1 , 8, 1, '#778899');  
             for (let i = 0; i < gameState.litterPiles; i++) {
-                drawPixelRect(petCtx, litterBoxLogicalX + 2 + i * 3, litterBoxLogicalY + 1, 2, 2, '#704214'); 
+                drawPixelRect(petCtx, litterBoxLogicalX + 2 + i * 2.5, litterBoxLogicalY + 1, 1.5, 1.5, '#704214'); 
             }
             
-            // --- Cat Base Position & Offsets ---
-            let bodyY = catAnchorY - 10; // Top of body from anchor
-            let headY = bodyY - 7;    // Top of head from body top
-            let currentX = catAnchorX - Math.floor(catSpriteWidth / 2); // Left edge of cat sprite
+            let bodyY = catAnchorY - 8; 
+            let headY = bodyY - 6;    
+            let currentX = catAnchorX - Math.floor(catSpriteWidth / 2); 
 
             let bodyBob = 0;
-            if (state === 'idle' && animFrame === 1) bodyBob = -1; // Breathing
-            if (state === 'happy' && animFrame === 1) bodyBob = -1; // Happy bounce
+            if (state === 'idle' && animFrame === 1) bodyBob = -0.5; 
+            if (state === 'happy' && animFrame === 1) bodyBob = -1; 
 
             bodyY += bodyBob;
             headY += bodyBob;
 
-            // --- Draw Cat ---
             if (state === 'sleeping') {
-                // Curled up sleeping pose
-                drawPixelRect(petCtx, currentX + 3, catAnchorY - 8, 16, 8, fur1); // Main sleeping mass
-                drawPixelRect(petCtx, currentX + 5, catAnchorY - 10, 12, 2, fur1); // Head part
-                drawPixel(petCtx, currentX + 7, catAnchorY - 9, noseColor);    // Nose
-                // Closed eyes for sleeping
-                drawPixelRect(petCtx, currentX + 6, catAnchorY - 10, 2,1, pupilColor);
-                drawPixelRect(petCtx, currentX + 14, catAnchorY - 10, 2,1, pupilColor);
-                // Tail curled around
-                drawPixelRect(petCtx, currentX + 1, catAnchorY - 6, 3, 2, fur1);
-                drawPixelRect(petCtx, currentX + 18, catAnchorY - 6, 3, 2, fur1);
+                const sleepX = currentX + 2;
+                const sleepY = catAnchorY - 7;
+                drawPixelRect(petCtx, sleepX, sleepY, 16, 7, fur1); 
+                drawPixelRect(petCtx, sleepX + 2, sleepY - 2, 12, 2, fur1); 
+                drawPixel(petCtx, sleepX + 7, sleepY - 1, noseColor);   
+                drawPixelRect(petCtx, sleepX + 5, sleepY - 2, 2,1, pupilColor);
+                drawPixelRect(petCtx, sleepX + 10, sleepY - 2, 2,1, pupilColor);
+                drawPixelRect(petCtx, sleepX - 1, sleepY + 2, 3, 2, fur1);
+                drawPixelRect(petCtx, sleepX + 14, sleepY + 2, 3, 2, fur1);
 
-                if (animFrame === 0) { // Zzz particles
-                    drawPixel(petCtx, currentX + 19, catAnchorY - 13, pupilColor); 
-                    drawPixel(petCtx, currentX + 20, catAnchorY - 13, pupilColor);
-                    drawPixel(petCtx, currentX + 20, catAnchorY - 12, pupilColor);
+                if (animFrame === 0) { 
+                    drawPixel(petCtx, sleepX + 15, sleepY - 4, pupilColor); 
+                    drawPixel(petCtx, sleepX + 16, sleepY - 4, pupilColor);
+                    drawPixel(petCtx, sleepX + 16, sleepY - 3, pupilColor);
                 }
-            } else { // Awake states
-                // Legs (front)
-                let legY = catAnchorY - 5;
-                drawPixelRect(petCtx, currentX + 4, legY, 4, 5, fur1); // Left Leg
-                drawPixelRect(petCtx, currentX + catSpriteWidth - 8, legY, 4, 5, fur1); // Right Leg
-                // Paws
-                drawPixelRect(petCtx, currentX + 3, catAnchorY - 1, 6, 2, genes.pattern === 'tuxedo' ? fur2 : fur1); // Left Paw
-                drawPixelRect(petCtx, currentX + catSpriteWidth - 9, catAnchorY - 1, 6, 2, genes.pattern === 'tuxedo' ? fur2 : fur1); // Right Paw
+            } else { 
+                let legY = catAnchorY - 4;
+                drawPixelRect(petCtx, currentX + 3, legY, 3, 4, fur1); 
+                drawPixelRect(petCtx, currentX + catSpriteWidth - 6, legY, 3, 4, fur1); 
+                drawPixelRect(petCtx, currentX + 2, catAnchorY - 1, 5, 1, genes.pattern === 'tuxedo' ? fur2 : fur1); 
+                drawPixelRect(petCtx, currentX + catSpriteWidth - 7, catAnchorY - 1, 5, 1, genes.pattern === 'tuxedo' ? fur2 : fur1); 
 
-
-                // Body
-                drawPixelRect(petCtx, currentX + 2, bodyY, catSpriteWidth - 4, 10, fur1);
+                drawPixelRect(petCtx, currentX + 1, bodyY, catSpriteWidth - 2, 8, fur1);
                 if (genes.pattern === 'tuxedo') {
-                    drawPixelRect(petCtx, currentX + 7, bodyY + 3, catSpriteWidth - 14, 7, fur2); // White chest/belly
+                    drawPixelRect(petCtx, currentX + 6, bodyY + 2, catSpriteWidth - 12, 6, fur2); 
                 } else if (genes.pattern === 'stripes') {
-                    for (let i = 0; i < 10; i += 3) drawPixelRect(petCtx, currentX + 2, bodyY + i, catSpriteWidth - 4, 1, fur2);
+                    for (let i = 0; i < 8; i += 2) drawPixelRect(petCtx, currentX + 1, bodyY + i, catSpriteWidth - 2, 1, fur2);
                 } else if (genes.pattern === 'spots') {
-                    drawPixelRect(petCtx, currentX + 5, bodyY + 2, 3, 3, fur2);
-                    drawPixelRect(petCtx, currentX + catSpriteWidth - 8, bodyY + 5, 3, 3, fur2);
+                    drawPixelRect(petCtx, currentX + 4, bodyY + 1, 2, 2, fur2);
+                    drawPixelRect(petCtx, currentX + catSpriteWidth - 6, bodyY + 4, 2, 2, fur2);
                 } else if (genes.pattern === 'patches') {
-                    drawPixelRect(petCtx, currentX + 3, bodyY, 7, 4, fur2);
-                    drawPixelRect(petCtx, currentX + catSpriteWidth - 10, bodyY + 5, 6, 5, fur2);
+                    drawPixelRect(petCtx, currentX + 2, bodyY, 5, 3, fur2);
+                    drawPixelRect(petCtx, currentX + catSpriteWidth - 7, bodyY + 4, 4, 4, fur2);
                 }
 
-                // Head
                 let headLean = 0;
                 if (state === 'thinking' && animFrame === 1) headLean = -1;
-                drawPixelRect(petCtx, currentX + 6 + headLean, headY, 10, 7, fur1); 
-                if (genes.pattern === 'tuxedo' && fur1 !== fur2) { // Muzzle for tuxedo
-                    drawPixelRect(petCtx, currentX + 8 + headLean, headY + 4, 6, 2, fur2);
+                drawPixelRect(petCtx, currentX + 5 + headLean, headY, 10, 6, fur1); 
+                if (genes.pattern === 'tuxedo' && fur1 !== fur2) { 
+                    drawPixelRect(petCtx, currentX + 7 + headLean, headY + 3, 6, 2, fur2);
                 }
 
-
-                // Ears
-                let earBaseY = headY - 3;
-                let earLX = currentX + 5 + headLean; let earRX = currentX + 13 + headLean;
-                if (state === 'sad_hungry' || state === 'sad_general' || state === 'sick') { earBaseY += 2; earLX -=1; earRX +=1; } 
-                else if (state === 'happy' || state === 'playing') { earBaseY -=1; } 
-                drawPixelRect(petCtx, earLX, earBaseY, 3, 4, fur1); 
-                drawPixelRect(petCtx, earRX, earBaseY, 3, 4, fur1); 
+                let earBaseY = headY - 2;
+                let earLX = currentX + 4 + headLean; let earRX = currentX + 13 + headLean;
+                if (state === 'sad_hungry' || state === 'sad_general' || state === 'sick') { earBaseY += 1.5; earLX -=0.5; earRX +=0.5; } 
+                else if (state === 'happy' || state === 'playing') { earBaseY -=0.5; } 
+                drawPixelRect(petCtx, earLX, earBaseY, 2.5, 3, fur1); 
+                drawPixelRect(petCtx, earRX, earBaseY, 2.5, 3, fur1); 
                 drawPixel(petCtx, earLX + 1, earBaseY + 1, genes.noseColor); 
                 drawPixel(petCtx, earRX + 1, earBaseY + 1, genes.noseColor); 
 
-                // Eyes
                 let eyeDrawY = headY + 1;
                 let eyeBlink = animFrame === 1 && state !== 'playing' && state !== 'eating' && state !== 'thinking';
                 if (eyeBlink) {
-                    drawPixelRect(petCtx, currentX + 8 + headLean, eyeDrawY + 1, 2, 1, pupilColor); 
-                    drawPixelRect(petCtx, currentX + 12 + headLean, eyeDrawY + 1, 2, 1, pupilColor);
+                    drawPixelRect(petCtx, currentX + 7 + headLean, eyeDrawY + 0.5, 2, 1, pupilColor); 
+                    drawPixelRect(petCtx, currentX + 11 + headLean, eyeDrawY + 0.5, 2, 1, pupilColor);
                 } else {
-                    drawPixelRect(petCtx, currentX + 8 + headLean, eyeDrawY, 2, 2, scleraColor); 
-                    drawPixelRect(petCtx, currentX + 12 + headLean, eyeDrawY, 2, 2, scleraColor); 
-                    let pupilYOff = (state === 'happy' || state === 'playing') ? 0 : 1;
-                    drawPixel(petCtx, currentX + 8 + headLean + (state === 'thinking' ? animFrame : 0), eyeDrawY + pupilYOff, eyeColor); 
-                    drawPixel(petCtx, currentX + 12 + headLean + (state === 'thinking' ? (1-animFrame) : 0) , eyeDrawY + pupilYOff, eyeColor); 
+                    drawPixelRect(petCtx, currentX + 7 + headLean, eyeDrawY, 2, 1.5, scleraColor); 
+                    drawPixelRect(petCtx, currentX + 11 + headLean, eyeDrawY, 2, 1.5, scleraColor); 
+                    let pupilYOff = (state === 'happy' || state === 'playing') ? 0 : 0.5;
+                    drawPixel(petCtx, currentX + 7.5 + headLean + (state === 'thinking' ? animFrame*0.5 : 0), eyeDrawY + pupilYOff, eyeColor); 
+                    drawPixel(petCtx, currentX + 11.5 + headLean + (state === 'thinking' ? (1-animFrame)*0.5 : 0) , eyeDrawY + pupilYOff, eyeColor); 
                     if(state === 'thinking' && animFrame === 0) {
-                         drawPixel(petCtx, currentX + 7 + headLean, eyeDrawY-1, '#FFFF00'); // Sparkle for thinking
+                         drawPixel(petCtx, currentX + 6.5 + headLean, eyeDrawY-0.5, '#FFFF00'); 
                     }
                 }
-
-                // Nose & Mouth
-                let mouthDrawY = headY + 5;
-                drawPixelRect(petCtx, currentX + 10 + headLean, headY + 3, 2, 1, noseColor); // Nose
-                if (state === 'happy' || state === 'playing' || state === 'eating' && animFrame === 0) { // Smile / Open mouth
-                    drawPixel(petCtx, currentX + 9 + headLean, mouthDrawY, pupilColor);
-                    drawPixel(petCtx, currentX + 10 + headLean, mouthDrawY + (state === 'eating' ? 0:1), pupilColor);
-                    drawPixel(petCtx, currentX + 11 + headLean, mouthDrawY + (state === 'eating' ? 0:1), pupilColor);
-                    drawPixel(petCtx, currentX + 12 + headLean, mouthDrawY, pupilColor);
-                    if(state === 'eating') drawPixel(petCtx, currentX + 10 + headLean, mouthDrawY+1, '#FF8C69'); // Tongue
-                } else if (state === 'sad_hungry' || state === 'sad_general' || state === 'sick') { // Sad
-                    drawPixel(petCtx, currentX + 9 + headLean, mouthDrawY + 1, pupilColor);
-                    drawPixel(petCtx, currentX + 10 + headLean, mouthDrawY, pupilColor);
+                
+                let mouthDrawY = headY + 4;
+                drawPixelRect(petCtx, currentX + 9 + headLean, headY + 2.5, 2, 1, noseColor); 
+                if (state === 'happy' || state === 'playing' || (state === 'eating' && animFrame === 0)) { 
+                    drawPixel(petCtx, currentX + 8 + headLean, mouthDrawY, pupilColor);
+                    drawPixel(petCtx, currentX + 9 + headLean, mouthDrawY + (state === 'eating' ? 0:0.5), pupilColor);
+                    drawPixel(petCtx, currentX + 10 + headLean, mouthDrawY + (state === 'eating' ? 0:0.5), pupilColor);
                     drawPixel(petCtx, currentX + 11 + headLean, mouthDrawY, pupilColor);
-                    drawPixel(petCtx, currentX + 12 + headLean, mouthDrawY + 1, pupilColor);
-                } else { // Neutral
-                    drawPixelRect(petCtx, currentX + 9 + headLean, mouthDrawY + 1, 4, 1, pupilColor);
+                    if(state === 'eating') drawPixel(petCtx, currentX + 9.5 + headLean, mouthDrawY+0.5, '#FF8C69'); 
+                } else if (state === 'sad_hungry' || state === 'sad_general' || state === 'sick') { 
+                    drawPixel(petCtx, currentX + 8 + headLean, mouthDrawY + 0.5, pupilColor);
+                    drawPixel(petCtx, currentX + 9 + headLean, mouthDrawY, pupilColor);
+                    drawPixel(petCtx, currentX + 10 + headLean, mouthDrawY, pupilColor);
+                    drawPixel(petCtx, currentX + 11 + headLean, mouthDrawY + 0.5, pupilColor);
+                } else { 
+                    drawPixelRect(petCtx, currentX + 8 + headLean, mouthDrawY + 0.5, 4, 1, pupilColor);
                 }
 
-                // Whiskers
-                 drawPixelRect(petCtx, currentX + 3 + headLean, headY + 3, 3, 1, pupilColor);
-                 drawPixelRect(petCtx, currentX + 3 + headLean, headY + 5, 2, 1, pupilColor);
-                 drawPixelRect(petCtx, currentX + 16 + headLean, headY + 3, 3, 1, pupilColor);
-                 drawPixelRect(petCtx, currentX + 17 + headLean, headY + 5, 2, 1, pupilColor);
+                 drawPixelRect(petCtx, currentX + 3 + headLean, headY + 2.5, 2.5, 0.8, pupilColor);
+                 drawPixelRect(petCtx, currentX + 3 + headLean, headY + 4, 2, 0.8, pupilColor);
+                 drawPixelRect(petCtx, currentX + 14.5 + headLean, headY + 2.5, 2.5, 0.8, pupilColor);
+                 drawPixelRect(petCtx, currentX + 15 + headLean, headY + 4, 2, 0.8, pupilColor);
 
-
-                // Tail
-                let tailX = currentX + catSpriteWidth - 2; 
-                let tailY = bodyY + 3;
-                let tailWagOffset = (state === 'happy' || state === 'playing') && animFrame === 0 ? -2 : 0;
-                drawPixelRect(petCtx, tailX, tailY + 2, 3, 2, fur1); 
-                drawPixelRect(petCtx, tailX + 2 + tailWagOffset, tailY, 2, 3, fur1); 
-                drawPixelRect(petCtx, tailX + 3 + tailWagOffset, tailY - 2, 2, 2, fur1); 
+                let tailX = currentX + catSpriteWidth - 1.5; 
+                let tailY = bodyY + 2;
+                let tailWagOffset = (state === 'happy' || state === 'playing') && animFrame === 0 ? -1 : 0;
+                drawPixelRect(petCtx, tailX, tailY + 1, 2.5, 1.5, fur1); 
+                drawPixelRect(petCtx, tailX + 1.5 + tailWagOffset, tailY -1, 1.5, 2.5, fur1); 
+                drawPixelRect(petCtx, tailX + 2 + tailWagOffset, tailY - 2.5, 1.5, 1.5, fur1); 
             }
 
-            // --- Draw Accessories ---
-            const accessoryColor = '#FFD700'; // Gold for crown, can vary for others
-            const accessoryDark = '#A0522D'; // Brown for strap/details
+            const accBaseX = currentX + 7 + (state === 'thinking' && animFrame === 1 ? -1 : 0); 
+            const accBaseY = headY - 1.5; 
+
             if (gameState.equippedAccessory && state !== 'sleeping') {
-                const accX = currentX + 8 + (state === 'thinking' && animFrame === 1 ? -1 : 0); // base X for head accessories
-                const accY = headY - 2; // base Y above head
-
                 if (gameState.equippedAccessory === 'tiny_crown') {
-                    drawPixelRect(petCtx, accX, accY, 6, 1, accessoryColor); 
-                    drawPixel(petCtx, accX, accY - 1, accessoryColor); 
-                    drawPixel(petCtx, accX + 2, accY - 2, accessoryColor); 
-                    drawPixel(petCtx, accX + 5, accY - 1, accessoryColor); 
-                    drawPixel(petCtx, accX + 1, accY, '#FF0000'); 
-                    drawPixel(petCtx, accX + 4, accY, '#0000FF'); 
+                    const crownColor = '#FFD700'; 
+                    drawPixelRect(petCtx, accBaseX, accBaseY, 6, 1, crownColor); 
+                    drawPixel(petCtx, accBaseX, accBaseY - 1, crownColor); 
+                    drawPixel(petCtx, accBaseX + 2.5, accBaseY - 2, crownColor); 
+                    drawPixel(petCtx, accBaseX + 5, accBaseY - 1, crownColor); 
+                    drawPixel(petCtx, accBaseX + 1, accBaseY, '#FF0000'); 
+                    drawPixel(petCtx, accBaseX + 4, accBaseY, '#0000FF'); 
                 } else if (gameState.equippedAccessory === 'cool_sunglasses') {
-                    const glassColor = '#333333';
-                    const frameColor = '#555555';
-                    drawPixelRect(petCtx, currentX + 7, headY + 1, 3, 2, glassColor); // Left lens
-                    drawPixelRect(petCtx, currentX + 12, headY + 1, 3, 2, glassColor); // Right lens
-                    drawPixel(petCtx, currentX + 10, headY + 1, frameColor); // Bridge
-                    drawPixel(petCtx, currentX + 6, headY + 1, frameColor); // Side L
-                    drawPixel(petCtx, currentX + 15, headY + 1, frameColor); // Side R
+                    const glassColor = '#222222'; const frameColor = '#444444';
+                    drawPixelRect(petCtx, currentX + 6.5, headY + 0.5, 3, 1.5, glassColor); 
+                    drawPixelRect(petCtx, currentX + 10.5, headY + 0.5, 3, 1.5, glassColor); 
+                    drawPixel(petCtx, currentX + 9.5, headY + 0.5, frameColor); 
+                    drawPixel(petCtx, currentX + 5.5, headY + 1, frameColor); 
+                    drawPixel(petCtx, currentX + 13.5, headY + 1, frameColor); 
                 } else if (gameState.equippedAccessory === 'cozy_scarf') {
-                    const scarfColor1 = '#FF6347'; // Tomato
-                    const scarfColor2 = '#FFA07A'; // Light Salmon
-                    // Around neck area, below head
-                    drawPixelRect(petCtx, currentX + 5, bodyY -1, 12, 2, animFrame === 0 ? scarfColor1 : scarfColor2);
-                    drawPixelRect(petCtx, currentX + 4, bodyY, 2, 3, animFrame === 0 ? scarfColor2 : scarfColor1); // Dangling part
+                    const scarfColor1 = '#FF6347'; const scarfColor2 = '#FFA07A'; 
+                    drawPixelRect(petCtx, currentX + 4.5, bodyY -0.5, 11, 1.5, animFrame === 0 ? scarfColor1 : scarfColor2);
+                    drawPixelRect(petCtx, currentX + 3.5, bodyY, 1.5, 2.5, animFrame === 0 ? scarfColor2 : scarfColor1); 
                 } else if (gameState.equippedAccessory === 'jingle_collar') {
-                    const collarColor = '#8A2BE2'; // BlueViolet
-                    const bellColor = '#FFD700'; // Gold
-                    drawPixelRect(petCtx, currentX + 6, bodyY, 10, 1, collarColor); // Collar band
-                    drawPixelRect(petCtx, currentX + 10, bodyY + 1, 2, 2, bellColor); // Bell
+                    const collarColor = '#8A2BE2'; const bellColor = '#FFD700'; 
+                    drawPixelRect(petCtx, currentX + 5.5, bodyY -0.5, 9, 1, collarColor); 
+                    drawPixelRect(petCtx, currentX + 9, bodyY + 0.5, 2, 1.5, bellColor); 
+                }
+            }
+             if (state === 'thinking' && !gameState.equippedAccessory) { // Lightbulb if no other head accessory
+                const bulbX = accBaseX + 2;
+                const bulbY = accBaseY - 5;
+                if(animFrame === 0) { 
+                    drawPixelRect(petCtx, bulbX, bulbY, 2,2.5, '#FFFFE0'); 
+                    drawPixel(petCtx, bulbX+0.5, bulbY-1, '#A9A9A9'); 
+                    drawPixel(petCtx, bulbX+0.5, bulbY+2.5, '#A9A9A9'); 
                 }
             }
 
-            // Sick Tint last if sick and not sleeping
+
             if (gameState.isSick && state !== 'sleeping') {
                 petCtx.fillStyle = sickGreenishTint;
                 petCtx.fillRect(0,0, pixelPetCanvas.width, pixelPetCanvas.height);
@@ -962,20 +1192,22 @@
 
         function animate(timestamp) {
             if (gameState.isGameOver && !gameLoopInterval) { 
-                requestAnimationFrame(animate); 
-                if (gameOverScreen.style.display !== 'flex') { 
-                     if(petCtx) petCtx.clearRect(0, 0, pixelPetCanvas.width, pixelPetCanvas.height);
-                }
-                return;
+                if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null;
+                if(petCtx) petCtx.clearRect(0, 0, pixelPetCanvas.width, pixelPetCanvas.height); // Clear canvas on game over
+                return; // Stop animation completely if game is over
             }
             
-            requestAnimationFrame(animate);
+            animationFrameId = requestAnimationFrame(animate); // Store the ID
             const deltaTime = timestamp - lastFrameTime;
 
             if (deltaTime > animationInterval) {
                 lastFrameTime = timestamp - (deltaTime % animationInterval);
                 currentPetAnimationFrame = (currentPetAnimationFrame + 1) % 2; 
-                if(!gameState.isGameOver) drawPixelPet(); // Only draw if not game over screen showing
+                if(!gameState.isGameOver) { // Only draw if game is not over
+                     if(petCtx) drawPixelPet(); 
+                } else {
+                     if(petCtx) petCtx.clearRect(0, 0, pixelPetCanvas.width, pixelPetCanvas.height); // Clear if game over screen is showing
+                }
             }
         }
         
@@ -985,13 +1217,13 @@
                 return;
             }
             localStorage.removeItem('pixelPetGameStateDeluxe'); 
-            loadGameState(); 
+            loadGameState(); // This will set up default game state including generated cat genes
             initGame(true); 
         });
 
         restartButton.addEventListener('click', () => {
             startScreen.style.display = 'flex';
-            gameOverScreen.style.display = 'none';
+            if(gameOverScreen) gameOverScreen.style.display = 'none';
             applyTranslations(); 
         });
 
@@ -1012,22 +1244,23 @@
 
         // --- Startup ---
         loadGameState(); 
-        setLanguage(currentLanguage); 
+        setLanguage(currentLanguage); // This now calls applyTranslations which calls populateShop
         
         if (gameState.isGameOver) { 
-             startScreen.style.display = 'flex';
-             finalAgeDisplay.textContent = gameState.age; 
-             gameOverMessage.textContent = translate(lastGameOverMessageKey || 'gameOverDefault', { petName: gameState.petName });
-             gameOverScreen.style.display = 'flex'; 
+             if(startScreen) startScreen.style.display = 'flex'; // Show start screen to allow restart
+             if(finalAgeDisplay) finalAgeDisplay.textContent = gameState.age; 
+             if(gameOverMessage) gameOverMessage.textContent = translate(lastGameOverMessageKey || 'gameOverDefault', { petName: gameState.petName });
+             if(gameOverScreen) gameOverScreen.style.display = 'flex'; 
              disableButtons();
-        } else if (!localStorage.getItem('pixelPetGameStateDeluxe') || (petNameInput.value && petNameInput.value !== gameState.petName) ) { 
-             startScreen.style.display = 'flex';
+             if (animationFrameId) cancelAnimationFrame(animationFrameId); animationFrameId = null; // Stop animation
+             if(petCtx) petCtx.clearRect(0, 0, pixelPetCanvas.width, pixelPetCanvas.height); // Clear canvas
+        } else if (!localStorage.getItem('pixelPetGameStateDeluxe') ) { 
+             if(startScreen) startScreen.style.display = 'flex';
              disableButtons(); 
         } else {
             initGame(false); 
         }
-        lastFrameTime = performance.now(); 
-        animate(lastFrameTime); 
+        // Moved animation start into initGame or conditional start.
         
         function applyTranslations() {
             document.querySelectorAll('[data-translate-key]').forEach(el => {
@@ -1052,40 +1285,40 @@
             const intLabelSpan = document.getElementById('pet-intelligence-display').querySelector('span[data-translate-key="labelIntelligence"]');
             if(intLabelSpan) intLabelSpan.textContent = translate('labelIntelligence');
 
-
-            if (messageArea.firstChild?.textContent.includes('Welcome') || messageArea.children.length === 0) {
+            if (messageArea && (messageArea.firstChild?.textContent.includes('Welcome') || messageArea.children.length === 0) ) {
                  messageArea.innerHTML = ''; 
                  addMessage(translate('welcomeMessagePixelCat'));
             }
 
-            if (gameOverScreen.style.display === 'flex') {
+            if (gameOverScreen && gameOverScreen.style.display === 'flex' && gameOverMessage) {
                 gameOverMessage.textContent = translate(lastGameOverMessageKey, { petName: gameState.petName });
             }
             document.querySelectorAll('.lang-button').forEach(btn => btn.classList.remove('active'));
             const activeBtn = document.getElementById(`lang-${currentLanguage}`);
             if(activeBtn) activeBtn.classList.add('active');
-            populateShop(); 
+            if(shopItemsGrid) populateShop(); 
         }
         function setLanguage(lang) {
             currentLanguage = lang;
             localStorage.setItem('pixelPetLang', lang);
             currentEducationalFacts = translations[currentLanguage]?.facts || translations.en.facts;
-            applyTranslations(); // This will call populateShop
+            applyTranslations(); 
             updateUI(); 
         }
 
         function openShop() {
             if(gameState.isGameOver || gameState.isSleeping) return;
             populateShop();
-            shopOverlay.style.display = 'flex';
+            if(shopOverlay) shopOverlay.style.display = 'flex';
             disableButtons(true); 
         }
         function closeShop() {
-            shopOverlay.style.display = 'none';
+            if(shopOverlay) shopOverlay.style.display = 'none';
             if (!gameState.isSleeping && !gameState.isGameOver) enableButtons();
         }
 
         function populateShop() {
+            if(!shopItemsGrid) return;
             shopItemsGrid.innerHTML = ''; 
             for (const key in shopItems) {
                 const item = shopItems[key];
@@ -1114,7 +1347,7 @@
                         buyButtonEl.textContent = translate('buyButton', { cost: item.cost });
                         if (gameState.lovePoints < item.cost) buyButtonEl.classList.add('disabled');
                     }
-                } else { // Consumable or special
+                } else { 
                     buyButtonEl.textContent = translate(item.consumable ? 'useButton' : 'buyButton', { cost: item.cost });
                      if (gameState.lovePoints < item.cost) buyButtonEl.classList.add('disabled');
                 }
@@ -1129,6 +1362,7 @@
 
         function buyItem(itemKey) {
             const item = shopItems[itemKey];
+            if(!item) return;
             
             if (item.type === 'accessory' && gameState.inventory.includes(itemKey)) {
                 equipAccessory(itemKey); 
@@ -1137,34 +1371,33 @@
             }
 
             if (gameState.lovePoints >= item.cost) {
-                if(!item.consumable || item.type === 'accessory') { // Only deduct LP if not immediately consumed from shop or is accessory
-                   // gameState.lovePoints -= item.cost; // Now handled: only deduct if it's a new accessory purchase
+                if (item.type === 'accessory' && !gameState.inventory.includes(itemKey)) { // Only deduct for new accessory purchase
+                    gameState.lovePoints -= item.cost;
+                } else if (item.consumable) { // Deduct for consumables
+                    gameState.lovePoints -= item.cost;
                 }
 
+
                 if (item.type === 'food') {
-                    gameState.lovePoints -= item.cost;
-                    addMessage(translate('itemPurchased', {itemName: translate(item.nameKey)}), 'event');
+                    addMessage(translate('itemPurchased', {itemName: translate(item.nameKey)}), 'event'); // Message purchase for food
                     feedPet(itemKey); 
                 } else if (item.type === 'toy') {
-                     gameState.lovePoints -= item.cost; // Toys are bought, then "exist"
-                     if (!gameState.inventory.includes(itemKey) || item.oneTimeUse) { // Add to inventory if new or one-time can be rebought
+                     if (!gameState.inventory.includes(itemKey) || item.oneTimeUse) { 
                         if(!gameState.inventory.includes(itemKey)) gameState.inventory.push(itemKey);
                         addMessage(translate('itemPurchased', {itemName: translate(item.nameKey)}), 'event');
                      }
                      playWithPet(itemKey);
-                     if (item.oneTimeUse) { // Catnip mouse example
+                     if (item.oneTimeUse) { 
                         const itemIndex = gameState.inventory.indexOf(itemKey);
                         if (itemIndex > -1) gameState.inventory.splice(itemIndex, 1);
                      }
                 } else if (item.type === 'accessory') {
-                    gameState.lovePoints -= item.cost;
                     if (!gameState.inventory.includes(itemKey)) {
                         gameState.inventory.push(itemKey);
                         addMessage(translate('itemPurchased', {itemName: translate(item.nameKey)}), 'event');
                     }
                     equipAccessory(itemKey); 
-                } else if (item.type === 'special') { // Like Litter Freshener
-                    gameState.lovePoints -= item.cost;
+                } else if (item.type === 'special') { 
                     if (item.effect.cleanliness) {
                         gameState.cleanliness = Math.min(MAX_STAT, gameState.cleanliness + item.effect.cleanliness);
                     }
