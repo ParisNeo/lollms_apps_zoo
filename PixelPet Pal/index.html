@@ -22,16 +22,38 @@
 
         #game-container {
             width: 480px; /* Roughly 90s handheld screen aspect ratio */
-            height: 720px;
+            height: 750px; /* Increased height slightly for lang switcher */
             background-color: #f0f0f0; /* Light grey, common for old electronics */
             border-radius: 20px;
             box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.3);
-            padding: 20px;
+            padding: 15px; /* Adjusted padding */
             display: flex;
             flex-direction: column;
             justify-content: space-between;
             position: relative; /* For absolute positioning of overlays */
         }
+
+        #language-switcher {
+            text-align: right;
+            margin-bottom: 8px;
+            font-size: 10px;
+        }
+        .lang-button {
+            font-family: 'Press Start 2P', cursive;
+            background: none;
+            border: none;
+            color: #0f380f;
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 10px;
+        }
+        .lang-button.active {
+            background-color: #8bac0f;
+            color: #0f380f;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
 
         #screen-area {
             width: 100%;
@@ -52,11 +74,11 @@
             border: 3px solid #8bac0f;
             border-radius: 8px;
             padding: 10px;
-            margin-top: 15px;
+            margin-top: 10px; /* Adjusted margin */
             color: #0f380f; /* Dark green text */
         }
 
-        #info-panel h2 {
+        #info-panel h2 { /* Not used anymore, but keeping for structure if re-added */
             margin-top: 0;
             font-size: 18px;
             border-bottom: 2px solid #8bac0f;
@@ -72,13 +94,13 @@
             font-size: 12px;
             margin-right: 5px;
             display: inline-block;
-            width: 90px; /* Align labels */
+            width: 110px; /* Align labels - increased width for French */
             text-align: left;
         }
 
         .status-bar {
             display: inline-block;
-            width: 200px;
+            width: calc(100% - 125px); /* Adjusted for wider label */
             height: 15px;
             background-color: #8bac0f; /* Bar background */
             border: 1px solid #0f380f;
@@ -106,20 +128,21 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
-            margin-top: 15px;
+            margin-top: 10px; /* Adjusted margin */
         }
 
         .action-button {
             background-color: #ff69b4; /* Bright pink */
             color: white;
             border: 3px solid #c71585; /* Darker pink */
-            padding: 12px 0;
+            padding: 10px 0; /* Adjusted padding */
             font-family: 'Press Start 2P', cursive;
-            font-size: 14px;
+            font-size: 12px; /* Adjusted font size */
             border-radius: 8px;
             cursor: pointer;
             box-shadow: 0 3px #8b0000; /* 3D button effect */
             transition: all 0.1s ease;
+            line-height: 1.2; /* For two-line text in buttons if needed */
         }
 
         .action-button:active {
@@ -137,7 +160,7 @@
         }
 
         #message-area {
-            margin-top: 15px;
+            margin-top: 10px; /* Adjusted margin */
             height: 40px;
             background-color: #444;
             color: #0f0; /* Green terminal text */
@@ -201,15 +224,6 @@
             transform: translateY(2px);
         }
 
-        /* Poop icon */
-        .poop-icon {
-            position: absolute;
-            font-size: 24px; /* Adjust size as needed */
-            /* Using an emoji, but you could use an image or draw it */
-            user-select: none; /* Make it non-selectable */
-        }
-
-        /* Educational fact bubble */
         #fact-bubble {
             position: absolute;
             top: 20px;
@@ -224,10 +238,10 @@
             font-size: 11px;
             max-width: 80%;
             text-align: center;
-            z-index: 50; /* Above pet but below overlays */
+            z-index: 50;
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
-            pointer-events: none; /* So it doesn't interfere with clicks */
+            pointer-events: none;
         }
         #fact-bubble.visible {
             opacity: 1;
@@ -236,19 +250,24 @@
 </head>
 <body>
     <div id="game-container">
+        <div id="language-switcher">
+            <button id="lang-en" class="lang-button">EN</button> |
+            <button id="lang-fr" class="lang-button">FR</button>
+        </div>
+
         <div id="start-screen" class="overlay">
-            <h1>PixelPet Pal!</h1>
-            <p>Name your new digital friend:</p>
+            <h1 data-translate-key="appName">PixelPet Pal!</h1>
+            <p data-translate-key="nameYourPet">Name your new digital friend:</p>
             <input type="text" id="pet-name-input" maxlength="10" value="PixelPuff">
-            <button id="start-button">Hatch Pet!</button>
-             <p style="font-size:10px; margin-top: 30px;">Care for your pet by feeding it, playing, cleaning, and helping it learn. Don't let its needs drop too low!</p>
+            <button id="start-button" data-translate-key="hatchPet">Hatch Pet!</button>
+            <p style="font-size:10px; margin-top: 30px;" data-translate-key="careInstructions">Care for your pet by feeding it, playing, cleaning, and helping it learn. Don't let its needs drop too low!</p>
         </div>
 
         <div id="game-over-screen" class="overlay" style="display: none;">
-            <h1>Game Over!</h1>
+            <h1 data-translate-key="gameOverTitle">Game Over!</h1>
             <p id="game-over-message">Your PixelPet got sad and ran away...</p>
-            <p>It lived for <span id="final-age">0</span> days.</p>
-            <button id="restart-button">Play Again?</button>
+            <p><span data-translate-key="gameOverLivedForPrefix">It lived for </span><span id="final-age">0</span><span data-translate-key="gameOverLivedForSuffix"> days.</span></p>
+            <button id="restart-button" data-translate-key="playAgain">Play Again?</button>
         </div>
         
         <div id="screen-area">
@@ -262,26 +281,26 @@
             <div id="pet-intelligence-display">Intelligence: 0</div>
             
             <div class="status-bar-container">
-                <span class="status-bar-label">Hunger:</span>
+                <span class="status-bar-label" data-translate-key="labelHunger">Hunger:</span>
                 <div class="status-bar"><div id="hunger-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
             </div>
             <div class="status-bar-container">
-                <span class="status-bar-label">Happiness:</span>
+                <span class="status-bar-label" data-translate-key="labelHappiness">Happiness:</span>
                 <div class="status-bar"><div id="happiness-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
             </div>
             <div class="status-bar-container">
-                <span class="status-bar-label">Cleanliness:</span>
+                <span class="status-bar-label" data-translate-key="labelCleanliness">Cleanliness:</span>
                 <div class="status-bar"><div id="cleanliness-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
             </div>
         </div>
 
         <div id="controls">
-            <button id="feed-button" class="action-button">Feed 🍎</button>
-            <button id="play-button" class="action-button">Play 🎾</button>
-            <button id="clean-button" class="action-button">Clean ✨</button>
-            <button id="learn-button" class="action-button">Learn 🧠</button>
-            <button id="lights-button" class="action-button">Lights 💡</button>
-            <button id="info-button" class="action-button">Info ❓</button>
+            <button id="feed-button" class="action-button" data-translate-key="btnFeed">Feed 🍎</button>
+            <button id="play-button" class="action-button" data-translate-key="btnPlay">Play 🎾</button>
+            <button id="clean-button" class="action-button" data-translate-key="btnClean">Clean ✨</button>
+            <button id="learn-button" class="action-button" data-translate-key="btnLearn">Learn 🧠</button>
+            <button id="lights-button" class="action-button">Lights 💡</button> <!-- Dynamic text -->
+            <button id="info-button" class="action-button" data-translate-key="btnInfo">Info ❓</button>
         </div>
         <div id="message-area">Welcome to PixelPet Pal!</div>
     </div>
@@ -289,24 +308,178 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+        // --- Localization ---
+        const translations = {
+            en: {
+                appName: "PixelPet Pal!",
+                nameYourPet: "Name your new digital friend:",
+                hatchPet: "Hatch Pet!",
+                careInstructions: "Care for your pet by feeding it, playing, cleaning, and helping it learn. Don't let its needs drop too low!",
+                gameOverTitle: "Game Over!",
+                gameOverDefault: "Your PixelPet got sad and ran away...",
+                gameOverLivedForPrefix: "It lived for ",
+                gameOverLivedForSuffix: " days.",
+                playAgain: "Play Again?",
+                labelName: "Name:",
+                labelAge: "Age:",
+                labelDays: "days",
+                labelIntelligence: "Intelligence:",
+                labelHunger: "Hunger:",
+                labelHappiness: "Happiness:",
+                labelCleanliness: "Cleanliness:",
+                btnFeed: "Feed 🍎",
+                btnPlay: "Play 🎾",
+                btnClean: "Clean ✨",
+                btnLearn: "Learn 🧠",
+                btnLightsOn: "Lights 💡",
+                btnLightsOff: "Lights ☀️",
+                btnInfo: "Info ❓",
+                welcomeMessage: "Welcome to PixelPet Pal!",
+                alertEnterPetName: "Please enter a name for your pet!",
+                petHatched: "{petName} has hatched! Welcome!",
+                petAgeUp: "{petName} is now {age} day(s) old!",
+                petAte: "{petName} enjoyed a tasty snack! Yum!",
+                petNotHungry: "{petName} is not hungry right now.",
+                petPlayed: "{petName} had fun playing! Whee!",
+                petWantsRest: "{petName} wants to rest a bit.",
+                petCleaned: "{petName} is sparkling clean!",
+                petAlreadyClean: "{petName} is already very clean.",
+                petLearned: "{petName} learned something new!",
+                petGenius: "{petName} is a genius already!",
+                petSleeping: "{petName} is going to sleep... Zzz...",
+                petWokeUp: "{petName} woke up!",
+                infoText: "PixelPet Pal v1.0. Care for your pet! Made with ❤️ by ParisNeo.",
+                gameOverOverwhelmed: "{petName} became overwhelmed and left...",
+                gameOverHungry: "{petName} got too hungry and fainted!",
+                gameOverSad: "{petName} became too sad and ran away...",
+                gameOverDirty: "{petName} got too dirty and feels sick.",
+                gameOverLived: "Game Over. {petName} lived for {age} days.",
+                petMadeMess: "{petName} made a mess!",
+                petUnwell: "{petName} is feeling really unwell! Clean up soon!",
+                facts: [
+                    "A group of flamingos is called a flamboyance!", "The heart of a shrimp is in its head!", "Slugs have four noses!", "Butterflies taste with their feet!", "A snail can sleep for three years!", "Elephants can't jump!", "The moon has moonquakes.", "Polar bears have black skin."
+                ]
+            },
+            fr: {
+                appName: "PixelCompagnon !",
+                nameYourPet: "Nommez votre nouvel ami digital :",
+                hatchPet: "Faire éclore !",
+                careInstructions: "Prenez soin de votre animal : nourrissez-le, jouez, nettoyez et aidez-le à apprendre. Ne laissez pas ses besoins chuter !",
+                gameOverTitle: "Partie Terminée !",
+                gameOverDefault: "Votre PixelCompagnon est devenu triste et s'est enfui...",
+                gameOverLivedForPrefix: "Il a vécu ",
+                gameOverLivedForSuffix: " jours.",
+                playAgain: "Rejouer ?",
+                labelName: "Nom :",
+                labelAge: "Âge :",
+                labelDays: "jours",
+                labelIntelligence: "Intelligence :",
+                labelHunger: "Faim :",
+                labelHappiness: "Bonheur :",
+                labelCleanliness: "Propreté :",
+                btnFeed: "Nourrir 🍎",
+                btnPlay: "Jouer 🎾",
+                btnClean: "Nettoyer ✨",
+                btnLearn: "Apprendre 🧠",
+                btnLightsOn: "Lumière 💡",
+                btnLightsOff: "Lumière ☀️",
+                btnInfo: "Infos ❓",
+                welcomeMessage: "Bienvenue à PixelCompagnon !",
+                alertEnterPetName: "Veuillez donner un nom à votre animal !",
+                petHatched: "{petName} est né ! Bienvenue !",
+                petAgeUp: "{petName} a maintenant {age} jour(s) !",
+                petAte: "{petName} a dégusté un bon repas ! Miam !",
+                petNotHungry: "{petName} n'a pas faim pour l'instant.",
+                petPlayed: "{petName} s'est bien amusé ! Youpi !",
+                petWantsRest: "{petName} veut se reposer un peu.",
+                petCleaned: "{petName} est tout propre !",
+                petAlreadyClean: "{petName} est déjà très propre.",
+                petLearned: "{petName} a appris quelque chose de nouveau !",
+                petGenius: "{petName} est déjà un génie !",
+                petSleeping: "{petName} va dormir... Zzz...",
+                petWokeUp: "{petName} s'est réveillé !",
+                infoText: "PixelCompagnon v1.0. Prenez soin de votre animal ! Fait avec ❤️ par ParisNeo.",
+                gameOverOverwhelmed: "{petName} est parti, se sentant dépassé...",
+                gameOverHungry: "{petName} avait trop faim et s'est évanoui !",
+                gameOverSad: "{petName} était trop triste et s'est enfui...",
+                gameOverDirty: "{petName} est devenu trop sale et se sent mal.",
+                gameOverLived: "Partie terminée. {petName} a vécu {age} jours.",
+                petMadeMess: "{petName} a fait des saletés !",
+                petUnwell: "{petName} se sent vraiment mal ! Nettoyez vite !",
+                facts: [
+                    "Un groupe de flamants roses s'appelle une flamboyance !", "Le cœur d'une crevette est dans sa tête !", "Les limaces ont quatre nez !", "Les papillons goûtent avec leurs pieds !", "Un escargot peut dormir trois ans !", "Les éléphants ne peuvent pas sauter !", "La lune a des tremblements de lune.", "Les ours polaires ont la peau noire."
+                ]
+            }
+        };
+        let currentLanguage = localStorage.getItem('pixelPetLang') || 'en';
+        let currentEducationalFacts = translations[currentLanguage].facts;
+        let lastGameOverMessageKey = 'gameOverDefault'; // To store the key for re-translation
+
+        function translate(key, params = {}) {
+            let text = translations[currentLanguage]?.[key] || translations.en[key] || key;
+            for (const param in params) {
+                text = text.replace(new RegExp(`{${param}}`, 'g'), params[param]);
+            }
+            return text;
+        }
+
+        function applyTranslations() {
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.getAttribute('data-translate-key');
+                el.textContent = translate(key);
+            });
+            
+            // Dynamic button texts
+            lightsButton.textContent = isSleeping ? translate('btnLightsOff') : translate('btnLightsOn');
+            
+            // Info panel specific updates
+            petNameDisplay.textContent = `${translate('labelName')} ${petName}`;
+            petAgeDisplay.textContent = `${translate('labelAge')} ${age} ${translate('labelDays')}`;
+            petIntelligenceDisplay.textContent = `${translate('labelIntelligence')} ${intelligence}`;
+
+            // Initial message
+            if (!gameLoopInterval && messageArea.firstChild?.textContent.startsWith('> Welcome')) { // Check if initial message is there
+                 messageArea.innerHTML = ''; // Clear previous
+                 addMessage(translate('welcomeMessage'));
+            }
+
+            // Game Over screen (if visible)
+            if (gameOverScreen.style.display === 'flex') {
+                gameOverMessage.textContent = translate(lastGameOverMessageKey, { petName: petName });
+            }
+            // Update active language button
+            document.querySelectorAll('.lang-button').forEach(btn => btn.classList.remove('active'));
+            const activeBtn = document.getElementById(`lang-${currentLanguage}`);
+            if(activeBtn) activeBtn.classList.add('active');
+        }
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            localStorage.setItem('pixelPetLang', lang);
+            currentEducationalFacts = translations[currentLanguage].facts || translations.en.facts;
+            applyTranslations();
+            updateUI(); // Refresh status bars as their labels might have changed
+        }
+
+
         // --- Game Constants ---
         const MAX_STAT = 100;
-        const STAT_DECREASE_INTERVAL = 3000; // ms, how often stats decrease
+        const STAT_DECREASE_INTERVAL = 3000; // ms
         const HUNGER_DECREASE = 3;
         const HAPPINESS_DECREASE = 2;
-        const CLEANLINESS_DECREASE_BASE = 1; // Decreases more if pet poops
-        const POOP_CHANCE = 0.1; // Chance to poop each cleanliness tick
+        const CLEANLINESS_DECREASE_BASE = 1;
+        const POOP_CHANCE = 0.1;
         const POOP_CLEANLINESS_PENALTY = 10;
         const MAX_POOPS = 5;
-        const AGE_INTERVAL = 60000; // 1 minute for a day
-        const ACTION_COOLDOWN = 2000; // 2 seconds cooldown for actions
+        const AGE_INTERVAL = 60000; // 1 minute
+        const ACTION_COOLDOWN = 2000; // 2 seconds
 
         // --- Three.js Variables ---
         let scene, camera, renderer, petMesh, ambientLight, directionalLight;
         let eyeLeft, eyeRight, mouth;
         let poopMeshes = [];
         let isSleeping = false;
-        let originalPetColor = 0x00ff00; // Bright green
+        let originalPetColor = 0x00ff00;
 
         // --- Game State Variables ---
         let petName = "PixelPuff";
@@ -318,19 +491,6 @@
         let gameLoopInterval, ageInterval;
         let isGameOver = false;
         let actionInProgress = false;
-
-        const educationalFacts = [
-            "A group of flamingos is called a flamboyance!",
-            "The heart of a shrimp is in its head!",
-            "Slugs have four noses!",
-            "Butterflies taste with their feet!",
-            "A snail can sleep for three years!",
-            "Elephants can't jump!",
-            "It's impossible for most people to lick their own elbow.",
-            "A crocodile cannot stick its tongue out.",
-            "The moon has moonquakes.",
-            "Polar bears have black skin under their white fur."
-        ];
 
         // --- DOM Elements ---
         const screenArea = document.getElementById('screen-area');
@@ -358,6 +518,8 @@
         const finalAgeDisplay = document.getElementById('final-age');
         const gameOverMessage = document.getElementById('game-over-message');
         const factBubble = document.getElementById('fact-bubble');
+        const langEnButton = document.getElementById('lang-en');
+        const langFrButton = document.getElementById('lang-fr');
 
 
         // --- Initialization ---
@@ -367,9 +529,9 @@
             camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
             camera.position.z = 5;
 
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // alpha for transparent bg
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(screenArea.clientWidth, screenArea.clientHeight);
-            renderer.setClearColor(0x000000, 0); // transparent background
+            renderer.setClearColor(0x000000, 0);
             threeJsCanvasContainer.appendChild(renderer.domElement);
 
             ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -379,26 +541,23 @@
             directionalLight.position.set(5, 10, 7.5);
             scene.add(directionalLight);
 
-            // Pet Body (a sphere)
             const bodyGeometry = new THREE.SphereGeometry(1, 32, 32);
             const bodyMaterial = new THREE.MeshStandardMaterial({ color: originalPetColor, roughness: 0.5, metalness: 0.1 });
             petMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
-            petMesh.position.y = -0.2; // Sit it slightly lower
+            petMesh.position.y = -0.2;
             scene.add(petMesh);
 
-            // Eyes
             const eyeGeometry = new THREE.SphereGeometry(0.15, 16, 16);
             const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
             
             eyeLeft = new THREE.Mesh(eyeGeometry, eyeMaterial);
             eyeLeft.position.set(-0.35, 0.2, 0.85);
-            petMesh.add(eyeLeft); // Add to petMesh so they move together
+            petMesh.add(eyeLeft);
 
             eyeRight = new THREE.Mesh(eyeGeometry, eyeMaterial);
             eyeRight.position.set(0.35, 0.2, 0.85);
             petMesh.add(eyeRight);
 
-            // Mouth (simple plane for texture later if needed, or just a line)
             const mouthGeometry = new THREE.PlaneGeometry(0.4, 0.1);
             const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
             mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
@@ -419,10 +578,11 @@
 
             clearPoops();
             
-            petNameDisplay.textContent = `Name: ${petName}`;
+            petNameDisplay.textContent = `${translate('labelName')} ${petName}`; // Update with name
             updateUI();
             updatePetVisuals();
-            addMessage(`${petName} has hatched! Welcome!`);
+            addMessage(translate('petHatched', {petName: petName}));
+
 
             if (gameLoopInterval) clearInterval(gameLoopInterval);
             gameLoopInterval = setInterval(gameTick, STAT_DECREASE_INTERVAL);
@@ -433,26 +593,24 @@
             startScreen.style.display = 'none';
             gameOverScreen.style.display = 'none';
             enableButtons();
+            applyTranslations(); // Ensure all texts are correct after game start
         }
         
         // --- Game Loop & Logic ---
         function gameTick() {
             if (isGameOver || isSleeping) return;
 
-            // Decrease stats
             hunger = Math.max(0, hunger - HUNGER_DECREASE);
             happiness = Math.max(0, happiness - HAPPINESS_DECREASE);
             
             let cleanlinessDecrease = CLEANLINESS_DECREASE_BASE;
             if (Math.random() < POOP_CHANCE && poopMeshes.length < MAX_POOPS) {
                 addPoop();
-                cleanlinessDecrease += POOP_CLEANLINESS_PENALTY / 5; // More decrease if pooping
-                addMessage(`${petName} made a mess!`);
+                cleanlinessDecrease += POOP_CLEANLINESS_PENALTY / 5;
+                addMessage(translate('petMadeMess', {petName: petName}));
             }
             cleanliness = Math.max(0, cleanliness - cleanlinessDecrease - (poopMeshes.length * 2));
 
-
-            // Happiness also affected by other low stats
             if (hunger < 20) happiness = Math.max(0, happiness - 3);
             if (cleanliness < 20) happiness = Math.max(0, happiness - 3);
 
@@ -465,27 +623,29 @@
             if (isGameOver || isSleeping) return;
             age++;
             updateUI();
-            addMessage(`${petName} is now ${age} day(s) old!`);
-            if (age % 5 === 0 && intelligence > 0) { // Every 5 days, more chance of random fact
+            addMessage(translate('petAgeUp', {petName: petName, age: age}));
+            if (age % 5 === 0 && intelligence > 0) {
                 showRandomFact();
             }
         }
 
         function checkGameOver() {
+            let reasonKey = null;
             if (hunger === 0 && happiness === 0 && cleanliness === 0) {
-                gameOverMessage.textContent = `${petName} became overwhelmed and left...`;
-                endGame();
+                reasonKey = 'gameOverOverwhelmed';
             } else if (hunger === 0) {
-                gameOverMessage.textContent = `${petName} got too hungry and fainted!`;
-                endGame();
+                reasonKey = 'gameOverHungry';
             } else if (happiness === 0) {
-                gameOverMessage.textContent = `${petName} became too sad and ran away...`;
-                endGame();
+                reasonKey = 'gameOverSad';
             } else if (cleanliness === 0) {
-                 gameOverMessage.textContent = `${petName} got too dirty and feels sick.`;
-                 // Not immediate game over, but strong warning
-                 addMessage(`${petName} is feeling really unwell! Clean up soon!`, 'error');
-                 happiness = Math.max(0, happiness - 10); // Penalty
+                 addMessage(translate('petUnwell', {petName: petName}), 'error');
+                 happiness = Math.max(0, happiness - 10);
+            }
+            
+            if (reasonKey) {
+                lastGameOverMessageKey = reasonKey; // Store key for potential re-translation
+                gameOverMessage.textContent = translate(reasonKey, {petName: petName});
+                endGame();
             }
         }
 
@@ -494,13 +654,15 @@
             clearInterval(gameLoopInterval);
             clearInterval(ageInterval);
             finalAgeDisplay.textContent = age;
+            // The gameOverMessage is set in checkGameOver
             gameOverScreen.style.display = 'flex';
-            addMessage(`Game Over. ${petName} lived for ${age} days.`);
+            addMessage(translate('gameOverLived', {petName: petName, age: age}));
             disableButtons();
+            applyTranslations(); // Ensure game over screen is translated
         }
 
         // --- Player Actions ---
-        function handleAction(actionFn, cost, successMessage, penaltyMessage) {
+        function handleAction(actionFn) { // Removed cost, success, penalty from params, handled in actionFn
             if (isGameOver || actionInProgress || isSleeping) return;
             
             actionInProgress = true;
@@ -519,12 +681,12 @@
             handleAction(() => {
                 if (hunger < MAX_STAT) {
                     hunger = Math.min(MAX_STAT, hunger + 25);
-                    happiness = Math.min(MAX_STAT, happiness + 5); // Feeding makes happy
-                    addMessage(`${petName} enjoyed a tasty snack! Yum!`);
+                    happiness = Math.min(MAX_STAT, happiness + 5);
+                    addMessage(translate('petAte', {petName: petName}));
                     animatePetInteraction('feed');
                 } else {
-                    addMessage(`${petName} is not hungry right now.`);
-                    happiness = Math.max(0, happiness - 5); // Annoyed if overfed
+                    addMessage(translate('petNotHungry', {petName: petName}));
+                    happiness = Math.max(0, happiness - 5);
                 }
             });
         }
@@ -533,11 +695,11 @@
             handleAction(() => {
                 if (happiness < MAX_STAT) {
                     happiness = Math.min(MAX_STAT, happiness + 20);
-                    hunger = Math.max(0, hunger - 5); // Playing makes hungry
-                    addMessage(`${petName} had fun playing! Whee!`);
+                    hunger = Math.max(0, hunger - 5);
+                    addMessage(translate('petPlayed', {petName: petName}));
                     animatePetInteraction('play');
                 } else {
-                    addMessage(`${petName} wants to rest a bit.`);
+                    addMessage(translate('petWantsRest', {petName: petName}));
                 }
             });
         }
@@ -547,27 +709,27 @@
                 if (cleanliness < MAX_STAT || poopMeshes.length > 0) {
                     cleanliness = Math.min(MAX_STAT, cleanliness + 30 + (poopMeshes.length * 10) );
                     clearPoops();
-                    addMessage(`${petName} is sparkling clean!`);
+                    addMessage(translate('petCleaned', {petName: petName}));
                     animatePetInteraction('clean');
                 } else {
-                    addMessage(`${petName} is already very clean.`);
+                    addMessage(translate('petAlreadyClean', {petName: petName}));
                 }
             });
         }
         
         function learnWithPet() {
             handleAction(() => {
-                if (intelligence < 100) { // Max intelligence 100 for example
+                if (intelligence < 100) {
                     intelligence += 5;
                     happiness = Math.min(MAX_STAT, happiness + 10);
-                    hunger = Math.max(0, hunger - 3); // Learning takes energy
-                    addMessage(`${petName} learned something new!`);
+                    hunger = Math.max(0, hunger - 3);
+                    addMessage(translate('petLearned', {petName: petName}));
                     animatePetInteraction('learn');
-                    showRandomFact(true); // Show a fact immediately after learning
+                    showRandomFact(true);
                 } else {
-                    addMessage(`${petName} is a genius already!`);
+                    addMessage(translate('petGenius', {petName: petName}));
                 }
-                petIntelligenceDisplay.textContent = `Intelligence: ${intelligence}`;
+                petIntelligenceDisplay.textContent = `${translate('labelIntelligence')} ${intelligence}`;
             });
         }
 
@@ -575,36 +737,35 @@
             if (isGameOver) return;
             isSleeping = !isSleeping;
             if (isSleeping) {
-                addMessage(`${petName} is going to sleep... Zzz...`);
+                addMessage(translate('petSleeping', {petName: petName}));
                 ambientLight.intensity = 0.1;
                 directionalLight.intensity = 0.1;
-                lightsButton.textContent = 'Lights ☀️';
-                disableButtons(true); // Disable all except lights
+                lightsButton.textContent = translate('btnLightsOff');
+                disableButtons(true);
             } else {
-                addMessage(`${petName} woke up!`);
+                addMessage(translate('petWokeUp', {petName: petName}));
                 ambientLight.intensity = 0.6;
                 directionalLight.intensity = 0.8;
-                lightsButton.textContent = 'Lights 💡';
+                lightsButton.textContent = translate('btnLightsOn');
                 enableButtons();
-                // Penalty for waking up if needs are low
                 if (hunger < 50) happiness = Math.max(0, happiness - 10);
             }
             updatePetVisuals();
         }
 
         function showInfo() {
-            addMessage(`PixelPet Pal v1.0. Care for your pet! Made with ❤️.`);
+            addMessage(translate('infoText'));
         }
         
         function showRandomFact(forceShow = false) {
-            if (isSleeping || isGameOver) return;
-            if (forceShow || (Math.random() < 0.3 && intelligence > 10)) { // Higher chance if just learned or intelligent
-                const fact = educationalFacts[Math.floor(Math.random() * educationalFacts.length)];
-                factBubble.textContent = fact;
+            if (isSleeping || isGameOver || currentEducationalFacts.length === 0) return;
+            if (forceShow || (Math.random() < 0.3 && intelligence > 10)) {
+                const fact = currentEducationalFacts[Math.floor(Math.random() * currentEducationalFacts.length)];
+                factBubble.textContent = fact; // Facts are already translated strings
                 factBubble.classList.add('visible');
                 setTimeout(() => {
                     factBubble.classList.remove('visible');
-                }, 5000); // Show fact for 5 seconds
+                }, 5000);
             }
         }
 
@@ -617,16 +778,19 @@
             cleanlinessBar.style.width = `${cleanliness}%`;
             cleanlinessBar.textContent = `${Math.round(cleanliness)}%`;
             
-            petAgeDisplay.textContent = `Age: ${age} days`;
-            petIntelligenceDisplay.textContent = `Intelligence: ${intelligence}`;
+            petAgeDisplay.textContent = `${translate('labelAge')} ${age} ${translate('labelDays')}`;
+            petIntelligenceDisplay.textContent = `${translate('labelIntelligence')} ${intelligence}`;
+            petNameDisplay.textContent = `${translate('labelName')} ${petName}`;
 
-            // Update bar colors based on value (optional visual cue)
+
             [hungerBar, happinessBar, cleanlinessBar].forEach(bar => {
                 const value = parseInt(bar.style.width);
-                if (value < 25) bar.style.backgroundColor = '#d9534f'; // Red
-                else if (value < 60) bar.style.backgroundColor = '#f0ad4e'; // Yellow
-                else bar.style.backgroundColor = '#306230'; // Green (original)
+                if (value < 25) bar.style.backgroundColor = '#d9534f';
+                else if (value < 60) bar.style.backgroundColor = '#f0ad4e';
+                else bar.style.backgroundColor = '#306230';
             });
+             // Ensure button text is correct, especially for Lights button after UI updates
+            lightsButton.textContent = isSleeping ? translate('btnLightsOff') : translate('btnLightsOn');
         }
 
         function addMessage(text, type = 'info') {
@@ -639,7 +803,7 @@
             while (messageArea.childElementCount > maxMessages) {
                 messageArea.removeChild(messageArea.firstChild);
             }
-            messageArea.scrollTop = messageArea.scrollHeight; // Scroll to bottom
+            messageArea.scrollTop = messageArea.scrollHeight;
         }
 
         function enableButtons() {
@@ -648,7 +812,7 @@
             cleanButton.classList.remove('disabled');
             learnButton.classList.remove('disabled');
             infoButton.classList.remove('disabled');
-            lightsButton.classList.remove('disabled'); // Ensure lights button is also re-enabled
+            lightsButton.classList.remove('disabled');
         }
 
         function disableButtons(isSleepingOverride = false) {
@@ -657,100 +821,73 @@
             cleanButton.classList.add('disabled');
             learnButton.classList.add('disabled');
             infoButton.classList.add('disabled');
-            // Don't disable lights button if it's the only one active during sleep
             if (!isSleepingOverride) {
                 lightsButton.classList.add('disabled');
             }
         }
 
-        // --- Pet Visuals & Animations ---
+        // --- Pet Visuals & Animations (No changes needed for localization) ---
         function updatePetVisuals() {
             if (!petMesh) return;
-
-            // Sleeping state
             if (isSleeping) {
-                eyeLeft.scale.set(1, 0.1, 1); // Squashed eyes
-                eyeRight.scale.set(1, 0.1, 1);
-                mouth.scale.set(1, 0.1, 1); // Minimal mouth
-                petMesh.material.color.set(0x5555cc); // Darker, sleepy blue
-                return; // No other expressions if sleeping
+                eyeLeft.scale.set(1, 0.1, 1); eyeRight.scale.set(1, 0.1, 1);
+                mouth.scale.set(1, 0.1, 1); petMesh.material.color.set(0x5555cc);
+                return;
             } else {
-                eyeLeft.scale.set(1, 1, 1);
-                eyeRight.scale.set(1, 1, 1);
-                mouth.scale.set(1, 1, 1);
-                petMesh.material.color.set(originalPetColor);
+                eyeLeft.scale.set(1, 1, 1); eyeRight.scale.set(1, 1, 1);
+                mouth.scale.set(1, 1, 1); petMesh.material.color.set(originalPetColor);
             }
-            
-            // Mood based on happiness and hunger
-            if (happiness < 30 || hunger < 30) { // Sad/Hungry
-                petMesh.material.color.set(0xffa500); // Orange-ish
+            if (happiness < 30 || hunger < 30) {
+                petMesh.material.color.set(0xffa500);
                 eyeLeft.scale.y = 0.7; eyeLeft.position.y = 0.15;
                 eyeRight.scale.y = 0.7; eyeRight.position.y = 0.15;
-                mouth.rotation.z = Math.PI / 12; // Sad mouth
-            } else if (happiness > 80) { // Happy
-                petMesh.material.color.set(0x00ff00); // Bright Green
+                mouth.rotation.z = Math.PI / 12;
+            } else if (happiness > 80) {
+                petMesh.material.color.set(0x00ff00);
                 eyeLeft.scale.y = 1.2; eyeLeft.position.y = 0.25;
                 eyeRight.scale.y = 1.2; eyeRight.position.y = 0.25;
-                mouth.rotation.z = -Math.PI / 16; // Happy mouth
-            } else { // Neutral
+                mouth.rotation.z = -Math.PI / 16;
+            } else {
                 petMesh.material.color.set(originalPetColor);
                 eyeLeft.scale.y = 1; eyeLeft.position.y = 0.2;
                 eyeRight.scale.y = 1; eyeRight.position.y = 0.2;
-                mouth.rotation.z = 0; // Neutral mouth
+                mouth.rotation.z = 0;
             }
-
-            // Cleanliness visual cue (dirtiness)
             if (cleanliness < 40) {
-                const dirtColor = new THREE.Color(0x8B4513); // SaddleBrown
-                petMesh.material.color.lerp(dirtColor, (40 - cleanliness) / 40 * 0.6); // Lerp to brown, 60% effect
+                const dirtColor = new THREE.Color(0x8B4513);
+                petMesh.material.color.lerp(dirtColor, (40 - cleanliness) / 40 * 0.6);
             }
         }
-        
         function animatePetInteraction(type) {
             if (isSleeping) return;
             let originalY = petMesh.position.y;
-            let originalScale = petMesh.scale.clone();
-
-            if (type === 'feed' || type === 'learn') { // Bob up and down
+            if (type === 'feed' || type === 'learn') {
                 petMesh.position.y += 0.2;
                 setTimeout(() => { petMesh.position.y = originalY - 0.1;}, 100);
                 setTimeout(() => { petMesh.position.y = originalY;}, 200);
-            } else if (type === 'play') { // Jump and spin
-                petMesh.position.y += 0.5;
-                petMesh.rotation.y += Math.PI / 4;
-                setTimeout(() => {
-                    petMesh.position.y = originalY;
-                    petMesh.rotation.y -= Math.PI / 2;
-                }, 150);
-                 setTimeout(() => {
-                    petMesh.rotation.y += Math.PI / 4;
-                }, 300);
-            } else if (type === 'clean') { // Wiggle
+            } else if (type === 'play') {
+                petMesh.position.y += 0.5; petMesh.rotation.y += Math.PI / 4;
+                setTimeout(() => { petMesh.position.y = originalY; petMesh.rotation.y -= Math.PI / 2; }, 150);
+                setTimeout(() => { petMesh.rotation.y += Math.PI / 4; }, 300);
+            } else if (type === 'clean') {
                 petMesh.rotation.z = 0.2;
                 setTimeout(() => { petMesh.rotation.z = -0.2;}, 100);
                 setTimeout(() => { petMesh.rotation.z = 0.2;}, 200);
                 setTimeout(() => { petMesh.rotation.z = 0;}, 300);
             }
         }
-
-        // --- Poop Management ---
         function addPoop() {
             if (poopMeshes.length >= MAX_POOPS) return;
-
-            const poopGeometry = new THREE.SphereGeometry(0.2, 8, 8); // Simpler geometry
-            poopGeometry.scale(1, 0.6, 1); // Make it flatter
-            const poopMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3317, roughness: 0.8 }); // Brown
+            const poopGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+            poopGeometry.scale(1, 0.6, 1);
+            const poopMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3317, roughness: 0.8 });
             const poop = new THREE.Mesh(poopGeometry, poopMaterial);
-            
-            // Position randomly on the "floor" near the pet
             const angle = Math.random() * Math.PI * 2;
-            const radius = 1.5 + Math.random() * 0.5; // Distance from center
-            poop.position.set(Math.cos(angle) * radius, -0.9, Math.sin(angle) * radius -0.5); // y=-0.9 is "floor"
-            
+            const radius = 1.5 + Math.random() * 0.5;
+            poop.position.set(Math.cos(angle) * radius, -0.9, Math.sin(angle) * radius -0.5);
             scene.add(poop);
             poopMeshes.push(poop);
         }
-
         function clearPoops() {
             poopMeshes.forEach(p => scene.remove(p));
             poopMeshes = [];
@@ -758,19 +895,14 @@
 
         // --- Animation Loop ---
         function animate() {
-            if (isGameOver && gameOverScreen.style.display === 'none') return; // Stop if game over but screen not yet shown
-
+            if (isGameOver && gameOverScreen.style.display === 'none') return;
             requestAnimationFrame(animate);
-
-            // Gentle bobbing motion if not sleeping
             if (petMesh && !isSleeping) {
                 const time = Date.now() * 0.0015;
                 petMesh.position.y = -0.2 + Math.sin(time) * 0.05;
             } else if (petMesh && isSleeping) {
-                 petMesh.position.y = -0.2; // Keep still when sleeping
+                 petMesh.position.y = -0.2;
             }
-
-
             renderer.render(scene, camera);
         }
         
@@ -778,15 +910,15 @@
         startButton.addEventListener('click', () => {
             petName = petNameInput.value.trim();
             if (!petName) {
-                alert("Please enter a name for your pet!");
+                alert(translate('alertEnterPetName'));
                 return;
             }
             initGame();
         });
         restartButton.addEventListener('click', () => {
-            startScreen.style.display = 'flex'; // Show start screen to re-enter name or just start
+            startScreen.style.display = 'flex';
             gameOverScreen.style.display = 'none';
-            // initGame will be called by startButton
+            applyTranslations(); // Ensure start screen is translated
         });
 
         feedButton.addEventListener('click', feedPet);
@@ -796,7 +928,9 @@
         lightsButton.addEventListener('click', toggleLights);
         infoButton.addEventListener('click', showInfo);
 
-        // Resize handler
+        langEnButton.addEventListener('click', () => setLanguage('en'));
+        langFrButton.addEventListener('click', () => setLanguage('fr'));
+
         window.addEventListener('resize', () => {
             if (screenArea.clientWidth > 0 && screenArea.clientHeight > 0) {
                 camera.aspect = screenArea.clientWidth / screenArea.clientHeight;
@@ -809,7 +943,7 @@
         // --- Start Up ---
         initThree();
         animate(); 
-        // Game logic starts when user clicks "Hatch Pet"
+        setLanguage(currentLanguage); // Apply initial language settings
         
     </script>
 </body>
