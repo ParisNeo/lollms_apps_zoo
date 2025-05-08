@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelPet Pal</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+        }
+
+        #game-container {
+            width: 480px; /* Roughly 90s handheld screen aspect ratio */
+            height: 720px;
+            background-color: #f0f0f0; /* Light grey, common for old electronics */
+            border-radius: 20px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5), inset 0 0 10px rgba(0,0,0,0.3);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative; /* For absolute positioning of overlays */
+        }
+
+        #screen-area {
+            width: 100%;
+            height: 320px; /* Main 3D view */
+            background-color: #9bbc0f; /* Gameboy-esque green */
+            border: 5px solid #306230;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden; /* Ensure Three.js canvas fits */
+        }
+
+        #threejs-canvas {
+            display: block; /* Remove extra space below canvas */
+        }
+
+        #info-panel {
+            background-color: #cadc9f;
+            border: 3px solid #8bac0f;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 15px;
+            color: #0f380f; /* Dark green text */
+        }
+
+        #info-panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 2px solid #8bac0f;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .status-bar-container {
+            margin-bottom: 8px;
+        }
+
+        .status-bar-label {
+            font-size: 12px;
+            margin-right: 5px;
+            display: inline-block;
+            width: 90px; /* Align labels */
+            text-align: left;
+        }
+
+        .status-bar {
+            display: inline-block;
+            width: 200px;
+            height: 15px;
+            background-color: #8bac0f; /* Bar background */
+            border: 1px solid #0f380f;
+            border-radius: 3px;
+            overflow: hidden;
+            position: relative; /* For inner bar */
+        }
+
+        .status-bar-fill {
+            height: 100%;
+            background-color: #306230; /* Bar fill color */
+            transition: width 0.5s ease-out;
+            text-align: center;
+            line-height: 15px;
+            font-size: 10px;
+            color: #cadc9f;
+        }
+        
+        #pet-name-display, #pet-age-display, #pet-intelligence-display {
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+
+        #controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-button {
+            background-color: #ff69b4; /* Bright pink */
+            color: white;
+            border: 3px solid #c71585; /* Darker pink */
+            padding: 12px 0;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px #8b0000; /* 3D button effect */
+            transition: all 0.1s ease;
+        }
+
+        .action-button:active {
+            background-color: #c71585;
+            box-shadow: 0 1px #8b0000;
+            transform: translateY(2px);
+        }
+        
+        .action-button.disabled {
+            background-color: #aaa;
+            color: #777;
+            border-color: #888;
+            box-shadow: 0 3px #555;
+            cursor: not-allowed;
+        }
+
+        #message-area {
+            margin-top: 15px;
+            height: 40px;
+            background-color: #444;
+            color: #0f0; /* Green terminal text */
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 12px;
+            overflow-y: auto; /* For multiple messages if needed */
+            text-align: left;
+            line-height: 1.4;
+        }
+
+        /* Overlay for start/game over screens */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        .overlay h1 {
+            color: #ff69b4;
+            margin-bottom: 20px;
+        }
+        .overlay p {
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .overlay input[type="text"] {
+            font-family: 'Press Start 2P', cursive;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 2px solid #ff69b4;
+            background-color: #333;
+            color: #fff;
+            font-size: 16px;
+            text-align: center;
+        }
+        .overlay button {
+            background-color: #00ff00; /* Bright green */
+            color: #0f380f;
+            border: 3px solid #00aa00; /* Darker green */
+            padding: 15px 30px;
+            font-family: 'Press Start 2P', cursive;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 3px #006400;
+        }
+         .overlay button:active {
+            background-color: #00aa00;
+            box-shadow: 0 1px #006400;
+            transform: translateY(2px);
+        }
+
+        /* Poop icon */
+        .poop-icon {
+            position: absolute;
+            font-size: 24px; /* Adjust size as needed */
+            /* Using an emoji, but you could use an image or draw it */
+            user-select: none; /* Make it non-selectable */
+        }
+
+        /* Educational fact bubble */
+        #fact-bubble {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            color: #0f380f;
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 2px solid #8bac0f;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 11px;
+            max-width: 80%;
+            text-align: center;
+            z-index: 50; /* Above pet but below overlays */
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            pointer-events: none; /* So it doesn't interfere with clicks */
+        }
+        #fact-bubble.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="start-screen" class="overlay">
+            <h1>PixelPet Pal!</h1>
+            <p>Name your new digital friend:</p>
+            <input type="text" id="pet-name-input" maxlength="10" value="PixelPuff">
+            <button id="start-button">Hatch Pet!</button>
+             <p style="font-size:10px; margin-top: 30px;">Care for your pet by feeding it, playing, cleaning, and helping it learn. Don't let its needs drop too low!</p>
+        </div>
+
+        <div id="game-over-screen" class="overlay" style="display: none;">
+            <h1>Game Over!</h1>
+            <p id="game-over-message">Your PixelPet got sad and ran away...</p>
+            <p>It lived for <span id="final-age">0</span> days.</p>
+            <button id="restart-button">Play Again?</button>
+        </div>
+        
+        <div id="screen-area">
+            <div id="threejs-canvas"></div>
+            <div id="fact-bubble"></div>
+        </div>
+
+        <div id="info-panel">
+            <div id="pet-name-display">Name: PixelPuff</div>
+            <div id="pet-age-display">Age: 0 days</div>
+            <div id="pet-intelligence-display">Intelligence: 0</div>
+            
+            <div class="status-bar-container">
+                <span class="status-bar-label">Hunger:</span>
+                <div class="status-bar"><div id="hunger-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
+            </div>
+            <div class="status-bar-container">
+                <span class="status-bar-label">Happiness:</span>
+                <div class="status-bar"><div id="happiness-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
+            </div>
+            <div class="status-bar-container">
+                <span class="status-bar-label">Cleanliness:</span>
+                <div class="status-bar"><div id="cleanliness-bar" class="status-bar-fill" style="width: 100%;">100%</div></div>
+            </div>
+        </div>
+
+        <div id="controls">
+            <button id="feed-button" class="action-button">Feed 🍎</button>
+            <button id="play-button" class="action-button">Play 🎾</button>
+            <button id="clean-button" class="action-button">Clean ✨</button>
+            <button id="learn-button" class="action-button">Learn 🧠</button>
+            <button id="lights-button" class="action-button">Lights 💡</button>
+            <button id="info-button" class="action-button">Info ❓</button>
+        </div>
+        <div id="message-area">Welcome to PixelPet Pal!</div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        // --- Game Constants ---
+        const MAX_STAT = 100;
+        const STAT_DECREASE_INTERVAL = 3000; // ms, how often stats decrease
+        const HUNGER_DECREASE = 3;
+        const HAPPINESS_DECREASE = 2;
+        const CLEANLINESS_DECREASE_BASE = 1; // Decreases more if pet poops
+        const POOP_CHANCE = 0.1; // Chance to poop each cleanliness tick
+        const POOP_CLEANLINESS_PENALTY = 10;
+        const MAX_POOPS = 5;
+        const AGE_INTERVAL = 60000; // 1 minute for a day
+        const ACTION_COOLDOWN = 2000; // 2 seconds cooldown for actions
+
+        // --- Three.js Variables ---
+        let scene, camera, renderer, petMesh, ambientLight, directionalLight;
+        let eyeLeft, eyeRight, mouth;
+        let poopMeshes = [];
+        let isSleeping = false;
+        let originalPetColor = 0x00ff00; // Bright green
+
+        // --- Game State Variables ---
+        let petName = "PixelPuff";
+        let hunger = MAX_STAT;
+        let happiness = MAX_STAT;
+        let cleanliness = MAX_STAT;
+        let intelligence = 0;
+        let age = 0;
+        let gameLoopInterval, ageInterval;
+        let isGameOver = false;
+        let actionInProgress = false;
+
+        const educationalFacts = [
+            "A group of flamingos is called a flamboyance!",
+            "The heart of a shrimp is in its head!",
+            "Slugs have four noses!",
+            "Butterflies taste with their feet!",
+            "A snail can sleep for three years!",
+            "Elephants can't jump!",
+            "It's impossible for most people to lick their own elbow.",
+            "A crocodile cannot stick its tongue out.",
+            "The moon has moonquakes.",
+            "Polar bears have black skin under their white fur."
+        ];
+
+        // --- DOM Elements ---
+        const screenArea = document.getElementById('screen-area');
+        const threeJsCanvasContainer = document.getElementById('threejs-canvas');
+        const hungerBar = document.getElementById('hunger-bar');
+        const happinessBar = document.getElementById('happiness-bar');
+        const cleanlinessBar = document.getElementById('cleanliness-bar');
+        const petNameDisplay = document.getElementById('pet-name-display');
+        const petAgeDisplay = document.getElementById('pet-age-display');
+        const petIntelligenceDisplay = document.getElementById('pet-intelligence-display');
+        const messageArea = document.getElementById('message-area');
+        
+        const feedButton = document.getElementById('feed-button');
+        const playButton = document.getElementById('play-button');
+        const cleanButton = document.getElementById('clean-button');
+        const learnButton = document.getElementById('learn-button');
+        const lightsButton = document.getElementById('lights-button');
+        const infoButton = document.getElementById('info-button');
+        
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const petNameInput = document.getElementById('pet-name-input');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const finalAgeDisplay = document.getElementById('final-age');
+        const gameOverMessage = document.getElementById('game-over-message');
+        const factBubble = document.getElementById('fact-bubble');
+
+
+        // --- Initialization ---
+        function initThree() {
+            scene = new THREE.Scene();
+            const aspectRatio = screenArea.clientWidth / screenArea.clientHeight;
+            camera = new THREE.PerspectiveCamera(75, aspectRatio, 0.1, 1000);
+            camera.position.z = 5;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); // alpha for transparent bg
+            renderer.setSize(screenArea.clientWidth, screenArea.clientHeight);
+            renderer.setClearColor(0x000000, 0); // transparent background
+            threeJsCanvasContainer.appendChild(renderer.domElement);
+
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            // Pet Body (a sphere)
+            const bodyGeometry = new THREE.SphereGeometry(1, 32, 32);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ color: originalPetColor, roughness: 0.5, metalness: 0.1 });
+            petMesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            petMesh.position.y = -0.2; // Sit it slightly lower
+            scene.add(petMesh);
+
+            // Eyes
+            const eyeGeometry = new THREE.SphereGeometry(0.15, 16, 16);
+            const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            
+            eyeLeft = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            eyeLeft.position.set(-0.35, 0.2, 0.85);
+            petMesh.add(eyeLeft); // Add to petMesh so they move together
+
+            eyeRight = new THREE.Mesh(eyeGeometry, eyeMaterial);
+            eyeRight.position.set(0.35, 0.2, 0.85);
+            petMesh.add(eyeRight);
+
+            // Mouth (simple plane for texture later if needed, or just a line)
+            const mouthGeometry = new THREE.PlaneGeometry(0.4, 0.1);
+            const mouthMaterial = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+            mouth = new THREE.Mesh(mouthGeometry, mouthMaterial);
+            mouth.position.set(0, -0.2, 0.9);
+            petMesh.add(mouth);
+        }
+
+        function initGame() {
+            isGameOver = false;
+            actionInProgress = false;
+            isSleeping = false;
+            petName = petNameInput.value || "PixelPuff";
+            hunger = MAX_STAT;
+            happiness = MAX_STAT;
+            cleanliness = MAX_STAT;
+            intelligence = 0;
+            age = 0;
+
+            clearPoops();
+            
+            petNameDisplay.textContent = `Name: ${petName}`;
+            updateUI();
+            updatePetVisuals();
+            addMessage(`${petName} has hatched! Welcome!`);
+
+            if (gameLoopInterval) clearInterval(gameLoopInterval);
+            gameLoopInterval = setInterval(gameTick, STAT_DECREASE_INTERVAL);
+            
+            if (ageInterval) clearInterval(ageInterval);
+            ageInterval = setInterval(increaseAge, AGE_INTERVAL);
+
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            enableButtons();
+        }
+        
+        // --- Game Loop & Logic ---
+        function gameTick() {
+            if (isGameOver || isSleeping) return;
+
+            // Decrease stats
+            hunger = Math.max(0, hunger - HUNGER_DECREASE);
+            happiness = Math.max(0, happiness - HAPPINESS_DECREASE);
+            
+            let cleanlinessDecrease = CLEANLINESS_DECREASE_BASE;
+            if (Math.random() < POOP_CHANCE && poopMeshes.length < MAX_POOPS) {
+                addPoop();
+                cleanlinessDecrease += POOP_CLEANLINESS_PENALTY / 5; // More decrease if pooping
+                addMessage(`${petName} made a mess!`);
+            }
+            cleanliness = Math.max(0, cleanliness - cleanlinessDecrease - (poopMeshes.length * 2));
+
+
+            // Happiness also affected by other low stats
+            if (hunger < 20) happiness = Math.max(0, happiness - 3);
+            if (cleanliness < 20) happiness = Math.max(0, happiness - 3);
+
+            updateUI();
+            updatePetVisuals();
+            checkGameOver();
+        }
+
+        function increaseAge() {
+            if (isGameOver || isSleeping) return;
+            age++;
+            updateUI();
+            addMessage(`${petName} is now ${age} day(s) old!`);
+            if (age % 5 === 0 && intelligence > 0) { // Every 5 days, more chance of random fact
+                showRandomFact();
+            }
+        }
+
+        function checkGameOver() {
+            if (hunger === 0 && happiness === 0 && cleanliness === 0) {
+                gameOverMessage.textContent = `${petName} became overwhelmed and left...`;
+                endGame();
+            } else if (hunger === 0) {
+                gameOverMessage.textContent = `${petName} got too hungry and fainted!`;
+                endGame();
+            } else if (happiness === 0) {
+                gameOverMessage.textContent = `${petName} became too sad and ran away...`;
+                endGame();
+            } else if (cleanliness === 0) {
+                 gameOverMessage.textContent = `${petName} got too dirty and feels sick.`;
+                 // Not immediate game over, but strong warning
+                 addMessage(`${petName} is feeling really unwell! Clean up soon!`, 'error');
+                 happiness = Math.max(0, happiness - 10); // Penalty
+            }
+        }
+
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameLoopInterval);
+            clearInterval(ageInterval);
+            finalAgeDisplay.textContent = age;
+            gameOverScreen.style.display = 'flex';
+            addMessage(`Game Over. ${petName} lived for ${age} days.`);
+            disableButtons();
+        }
+
+        // --- Player Actions ---
+        function handleAction(actionFn, cost, successMessage, penaltyMessage) {
+            if (isGameOver || actionInProgress || isSleeping) return;
+            
+            actionInProgress = true;
+            disableButtons();
+            setTimeout(() => {
+                actionInProgress = false;
+                if (!isGameOver && !isSleeping) enableButtons();
+            }, ACTION_COOLDOWN);
+
+            actionFn();
+            updateUI();
+            updatePetVisuals();
+        }
+
+        function feedPet() {
+            handleAction(() => {
+                if (hunger < MAX_STAT) {
+                    hunger = Math.min(MAX_STAT, hunger + 25);
+                    happiness = Math.min(MAX_STAT, happiness + 5); // Feeding makes happy
+                    addMessage(`${petName} enjoyed a tasty snack! Yum!`);
+                    animatePetInteraction('feed');
+                } else {
+                    addMessage(`${petName} is not hungry right now.`);
+                    happiness = Math.max(0, happiness - 5); // Annoyed if overfed
+                }
+            });
+        }
+
+        function playWithPet() {
+            handleAction(() => {
+                if (happiness < MAX_STAT) {
+                    happiness = Math.min(MAX_STAT, happiness + 20);
+                    hunger = Math.max(0, hunger - 5); // Playing makes hungry
+                    addMessage(`${petName} had fun playing! Whee!`);
+                    animatePetInteraction('play');
+                } else {
+                    addMessage(`${petName} wants to rest a bit.`);
+                }
+            });
+        }
+
+        function cleanPet() {
+             handleAction(() => {
+                if (cleanliness < MAX_STAT || poopMeshes.length > 0) {
+                    cleanliness = Math.min(MAX_STAT, cleanliness + 30 + (poopMeshes.length * 10) );
+                    clearPoops();
+                    addMessage(`${petName} is sparkling clean!`);
+                    animatePetInteraction('clean');
+                } else {
+                    addMessage(`${petName} is already very clean.`);
+                }
+            });
+        }
+        
+        function learnWithPet() {
+            handleAction(() => {
+                if (intelligence < 100) { // Max intelligence 100 for example
+                    intelligence += 5;
+                    happiness = Math.min(MAX_STAT, happiness + 10);
+                    hunger = Math.max(0, hunger - 3); // Learning takes energy
+                    addMessage(`${petName} learned something new!`);
+                    animatePetInteraction('learn');
+                    showRandomFact(true); // Show a fact immediately after learning
+                } else {
+                    addMessage(`${petName} is a genius already!`);
+                }
+                petIntelligenceDisplay.textContent = `Intelligence: ${intelligence}`;
+            });
+        }
+
+        function toggleLights() {
+            if (isGameOver) return;
+            isSleeping = !isSleeping;
+            if (isSleeping) {
+                addMessage(`${petName} is going to sleep... Zzz...`);
+                ambientLight.intensity = 0.1;
+                directionalLight.intensity = 0.1;
+                lightsButton.textContent = 'Lights ☀️';
+                disableButtons(true); // Disable all except lights
+            } else {
+                addMessage(`${petName} woke up!`);
+                ambientLight.intensity = 0.6;
+                directionalLight.intensity = 0.8;
+                lightsButton.textContent = 'Lights 💡';
+                enableButtons();
+                // Penalty for waking up if needs are low
+                if (hunger < 50) happiness = Math.max(0, happiness - 10);
+            }
+            updatePetVisuals();
+        }
+
+        function showInfo() {
+            addMessage(`PixelPet Pal v1.0. Care for your pet! Made with ❤️.`);
+        }
+        
+        function showRandomFact(forceShow = false) {
+            if (isSleeping || isGameOver) return;
+            if (forceShow || (Math.random() < 0.3 && intelligence > 10)) { // Higher chance if just learned or intelligent
+                const fact = educationalFacts[Math.floor(Math.random() * educationalFacts.length)];
+                factBubble.textContent = fact;
+                factBubble.classList.add('visible');
+                setTimeout(() => {
+                    factBubble.classList.remove('visible');
+                }, 5000); // Show fact for 5 seconds
+            }
+        }
+
+        // --- UI Updates ---
+        function updateUI() {
+            hungerBar.style.width = `${hunger}%`;
+            hungerBar.textContent = `${Math.round(hunger)}%`;
+            happinessBar.style.width = `${happiness}%`;
+            happinessBar.textContent = `${Math.round(happiness)}%`;
+            cleanlinessBar.style.width = `${cleanliness}%`;
+            cleanlinessBar.textContent = `${Math.round(cleanliness)}%`;
+            
+            petAgeDisplay.textContent = `Age: ${age} days`;
+            petIntelligenceDisplay.textContent = `Intelligence: ${intelligence}`;
+
+            // Update bar colors based on value (optional visual cue)
+            [hungerBar, happinessBar, cleanlinessBar].forEach(bar => {
+                const value = parseInt(bar.style.width);
+                if (value < 25) bar.style.backgroundColor = '#d9534f'; // Red
+                else if (value < 60) bar.style.backgroundColor = '#f0ad4e'; // Yellow
+                else bar.style.backgroundColor = '#306230'; // Green (original)
+            });
+        }
+
+        function addMessage(text, type = 'info') {
+            const maxMessages = 3;
+            const messageP = document.createElement('p');
+            messageP.textContent = `> ${text}`;
+            if (type === 'error') messageP.style.color = '#ff4444';
+            
+            messageArea.appendChild(messageP);
+            while (messageArea.childElementCount > maxMessages) {
+                messageArea.removeChild(messageArea.firstChild);
+            }
+            messageArea.scrollTop = messageArea.scrollHeight; // Scroll to bottom
+        }
+
+        function enableButtons() {
+            feedButton.classList.remove('disabled');
+            playButton.classList.remove('disabled');
+            cleanButton.classList.remove('disabled');
+            learnButton.classList.remove('disabled');
+            infoButton.classList.remove('disabled');
+            lightsButton.classList.remove('disabled'); // Ensure lights button is also re-enabled
+        }
+
+        function disableButtons(isSleepingOverride = false) {
+            feedButton.classList.add('disabled');
+            playButton.classList.add('disabled');
+            cleanButton.classList.add('disabled');
+            learnButton.classList.add('disabled');
+            infoButton.classList.add('disabled');
+            // Don't disable lights button if it's the only one active during sleep
+            if (!isSleepingOverride) {
+                lightsButton.classList.add('disabled');
+            }
+        }
+
+        // --- Pet Visuals & Animations ---
+        function updatePetVisuals() {
+            if (!petMesh) return;
+
+            // Sleeping state
+            if (isSleeping) {
+                eyeLeft.scale.set(1, 0.1, 1); // Squashed eyes
+                eyeRight.scale.set(1, 0.1, 1);
+                mouth.scale.set(1, 0.1, 1); // Minimal mouth
+                petMesh.material.color.set(0x5555cc); // Darker, sleepy blue
+                return; // No other expressions if sleeping
+            } else {
+                eyeLeft.scale.set(1, 1, 1);
+                eyeRight.scale.set(1, 1, 1);
+                mouth.scale.set(1, 1, 1);
+                petMesh.material.color.set(originalPetColor);
+            }
+            
+            // Mood based on happiness and hunger
+            if (happiness < 30 || hunger < 30) { // Sad/Hungry
+                petMesh.material.color.set(0xffa500); // Orange-ish
+                eyeLeft.scale.y = 0.7; eyeLeft.position.y = 0.15;
+                eyeRight.scale.y = 0.7; eyeRight.position.y = 0.15;
+                mouth.rotation.z = Math.PI / 12; // Sad mouth
+            } else if (happiness > 80) { // Happy
+                petMesh.material.color.set(0x00ff00); // Bright Green
+                eyeLeft.scale.y = 1.2; eyeLeft.position.y = 0.25;
+                eyeRight.scale.y = 1.2; eyeRight.position.y = 0.25;
+                mouth.rotation.z = -Math.PI / 16; // Happy mouth
+            } else { // Neutral
+                petMesh.material.color.set(originalPetColor);
+                eyeLeft.scale.y = 1; eyeLeft.position.y = 0.2;
+                eyeRight.scale.y = 1; eyeRight.position.y = 0.2;
+                mouth.rotation.z = 0; // Neutral mouth
+            }
+
+            // Cleanliness visual cue (dirtiness)
+            if (cleanliness < 40) {
+                const dirtColor = new THREE.Color(0x8B4513); // SaddleBrown
+                petMesh.material.color.lerp(dirtColor, (40 - cleanliness) / 40 * 0.6); // Lerp to brown, 60% effect
+            }
+        }
+        
+        function animatePetInteraction(type) {
+            if (isSleeping) return;
+            let originalY = petMesh.position.y;
+            let originalScale = petMesh.scale.clone();
+
+            if (type === 'feed' || type === 'learn') { // Bob up and down
+                petMesh.position.y += 0.2;
+                setTimeout(() => { petMesh.position.y = originalY - 0.1;}, 100);
+                setTimeout(() => { petMesh.position.y = originalY;}, 200);
+            } else if (type === 'play') { // Jump and spin
+                petMesh.position.y += 0.5;
+                petMesh.rotation.y += Math.PI / 4;
+                setTimeout(() => {
+                    petMesh.position.y = originalY;
+                    petMesh.rotation.y -= Math.PI / 2;
+                }, 150);
+                 setTimeout(() => {
+                    petMesh.rotation.y += Math.PI / 4;
+                }, 300);
+            } else if (type === 'clean') { // Wiggle
+                petMesh.rotation.z = 0.2;
+                setTimeout(() => { petMesh.rotation.z = -0.2;}, 100);
+                setTimeout(() => { petMesh.rotation.z = 0.2;}, 200);
+                setTimeout(() => { petMesh.rotation.z = 0;}, 300);
+            }
+        }
+
+        // --- Poop Management ---
+        function addPoop() {
+            if (poopMeshes.length >= MAX_POOPS) return;
+
+            const poopGeometry = new THREE.SphereGeometry(0.2, 8, 8); // Simpler geometry
+            poopGeometry.scale(1, 0.6, 1); // Make it flatter
+            const poopMaterial = new THREE.MeshStandardMaterial({ color: 0x5C3317, roughness: 0.8 }); // Brown
+            const poop = new THREE.Mesh(poopGeometry, poopMaterial);
+            
+            // Position randomly on the "floor" near the pet
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 1.5 + Math.random() * 0.5; // Distance from center
+            poop.position.set(Math.cos(angle) * radius, -0.9, Math.sin(angle) * radius -0.5); // y=-0.9 is "floor"
+            
+            scene.add(poop);
+            poopMeshes.push(poop);
+        }
+
+        function clearPoops() {
+            poopMeshes.forEach(p => scene.remove(p));
+            poopMeshes = [];
+        }
+
+        // --- Animation Loop ---
+        function animate() {
+            if (isGameOver && gameOverScreen.style.display === 'none') return; // Stop if game over but screen not yet shown
+
+            requestAnimationFrame(animate);
+
+            // Gentle bobbing motion if not sleeping
+            if (petMesh && !isSleeping) {
+                const time = Date.now() * 0.0015;
+                petMesh.position.y = -0.2 + Math.sin(time) * 0.05;
+            } else if (petMesh && isSleeping) {
+                 petMesh.position.y = -0.2; // Keep still when sleeping
+            }
+
+
+            renderer.render(scene, camera);
+        }
+        
+        // --- Event Listeners ---
+        startButton.addEventListener('click', () => {
+            petName = petNameInput.value.trim();
+            if (!petName) {
+                alert("Please enter a name for your pet!");
+                return;
+            }
+            initGame();
+        });
+        restartButton.addEventListener('click', () => {
+            startScreen.style.display = 'flex'; // Show start screen to re-enter name or just start
+            gameOverScreen.style.display = 'none';
+            // initGame will be called by startButton
+        });
+
+        feedButton.addEventListener('click', feedPet);
+        playButton.addEventListener('click', playWithPet);
+        cleanButton.addEventListener('click', cleanPet);
+        learnButton.addEventListener('click', learnWithPet);
+        lightsButton.addEventListener('click', toggleLights);
+        infoButton.addEventListener('click', showInfo);
+
+        // Resize handler
+        window.addEventListener('resize', () => {
+            if (screenArea.clientWidth > 0 && screenArea.clientHeight > 0) {
+                camera.aspect = screenArea.clientWidth / screenArea.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(screenArea.clientWidth, screenArea.clientHeight);
+            }
+        }, false);
+
+
+        // --- Start Up ---
+        initThree();
+        animate(); 
+        // Game logic starts when user clicks "Hatch Pet"
+        
+    </script>
+</body>
+</html>

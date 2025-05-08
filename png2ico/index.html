@@ -1,92 +1,269 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"> <!-- Language will be updated by JS -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enhanced PNG to ICO Converter</title>
-    <link href="/lollms_assets/css/tailwind.min" rel="stylesheet">
+    <title data-translate-key="appTitle">PNG to ICO Converter</title>
+    <link rel="icon" href="favicon.ico" type="image/x-icon"> <!-- Add your favicon.ico here -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background-color: #f3f4f6; /* Lighter gray */ }
-        .drop-zone {
-            border: 2px dashed #cbd5e1; /* Tailwind gray-300 */
-            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        /* Base styles (Light mode by default) */
+        body {
+            background-image: linear-gradient(to bottom right, #e0f2fe, #bae6fd); /* Light sky gradient */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            transition: background-image 0.5s ease-in-out;
         }
-        .drop-zone.drag-over {
-            background-color: #e0f2fe; /* Tailwind sky-100 */
-            border-color: #0284c7; /* Tailwind sky-600 */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px) saturate(180%);
+            -webkit-backdrop-filter: blur(15px) saturate(180%);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 1.25rem; /* 20px */
+            transition: background 0.3s ease, border 0.3s ease;
         }
+        .text-theme-primary { color: #1f2937; /* gray-800 */ }
+        .text-theme-secondary { color: #4b5563; /* gray-600 */ }
+        .text-theme-accent { color: #2563eb; /* blue-600 */ }
+        .text-theme-muted { color: #6b7280; /* gray-500 */ }
+        .border-theme { border-color: rgba(209, 213, 219, 0.5); /* gray-300/50 */ }
+        .bg-theme-input { background-color: rgba(255, 255, 255, 0.1); }
+        .select-arrow-light {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+        }
+        .select-arrow-dark {
+             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%239ca3af' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+        }
+        select {
+            -webkit-appearance: none; -moz-appearance: none; appearance: none;
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25em 1.25em;
+            padding-right: 2.5rem;
+        }
+        select.light-mode-select { color: #374151; /* gray-700 */ }
+        select.light-mode-select option { background-color: #ffffff; color: #374151; }
+        select.dark-mode-select { color: #d1d5db; /* gray-300 */ }
+        select.dark-mode-select option { background-color: #1f2937; /* gray-800 */ color: #d1d5db; }
+
+        /* Dark Mode Styles */
+        .dark body {
+            background-image: linear-gradient(to bottom right, #0f172a, #1e1b4b); /* Dark slate/indigo gradient */
+        }
+        .dark .glass-card {
+            background: rgba(17, 24, 39, 0.25); /* gray-900/25 */
+            border: 1px solid rgba(55, 65, 81, 0.3); /* gray-700/30 */
+        }
+        .dark .text-theme-primary { color: #f3f4f6; /* gray-100 */ }
+        .dark .text-theme-secondary { color: #d1d5db; /* gray-300 */ }
+        .dark .text-theme-accent { color: #60a5fa; /* blue-400 */ }
+        .dark .text-theme-muted { color: #9ca3af; /* gray-400 */ }
+        .dark .border-theme { border-color: rgba(75, 85, 99, 0.5); /* gray-600/50 */ }
+        .dark .bg-theme-input { background-color: rgba(55, 65, 81, 0.2); /* gray-700/20 */ }
+        
         .spinner {
-            border: 4px solid rgba(0, 0, 0, 0.1);
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            border-left-color: #fff;
-            animation: spin 1s ease infinite;
+            border: 3px solid rgba(255, 255, 255, 0.3); width: 20px; height: 20px;
+            border-radius: 50%; border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .dark .spinner { border-top-color: #93c5fd; /* blue-300 for dark mode spinner */ }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="flex flex-col items-center justify-center min-h-screen p-4">
-    <div class="bg-white shadow-xl rounded-lg p-6 md:p-8 max-w-lg w-full">
-        <h1 class="text-3xl font-bold text-center text-gray-800 mb-6">PNG to ICO Converter</h1>
-
-        <div id="dropZone" class="drop-zone p-6 mb-4 rounded-lg text-center cursor-pointer">
-            <p class="text-gray-600">Drag & Drop a PNG file here, or</p>
-            <label for="fileInput" class="mt-2 inline-block bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition cursor-pointer">
-                Select File
-            </label>
-            <input type="file" id="fileInput" accept=".png" class="hidden">
-            <p id="fileNameDisplay" class="text-sm text-gray-500 mt-2"></p>
+<body class="flex flex-col items-center justify-center min-h-screen p-4 font-sans antialiased">
+    <div class="glass-card shadow-2xl p-6 sm:p-8 md:p-10 max-w-lg w-full">
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl sm:text-4xl font-bold text-theme-primary" data-translate-key="pageTitle">PNG to ICO Converter</h1>
+            <button id="themeToggleBtn" class="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
+                <!-- Icons will be injected by JS -->
+            </button>
         </div>
 
-        <div class="mb-4">
-            <label for="icoSize" class="block text-sm font-medium text-gray-700 mb-1">Select ICO Size:</label>
-            <select id="icoSize" class="block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
-                <option value="16">16x16 pixels</option>
-                <option value="24">24x24 pixels</option>
-                <option value="32" selected>32x32 pixels</option>
-                <option value="48">48x48 pixels</option>
-                <option value="64">64x64 pixels</option>
-                <option value="128">128x128 pixels</option>
+        <div id="dropZone" class="drop-zone-glass p-8 mb-6 rounded-lg text-center cursor-pointer border-2 border-dashed hover:border-blue-500/50 dark:hover:border-blue-400/50">
+            <svg class="mx-auto h-12 w-12 text-theme-muted" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.338 0 4.5 4.5 0 01-1.41 8.775H6.75z" />
+            </svg>
+            <p class="mt-3 text-sm text-theme-secondary">
+                <span data-translate-key="dropZoneText">Drag & Drop your PNG file, or</span>
+                <label for="fileInput" class="font-semibold text-theme-accent hover:underline cursor-pointer" data-translate-key="dropZoneBrowse">
+                    browse files
+                </label>
+            </p>
+            <input type="file" id="fileInput" accept=".png" class="hidden">
+            <p id="fileNameDisplay" class="text-xs text-theme-muted mt-2 truncate h-4"></p>
+        </div>
+
+        <div class="mb-6">
+            <label for="icoSize" class="block text-sm font-medium text-theme-secondary mb-1" data-translate-key="selectIcoSizeLabel">Select ICO Size:</label>
+            <select id="icoSize" class="block w-full p-2.5 border rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-theme-input border-theme">
+                <option value="16">16x16 pixels</option> <option value="24">24x24 pixels</option>
+                <option value="32" selected>32x32 pixels</option> <option value="48">48x48 pixels</option>
+                <option value="64">64x64 pixels</option> <option value="128">128x128 pixels</option>
                 <option value="256">256x256 pixels</option>
             </select>
         </div>
+        
+        <div class="space-y-3">
+            <button id="convertBtn" class="btn-glass btn-primary-glass flex items-center justify-center w-full text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900/50 dark:focus:ring-offset-black/50 disabled:opacity-60 disabled:cursor-not-allowed">
+                <span id="buttonText" class="flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                         <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+                    </svg>
+                    <span data-translate-key="convertButtonText">Convert to ICO</span>
+                </span>
+                <div id="spinner" class="spinner hidden"></div>
+            </button>
 
-        <button id="convertBtn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed">
-            <span id="buttonText">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m-15.357-2a8.001 8.001 0 0015.357 2M9 15h4.581" />
+            <button id="clearBtn" class="btn-glass flex items-center justify-center w-full text-theme-secondary dark:text-gray-300 font-semibold py-3 px-4 rounded-lg shadow-sm hover:bg-black/5 dark:hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-900/50 dark:focus:ring-offset-black/50">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
                 </svg>
-                Convert to ICO
-            </span>
-            <div id="spinner" class="spinner hidden"></div>
-        </button>
+                <span data-translate-key="clearButtonText">Clear Selection</span>
+            </button>
+        </div>
 
-        <button id="clearBtn" class="mt-3 flex items-center justify-center w-full bg-gray-500 text-white font-semibold py-2.5 rounded-lg hover:bg-gray-600 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
-            </svg>
-            Clear
-        </button>
+        <div id="messageArea" class="mt-5 text-center text-sm min-h-[1.25em] text-theme-secondary"></div>
 
-        <div id="messageArea" class="mt-4 text-center text-sm"></div>
-
-        <div id="imageCard" class="mt-4 hidden bg-gray-50 p-4 rounded-lg border border-gray-200">
-            <h3 class="text-md font-semibold text-gray-700 mb-2 text-center">Image Preview (Resized)</h3>
-            <img id="convertedImage" class="w-auto max-w-xs mx-auto border border-gray-300 rounded" alt="Converted Image Preview" />
-            <div id="output" class="mt-3 text-center"></div>
+        <div id="imageCard" class="hidden mt-5 bg-black/5 dark:bg-white/5 p-4 rounded-lg border border-theme shadow-sm">
+            <h3 class="text-md font-semibold text-theme-secondary mb-3 text-center" data-translate-key="previewTitle">ICO Preview (Resized)</h3>
+            <div class="flex justify-center items-center min-h-[100px]">
+                <img id="convertedImage" class="border border-theme rounded bg-white/10 dark:bg-black/10 max-w-[96px] max-h-[96px]" alt="Converted Image Preview" />
+            </div>
+            <div id="output" class="mt-4 text-center"></div>
         </div>
     </div>
 
-    <footer class="mt-8 text-center text-gray-600 text-sm">
-        Built on <a href="https://lollms.com" class="text-blue-600 hover:underline">Lollms</a> by <a href="https://github.com/parisneo" class="text-blue-600 hover:underline">ParisNeo</a>
+    <footer class="mt-8 mb-6 text-center text-xs text-theme-muted">
+        <div class="mb-2">
+            <span data-translate-key="footerBuiltOn">Built on</span> <a href="https://lollms.com" class="text-theme-accent hover:underline">Lollms</a>
+            <span data-translate-key="footerBy">by</span> <a href="https://github.com/parisneo" class="text-theme-accent hover:underline">ParisNeo</a>
+        </div>
+        <div id="languageSwitcher" class="space-x-2">
+            <button data-lang="en" class="lang-btn">EN</button>
+            <button data-lang="fr" class="lang-btn">FR</button>
+            <button data-lang="es" class="lang-btn">ES</button>
+        </div>
     </footer>
 
     <script>
+        // --- Translations ---
+        const translations = {
+            en: {
+                appTitle: "PNG to ICO Converter",
+                pageTitle: "PNG to ICO Converter",
+                dropZoneText: "Drag & Drop your PNG file, or",
+                dropZoneBrowse: "browse files",
+                selectIcoSizeLabel: "Select ICO Size:",
+                convertButtonText: "Convert to ICO",
+                clearButtonText: "Clear Selection",
+                previewTitle: "ICO Preview (Resized)",
+                footerBuiltOn: "Built on",
+                footerBy: "by",
+                // Dynamic messages (can be functions for more complex cases)
+                messageConverting: "Converting...",
+                messageSelectFile: "Please select a PNG file first.",
+                messageInvalidFile: "Invalid file. Please select a PNG.",
+                messageErrorCreatingIco: "Error creating ICO. Try a different size or image.",
+                messageErrorLoadingImage: "Could not load image. File may be corrupt.",
+                messageErrorReadingFile: "Error reading file.",
+                messageConversionSuccess: "Conversion successful! Download ready.",
+                downloadButtonBase: "Download",
+                icoSuffix: "ICO"
+            },
+            fr: {
+                appTitle: "Convertisseur PNG vers ICO",
+                pageTitle: "Convertisseur PNG vers ICO",
+                dropZoneText: "Glissez-déposez votre fichier PNG, ou",
+                dropZoneBrowse: "parcourir",
+                selectIcoSizeLabel: "Taille de l'ICO :",
+                convertButtonText: "Convertir en ICO",
+                clearButtonText: "Effacer la sélection",
+                previewTitle: "Aperçu de l'ICO (redimensionné)",
+                footerBuiltOn: "Basé sur",
+                footerBy: "par",
+                messageConverting: "Conversion en cours...",
+                messageSelectFile: "Veuillez d'abord sélectionner un fichier PNG.",
+                messageInvalidFile: "Fichier invalide. Veuillez sélectionner un PNG.",
+                messageErrorCreatingIco: "Erreur de création ICO. Essayez une autre taille/image.",
+                messageErrorLoadingImage: "Impossible de charger l'image. Fichier corrompu?",
+                messageErrorReadingFile: "Erreur de lecture du fichier.",
+                messageConversionSuccess: "Conversion réussie ! Téléchargement prêt.",
+                downloadButtonBase: "Télécharger",
+                icoSuffix: "ICO"
+            },
+            es: {
+                appTitle: "Convertidor PNG a ICO",
+                pageTitle: "Convertidor PNG a ICO",
+                dropZoneText: "Arrastra y suelta tu archivo PNG, o",
+                dropZoneBrowse: "explorar archivos",
+                selectIcoSizeLabel: "Seleccionar tamaño de ICO:",
+                convertButtonText: "Convertir a ICO",
+                clearButtonText: "Limpiar selección",
+                previewTitle: "Vista previa de ICO (redimensionado)",
+                footerBuiltOn: "Construido sobre",
+                footerBy: "por",
+                messageConverting: "Convirtiendo...",
+                messageSelectFile: "Por favor, selecciona un archivo PNG primero.",
+                messageInvalidFile: "Archivo inválido. Selecciona un PNG.",
+                messageErrorCreatingIco: "Error al crear ICO. Prueba otro tamaño/imagen.",
+                messageErrorLoadingImage: "No se pudo cargar la imagen. ¿Archivo corrupto?",
+                messageErrorReadingFile: "Error al leer el archivo.",
+                messageConversionSuccess: "¡Conversión exitosa! Descarga lista.",
+                downloadButtonBase: "Descargar",
+                icoSuffix: "ICO"
+            }
+        };
+        let currentLanguage = 'en';
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLanguage = lang;
+            localStorage.setItem('appLanguage', lang);
+            document.documentElement.lang = lang;
+
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+            // Update dynamic elements like button states if needed
+            if (currentFile) handleFileSelect(currentFile); // Re-render messages with new lang
+            else handleFileSelect(null);
+        }
+
+        // --- Theme Toggle ---
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
+        const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+        const selectElement = document.getElementById('icoSize');
+
+
+        function applyTheme(theme) {
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                themeToggleBtn.innerHTML = sunIcon;
+                selectElement.classList.remove('select-arrow-light', 'light-mode-select');
+                selectElement.classList.add('select-arrow-dark', 'dark-mode-select');
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeToggleBtn.innerHTML = moonIcon;
+                selectElement.classList.remove('select-arrow-dark', 'dark-mode-select');
+                selectElement.classList.add('select-arrow-light', 'light-mode-select');
+            }
+        }
+        
+        themeToggleBtn.addEventListener('click', () => {
+            const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
+            localStorage.setItem('theme', newTheme);
+            applyTheme(newTheme);
+        });
+
+        // --- Core App Logic (mostly unchanged, adapted for i18n messages) ---
         const fileInput = document.getElementById('fileInput');
+        // ... (rest of your const declarations from previous script)
         const convertBtn = document.getElementById('convertBtn');
         const clearBtn = document.getElementById('clearBtn');
         const outputDiv = document.getElementById('output');
@@ -97,162 +274,158 @@
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const spinner = document.getElementById('spinner');
-        const buttonText = document.getElementById('buttonText');
-
+        const buttonText = document.getElementById('buttonText'); // The span containing the text inside convertBtn
         let currentFile = null;
 
-        function displayMessage(message, type = 'info') {
+        function getTranslatedMessage(key, replacements = {}) {
+            let message = translations[currentLanguage][key] || translations.en[key] || `Missing translation: ${key}`;
+            for (const placeholder in replacements) {
+                message = message.replace(`{${placeholder}}`, replacements[placeholder]);
+            }
+            return message;
+        }
+
+        function displayMessage(messageKey, type = 'info', replacements = {}) {
+            const message = getTranslatedMessage(messageKey, replacements);
             messageArea.textContent = message;
-            messageArea.className = 'mt-4 text-center text-sm ';
+            // ... (rest of displayMessage styling logic, make sure classes are theme-aware if needed)
+            messageArea.className = 'mt-5 text-center text-sm min-h-[1.25em] '; 
             if (type === 'error') {
-                messageArea.classList.add('text-red-600');
+                messageArea.classList.add('text-red-500', 'dark:text-red-400', 'font-medium');
             } else if (type === 'success') {
-                messageArea.classList.add('text-green-600');
+                messageArea.classList.add('text-green-600', 'dark:text-green-400', 'font-medium');
+            } else { // info
+                messageArea.classList.add('text-theme-secondary');
+            }
+        }
+        
+        function showSpinner(show) {
+            if (show) {
+                spinner.classList.remove('hidden');
+                document.getElementById('buttonText').classList.add('hidden'); // Ensure correct span is hidden
+                convertBtn.disabled = true;
             } else {
-                messageArea.classList.add('text-gray-600');
+                spinner.classList.add('hidden');
+                document.getElementById('buttonText').classList.remove('hidden');
+                convertBtn.disabled = !currentFile; 
             }
         }
 
         function resetUI() {
-            fileInput.value = ''; // Clear file input
-            currentFile = null;
-            outputDiv.innerHTML = '';
-            imageCard.classList.add('hidden');
-            convertedImage.src = '';
-            displayMessage('');
-            fileNameDisplay.textContent = '';
-            convertBtn.disabled = false;
-            spinner.classList.add('hidden');
-            buttonText.classList.remove('hidden');
+            fileInput.value = ''; currentFile = null; outputDiv.innerHTML = '';
+            imageCard.classList.add('hidden'); convertedImage.src = '#'; 
+            convertedImage.alt = 'Converted Image Preview';
+            displayMessage(''); // Clears message
+            fileNameDisplay.textContent = ''; icoSizeSelect.value = '32';
+            showSpinner(false); 
         }
 
         function handleFileSelect(file) {
+            imageCard.classList.add('hidden'); outputDiv.innerHTML = ''; 
             if (file && file.type === 'image/png') {
                 currentFile = file;
-                fileNameDisplay.textContent = `Selected: ${file.name}`;
-                displayMessage('File selected. Ready to convert.', 'success');
-                
-                // Show a preview of the original image before conversion (optional)
-                // or wait for conversion to show resized preview
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    // You could show original here if needed, but we'll show resized later
-                }
-                reader.readAsDataURL(file);
-
+                fileNameDisplay.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                // No message here, or a very neutral one, as it's just selection
+                displayMessage('statusFileSelected', 'info'); // Example: a key for "File ready."
+                convertBtn.disabled = false;
             } else {
-                currentFile = null;
-                fileNameDisplay.textContent = '';
-                displayMessage('Please select a valid PNG file.', 'error');
+                currentFile = null; fileNameDisplay.textContent = '';
+                if (file) { displayMessage('messageInvalidFile', 'error'); } 
+                else { displayMessage(''); /* Cleared */ }
+                convertBtn.disabled = true;
             }
         }
+        // Add 'statusFileSelected' to translations if you use it above:
+        // en: { ..., statusFileSelected: "File ready. Choose size and convert." }, fr: { ... } etc.
+        // For now, I'll remove the automatic message on file select to keep it simpler.
+        // User will see file name and can then press convert.
 
-        fileInput.onchange = function() {
-            handleFileSelect(this.files[0]);
-        };
 
+        fileInput.onchange = function() { /* ... */ handleFileSelect(this.files[0] || null); };
         clearBtn.onclick = resetUI;
+        dropZone.onclick = () => fileInput.click();
 
-        // Drag and Drop
-        dropZone.onclick = () => fileInput.click(); // Make the whole zone clickable
-
-        dropZone.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            dropZone.classList.add('drag-over');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false); 
         });
-
-        dropZone.addEventListener('dragleave', () => {
-            dropZone.classList.remove('drag-over');
-        });
-
+        function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+        ['dragenter', 'dragover'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.add('drag-over')));
+        ['dragleave', 'drop'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.remove('drag-over')));
         dropZone.addEventListener('drop', (event) => {
-            event.preventDefault();
-            dropZone.classList.remove('drag-over');
             if (event.dataTransfer.files.length) {
+                fileInput.files = event.dataTransfer.files; 
                 handleFileSelect(event.dataTransfer.files[0]);
             }
         });
 
         convertBtn.onclick = function() {
-            if (!currentFile) {
-                displayMessage('Please select a PNG file first.', 'error');
-                return;
-            }
-
-            convertBtn.disabled = true;
-            spinner.classList.remove('hidden');
-            buttonText.classList.add('hidden');
-            displayMessage('Converting...', 'info');
-            outputDiv.innerHTML = ''; // Clear previous download link
-            imageCard.classList.add('hidden');
-
-
+            if (!currentFile) { displayMessage('messageSelectFile', 'error'); return; }
+            showSpinner(true); displayMessage('messageConverting', 'info');
+            
             const selectedSize = parseInt(icoSizeSelect.value);
-
             const reader = new FileReader();
             reader.onload = function(event) {
                 const img = new Image();
                 img.onload = function() {
                     const canvas = document.createElement('canvas');
-                    canvas.width = selectedSize;
-                    canvas.height = selectedSize;
+                    canvas.width = selectedSize; canvas.height = selectedSize;
                     const ctx = canvas.getContext('2d');
-
-                    // Draw image maintaining aspect ratio (letterbox/pillarbox if necessary)
-                    // For a square ICO, it's often best to fill it, but this provides an alternative
-                    // For simplicity, we'll just stretch/squash for now.
-                    // For better quality, you might implement aspect ratio preservation here.
+                    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, selectedSize, selectedSize);
 
-                    // Display the resized image as a preview
-                    convertedImage.src = canvas.toDataURL('image/png'); // Show a PNG preview of the resized image
-                    convertedImage.style.width = `${Math.min(selectedSize, 128)}px`; // Limit preview display size
-                    convertedImage.style.height = `${Math.min(selectedSize, 128)}px`;
+                    convertedImage.src = canvas.toDataURL('image/png');
+                    convertedImage.style.width = `${Math.min(selectedSize, 96)}px`;
+                    convertedImage.style.height = `${Math.min(selectedSize, 96)}px`;
+                    convertedImage.alt = `Preview of ${selectedSize}x${selectedSize} ICO`;
                     imageCard.classList.remove('hidden');
 
                     canvas.toBlob(function(blob) {
                         if (!blob) {
-                            displayMessage('Error creating ICO blob. The browser might not support this size or format well.', 'error');
-                            resetConversionState();
-                            return;
+                            displayMessage('messageErrorCreatingIco', 'error');
+                            showSpinner(false); return;
                         }
                         const url = URL.createObjectURL(blob);
                         const a = document.createElement('a');
                         a.href = url;
-                        const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.'));
-                        a.download = `${baseName || 'converted'}.ico`;
-                        a.textContent = `Download ${a.download}`;
-                        a.className = 'text-blue-600 hover:underline font-semibold';
+                        const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || 'converted';
+                        a.download = `${baseName}_${selectedSize}x${selectedSize}.ico`;
+                        // Dynamic download text
+                        a.textContent = `${getTranslatedMessage('downloadButtonBase')} ${selectedSize}x${selectedSize} ${getTranslatedMessage('icoSuffix')}`;
+                        a.className = 'inline-block bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition shadow-sm hover:shadow-md border border-green-700 dark:border-green-600';
                         
-                        outputDiv.innerHTML = ''; // Clear any old link
-                        outputDiv.appendChild(a);
-                        displayMessage('Conversion successful!', 'success');
-                        resetConversionState();
-
-                    }, 'image/x-icon', 1.0); // Quality argument, 1.0 is max for some types
-
+                        outputDiv.innerHTML = ''; outputDiv.appendChild(a);
+                        displayMessage('messageConversionSuccess', 'success');
+                        showSpinner(false);
+                    }, 'image/x-icon', 1.0);
                 };
-                img.onerror = function() {
-                    displayMessage('Could not load image. The file might be corrupted or not a valid PNG.', 'error');
-                    resetConversionState();
-                }
+                img.onerror = () => { displayMessage('messageErrorLoadingImage', 'error'); showSpinner(false); };
                 img.src = event.target.result;
             };
-            reader.onerror = function() {
-                displayMessage('Error reading file.', 'error');
-                resetConversionState();
-            }
+            reader.onerror = () => { displayMessage('messageErrorReadingFile', 'error'); showSpinner(false); };
             reader.readAsDataURL(currentFile);
         };
 
-        function resetConversionState() {
-            convertBtn.disabled = false;
-            spinner.classList.add('hidden');
-            buttonText.classList.remove('hidden');
-        }
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const storedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(storedTheme);
 
-        // Initialize
-        resetUI();
+            const storedLang = localStorage.getItem('appLanguage') || 'en';
+            setLanguage(storedLang);
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                if (btn.dataset.lang === storedLang) btn.classList.add('font-bold', 'text-theme-accent');
+                btn.onclick = function() {
+                    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('font-bold', 'text-theme-accent'));
+                    this.classList.add('font-bold', 'text-theme-accent');
+                    setLanguage(this.dataset.lang);
+                };
+            });
+            
+            const initialSpinner = document.getElementById('spinner');
+            if (initialSpinner) initialSpinner.classList.add('hidden');
+            resetUI();
+        });
     </script>
 </body>
 </html>
