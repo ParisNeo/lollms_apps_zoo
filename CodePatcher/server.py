@@ -1,5 +1,7 @@
 import sys
 import os
+import pipmaster as pm
+pm.ensure_packages(["pyqt5","python-patch"])
 import patch # The library for applying patches
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton,
