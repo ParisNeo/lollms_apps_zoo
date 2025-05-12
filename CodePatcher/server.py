@@ -1,7 +1,6 @@
 import sys
 import os
 import pipmaster as pm
-pm.uninstall("python-patch")
 pm.ensure_packages(["pyqt5","patch"])
 import patch # The library for applying patches
 from PyQt5.QtWidgets import (
@@ -201,7 +200,7 @@ class PatchApp(QMainWindow):
         try:
             # Load the patch set from the patch file
             # Use encoding='utf-8' for robustness
-            patch_set = patch.fromfile(patch_filepath, encoding='utf-8')
+            patch_set = patch.fromfile(patch_filepath)
             if not patch_set:
                 return False, f"Could not parse patch file: {patch_filepath}"
 
