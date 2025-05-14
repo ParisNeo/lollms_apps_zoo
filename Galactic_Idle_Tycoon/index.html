@@ -3,64 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galactic Idle Tycoon</title>
+    <title>Galactic Idle Tycoon: Genesis</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min"></script>
+    <script src="/lollms_assets/js/axios.min.js"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <script src="/lollms_assets/js/lollms_tti"></script>
     <script src="https://cdn.jsdelivr.net/npm/idb@8.0.0/build/umd.min.js"></script>
     <style>
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid #ffffff;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            }
-
-            @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .image-slider {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        .slide {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            opacity: 0;
-            transition: opacity 0.5s ease-in-out;
-        }
-        .slide.active {
-            opacity: 1;
-        }
-        .slide-info {
-            position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background-color: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-        .thumbnail {
-            width: 100px;
-            height: 56px;
-            object-fit: cover;
-            cursor: pointer;
-            transition: transform 0.2s;
-        }
-        .thumbnail:hover {
-            transform: scale(1.1);
-        }
+        .spinner { border: 4px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top: 4px solid #ffffff; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .image-slider { position: relative; width: 100%; height: 100%; overflow: hidden; }
+        .slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; transition: opacity 0.5s ease-in-out; }
+        .slide.active { opacity: 1; }
+        .slide-info { position: absolute; bottom: 10px; left: 10px; background-color: rgba(0, 0, 0, 0.7); color: white; padding: 5px 10px; border-radius: 5px; font-size: 0.9rem; }
+        .thumbnail { width: 100px; height: 56px; object-fit: cover; cursor: pointer; transition: transform 0.2s; border: 2px solid transparent; }
+        .thumbnail:hover { transform: scale(1.1); }
+        .thumbnail.active-thumb { border-color: #a855f7; }
+        .blur-on-modal { filter: blur(4px); transition: filter 0.3s ease-out; }
+        .modal-content { max-height: 85vh; overflow-y: auto; }
+        .modal-content::-webkit-scrollbar { width: 8px; }
+        .modal-content::-webkit-scrollbar-track { background: rgba(107, 33, 168, 0.3); border-radius: 10px;}
+        .modal-content::-webkit-scrollbar-thumb { background: #a855f7; border-radius: 10px;}
+        .modal-content::-webkit-scrollbar-thumb:hover { background: #9333ea; }
     </style>
 </head>
 <body class="bg-gradient-to-r from-indigo-900 to-purple-900 min-h-screen text-white">
@@ -68,996 +33,1828 @@
         <audio id="backgroundMusic" loop ref="audioPlayer">
             <source src="https://lollms.com/wp-content/uploads/Galactic-Dreamers.mp3" type="audio/mpeg">
         </audio>
-        <div v-if="showMainMenu" class="fixed inset-0 bg-opacity-70 flex justify-center items-center">
-            <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm">
-                <h1 class="text-2xl font-bold mb-4 text-purple-300">Welcome to Galactic Idle Tycoon</h1>
+
+        <div v-if="showMainMenu" class="fixed inset-0 bg-black/70 backdrop-blur-md flex justify-center items-center z-50">
+            <div class="bg-black/50 p-8 rounded-lg shadow-2xl text-center">
+                <h1 class="text-4xl font-bold mb-6 text-purple-300">Galactic Idle Tycoon: Genesis</h1>
+                <p class="mb-8 text-purple-100">The universe awaits your command. Forge your destiny among the stars.</p>
                 <button 
                     v-if="hasSavedGame" 
                     @click="continueGame"
-                    class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded mb-4 w-full"
+                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg mb-4 w-full text-lg transition-transform transform hover:scale-105"
                 >
-                    Continue Game
+                    Continue Your Empire
                 </button>
                 <button 
-                    v-else 
-                    @click="startNewGame"
-                    class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded mb-4 w-full"
+                    @click="startNewGameConfirm"
+                    class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg w-full text-lg transition-transform transform hover:scale-105"
                 >
-                    Start New Game
+                    Forge a New Destiny
                 </button>
             </div>
         </div>
         
-        <div v-else>
-            <!-- Menu Bar -->
-            <nav class="bg-black/30 backdrop-blur-sm rounded-lg p-4 mb-8 flex justify-between items-center">
-                <div class="text-xl font-bold">🚀 Galactic Idle Tycoon</div>
+        <div v-else :class="{'blur-on-modal': activeModal}">
+            <nav class="bg-black/40 backdrop-blur-md rounded-lg p-4 mb-8 flex justify-between items-center shadow-lg">
+                <div class="text-xl font-bold text-purple-300">🚀 Galactic Idle Tycoon: Genesis</div>
                 <div class="space-x-4">
                     <button @click="showNewGameModal" class="hover:text-purple-300 transition">New Game</button>
                     <button @click="showLoadGameModal" class="hover:text-purple-300 transition">Load Game</button>
                     <button @click="showSettingsModal" class="hover:text-purple-300 transition">Settings</button>
-                    <button @click="showCreditsModal" class="hover:text-purple-300 transition">Credits</button>
                     <button @click="showHelpModal" class="hover:text-purple-300 transition">Help</button>
+                    <button @click="showCreditsModal" class="hover:text-purple-300 transition">Credits</button>
                 </div>
             </nav>        
-            <!-- Header -->
+            
             <header class="text-center mb-8">
-                <h1 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 mb-2">
-                    Galactic Idle Tycoon
+                <h1 class="text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 mb-2">
+                    Galactic Idle Tycoon: Genesis
                 </h1>
-                <p class="text-purple-200">Build your intergalactic empire!</p>
-                <div class="mt-4">
-                    <p class="text-xl">Level {{playerLevel}}</p>
-                    <div class="w-full bg-purple-900/50 rounded-full h-2 mt-2">
-                        <div class="bg-purple-500 h-2 rounded-full" :style="{width: levelProgress + '%'}"></div>
+                <p class="text-purple-200 text-lg">Your Empire Level: {{playerLevel}} - Stardate: {{ currentStardate }}</p>
+                <div class="mt-4 max-w-md mx-auto">
+                    <div class="w-full bg-purple-900/50 rounded-full h-2.5 mt-2">
+                        <div class="bg-gradient-to-r from-purple-500 to-pink-500 h-2.5 rounded-full transition-all duration-500" :style="{width: levelProgress + '%'}"></div>
                     </div>
+                    <p class="text-sm text-purple-300 mt-1">{{ Math.floor(totalEmpireValueForDisplay) }} / {{ Math.floor(nextLevelThreshold) }} Value to Next Level</p>
                 </div>
             </header>
 
-            <!-- Manual Work Section -->
-            <div class="text-center mb-8" v-if="playerLevel < 5">
+            <div class="text-center mb-8" v-if="playerLevel < 2 && buildings.find(b=>b.id===1).owned < 1">
                 <button @click="manualWork" 
-                        class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-lg text-xl font-bold animate-pulse">
-                    Mine Resources Manually
+                        class="bg-blue-600 hover:bg-blue-700 px-8 py-4 rounded-lg text-xl font-bold animate-pulse shadow-lg">
+                    Manually Mine Crystals
                 </button>
-                <p class="text-sm mt-2 text-purple-300">Each click gives you 1 crystal</p>
+                <p class="text-sm mt-2 text-purple-300">Each click yields 1 Crystal. Your first step towards a galactic empire!</p>
             </div>
 
-            <!-- Main Game Area -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <!-- Resources Panel -->
-                <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm">
-                    <h2 class="text-2xl font-bold mb-4 text-purple-300">Resources</h2>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span>💎 Crystals:</span>
-                            <span class="text-xl">{{Math.floor(resources.crystals)}}</span>
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div class="lg:col-span-3 space-y-6">
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-300 border-b border-purple-700 pb-2">Resources</h2>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center"><span>💎 Crystals:</span><span class="text-xl font-semibold">{{Math.floor(resources.crystals)}}</span></div>
+                            <div class="flex justify-between items-center" v-if="unlockedFeatures.fuel"><span>⚡ Fuel:</span><span class="text-xl font-semibold">{{Math.floor(resources.fuel)}}</span></div>
+                            <div class="flex justify-between items-center" v-if="unlockedFeatures.credits"><span>💰 Credits:</span><span class="text-xl font-semibold">{{Math.floor(resources.credits)}}</span></div>
+                            <div class="flex justify-between items-center" v-if="unlockedFeatures.rareMetals"><span>🔧 Rare Metals:</span><span class="text-xl font-semibold">{{Math.floor(resources.rareMetals)}}</span></div>
+                            <div class="flex justify-between items-center" v-if="unlockedFeatures.exoticMatter"><span>✨ Exotic Matter:</span><span class="text-xl font-semibold">{{resources.exoticMatter.toFixed(2)}}</span></div>
                         </div>
-                        <div class="flex justify-between items-center" v-if="unlockedFeatures.fuel">
-                            <span>⚡ Fuel:</span>
-                            <span class="text-xl">{{Math.floor(resources.fuel)}}</span>
-                        </div>
-                        <div class="flex justify-between items-center" v-if="unlockedFeatures.credits">
-                            <span>💰 Credits:</span>
-                            <span class="text-xl">{{Math.floor(resources.credits)}}</span>
-                        </div>
-                        <div class="flex justify-between items-center" v-if="unlockedFeatures.rareMetals">
-                            <span>🔧 Rare Metals:</span>
-                            <span class="text-xl">{{Math.floor(resources.rareMetals)}}</span>
-                        </div>
-                        
-                        <div class="mt-4">
+                        <div class="mt-4 pt-3 border-t border-purple-700">
                             <p class="text-sm text-purple-300">Production per second:</p>
                             <div class="text-sm">
-                                <div>Crystals: +{{productionRates.crystals.toFixed(1)}}/s</div>
-                                <div v-if="unlockedFeatures.fuel">Fuel: +{{productionRates.fuel.toFixed(1)}}/s</div>
+                                <div>Crystals: +{{productionRates.crystals.toFixed(2)}}/s</div>
+                                <div v-if="unlockedFeatures.fuel">Fuel: +{{productionRates.fuel.toFixed(2)}}/s</div>
+                                <div v-if="unlockedFeatures.rareMetals">Rare Metals: +{{productionRates.rareMetals.toFixed(2)}}/s</div>
+                                <div v-if="unlockedFeatures.exoticMatter">Exotic Matter: +{{productionRates.exoticMatter.toFixed(3)}}/s</div>
                             </div>
                         </div>
                     </div>
+
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.aiAdvisor">
+                        <h2 class="text-2xl font-bold mb-3 text-purple-300 border-b border-purple-700 pb-2">AI Advisor <span v-if="advisor.isThinking" class="text-sm animate-pulse">(Consulting Oracle...)</span></h2>
+                        <div class="flex items-center space-x-3">
+                            <img v-if="advisor.portraitUrl" :src="advisor.portraitUrl" alt="AI Advisor" class="w-16 h-16 rounded-full border-2 border-purple-500 object-cover">
+                            <div v-else class="w-16 h-16 rounded-full bg-purple-700 flex items-center justify-center text-2xl">?</div>
+                            <p class="text-sm text-purple-100 italic flex-1">{{ advisor.message || "Awaiting input..." }}</p>
+                        </div>
+                        <button @click="getAdvisorUpdate" :disabled="advisor.isThinking" class="mt-3 w-full bg-purple-600 hover:bg-purple-700 text-xs py-1 px-2 rounded disabled:opacity-50">
+                            {{ advisor.isThinking ? 'Thinking...' : 'Seek Counsel' }}
+                        </button>
+                    </div>
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.missions">
+                        <h2 class="text-2xl font-bold mb-3 text-purple-300 border-b border-purple-700 pb-2">Objectives <span v-if="isGeneratingMission" class="text-sm animate-pulse">(Receiving Directive...)</span></h2>
+                        <div v-if="missions.length === 0 && !isGeneratingMission" class="text-purple-200 text-sm">No active objectives. New directives incoming.</div>
+                        <div v-for="mission in missions" :key="mission.id" class="mb-3 p-2 border border-purple-700 rounded">
+                            <h3 class="font-semibold text-purple-200">{{ mission.title }}</h3>
+                            <p class="text-xs text-purple-300 mb-1">{{ mission.description }}</p>
+                            <p class="text-xs text-green-400">Reward: {{ mission.rewardText }}</p>
+                            <div class="w-full bg-purple-900/50 rounded-full h-1.5 mt-1">
+                                <div class="bg-green-500 h-1.5 rounded-full" :style="{width: mission.progress + '%'}"></div>
+                            </div>
+                        </div>
+                        <button @click="generateMission" v-if="missions.length < 3 && playerLevel > 1" :disabled="isGeneratingMission" class="mt-2 w-full bg-purple-600 hover:bg-purple-700 text-xs py-1 px-2 rounded disabled:opacity-50">
+                            {{ isGeneratingMission ? 'Generating...' : 'Request New Objective' }}
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Buildings Panel -->
-                <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm">
-                    <h2 class="text-2xl font-bold mb-4 text-purple-300">Buildings</h2>
-                    <div class="space-y-4">
-                        <div v-for="building in visibleBuildings" :key="building.id" 
-                            class="border border-purple-500/30 rounded p-3 hover:bg-purple-900/30 transition">
-                            <div class="flex justify-between items-center">
-                                <div>
-                                    <h3 class="font-bold">{{building.name}}</h3>
-                                    <p class="text-sm text-purple-300">Owned: {{building.owned}}</p>
+                <div class="lg:col-span-6 space-y-6">
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-lg">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-300 border-b border-purple-700 pb-2">Empire Overview</h2>
+                        <div id="status-image-container" class="w-full h-[300px] md:h-[400px] bg-gray-800/50 rounded-lg mb-3 relative">
+                            <div class="image-slider">
+                                <div v-for="(image, index) in statusImages" :key="image.id" 
+                                    :class="['slide', { active: index === currentImageIndex }]">
+                                    <img :src="image.url" class="w-full h-full object-cover rounded-lg" />
+                                    <div class="slide-info">
+                                        <p>Stardate: {{image.stardate}}</p>
+                                        <p class="text-xs">{{image.info}}</p>
+                                    </div>
                                 </div>
-                                <button @click="buyBuilding(building.id)"
-                                        class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded"
-                                        :disabled="resources.crystals < building.cost">
-                                    {{Math.floor(building.cost)}} 💎
-                                </button>
+                                <div v-if="statusImages.length === 0 && !isGeneratingImage" class="absolute inset-0 flex items-center justify-center text-purple-300">
+                                    Awaiting first visual scan of your operations...
+                                </div>
+                                <div v-if="isGeneratingImage" class="absolute inset-0 flex flex-col items-center justify-center bg-black/50">
+                                    <div class="spinner mb-2"></div>
+                                    <p>Rendering visual data...</p>
+                                </div>
                             </div>
-                            <div class="text-sm mt-2 text-purple-300">
-                                Production: +{{building.production}}/s
+                        </div>
+                        <div class="flex justify-between items-center mb-3">
+                            <button @click="updateStatusImage(null, true)" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded shadow disabled:opacity-50" :disabled="isGeneratingImage">
+                                {{ isGeneratingImage ? 'Rendering...' : 'Refresh Visuals' }}
+                            </button>
+                            <div class="text-xs text-purple-300">
+                                Automatic Visuals: {{ settings.autoImageUpdateEnabled ? 'Enabled (on events)' : 'Disabled' }}
+                            </div>
+                        </div>
+                        <div class="flex space-x-2 overflow-x-auto pb-2">
+                            <img v-for="(image, index) in statusImages" :key="image.id + '-thumb'"
+                                :src="image.url" 
+                                :class="['thumbnail', { 'active-thumb': index === currentImageIndex }]"
+                                @click="currentImageIndex = index" />
+                        </div>
+                    </div>
+
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-300 border-b border-purple-700 pb-2">Infrastructure</h2>
+                        <div class="space-y-3 max-h-96 overflow-y-auto pr-2 modal-content">
+                            <div v-for="building in visibleBuildings" :key="building.id" 
+                                class="border border-purple-700/50 rounded p-3 hover:bg-purple-900/40 transition">
+                                <div class="flex justify-between items-center">
+                                    <div>
+                                        <h3 class="font-bold text-purple-100">{{building.name}} <span class="text-xs text-purple-400">(Lvl {{building.owned}})</span></h3>
+                                        <p class="text-xs text-purple-300">{{ building.description }}</p>
+                                        <p class="text-xs mt-1">Output: {{ building.productionEffect }}</p>
+                                    </div>
+                                    <button @click="buyBuilding(building.id)"
+                                            class="bg-purple-600 hover:bg-purple-700 px-3 py-1.5 rounded text-sm shadow disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                                            :disabled="!canAffordBuilding(building.id)">
+                                        Cost: {{formatCost(building.costResource, building.costAmount)}}
+                                    </button>
+                                </div>
+                            </div>
+                             <div v-if="visibleBuildings.length === 0" class="text-purple-200 text-sm">
+                                No infrastructure available at your current level. Focus on manual mining or research.
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Market Panel -->
-                <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.trading">
-                    <h2 class="text-2xl font-bold mb-4 text-purple-300">Galactic Market</h2>
-                    <div class="space-y-4">
-                        <div v-for="resource in filteredTradableResources" :key="resource.name"
-                            class="border border-purple-500/30 rounded p-3">
-                            <div class="flex justify-between items-center mb-2">
-                                <span>{{resource.name}}</span>
-                                <span :class="{'text-green-400': resource.trend > 0, 'text-red-400': resource.trend < 0}">
-                                    {{resource.price.toFixed(2)}} 💰
-                                    <span v-if="resource.trend > 0">↑</span>
-                                    <span v-if="resource.trend < 0">↓</span>
-                                </span>
-                            </div>
-                            <div class="flex gap-2 items-center">
-                                <input v-model="resource.quantity" type="number" min="1" class="w-16 bg-purple-900/50 rounded p-1 text-sm" :hidden="!unlockedFeatures.multiUnitTrading">
-                                <button @click="buyResource(resource.id)"
-                                        class="bg-green-600 hover:bg-green-700 px-3 py-1 rounded text-sm flex-1"
-                                        :disabled="resources.credits < resource.price * resource.quantity">
-                                    Buy
-                                </button>
-                                <button @click="sellResource(resource.id)"
-                                        class="bg-red-600 hover:bg-red-700 px-3 py-1 rounded text-sm flex-1"
-                                        :disabled="resources[resource.key] < resource.quantity">
-                                    Sell
-                                </button>
+                <div class="lg:col-span-3 space-y-6">
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.trading">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-300 border-b border-purple-700 pb-2">Galactic Market</h2>
+                        <div class="space-y-3">
+                            <div v-for="item in tradableMarketItemsFiltered" :key="item.id"
+                                class="border border-purple-700/50 rounded p-2">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-sm font-semibold">{{item.name}}</span>
+                                    <span :class="{'text-green-400': item.trend > 0, 'text-red-400': item.trend < 0, 'text-yellow-400': item.trend == 0}" class="text-sm">
+                                        {{item.price.toFixed(2)}} 💰
+                                        <span v-if="item.trend > 0.01">↑</span>
+                                        <span v-else-if="item.trend < -0.01">↓</span>
+                                        <span v-else>~</span>
+                                    </span>
+                                </div>
+                                <div class="flex gap-2 items-center">
+                                    <input v-model.number="item.tradeQuantity" type="number" min="1" :max="maxTradeQuantity(item)" class="w-16 bg-purple-900/70 rounded p-1 text-xs text-center border border-purple-600 focus:border-purple-400 focus:ring-purple-400">
+                                    <button @click="buyMarketResource(item.id)"
+                                            class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs flex-1 shadow disabled:opacity-50"
+                                            :disabled="resources.credits < item.price * item.tradeQuantity || item.tradeQuantity <=0">
+                                        Buy
+                                    </button>
+                                    <button @click="sellMarketResource(item.id)"
+                                            class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs flex-1 shadow disabled:opacity-50"
+                                            :disabled="resources[item.key] < item.tradeQuantity || item.tradeQuantity <=0">
+                                        Sell
+                                    </button>
+                                </div>
                             </div>
                         </div>
+                        <div class="mt-3 text-xs text-purple-300">Market fluctuations occur. Trade wisely.</div>
                     </div>
-                    <div class="mt-4 text-sm text-purple-300">
-                        Market updates every {{marketUpdateInterval}} seconds
-                    </div>
-                </div>
-                
 
-                <!-- Ships & Research Panel -->
-                <div class="bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.ships">
-                    <h2 class="text-2xl font-bold mb-4 text-purple-300">Ships & Research</h2>
-                    <div class="space-y-4">
-                        <div class="border-b border-purple-500/30 pb-4">
-                            <h3 class="font-bold mb-2">Available Ships</h3>
-                            <div v-for="ship in ships" :key="ship.id"
-                                class="flex justify-between items-center mb-2">
-                                <span>{{ship.name}}</span>
-                                <button @click="buildShip(ship.id)"
-                                        class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm"
-                                        :disabled="resources.crystals < ship.cost">
-                                    Build ({{ship.cost}} 💎)
-                                </button>
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.ships || unlockedFeatures.research">
+                        <h2 class="text-2xl font-bold mb-4 text-purple-300 border-b border-purple-700 pb-2">Advanced Operations</h2>
+                        <div v-if="unlockedFeatures.ships" class="mb-4">
+                            <h3 class="font-bold mb-2 text-purple-200">Fleet Command <span class="text-sm text-purple-400">({{ fleetPower }} Power)</span></h3>
+                            <div v-for="ship in availableShips" :key="ship.id" class="mb-2 p-2 border border-purple-700/50 rounded">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-sm">{{ship.name}} ({{ ship.owned }})</span>
+                                     <button @click="buildShip(ship.id)"
+                                        class="bg-blue-600 hover:bg-blue-700 px-2 py-1 rounded text-xs shadow disabled:opacity-50 whitespace-nowrap"
+                                        :disabled="!canAffordShip(ship.id)">
+                                        Build ({{ship.cost[0].amount}} {{ship.cost[0].resource === 'crystals' ? '💎': (ship.cost[0].resource === 'rareMetals' ? '🔧':'💰') }})
+                                    </button>
+                                </div>
+                                <p class="text-xs text-purple-300">{{ ship.description }}</p>
                             </div>
+                            <div v-if="availableShips.length === 0" class="text-purple-200 text-sm">No ship blueprints available. Research or explore for new designs.</div>
                         </div>
                         <div v-if="unlockedFeatures.research">
-                            <h3 class="font-bold mb-2">Research Progress</h3>
-                            <div class="w-full bg-purple-900/50 rounded-full h-2">
-                                <div class="bg-purple-500 h-2 rounded-full" :style="{width: researchProgress + '%'}"></div>
+                            <h3 class="font-bold mb-2 text-purple-200">Research & Development</h3>
+                            <div v-if="availableResearch.length === 0 && !currentResearch" class="text-sm text-purple-300">All known technologies researched. Await new breakthroughs from exploration or higher levels.</div>
+                            <div v-for="tech in availableResearch" :key="tech.id" class="mb-2 p-2 border border-purple-700/50 rounded">
+                                <h4 class="text-sm font-semibold">{{tech.name}}</h4>
+                                <p class="text-xs text-purple-300 mb-1">{{tech.description}}</p>
+                                <p class="text-xs text-purple-400">Cost: {{tech.costAmount}} {{tech.costResource === 'researchPoints' ? 'RP' : (tech.costResource === 'exoticMatter' ? '✨':'💰')}}</p>
+                                <button @click="startResearch(tech.id)" 
+                                        :disabled="!canAffordResearch(tech.id) || (currentResearch && currentResearch.id === tech.id)"
+                                        class="w-full mt-1 bg-teal-600 hover:bg-teal-700 px-2 py-1 rounded text-xs shadow disabled:opacity-50">
+                                    {{ currentResearch && currentResearch.id === tech.id ? `Researching (${Math.floor(currentResearch.progress)}%)` : 'Begin Research' }}
+                                </button>
+                            </div>
+                             <div v-if="currentResearch" class="mt-2">
+                                <p class="text-xs text-purple-200">Current Project: {{ currentResearch.name }}</p>
+                                <div class="w-full bg-purple-900/50 rounded-full h-1.5 mt-1">
+                                    <div class="bg-teal-500 h-1.5 rounded-full" :style="{width: currentResearch.progress + '%'}"></div>
+                                </div>
+                            </div>
+                            <p class="text-sm mt-2">Research Points: {{ Math.floor(resources.researchPoints) }} (+{{ productionRates.researchPoints.toFixed(2) }}/s)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.exploration">
+                        <h2 class="text-2xl font-bold mb-3 text-purple-300 border-b border-purple-700 pb-2">Exploration Command</h2>
+                        <div v-if="exploration.isExploring" class="text-center">
+                            <div class="spinner mx-auto mb-2"></div>
+                            <p class="text-sm text-purple-200 animate-pulse">Scout fleet deployed... Awaiting report.</p>
+                        </div>
+                        <div v-else-if="exploration.currentEvent" class="p-2 border border-purple-600 rounded bg-purple-900/30">
+                            <h3 class="font-semibold text-lg text-yellow-300 mb-1">{{ exploration.currentEvent.title }}</h3>
+                            <img v-if="exploration.currentEvent.imageUrl" :src="exploration.currentEvent.imageUrl" class="w-full h-32 object-cover rounded my-2">
+                            <p class="text-sm text-purple-100 mb-2">{{ exploration.currentEvent.description }}</p>
+                            <div v-if="exploration.currentEvent.choices && exploration.currentEvent.choices.length > 0">
+                                <button v-for="(choice, index) in exploration.currentEvent.choices" :key="index"
+                                        @click="resolveExplorationChoice(index)"
+                                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-xs py-1.5 px-2 rounded mb-1.5">
+                                    {{ choice.text }}
+                                </button>
+                            </div>
+                            <button v-else @click="clearExplorationEvent" class="w-full bg-gray-600 hover:bg-gray-700 text-xs py-1.5 px-2 rounded">
+                                Acknowledge Report
+                            </button>
+                        </div>
+                        <div v-else>
+                            <p class="text-sm text-purple-200 mb-2">Launch an expedition to uncharted space. Discoveries await!</p>
+                             <p class="text-xs text-purple-300 mb-2">Requires: 1 Scout Probe, {{ explorationCost.fuel }} Fuel.</p>
+                            <button @click="startExploration" 
+                                    :disabled="exploration.isExploring || resources.fuel < explorationCost.fuel || ships.find(s=>s.id===1)?.owned < 1"
+                                    class="w-full bg-cyan-600 hover:bg-cyan-700 py-2 rounded shadow disabled:opacity-50">
+                                Launch Expedition
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-black/40 p-4 rounded-lg backdrop-blur-md shadow-md" v-if="unlockedFeatures.galacticNews">
+                        <h2 class="text-2xl font-bold mb-3 text-purple-300 border-b border-purple-700 pb-2">Galactic Network News <span v-if="isGeneratingNews" class="text-sm animate-pulse">(Fetching...)</span></h2>
+                        <div v-if="galacticNews.length === 0 && !isGeneratingNews" class="text-purple-200 text-sm">No news transmissions received. Stand by.</div>
+                        <div class="space-y-3 max-h-60 overflow-y-auto pr-1 modal-content">
+                            <div v-for="news in galacticNews" :key="news.id" class="border-b border-purple-800 pb-2 last:border-b-0">
+                                <h4 class="font-semibold text-sm text-purple-100">{{ news.headline }}</h4>
+                                <p class="text-xs text-purple-300">{{ news.blurb }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Game Status Image Panel -->
-            <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm">
-                <h2 class="text-2xl font-bold mb-4 text-purple-300">Game Status</h2>
-                <div id="status-image-container" class="w-full h-[620px] bg-gray-800 rounded-lg mb-4">
-                    <div class="image-slider">
-                        <div v-for="(image, index) in statusImages" :key="index" 
-                            :class="['slide', { active: index === currentImageIndex }]">
-                            <img :src="image.url" class="w-full h-full object-cover" />
-                            <div class="slide-info">
-                                <p>Stardate: {{image.stardate}}</p>
-                                <p>{{image.info}}</p>
-                            </div>
+
+            <div class="mt-8 bg-black/40 p-6 rounded-lg backdrop-blur-md shadow-lg">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h3 class="text-xl font-bold text-purple-300 mb-2">Empire Statistics</h3>
+                        <p class="text-sm text-purple-200">Population Estimate: {{stats.population.toLocaleString()}}</p>
+                        <p class="text-sm text-purple-200">Galactic Influence: {{stats.influence.toFixed(1)}}%</p>
+                        <p class="text-sm text-purple-200" v-if="unlockedFeatures.trading">Market Stability: {{stats.marketStability.toFixed(1)}}%</p>
+                         <p class="text-sm text-purple-200">Total Empire Value: {{ totalEmpireValueForDisplay.toLocaleString() }}</p>
+                    </div>
+                    <div class="mt-4 md:mt-0 space-y-2 md:space-y-0 md:space-x-2 flex flex-col md:flex-row items-stretch md:items-center">
+                        <button @click="saveGameDB" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded shadow whitespace-nowrap">Save Progress</button>
+                        <button @click="exportGame" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded shadow whitespace-nowrap">Export Save</button>
+                        <button @click="importGame" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded shadow whitespace-nowrap">Import Save</button>
+                        <button @click="showResetGameModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded shadow whitespace-nowrap">Reset Empire</button>
+                    </div>
+                </div>
+                <div class="mt-6 pt-4 border-t border-purple-700" v-if="unlockedFeatures.aiManager">
+                    <h3 class="text-xl font-bold text-purple-300 mb-2">Automated Systems AI</h3>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-purple-200">Delegate tasks to your empire's AI core.</p>
+                            <p class="text-xs text-purple-300">Current Directive: {{ aiManager.directive }} | Efficiency: {{aiManager.efficiency}}%</p>
                         </div>
-                    </div>
-                </div>
-                <div class="flex justify-between items-center mb-4">
-                    <button @click="updateStatusImage" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded" :disabled="isGeneratingImage">
-                        {{ isGeneratingImage ? 'Generating...' : 'Update Status Image' }}
-                    </button>
-                    <div v-if="settings.autoImageUpdateEnabled" class="text-sm text-purple-300">
-                        Auto-update every {{settings.imageUpdateInterval}} minutes
-                    </div>
-                </div>
-                <div class="flex space-x-2 overflow-x-auto pb-2">
-                    <img v-for="(image, index) in statusImages" :key="index"
-                        :src="image.url" 
-                        :class="['thumbnail', { 'border-2 border-purple-500': index === currentImageIndex }]"
-                        @click="currentImageIndex = index" />
-                </div>
-            </div>
-
-            <!-- Game Settings/Stats -->
-            <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm">
-                <div class="flex justify-between">
-                    <div>
-                        <h3 class="font-bold">Empire Stats</h3>
-                        <p class="text-sm text-purple-300">Population: {{stats.population}}</p>
-                        <p class="text-sm text-purple-300">Happiness: {{stats.happiness}}%</p>
-                        <p class="text-sm text-purple-300" v-if="unlockedFeatures.trading">Market Influence: {{stats.marketInfluence}}%</p>
-                    </div>
-                    <div>
-                        <button @click="saveGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded mr-2">
-                            Save Game
-                        </button>
-                        <button @click="exportGame" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded mr-2">
-                            Export Game
-                        </button>
-                        <button @click="importGame" class="bg-yellow-600 hover:bg-yellow-700 px-4 py-2 rounded mr-2">
-                            Import Game
-                        </button>
-                        <button @click="resetGame" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">
-                            Reset Game
+                        <button @click="toggleAIManager" 
+                                :class="aiManager.isActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
+                                class="px-4 py-2 rounded shadow">
+                            {{aiManager.isActive ? 'Deactivate AI Core' : 'Activate AI Core'}}
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- AI Manager -->
-            <div class="mt-8 bg-black/30 p-6 rounded-lg backdrop-blur-sm" v-if="unlockedFeatures.aiManager">
-                <h2 class="text-2xl font-bold mb-4 text-purple-300">AI Manager</h2>
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p>Let the AI manage your empire</p>
-                        <p class="text-sm text-purple-300">Efficiency: {{aiManagerEfficiency}}%</p>
-                    </div>
-                    <button @click="toggleAIManager" 
-                            :class="aiManagerActive ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'"
-                            class="px-4 py-2 rounded">
-                        {{aiManagerActive ? 'Deactivate AI' : 'Activate AI'}}
-                    </button>
-                </div>
-            </div>
-
-            <!-- Notifications -->
-            <div class="fixed bottom-4 right-4 space-y-2">
-                <div v-for="(notification, index) in notifications" :key="index"
-                    class="bg-green-600 text-white px-4 py-2 rounded shadow-lg"
-                    :class="{'animate-bounce': notification.new}">
+            <div class="fixed bottom-4 right-4 space-y-2 z-[150]">
+                <div v-for="notification in notifications" :key="notification.id"
+                    class="bg-gradient-to-r text-white px-4 py-3 rounded-lg shadow-xl text-sm"
+                    :class="{
+                        'from-green-500 to-green-600': notification.type === 'success',
+                        'from-blue-500 to-blue-600': notification.type === 'info',
+                        'from-yellow-500 to-yellow-600': notification.type === 'warning',
+                        'from-red-500 to-red-600': notification.type === 'error',
+                        'animate-pulse': notification.newPulse
+                    }"
+                    role="alert">
                     {{notification.message}}
                 </div>
             </div>
+        </div>    
 
-            <!-- Modal Templates -->
-            <div v-if="activeModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                <!-- New Game Modal -->
-                <div v-if="activeModal === 'newGame'" class="bg-indigo-900 p-6 rounded-lg w-96">
-                    <h2 class="text-2xl font-bold mb-4">Start New Game</h2>
-                    <p class="mb-4">Are you sure you want to start a new game? All current progress will be lost.</p>
-                    <div class="flex justify-end space-x-4">
-                        <button @click="startNewGame" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded">Confirm</button>
-                        <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Cancel</button>
-                    </div>
-                </div>
-
-                <!-- Load Game Modal -->
-                <div v-if="activeModal === 'loadGame'" class="bg-indigo-900 p-6 rounded-lg w-96">
-                    <h2 class="text-2xl font-bold mb-4">Load Game</h2>
-                    <div v-if="savedGames.length > 0">
-                        <p class="mb-2">Select a saved game to load:</p>
-                        <ul class="mb-4 space-y-2">
-                            <li v-for="game in savedGames" :key="game.id" class="flex justify-between items-center">
-                                <span>{{game.name}} (Level {{game.level}})</span>
-                                <button @click="loadSavedGame(game.id)" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
-                                    Load
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-                    <p v-else class="mb-4">No saved games found.</p>
-                    <div class="flex justify-end">
-                        <button @click="closeModal" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded">Close</button>
-                    </div>
-                </div>
-
-                <!-- Settings Modal -->
-                <div v-if="activeModal === 'settings'" class="bg-indigo-900 p-6 rounded-lg w-96">
-                    <h2 class="text-2xl font-bold mb-4">Game Settings</h2>
-                    <div class="space-y-4">
-                        <div class="flex justify-between items-center">
-                            <span>Sound Effects</span>
-                            <input type="checkbox" v-model="settings.soundEnabled" class="form-checkbox">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Auto-Save</span>
-                            <input type="checkbox" v-model="settings.autoSaveEnabled" class="form-checkbox">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Save Interval (seconds)</span>
-                            <input type="number" v-model="settings.autoSaveInterval" min="10" max="300" class="bg-indigo-800 rounded p-1">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Auto-Update Status Image</span>
-                            <input type="checkbox" v-model="settings.autoImageUpdateEnabled" class="form-checkbox">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Image Update Interval (minutes)</span>
-                            <input type="number" v-model="settings.imageUpdateInterval" min="1" max="60" class="bg-indigo-800 rounded p-1">
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span>Play Music</span>
-                            <input type="checkbox" v-model="settings.playMusic" class="form-checkbox">
+        <div v-if="activeModal" class="fixed inset-0 z-[100]" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity" @click.self="closeModal"></div>
+            <div class="relative flex min-h-full items-center justify-center p-4 text-center">
+                <div class="relative w-full max-w-md transform overflow-hidden rounded-lg bg-gradient-to-br from-indigo-800 to-purple-800 p-6 text-left align-middle shadow-xl transition-all modal-content">
+                    <div v-if="activeModal === 'newGame'">
+                        <h2 id="modal-title-newgame" class="text-2xl font-bold mb-4 text-purple-200">Confirm New Game</h2>
+                        <p class="mb-6 text-purple-100">Starting a new game will erase your current empire's progress. Are you sure you wish to forge a new destiny?</p>
+                        <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                            <button @click="executeStartNewGame" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-green-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm">Yes, Begin Anew</button>
+                            <button @click="closeModal" type="button" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-500 bg-gray-700 px-4 py-2 text-base font-medium text-purple-100 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm">No, Continue</button>
                         </div>
                     </div>
-                    <div class="flex justify-end mt-4">
-                        <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                    <div v-if="activeModal === 'resetGame'">
+                        <h2 id="modal-title-resetgame" class="text-2xl font-bold mb-4 text-purple-200">Confirm Reset Empire</h2>
+                        <p class="mb-6 text-purple-100">Resetting will permanently erase all progress for this empire. This action cannot be undone. Are you absolutely sure?</p>
+                            <div class="mt-5 sm:mt-6 sm:grid sm:grid-flow-row-dense sm:grid-cols-2 sm:gap-3">
+                            <button @click="executeResetGame" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-red-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 sm:col-start-2 sm:text-sm">Yes, Reset Everything</button>
+                            <button @click="closeModal" type="button" class="mt-3 inline-flex w-full justify-center rounded-md border border-gray-500 bg-gray-700 px-4 py-2 text-base font-medium text-purple-100 shadow-sm hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 sm:col-start-1 sm:mt-0 sm:text-sm">Cancel</button>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Credits Modal -->
-                <div v-if="activeModal === 'credits'" class="bg-indigo-900 p-6 rounded-lg w-96">
-                    <h2 class="text-2xl font-bold mb-4">Credits</h2>
-                    <div class="space-y-2">
-                        <p>Game Created by: ParisNeo</p>
-                        <p>Version: 1.1.0</p>
-                        <p>Special thanks to:</p>
-                        <ul class="list-disc ml-6">
-                            <li>Claude Anthropic</li>
-                            <li>Mistral Nemo</li>
-                            <li>Our amazing players</li>
-                        </ul>
+                    <div v-if="activeModal === 'loadGame'">
+                        <h2 id="modal-title-loadgame" class="text-2xl font-bold mb-4 text-purple-200">Load Empire State</h2>
+                        <div v-if="savedGames.length > 0" class="space-y-2">
+                            <p class="mb-2 text-purple-100">Select a previously saved empire state:</p>
+                            <div v-for="game in savedGames" :key="game.id" class="flex justify-between items-center p-3 bg-indigo-700/50 rounded hover:bg-indigo-600/50">
+                                <div>
+                                    <span class="font-semibold">{{game.name}}</span>
+                                    <span class="text-xs text-purple-300 block">Level {{game.playerLevel}}, Stardate {{ new Date(game.timestamp).toLocaleDateString() }}</span>
+                                </div>
+                                <button @click="loadGameDB(game.id)" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm text-white">Load</button>
+                            </div>
+                        </div>
+                        <p v-else class="mb-4 text-purple-100">No saved empire states found in local storage.</p>
+                        <div class="mt-5 sm:mt-6">
+                            <button @click="closeModal" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:text-sm">Close</button>
+                        </div>
                     </div>
-                    <div class="flex justify-end mt-4">
-                        <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                    <div v-if="activeModal === 'settings'">
+                        <h2 id="modal-title-settings" class="text-2xl font-bold mb-6 text-purple-200 border-b border-purple-600 pb-2">Game Settings</h2>
+                        <div class="space-y-4 text-purple-100">
+                            <div class="flex justify-between items-center">
+                                <span>Background Music</span>
+                                <input type="checkbox" v-model="settings.playMusic" @change="handleMusicToggle(settings.playMusic)" class="form-checkbox h-5 w-5 text-purple-400 bg-indigo-700 border-purple-500 rounded focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-indigo-800">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Sound Effects (Future)</span>
+                                <input type="checkbox" v-model="settings.soundEnabled" class="form-checkbox h-5 w-5 text-purple-400 bg-indigo-700 border-purple-500 rounded focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-indigo-800" disabled>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Auto-Save Empire</span>
+                                <input type="checkbox" v-model="settings.autoSaveEnabled" class="form-checkbox h-5 w-5 text-purple-400 bg-indigo-700 border-purple-500 rounded focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-indigo-800">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Save Interval (sec)</span>
+                                <input type="number" v-model.number="settings.autoSaveInterval" min="10" max="300" class="bg-indigo-900/70 rounded p-1 w-20 text-center border border-purple-600 focus:border-purple-400 focus:ring-purple-400">
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span>Auto-Update Visuals (on events)</span>
+                                <input type="checkbox" v-model="settings.autoImageUpdateEnabled" class="form-checkbox h-5 w-5 text-purple-400 bg-indigo-700 border-purple-500 rounded focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-indigo-800">
+                            </div>
+                        </div>
+                        <div class="mt-8 sm:mt-6">
+                            <button @click="saveSettingsAndCloseModal" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:text-sm">Done</button>
+                        </div>
                     </div>
-                </div>
-
-                <!-- Help Modal -->
-                <div v-if="activeModal === 'help'" class="bg-indigo-900 p-6 rounded-lg w-96 max-h-[80vh] overflow-y-auto">
-                    <h2 class="text-2xl font-bold mb-4">Help Guide</h2>
-                    <div class="space-y-4">
-                        <section>
-                            <h3 class="text-xl font-bold">Getting Started</h3>
-                            <p>Click "Mine Resources Manually" to begin collecting crystals. Use these to build your first structures.</p>
-                        </section>
-                        <section>
-                            <h3 class="text-xl font-bold">Buildings</h3>
-                            <p>Purchase buildings to automate resource production. Each building increases your production rate.</p>
-                        </section>
-                        <section>
-                            <h3 class="text-xl font-bold">Trading</h3>
-                            <p>Once unlocked, use the Galactic Market to buy and sell resources for credits.</p>
-                        </section>
-                        <section>
-                            <h3 class="text-xl font-bold">AI Manager</h3>
-                            <p>At higher levels, unlock the AI Manager to automate your empire's operations.</p>
-                        </section>
-                        <section>
-                            <h3 class="text-xl font-bold">Saving and Loading</h3>
-                            <p>Use the save and load features to manage multiple game sessions. You can also export and import your progress.</p>
-                        </section>
+                    <div v-if="activeModal === 'credits'">
+                        <h2 id="modal-title-credits" class="text-2xl font-bold mb-4 text-purple-200">Credits</h2>
+                        <div class="space-y-2 text-purple-100">
+                            <p><span class="font-semibold">Game Design & Concept:</span> ParisNeo & AI Collaborators</p>
+                            <p><span class="font-semibold">Core Development:</span> Vue.js, TailwindCSS</p>
+                            <p><span class="font-semibold">AI Integration:</span> Lollms & Lollms TTI</p>
+                            <p><span class="font-semibold">Inspired by:</span> Universal Paperclips, Idle Games</p>
+                            <p><span class="font-semibold">Music:</span> "Galactic Dreamers" (via lollms.com)</p>
+                            <p class="mt-4">This game is a demonstration of AI-assisted game development and dynamic content generation.</p>
+                        </div>
+                        <div class="mt-5 sm:mt-6">
+                            <button @click="closeModal" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:text-sm">Close</button>
+                        </div>
                     </div>
-                    <div class="flex justify-end mt-4">
-                        <button @click="closeModal" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded">Close</button>
+                    <div v-if="activeModal === 'help'">
+                            <h2 id="modal-title-help" class="text-2xl font-bold mb-4 text-purple-200 border-b border-purple-600 pb-2">Guidance Console</h2>
+                        <div class="space-y-4 text-purple-100 text-sm">
+                            <section>
+                                <h3 class="text-lg font-semibold text-purple-300">The Genesis</h3>
+                                <p>Begin your journey by manually mining Crystals. These are the foundation of your nascent empire. Use them to construct your first <span class="font-bold">Crystal Extractor</span> to automate production.</p>
+                            </section>
+                                <section>
+                                <h3 class="text-lg font-semibold text-purple-300">Expansion & Growth</h3>
+                                <p>As your empire grows (by increasing its total value from resources and buildings), you'll gain <span class="font-bold">Levels</span>. Each level unlocks new buildings, technologies, and game features like the <span class="font-bold">Galactic Market</span>, <span class="font-bold">Fleet Command</span>, and <span class="font-bold">Research & Development</span>.</p>
+                            </section>
+                            <section>
+                                <h3 class="text-lg font-semibold text-purple-300">The Galaxy Awaits</h3>
+                                <p><span class="font-bold">Exploration:</span> Send scout ships to uncharted space. Discover new resources, ancient artifacts, or encounter unique events. Choices you make can have lasting impacts.</p>
+                                <p><span class="font-bold">Research:</span> Invest Research Points (RP) to unlock powerful upgrades, new units, or economic advantages. RP is generated by specific buildings like Research Labs.</p>
+                                <p><span class="font-bold">Missions:</span> Your AI Advisor or other entities may issue objectives. Completing them yields valuable rewards.</p>
+                            </section>
+                            <section>
+                                <h3 class="text-lg font-semibold text-purple-300">The AI Systems</h3>
+                                <p><span class="font-bold">AI Advisor:</span> Periodically consult your AI for guidance or flavor text reflecting your empire's status.</p>
+                                <p><span class="font-bold">Galactic News:</span> Keep an eye on the GNN for events happening across the galaxy that might be relevant to you.</p>
+                                <p><span class="font-bold">Empire Overview:</span> The main visual panel dynamically generates images reflecting your empire's scale and technological advancement. Refresh it manually, or enable automatic updates (on events) in settings.</p>
+                            </section>
+                            <section>
+                                <h3 class="text-lg font-semibold text-purple-300">Persistence</h3>
+                                <p>Your empire's progress is auto-saved locally if enabled in Settings. You can also manually save, export your save data (for backup or transfer), or import it.</p>
+                            </section>
+                        </div>
+                            <div class="mt-5 sm:mt-6">
+                            <button @click="closeModal" type="button" class="inline-flex w-full justify-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 sm:text-sm">Understood</button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>        
+        </div>
+
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center">
+    <div id="loadingOverlay" class="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-[200]">
         <div class="text-center">
             <div class="text-6xl animate-spin mb-4">🚀</div>
-            <div class="text-xl text-white">Loading your empire...</div>
+            <p class="text-2xl text-white font-semibold">Initializing Galactic Coordinates...</p>
+            <p class="text-purple-300">Please wait while your empire synchronizes.</p>
         </div>
     </div>
-
     <script>
-        const { createApp } = Vue
+        const { createApp, nextTick } = Vue;
         const ttiClient = new LollmsTTI();
+        const lollmsClient = new LollmsClient("http://localhost:9600");
 
-        // Initialize IndexedDB
-        const dbPromise = idb.openDB('GalacticTycoonDB', 1, {
-            upgrade(db) {
-                db.createObjectStore('gameData', { keyPath: 'id', autoIncrement: true });
-                db.createObjectStore('images', { keyPath: 'id', autoIncrement: true });
+        const DB_NAME = 'GalacticTycoonGenesisDB_v2'; 
+        const DB_VERSION = 1; 
+        const GAME_STORE_NAME = 'gameState';
+        const IMAGES_STORE_NAME = 'statusImagesCache';
+
+        const dbPromise = idb.openDB(DB_NAME, DB_VERSION, {
+            upgrade(db, oldVersion, newVersion, transaction) {
+                if (!db.objectStoreNames.contains(GAME_STORE_NAME)) {
+                    db.createObjectStore(GAME_STORE_NAME, { keyPath: 'id' });
+                }
+                if (!db.objectStoreNames.contains(IMAGES_STORE_NAME)) {
+                    const imageStore = db.createObjectStore(IMAGES_STORE_NAME, { keyPath: 'id', autoIncrement:true });
+                    imageStore.createIndex('timestamp', 'timestamp');
+                }
             },
         });
+        
+        function getDefaultGameState() {
+            return {
+                showMainMenu: true,
+                hasSavedGame: false,
+                gameInitialized: false,
+                isMusicPlaying: false,
+                activeModal: null,
+                settings: {
+                    playMusic: true,
+                    soundEnabled: false,
+                    autoSaveEnabled: true,
+                    autoSaveInterval: 60, 
+                    autoImageUpdateEnabled: true, 
+                },
+                playerLevel: 1,
+                nextLevelThreshold: 100,
+                resources: {
+                    crystals: 10, fuel: 0, rareMetals: 0, credits: 100, exoticMatter: 0, researchPoints: 0,
+                },
+                productionRates: {
+                    crystals: 0, fuel: 0, rareMetals: 0, exoticMatter: 0, researchPoints: 0, credits: 0, 
+                },
+                buildings: [ 
+                    {id: 1, name: "Crystal Extractor", owned: 0, baseCost: [{resource:'crystals', amount:10}], costResource:'crystals', costAmount:10, costScalar: 1.15, productionResource: "crystals", baseProduction: 0.1, productionEffect: "+0.1 Crystals/s", description: "Basic automated crystal mining unit.", minLevel: 1, value: 5},
+                    {id: 2, name: "Fuel Synthesizer", owned: 0, baseCost: [{resource:'crystals', amount:50}], costResource:'crystals', costAmount:50, costScalar: 1.2, productionResource: "fuel", baseProduction: 0.05, productionEffect: "+0.05 Fuel/s", description: "Converts crystals into volatile starship fuel.", minLevel: 2, value: 25, unlocksFeature: "fuel"},
+                    {id: 3, name: "Credit Mint", owned: 0, baseCost: [{resource:'crystals', amount:100}, {resource:'fuel', amount:10}], costResource:'crystals', costAmount:100, costScalar: 1.2, productionResource: "credits", baseProduction: 0.5, productionEffect: "+0.5 Credits/s", description: "Generates universal credits, enabling trade.", minLevel: 3, value: 50, unlocksFeature: "credits"},
+                    {id: 4, name: "Research Lab", owned: 0, baseCost: [{resource:'credits', amount:200}], costResource:'credits', costAmount:200, costScalar: 1.25, productionResource: "researchPoints", baseProduction: 0.1, productionEffect: "+0.1 RP/s", description: "Dedicated facility for scientific breakthroughs.", minLevel: 4, value: 100, unlocksFeature: "research"},
+                    {id: 5, name: "Rare Metal Forge", owned: 0, baseCost: [{resource:'credits', amount:500},{resource:'fuel', amount:50}], costResource:'credits', costAmount:500, costScalar: 1.3, productionResource: "rareMetals", baseProduction: 0.02, productionEffect: "+0.02 Rare Metals/s", description: "Extracts and refines durable metals for advanced construction.", minLevel: 5, value: 250, unlocksFeature: "rareMetals"},
+                    {id: 6, name: "Exotic Matter Condenser", owned: 0, baseCost: [{resource:'credits', amount:10000},{resource:'rareMetals', amount:100}], costResource:'credits', costAmount:10000, costScalar: 1.5, productionResource: "exoticMatter", baseProduction: 0.001, productionEffect: "+0.001 EM/s", description: "Harnesses strange particles for reality-bending tech.", minLevel: 10, value: 5000, unlocksFeature: "exoticMatter"},
+                ],
+                ships: [ 
+                    {id: 1, name: "Scout Probe", owned: 0, baseCost: [{resource: 'crystals', amount: 100}, {resource: 'fuel', amount: 20}], cost: [{resource: 'crystals', amount: 100}, {resource: 'fuel', amount: 20}], costScalar: 1.2, description: "Small, fast probe for exploration.", effect: "Enables Exploration", power: 10, minLevel: 3, unlocksFeature: "exploration"},
+                    {id: 2, name: "Mining Barge", owned: 0, baseCost: [{resource: 'rareMetals', amount: 50}, {resource: 'fuel', amount: 100}], cost: [{resource: 'rareMetals', amount: 50}, {resource: 'fuel', amount: 100}], costScalar: 1.25, description: "Automated barge, passively increases crystal/metal income.", effect: "Boosts mine output", power: 50, minLevel: 6},
+                    {id: 3, name: "Trade Freighter", owned: 0, baseCost: [{resource: 'credits', amount: 1000}, {resource: 'fuel', amount: 100}], cost: [{resource: 'credits', amount: 1000}, {resource: 'fuel', amount: 100}], costScalar: 1.3, description: "Improves market prices and credit generation.", effect: "Better trade rates", power: 30, minLevel: 5},
+                ],
+                tradableMarketItems: [
+                    {id: 1, name: "Crystals", key: "crystals", basePrice: 10, price: 10, trend: 0, volatility: 0.15, tradeQuantity: 1, available: true},
+                    {id: 2, name: "Fuel", key: "fuel", basePrice: 25, price: 25, trend: 0, volatility: 0.25, tradeQuantity: 1, available: false},
+                    {id: 3, name: "Rare Metals", key: "rareMetals", basePrice: 100, price: 100, trend: 0, volatility: 0.35, tradeQuantity: 1, available: false},
+                ],
+                marketUpdateInterval: 20, 
+                lastMarketUpdate: Date.now(),
+                stats: { population: 10, influence: 0, marketStability: 100 },
+                unlockedFeatures: {
+                    fuel: false, ships: false, research: false, trading: false, credits: false, rareMetals: false, exoticMatter: false,
+                    aiManager: false, aiAdvisor: false, galacticNews: false, exploration: false, missions: false,
+                },
+                researchTree: [
+                    { id: 'adv_extraction_1', name: "Enhanced Crystal Sonication", description: "Boosts Crystal Extractor output by 10%.", costResource: 'researchPoints', costAmount: 10, effectType: 'building_boost', buildingId: 1, multiplier: 0.1, minLevel: 4, unlocked: false, completed: false },
+                    { id: 'fuel_eff_1', name: "Optimized Fuel Catalysis", description: "Reduces Fuel Synthesizer crystal cost by 5%.", costResource: 'researchPoints', costAmount: 15, effectType: 'building_cost_reduction', buildingId: 2, resource: 'crystals', reduction: 0.05, minLevel: 4, unlocked: false, completed: false },
+                    { id: 'market_intel_1', name: "Basic Market Prediction AI", description: "Slightly improves your odds in trading.", costResource: 'researchPoints', costAmount: 50, effectType: 'stat_boost', stat: 'marketStability', amount: 5, minLevel: 6, unlocked: false, completed: false },
+                    { id: 'scout_speed_1', name: "Long-Range Scanner Arrays", description: "Reduces exploration time/cost slightly.", costResource: 'researchPoints', costAmount: 75, effectType: 'exploration_boost', reduction: 0.05, minLevel: 6, unlocked: false, completed: false },
+                    { id: 'exotic_stability_1', name: "Exotic Matter Containment Fields", description: "Increases Exotic Matter Condenser output by 5%.", costResource: 'exoticMatter', costAmount: 0.1, effectType: 'building_boost', buildingId: 6, multiplier: 0.05, minLevel: 10, unlocked: false, completed: false },
+                ],
+                currentResearch: null,
+                lastUpdate: Date.now(),
+                notifications: [], 
+                isGeneratingImage: false,
+                statusImages: [], 
+                currentImageIndex: 0,
+                currentStardate: "0001.01.01",
+                savedGames: [],
+                aiManager: { isActive: false, efficiency: 75, directive: "Balanced Growth" },
+                advisor: { message: "Awaiting initialization protocols...", portraitUrl: null, isThinking: false, lastAdviceTime: 0, adviceCooldown: 120000 },
+                galacticNews: [], 
+                isGeneratingNews: false,
+                lastNewsTime: 0,
+                newsCooldown: 180000, 
+                exploration: { isExploring: false, currentEvent: null, lastExplorationTime: 0, explorationCooldown: 300000 },
+                explorationCost: { fuel: 50 }, 
+                missions: [], 
+                isGeneratingMission: false,
+                lastMissionTime: 0,
+                missionCooldown: 240000, 
+                loadedGameStateData: null, 
+            };
+        }
 
         createApp({
             data() {
-                return {
-                    showMainMenu: true,
-                    hasSavedGame: false, // Set this based on your game logic
-                    gameStarted: false,
-                    isMusicPlaying: false,
-                    isGeneratingImage: false,
-                    activeModal: null,
-                    settings: {
-                        soundEnabled: true,
-                        autoSaveEnabled: true,
-                        autoSaveInterval: 30,
-                        autoImageUpdateEnabled: false,
-                        playMusic: true,
-                        imageUpdateInterval: 10
-                    },
-                    gameInitialized: false,
-                    playerLevel: 1,
-                    levelProgress: 0,
-                    resources: {
-                        crystals: 0,
-                        fuel: 0,
-                        rareMetals: 0,
-                        credits: 100 // Starting credits
-                    },
-                    productionRates: {
-                        crystals: 0,
-                        fuel: 0
-                    },
-                    buildings: [
-                        {id: 1, name: "Crystal Mine", owned: 0, cost: 10, production: 0.1, minLevel: 1},
-                        {id: 2, name: "Fuel Refinery", owned: 0, cost: 15, production: 0.1, minLevel: 3},
-                        {id: 3, name: "Research Lab", owned: 0, cost: 50, production: 0.05, minLevel: 5},
-                        {id: 4, name: "Space Station", owned: 0, cost: 100, production: 0.2, minLevel: 7},
-                        {id: 5, name: "Quantum Computer", owned: 0, cost: 200, production: 0.5, minLevel: 10}
-                    ],
-                    ships: [
-                        {id: 1, name: "Scout Ship", cost: 100},
-                        {id: 2, name: "Mining Vessel", cost: 250},
-                        {id: 3, name: "Battle Cruiser", cost: 1000},
-                        {id: 4, name: "Colony Ship", cost: 2000},
-                        {id: 5, name: "Mothership", cost: 5000}
-                    ],
-                    tradableResources: [
-                        {id: 1, name: "Crystals", key: "crystals", price: 10, basePrice: 10, trend: 0, volatility: 0.1, quantity: 1},
-                        {id: 2, name: "Fuel", key: "fuel", price: 15, basePrice: 15, trend: 0, volatility: 0.2, quantity: 1},
-                        {id: 3, name: "Rare Metals", key: "rareMetals", price: 50, basePrice: 50, trend: 0, volatility: 0.3, quantity: 1}
-                    ],
-                    marketUpdateInterval: 10, // seconds
-                    lastMarketUpdate: Date.now(),
-                    stats: {
-                        population: 100,
-                        happiness: 100,
-                        marketInfluence: 0
-                    },
-                    unlockedFeatures: {
-                        fuel: false,
-                        ships: false,
-                        research: false,
-                        trading: false,
-                        credits: true,
-                        rareMetals: false,
-                        multiUnitTrading: false,
-                        aiManager: false
-                    },
-                    researchProgress: 0,
-                    lastUpdate: Date.now(),
-                    notifications: [],
-                    lastImageUpdate: Date.now(),
-                    statusImages: [],
-                    currentImageIndex: 0,
-                    savedGames: [],
-                    aiManagerActive: false,
-                    aiManagerEfficiency: 80
+                return getDefaultGameState();
+            },
+            computed: {
+                totalEmpireValue() { 
+                    let value = 0;
+                    value += this.resources.crystals;
+                    value += this.resources.fuel * 2;
+                    value += this.resources.credits * 0.5;
+                    value += this.resources.rareMetals * 10;
+                    value += this.resources.exoticMatter * 1000;
+                    value += this.resources.researchPoints * 5;
+                    this.buildings.forEach(b => value += b.owned * b.value);
+                    this.ships.forEach(s => value += s.owned * s.power * 5);
+                    this.researchTree.filter(t => t.completed).forEach(() => value += 500);
+                    return value; 
+                },
+                totalEmpireValueForDisplay() { 
+                    return Math.floor(this.totalEmpireValue);
+                },
+                levelProgress() {
+                    if (this.nextLevelThreshold <= 0) return 100; 
+                    return Math.min((this.totalEmpireValue / this.nextLevelThreshold) * 100, 100);
+                },
+                visibleBuildings() {
+                    return this.buildings.filter(b => b.minLevel <= this.playerLevel);
+                },
+                tradableMarketItemsFiltered() { 
+                    return this.tradableMarketItems.filter(item => item.available);
+                },
+                availableShips() {
+                    return this.ships.filter(s => s.minLevel <= this.playerLevel);
+                },
+                fleetPower() {
+                    return this.ships.reduce((acc, ship) => acc + (ship.owned * ship.power), 0);
+                },
+                availableResearch() {
+                    return this.researchTree.filter(tech => 
+                        tech.minLevel <= this.playerLevel && 
+                        !tech.completed && 
+                        (this.currentResearch ? tech.id !== this.currentResearch.id : true)
+                    );
+                }
+            },
+            watch: {
+                'settings.autoSaveInterval'() {
+                    this.setupAutoSave();
+                },
+                'settings.autoSaveEnabled'() { 
+                    this.setupAutoSave();
+                },
+                playerLevel(newLevel, oldLevel) {
+                    if (this.gameInitialized && newLevel > oldLevel) { 
+                        this.showNotification(`Congratulations, Commander! You've reached Empire Level ${newLevel}! New capabilities may be available.`, 'success');
+                        this.unlockFeaturesByLevel();
+                        this.getAdvisorUpdate(true); 
+                        this.updateStatusImage("Level up! The empire expands its horizons.");
+                    }
+                },
+                totalEmpireValue(newValue, oldValue) { 
+                     if (this.gameInitialized) {
+                        this.checkLevelUp();
+                     }
                 }
             },
             methods: {
-                toggleMusic() {
-                    const audio = this.$refs.audioPlayer;
-                    if (this.isMusicPlaying) {
-                        audio.pause();
+                // START OF getSaveData method
+                getSaveData() {
+                    const plainData = {};
+                    plainData.settings = { ...this.settings };
+                    plainData.playerLevel = this.playerLevel;
+                    plainData.nextLevelThreshold = this.nextLevelThreshold;
+                    plainData.resources = { ...this.resources };
+                    plainData.productionRates = { ...this.productionRates };
+                    plainData.buildings = this.buildings.map(b => ({
+                        id: b.id, name: b.name, owned: b.owned, baseCost: JSON.parse(JSON.stringify(b.baseCost)), 
+                        costResource: b.costResource, costAmount: b.costAmount, costScalar: b.costScalar,
+                        productionResource: b.productionResource, baseProduction: b.baseProduction,
+                        productionEffect: b.productionEffect, description: b.description, minLevel: b.minLevel,
+                        value: b.value, unlocksFeature: b.unlocksFeature,
+                    }));
+                    plainData.ships = this.ships.map(s => ({
+                        id: s.id, name: s.name, owned: s.owned, baseCost: JSON.parse(JSON.stringify(s.baseCost)), 
+                        cost: JSON.parse(JSON.stringify(s.cost)), costScalar: s.costScalar, description: s.description,
+                        effect: s.effect, power: s.power, minLevel: s.minLevel, unlocksFeature: s.unlocksFeature,
+                    }));
+                    plainData.tradableMarketItems = this.tradableMarketItems.map(item => ({
+                        id: item.id, name: item.name, key: item.key, basePrice: item.basePrice, price: item.price,
+                        trend: item.trend, volatility: item.volatility, tradeQuantity: item.tradeQuantity, available: item.available,
+                    }));
+                    plainData.marketUpdateInterval = this.marketUpdateInterval;
+                    plainData.lastMarketUpdate = this.lastMarketUpdate; 
+                    plainData.stats = { ...this.stats };
+                    plainData.unlockedFeatures = { ...this.unlockedFeatures };
+                    plainData.researchTree = this.researchTree.map(tech => ({
+                        id: tech.id, name: tech.name, description: tech.description, costResource: tech.costResource,
+                        costAmount: tech.costAmount, effectType: tech.effectType, buildingId: tech.buildingId, 
+                        multiplier: tech.multiplier, resource: tech.resource, reduction: tech.reduction, 
+                        stat: tech.stat, amount: tech.amount, minLevel: tech.minLevel, unlocked: tech.unlocked, 
+                        completed: tech.completed, missionTracked: tech.missionTracked, 
+                    }));
+                    if (this.currentResearch) {
+                        plainData.currentResearch = {
+                            id: this.currentResearch.id, name: this.currentResearch.name,
+                            progress: this.currentResearch.progress, totalNeeded: this.currentResearch.totalNeeded,
+                        };
                     } else {
-                        audio.play();
+                        plainData.currentResearch = null;
                     }
-                    this.isMusicPlaying = !this.isMusicPlaying;
-                },                
-                async initializeGame() {
-                    if (!this.gameInitialized) {
-                        this.updateProductionRates()
-                        this.updateMarketPrices()
-                        await this.loadSavedGames()
-                        this.gameInitialized = true
-                    }
+                    plainData.lastUpdate = this.lastUpdate;
+                    plainData.currentStardate = this.currentStardate;
+                    plainData.aiManager = { ...this.aiManager };
+                    plainData.advisor = {
+                        message: this.advisor.message, portraitUrl: this.advisor.portraitUrl, 
+                        lastAdviceTime: this.advisor.lastAdviceTime, adviceCooldown: this.advisor.adviceCooldown,
+                    };
+                    plainData.galacticNews = this.galacticNews.map(news => ({
+                        id: news.id, headline: news.headline, blurb: news.blurb,
+                    }));
+                    plainData.lastNewsTime = this.lastNewsTime;
+                    plainData.newsCooldown = this.newsCooldown;
+                    plainData.exploration = {
+                        currentEvent: this.exploration.currentEvent ? {
+                            title: this.exploration.currentEvent.title, description: this.exploration.currentEvent.description,
+                            choices: this.exploration.currentEvent.choices ? JSON.parse(JSON.stringify(this.exploration.currentEvent.choices)) : null,
+                            directReward: this.exploration.currentEvent.directReward ? JSON.parse(JSON.stringify(this.exploration.currentEvent.directReward)) : null,
+                        } : null,
+                        lastExplorationTime: this.exploration.lastExplorationTime,
+                        explorationCooldown: this.exploration.explorationCooldown,
+                    };
+                    plainData.explorationCost = { ...this.explorationCost };
+                    plainData.missions = this.missions.map(mission => ({
+                        id: mission.id, title: mission.title, description: mission.description, type: mission.type,
+                        resource: mission.resource, buildingId: mission.buildingId, shipId: mission.shipId,
+                        targetValue: mission.targetValue, currentValue: mission.currentValue, 
+                        reward: JSON.parse(JSON.stringify(mission.reward)), rewardText: mission.rewardText,
+                        progress: mission.progress, completed: mission.completed, 
+                    }));
+                    plainData.lastMissionTime = this.lastMissionTime;
+                    plainData.missionCooldown = this.missionCooldown;
+                    plainData.statusImageIds = this.statusImages.map(img => img.id).filter(id => id);
+                    plainData.showMainMenu = this.showMainMenu; 
+                    plainData.hasSavedGame = this.hasSavedGame; 
+                    plainData.gameInitialized = this.gameInitialized; 
+                    plainData.isMusicPlaying = this.isMusicPlaying; 
+                    plainData.currentImageIndex = this.currentImageIndex;
+                    return plainData;
                 },
-                showNewGameModal() {
-                    this.activeModal = 'newGame'
+                // END OF getSaveData method
+                async initApp() {
+                    console.log("App initializing...");
+                    const loadingOverlay = document.getElementById('loadingOverlay');
+                    this.hasSavedGame = await this.checkForSavedGameDB();
+                    loadingOverlay.style.display = 'none';
+                    console.log("App initialized, showing main menu.");
                 },
-                showLoadGameModal() {
-                    this.activeModal = 'loadGame'
-                },
-                showSettingsModal() {
-                    this.activeModal = 'settings'
-                },
-                showCreditsModal() {
-                    this.activeModal = 'credits'
-                },
-                showHelpModal() {
-                    this.activeModal = 'help'
-                },
-                closeModal() {
-                    this.activeModal = null
-                },
-                async startNewGame() {
-                    if (confirm('Are you sure? This will erase all progress!')) {
-                        await this.resetGame()
-                        this.closeModal()
-                        this.gameStarted = true;
-                        this.showMainMenu = false;
-                    }
-                },
-                openMainMenu() {
-                    this.showMainMenu = true;
-                },                
-                async loadSavedGame(gameId) {
-                    await this.loadGame(gameId)
-                    this.closeModal()
-                },                
-                updateMarketPrices() {
-                    this.tradableResources.forEach(resource => {
-                        // Calculate price change based on market conditions
-                        const marketInfluence = this.stats.marketInfluence / 100
-                        const randomFactor = (Math.random() - 0.5) * 2 * resource.volatility
-                        const demandFactor = (resource.trend * 0.1)
-                        const newPrice = resource.basePrice * (1 + randomFactor + demandFactor + marketInfluence)
-                        
-                        // Update trend
-                        resource.trend = (newPrice - resource.price) / resource.price
-                        resource.price = Math.max(newPrice, resource.basePrice * 0.5)
-                    })
-                },
-                buyResource(resourceId) {
-                    const resource = this.tradableResources.find(r => r.id === resourceId)
-                    const quantity = resource.quantity || 1;
-                    const totalCost = resource.price * quantity
-                    if (resource && this.resources.credits >= totalCost) {
-                        this.resources.credits -= totalCost
-                        this.resources[resource.key] += quantity
-                        resource.trend += 0.05 * quantity // Buying increases price trend
-                        this.stats.marketInfluence = Math.min(this.stats.marketInfluence + 1, 100)
-                        this.showNotification(`Bought ${quantity} ${resource.name}`)
-                    }
-                },
-                sellResource(resourceId) {
-                    const resource = this.tradableResources.find(r => r.id === resourceId)
-                    const quantity = resource.quantity || 1;
-                    if (resource && this.resources[resource.key] >= quantity) {
-                        this.resources.credits += resource.price * quantity
-                        this.resources[resource.key] -= quantity
-                        resource.trend -= 0.05 * quantity // Selling decreases price trend
-                        this.stats.marketInfluence = Math.min(this.stats.marketInfluence + 1, 100)
-                        this.showNotification(`Sold ${quantity} ${resource.name}`)
-                    }
-                },
-                manualWork() {
-                    this.resources.crystals++
-                    this.checkLevelProgress()
-                },
-                buyBuilding(buildingId) {
-                    const building = this.buildings.find(b => b.id === buildingId)
-                    if (building && this.resources.crystals >= building.cost) {
-                        this.resources.crystals -= building.cost
-                        building.owned++
-                        building.cost = Math.floor(building.cost * 1.15)
-                        this.updateProductionRates()
-                        this.checkLevelProgress()
-                    }
-                },
-                buildShip(shipId) {
-                    const ship = this.ships.find(s => s.id === shipId)
-                    if (ship && this.resources.crystals >= ship.cost) {
-                        this.resources.crystals -= ship.cost
-                        this.checkLevelProgress()
-                    }
-                    this.showNotification(`Built a new ${ship.name}!`)
-                },
-                updateProductionRates() {
-                    this.productionRates.crystals = this.buildings.reduce((acc, building) => 
-                        acc + (building.owned * building.production), 0)
-                    this.productionRates.fuel = this.buildings.reduce((acc, building) => 
-                        acc + (building.owned * building.production * 0.5), 0)
-                },
-                checkLevelProgress() {
-                    const totalResources = this.resources.crystals + (this.resources.fuel || 0)
-                    const levelThreshold = Math.pow(100, this.playerLevel)
-                    this.levelProgress = (totalResources / levelThreshold) * 100
-                    
-                    if (this.levelProgress >= 100) {
-                        this.playerLevel++
-                        this.levelProgress = 0
-                        this.unlockFeatures()
-                        this.showNotification(`Level up! You are now level ${this.playerLevel}`)
-                    }
-                },
-                unlockFeatures() {
-                    if (this.playerLevel >= 2 && !this.unlockedFeatures.trading) {
-                        this.unlockedFeatures.trading = true
-                        this.showNotification("Trading system unlocked!")
-                    }
-                    if (this.playerLevel >= 3) {
-                        if (!this.unlockedFeatures.fuel) {
-                            this.unlockedFeatures.fuel = true
-                            this.showNotification("Fuel production unlocked!")
-                        }
-                        if (!this.unlockedFeatures.multiUnitTrading) {
-                            this.unlockedFeatures.multiUnitTrading = true
-                            this.showNotification("Multi-unit trading unlocked!")
-                        }
-                    }
-                    if (this.playerLevel >= 5 && !this.unlockedFeatures.ships) {
-                        this.unlockedFeatures.ships = true
-                        this.showNotification("Ships system unlocked!")
-                    }
-                    if (this.playerLevel >= 7 && !this.unlockedFeatures.research) {
-                        this.unlockedFeatures.research = true
-                        this.showNotification("Research system unlocked!")
-                    }
-                    if (this.playerLevel >= 10 && !this.unlockedFeatures.aiManager) {
-                        this.unlockedFeatures.aiManager = true
-                        this.showNotification("AI Manager unlocked!")
-                    }
-                },
-                showNotification(message) {
-                    const notification = { message, new: true }
-                    this.notifications.push(notification)
-                    setTimeout(() => {
-                        notification.new = false
-                        setTimeout(() => {
-                            this.notifications.shift()
-                        }, 3000)
-                    }, 1000)
-                },
-                update() {
-                    if (!this.gameInitialized) return
-                    
-                    const now = Date.now()
-                    const delta = (now - this.lastUpdate) / 1000
-                    
-                    // Resource production
-                    this.resources.crystals += this.productionRates.crystals * delta
-                    if (this.unlockedFeatures.fuel) {
-                        this.resources.fuel += this.productionRates.fuel * delta
-                    }
-                    
-                    // Market updates
-                    if (this.unlockedFeatures.trading && now - this.lastMarketUpdate >= this.marketUpdateInterval * 1000) {
-                        this.updateMarketPrices()
-                        this.lastMarketUpdate = now
-                    }
-                    
-                    if (this.unlockedFeatures.research) {
-                        this.researchProgress = (this.researchProgress + 0.1) % 100
-                    }
-                    
-                    this.checkLevelProgress()
-                    this.lastUpdate = now
-
-                    // Check if it's time to update the status image
-                    if (this.settings.autoImageUpdateEnabled && 
-                        now - this.lastImageUpdate >= this.settings.imageUpdateInterval * 60 * 1000) {
-                        this.updateStatusImage()
-                        this.lastImageUpdate = now
-                    }
-
-                    // AI Manager actions
-                    if (this.aiManagerActive) {
-                        this.runAIManager()
-                    }
-                },
-                deepSanitize (obj) {
-                    if (Array.isArray(obj)) {
-                        return obj.map(this.deepSanitize);
-                    } else if (obj && typeof obj === 'object') {
-                        const newObj = {};
-                        for (const [key, value] of Object.entries(obj)) {
-                            if (value instanceof Date) {
-                                newObj[key] = value.toISOString();
-                            } else if (typeof value !== 'function' && !(value instanceof PointerEvent)) {
-                                newObj[key] = this.deepSanitize(value);
+                async initializeGameData() {
+                    console.log("Initializing game data...");
+                    const baseState = getDefaultGameState();
+                    let initialState = {};
+                    for (const key in baseState) {
+                        if (this.loadedGameStateData && this.loadedGameStateData.hasOwnProperty(key)) {
+                            if (typeof baseState[key] === 'object' && baseState[key] !== null && !Array.isArray(baseState[key])) {
+                                initialState[key] = { ...baseState[key], ...this.loadedGameStateData[key] };
+                            } else if (Array.isArray(baseState[key])) {
+                                initialState[key] = this.loadedGameStateData[key];
                             }
+                             else {
+                                initialState[key] = this.loadedGameStateData[key];
+                            }
+                        } else {
+                            initialState[key] = baseState[key];
                         }
-                        return newObj;
                     }
-                    return obj;
-                },
-
-                async saveGame(gameId = null) {
-                    const saveData = this.deepSanitize({
-                        id: gameId || 0,
-                        name: `Save ${new Date().toLocaleString()}`,
-                        level: this.playerLevel,
-                        resources: this.resources,
-                        buildings: this.buildings.map(b => ({...b, upgradeFunction: undefined})),
-                        stats: this.stats,
-                        playerLevel: this.playerLevel,
-                        unlockedFeatures: this.unlockedFeatures,
-                        tradableResources: this.tradableResources,
-                        lastUpdate: this.lastUpdate,
-                        lastMarketUpdate: this.lastMarketUpdate,
-                        settings: this.settings,
-                        statusImages: this.statusImages
+                    initialState.buildings = baseState.buildings.map(defBuilding => {
+                        const savedBuilding = this.loadedGameStateData?.buildings?.find(sb => sb.id === defBuilding.id);
+                        return savedBuilding ? { ...defBuilding, ...savedBuilding } : { ...defBuilding }; 
+                    });
+                    initialState.ships = baseState.ships.map(defShip => {
+                        const savedShip = this.loadedGameStateData?.ships?.find(ss => ss.id === defShip.id);
+                        return savedShip ? { ...defShip, ...savedShip } : { ...defShip };
+                    });
+                    initialState.researchTree = baseState.researchTree.map(defTech => {
+                        const savedTech = this.loadedGameStateData?.researchTree?.find(st => st.id === defTech.id);
+                        return savedTech ? { ...defTech, ...savedTech } : { ...defTech };
                     });
 
-                    console.log(saveData);
-                    try {
-                        const db = await dbPromise;
-                        await db.put('gameData', saveData);
-                        this.showNotification(`Game ${saveData.id} saved successfully!`);
-                        await this.loadSavedGames();
-                    } catch (error) {
-                        console.error("Save failed:", error);
-                        this.showNotification("Failed to save game!");
+                    Object.assign(this.$data, initialState);
+                    this.loadedGameStateData = null; 
+
+                    this.showMainMenu = false;
+                    this.gameInitialized = true;
+                    this.lastUpdate = Date.now();
+                    this.updateProductionRates(); 
+                    this.updateBuildingCostsAndEffects();
+                    this.updateShipCosts();
+                    this.unlockFeaturesByLevel(true); 
+                    this.updateMarketPrices(true); 
+                    await this.loadStatusImagesFromDB();
+
+                    if (this.statusImages.length === 0 && this.settings.autoImageUpdateEnabled) { 
+                        await this.updateStatusImage("Initial state of the empire, a hopeful beginning.");
+                    }
+                    if (!this.advisor.portraitUrl && this.unlockedFeatures.aiAdvisor) {
+                        await this.generateAdvisorPortrait();
+                    }
+                    
+                    this.handleMusicToggle(this.settings.playMusic); 
+                    this.setupAutoSave(); 
+                    
+                    if (this.gameLoopInterval) clearInterval(this.gameLoopInterval);
+                    this.gameLoopInterval = setInterval(this.gameTick, 100);
+                    
+                    if (this.periodicUpdateInterval) clearInterval(this.periodicUpdateInterval);
+                    this.periodicUpdateInterval = setInterval(this.periodicUpdates, 5000);
+
+                    this.showNotification("Your command interface is online. Welcome, Commander.", "info");
+                    if (this.playerLevel === 1 && this.resources.crystals < 10 && this.buildings.find(b=>b.id===1).owned < 1) {
+                         this.showNotification("Hint: Click 'Manually Mine Crystals' or construct a Crystal Extractor.", "info", 10000);
+                    }
+                    console.log("Game data initialized and loops started.");
+                },
+                gameTick() {
+                    if (!this.gameInitialized || this.showMainMenu || this.activeModal) return;
+                    const now = Date.now();
+                    const delta = (now - this.lastUpdate) / 1000;
+                    this.resources.crystals += this.productionRates.crystals * delta;
+                    this.resources.fuel += this.productionRates.fuel * delta;
+                    this.resources.rareMetals += this.productionRates.rareMetals * delta;
+                    this.resources.exoticMatter += this.productionRates.exoticMatter * delta;
+                    this.resources.credits += this.productionRates.credits * delta;
+                    if (this.unlockedFeatures.research) {
+                        this.resources.researchPoints += this.productionRates.researchPoints * delta;
+                    }
+                    if (this.currentResearch) {
+                        const researchPointsNeededForProgress = this.currentResearch.totalNeeded / 100; 
+                        const progressGainThisTick = (this.productionRates.researchPoints * delta) / researchPointsNeededForProgress;
+                        if(researchPointsNeededForProgress > 0) { // Avoid division by zero if totalNeeded is 0 somehow
+                           this.currentResearch.progress += progressGainThisTick;
+                        } else if (this.productionRates.researchPoints > 0) { // If cost is 0 but production is positive, instant complete
+                           this.currentResearch.progress = 100;
+                        }
+                        
+                        if (this.currentResearch.progress >= 100) {
+                            this.completeResearch(this.currentResearch.id);
+                        }
+                    }
+                    if (this.aiManager.isActive) this.runAIManagerLogic(delta);
+                    this.updateStardate(delta);
+                    this.lastUpdate = now;
+                },
+                periodicUpdates() { 
+                    if (!this.gameInitialized || this.showMainMenu || this.activeModal) return;
+                    const now = Date.now();
+                    if (this.unlockedFeatures.trading && now - this.lastMarketUpdate >= this.marketUpdateInterval * 1000) {
+                        this.updateMarketPrices();
+                        this.lastMarketUpdate = now;
+                    }
+                    if (this.unlockedFeatures.aiAdvisor && now - this.advisor.lastAdviceTime >= this.advisor.adviceCooldown) {
+                        this.getAdvisorUpdate();
+                    }
+                    if (this.unlockedFeatures.galacticNews && now - this.lastNewsTime >= this.newsCooldown) {
+                        this.fetchGalacticNews();
+                    }
+                    if (this.unlockedFeatures.missions) {
+                        this.checkMissionCompletion();
+                        if (this.missions.length < 3 && now - this.lastMissionTime >= this.missionCooldown && this.playerLevel > 1) {
+                           this.generateMission();
+                        }
                     }
                 },
-                continueGame() {
-                    // Load saved game state here
-                    this.gameStarted = true;
-                    this.showMainMenu = false;
-                    // Load music preference
-                    const audio = this.$refs.audioPlayer; // This should log the audio element
-                    if (this.settings.playMusic) {
-                        audio.play().catch(error => {
-                        console.error("Audio playback failed:", error);
-                        // Optionally, you can set settings.playMusic to false here
-                        // if autoplay is blocked by the browser
-                        });
-                    } else {
-                        audio.pause();
-                    }
-
-                    this.loadGame()
-                    this.isMusicPlaying = this.settings.playMusic        
-                    setInterval(this.update, 100)
-                    setInterval(() => {
-                        if (this.settings.autoSaveEnabled) {
-                            this.saveGame()
-                        }
-                    }, this.settings.autoSaveInterval * 1000)
-                },                
-                async checkForSavedGame() {
+                updateStardate(deltaSeconds) {
+                    const dayFraction = deltaSeconds / 60; 
+                    let [yearStr, monthStr, dayStr] = this.currentStardate.split('.');
+                    let year = parseInt(yearStr);
+                    let month = parseInt(monthStr);
+                    let day = parseFloat(dayStr) + dayFraction;
+                    while (day > 30) { day -= 30; month++; }
+                    while (month > 12) { month -= 12; year++; }
+                    this.currentStardate = `${String(year).padStart(4, '0')}.${String(month).padStart(2, '0')}.${day.toFixed(2).padStart(5, '0')}`;
+                },
+                async checkForSavedGameDB() {
                     try {
                         const db = await dbPromise;
-                        const data = await db.get('gameData', gameId || 0);
-                        console.log(data)
-                        if (data) {
-                            return true;
-                        } else {
-                            return false;
-                        }
+                        const savedGame = await db.get(GAME_STORE_NAME, 'latestSave');
+                        return !!savedGame;
                     } catch (error) {
+                        console.error("Error checking for saved game:", error);
                         return false;
                     }
-
                 },
-
-                async loadGame(gameId = null) {
+                async continueGame() {
+                    console.log("Continue game selected.");
+                    const success = await this.loadGameDB('latestSave', true); 
+                    if (success) {
+                        this.initializeGameData();
+                    } else {
+                         this.showNotification("Failed to load saved game. Starting fresh.", "error");
+                         this.executeStartNewGame(true); 
+                    }
+                },
+                startNewGameConfirm() { 
+                    if (this.hasSavedGame) {
+                        this.activeModal = 'newGame'; 
+                    } else {
+                        this.executeStartNewGame(true); 
+                    }
+                },
+                showNewGameModal() { this.activeModal = 'newGame'; },
+                executeStartNewGame(force = false) {
+                    console.log("Executing start new game.");
+                    this.closeModal(); 
+                    if (this.gameLoopInterval) clearInterval(this.gameLoopInterval);
+                    if (this.periodicUpdateInterval) clearInterval(this.periodicUpdateInterval);
+                    if (this.autoSaveIntervalId) clearInterval(this.autoSaveIntervalId);
+                    
+                    this.loadedGameStateData = null; 
+                    this.initializeGameData(); 
+                },
+                async showResetGameModal() {
+                    this.activeModal = 'resetGame';
+                },
+                async executeResetGame() {
+                    console.log("Executing reset game.");
+                    this.closeModal();
                     try {
                         const db = await dbPromise;
-                        const data = await db.get('gameData', gameId || 0);
-                        console.log(data)
-                        if (data) {
-                            this.resources = data.resources;
-                            this.buildings = data.buildings;
-                            this.stats = data.stats;
-                            this.playerLevel = data.playerLevel;
-                            this.unlockedFeatures = data.unlockedFeatures;
-                            this.tradableResources = data.tradableResources;
-                            this.lastUpdate = data.lastUpdate;
-                            this.lastMarketUpdate = new Date(data.lastMarketUpdate);
-                            this.settings = data.settings;
-                            this.statusImages = data.statusImages;
-                            this.updateProductionRates();
-                            this.showNotification(`Game ${data.id} loaded successfully!`);
+                        await db.clear(GAME_STORE_NAME);
+                        await db.clear(IMAGES_STORE_NAME);
+                        this.showNotification("Empire data wiped from local storage.", "warning");
+                    } catch (error) {
+                        console.error("Error clearing database:", error);
+                        this.showNotification("Error wiping data. Manual cache clearing may be needed.", "error");
+                    }
+                    this.hasSavedGame = false;
+                    this.executeStartNewGame(true); 
+                },
+                manualWork() {
+                    if (this.playerLevel < 2) { 
+                        this.resources.crystals++;
+                        this.stats.population = Math.max(1, this.stats.population + 0.1); 
+                    }
+                },
+                updateProductionRates() { 
+                    Object.keys(this.productionRates).forEach(key => this.productionRates[key] = 0);
+                     this.buildings.forEach(building => {
+                        if (building.owned > 0) {
+                            let effectiveProduction = building.baseProduction;
+                            this.researchTree.forEach(tech => {
+                                if (tech.completed && tech.effectType === 'building_boost' && tech.buildingId === building.id) {
+                                    effectiveProduction *= (1 + tech.multiplier);
+                                }
+                            });
+                            this.productionRates[building.productionResource] += building.owned * effectiveProduction;
+                        }
+                    });
+                    const miningBarge = this.ships.find(s => s.id === 2);
+                    if (miningBarge && miningBarge.owned > 0) {
+                        this.productionRates.crystals += miningBarge.owned * 0.5; 
+                        if (this.unlockedFeatures.rareMetals) this.productionRates.rareMetals += miningBarge.owned * 0.01;
+                    }
+                    const tradeFreighter = this.ships.find(s => s.id === 3);
+                     if (tradeFreighter && tradeFreighter.owned > 0 && this.unlockedFeatures.credits) {
+                        this.productionRates.credits += tradeFreighter.owned * 0.2;
+                    }
+                },
+                updateBuildingCostsAndEffects() {
+                    this.buildings.forEach(building => {
+                        if (building.owned > 0) {
+                            let currentCost = building.baseCost[0].amount; 
+                            for (let i = 0; i < building.owned; i++) {
+                                currentCost *= building.costScalar;
+                            }
+                            building.costAmount = Math.floor(currentCost);
                         } else {
-                            this.showNotification("No saved game found!");
+                             building.costAmount = building.baseCost[0].amount;
                         }
-                    } catch (error) {
-                        console.error("Load failed:", error);
-                        this.showNotification("Failed to load saved game!");
-                    }
-                    this.initializeGame();
+                        let prodText = `+${(building.baseProduction * (building.owned > 0 ? building.owned : 1)).toFixed(2)} ${building.productionResource}/s`;
+                        let effectiveProduction = building.baseProduction;
+                        this.researchTree.forEach(tech => {
+                            if (tech.completed && tech.effectType === 'building_boost' && tech.buildingId === building.id) {
+                                effectiveProduction *= (1 + tech.multiplier);
+                            }
+                        });
+                         prodText = `+${(effectiveProduction * (building.owned > 0 ? 1:1)).toFixed(building.productionResource === 'exoticMatter' ? 4:2)} ${this.getResourceName(building.productionResource)}/s each`;
+                        if (building.owned > 0) {
+                             prodText += ` (Total: ${(effectiveProduction * building.owned).toFixed(building.productionResource === 'exoticMatter' ? 4:2)}/s)`;
+                        }
+                        building.productionEffect = prodText;
+                    });
                 },
-
-                async loadSavedGames() {
-                    try {
-                        const db = await dbPromise
-                        this.savedGames = await db.getAll('gameData')
-                    } catch (error) {
-                        console.error("Failed to load saved games:", error)
+                getResourceName(key) {
+                    const names = { crystals: "Crystals", fuel: "Fuel", credits: "Credits", rareMetals: "Rare Metals", exoticMatter: "EM", researchPoints: "RP" };
+                    return names[key] || key;
+                },
+                formatCost(resourceKey, amount) {
+                    const symbols = { crystals: "💎", fuel: "⚡", credits: "💰", rareMetals: "🔧", exoticMatter: "✨", researchPoints: "RP" };
+                    return `${Math.floor(amount)} ${symbols[resourceKey] || resourceKey}`;
+                },
+                canAfford(costsArray) { 
+                    if (!costsArray || costsArray.length === 0) return true; 
+                    return costsArray.every(cost => this.resources[cost.resource] >= cost.amount);
+                },
+                deductCost(costsArray) {
+                    costsArray.forEach(cost => {
+                        this.resources[cost.resource] -= cost.amount;
+                    });
+                },
+                canAffordBuilding(buildingId) {
+                    const building = this.buildings.find(b => b.id === buildingId);
+                    if (!building) return false;
+                    const costs = [{ resource: building.costResource, amount: building.costAmount }];
+                    if (building.baseCost.length > 1) {
+                        building.baseCost.forEach((bc, index) => {
+                            if (index > 0) { 
+                                costs.push({resource: bc.resource, amount: Math.floor(bc.amount * Math.pow(building.costScalar, building.owned)) }); 
+                            }
+                        });
+                    }
+                    return this.canAfford(costs);
+                },
+                buyBuilding(buildingId) {
+                    const building = this.buildings.find(b => b.id === buildingId);
+                    if (building && this.canAffordBuilding(building.id)) {
+                        const costs = [{ resource: building.costResource, amount: building.costAmount }];
+                         if (building.baseCost.length > 1) {
+                            building.baseCost.forEach((bc, index) => {
+                                if (index > 0) { 
+                                    costs.push({resource: bc.resource, amount: Math.floor(bc.amount * Math.pow(building.costScalar, building.owned)) });
+                                }
+                            });
+                        }
+                        this.deductCost(costs);
+                        building.owned++;
+                        building.costAmount = Math.floor(building.baseCost[0].amount * Math.pow(building.costScalar, building.owned));
+                        if (building.unlocksFeature && !this.unlockedFeatures[building.unlocksFeature]) {
+                            this.unlockedFeatures[building.unlocksFeature] = true;
+                            this.showNotification(`${building.unlocksFeature.charAt(0).toUpperCase() + building.unlocksFeature.slice(1)} system online!`, 'success');
+                            this.unlockFeaturesByLevel(); 
+                        }
+                        if (building.id === 1 && building.owned === 1) { 
+                            this.showNotification("Crystal Extractor online! Automated resource generation has begun.", "success");
+                        }
+                        this.updateProductionRates();
+                        this.updateBuildingCostsAndEffects(); 
                     }
                 },
-                async resetGame() {
-                    try {
-                        const db = await dbPromise
-                        await db.clear('gameData')
-                        await db.clear('images')
-                        Object.assign(this.$data, this.$options.data())
-                        this.initializeGame()
-                        this.showNotification("Game reset successfully!")
-                    } catch (error) {
-                        console.error("Reset failed:", error)
-                        this.showNotification("Failed to reset game!")
+                checkLevelUp() {
+                    if (this.totalEmpireValue >= this.nextLevelThreshold) {
+                        let currentTotalValue = this.totalEmpireValue; 
+                        this.playerLevel++;
+                        this.nextLevelThreshold = Math.floor(this.nextLevelThreshold * (2.0 + this.playerLevel * 0.15) + currentTotalValue * 0.1);
                     }
                 },
-                async updateStatusImage() {
-                    console.log("Generating image")
-                    this.isGeneratingImage = true;
-                    const generateArtworkPrompt = (gameState) => {
-                        const { playerLevel, buildings, ships } = gameState;
-                        
-                        let basePrompt = `Generate a hyper-realistic, vibrant, and highly detailed 8K resolution artwork of a futuristic galactic empire. The image should be colorful, with a rich palette of neon hues and deep space tones. Ensure the artwork has a cinematic quality with dramatic lighting and a sense of scale.\n\n`;
-
-                        // Add details based on player level
-                        if (playerLevel >= 1 && playerLevel < 3) {
-                            basePrompt += `Depict a fledgling colony on an alien planet. Show crystal mines glowing in the twilight, with basic dome-shaped habitats. The sky should feature a few sleek, small spacecraft leaving light trails.`;
-                        } else if (playerLevel >= 3 && playerLevel < 5) {
-                            basePrompt += `Illustrate a growing settlement with both crystal mines and fuel refineries belching colorful flames. Include an orbital platform with docked mining vessels. The planet's terrain should be a mix of natural alien landscape and terraformed areas.`;
-                        } else if (playerLevel >= 5 && playerLevel < 7) {
-                            basePrompt += `Showcase an expanding city with gleaming research labs and holographic billboards. The skyline should be punctuated by towering arcologies. In the sky, display a variety of ships including agile scout ships and bulky mining vessels, creating a busy traffic pattern.`;
-                        } else if (playerLevel >= 7 && playerLevel < 10) {
-                            basePrompt += `Present a thriving metropolis with a massive, ring-shaped space station dominating the sky. The city should have gravity-defying architecture and transparent tubes for transport. Include imposing battle cruisers patrolling near the space station, their weapons glowing with potential energy.`;
-                        } else if (playerLevel >= 10) {
-                            basePrompt += `Visualize an advanced civilization that seamlessly blends technology and nature. Quantum computer cores should be visible as crystalline structures. Massive motherships should loom in the sky, dwarfing all other spacecraft. The landscape should be dotted with impossible geometric shapes housing various facilities, all connected by streams of energy and data.`;
-                        }
-
-                        // Add details about specific buildings without mentioning numbers
-                        const presentBuildings = buildings.filter(b => b.owned > 0).map(b => b.name);
-                        if (presentBuildings.length > 0) {
-                            basePrompt += `\n\nFeature the following structures prominently in the artwork: ${presentBuildings.join(', ')}.`;
-                        }
-
-                        // Add details about ships without mentioning numbers
-                        const presentShips = ships.filter(s => s.owned > 0).map(s => s.name);
-                        if (presentShips.length > 0) {
-                            basePrompt += `\n\nInclude the following types of ships in space or docked: ${presentShips.join(', ')}.`;
-                        }
-
-                        basePrompt += `\n\nEnsure the final image is breathtaking, with a sense of wonder and the vastness of space. Use advanced visual effects to create a sense of movement and life within the scene.`;
-
-                        return basePrompt;
+                unlockFeaturesByLevel(isInitialCall = false) {
+                    const featuresMap = {
+                        1: [], 
+                        2: ['fuel', 'trading', 'aiAdvisor', 'missions'], 
+                        3: ['ships', 'exploration', 'galacticNews'], 
+                        4: ['research', 'rareMetals'],       
+                        7: ['aiManager'],
+                        10: ['exoticMatter']
                     };
-
-                    // Usage
-                    const prompt = generateArtworkPrompt(this);
-
-
+                    let newUnlockOccurred = false;
+                    for (let level = 1; level <= this.playerLevel; level++) {
+                        if (featuresMap[level]) {
+                            featuresMap[level].forEach(featureKey => {
+                                if (!this.unlockedFeatures[featureKey]) {
+                                    this.unlockedFeatures[featureKey] = true;
+                                    if (!isInitialCall) { 
+                                        this.showNotification(`${featureKey.charAt(0).toUpperCase() + featureKey.slice(1).replace(/([A-Z])/g, ' $1')} systems unlocked!`, 'success');
+                                    }
+                                    newUnlockOccurred = true;
+                                    if (featureKey === 'aiAdvisor' && !this.advisor.portraitUrl) this.generateAdvisorPortrait();
+                                    if (featureKey === 'trading') this.enableTradableItemsByUnlock();
+                                    if (featureKey === 'fuel') this.enableTradableItemsByUnlock();
+                                    if (featureKey === 'rareMetals') this.enableTradableItemsByUnlock();
+                                }
+                            });
+                        }
+                    }
+                    if (newUnlockOccurred && !isInitialCall) {
+                         this.getAdvisorUpdate(true); 
+                         this.updateStatusImage("New technologies and systems integrated into the empire.");
+                    }
+                    this.enableTradableItemsByUnlock(); 
+                },
+                enableTradableItemsByUnlock() {
+                    this.tradableMarketItems.forEach(item => {
+                        if (item.key === 'crystals') item.available = true; 
+                        if (item.key === 'fuel') item.available = this.unlockedFeatures.fuel;
+                        if (item.key === 'rareMetals') item.available = this.unlockedFeatures.rareMetals;
+                    });
+                },
+                updateMarketPrices(isInitial = false) {
+                    this.tradableMarketItems.forEach(resource => {
+                        if (!resource.available && !isInitial) return;
+                        if (isInitial) {
+                            resource.price = resource.basePrice;
+                            resource.trend = 0;
+                            return;
+                        }
+                        const randomFactor = (Math.random() - 0.5) * 2 * resource.volatility; 
+                        const stabilityFactor = (this.stats.marketStability - 100) / 200; 
+                        const trendInfluence = resource.trend * 0.1; 
+                        let priceChangePercent = randomFactor + stabilityFactor + trendInfluence;
+                        let newPrice = resource.price * (1 + priceChangePercent);
+                        newPrice = Math.max(newPrice, resource.basePrice * 0.3); 
+                        newPrice = Math.min(newPrice, resource.basePrice * 3.0); 
+                        resource.trend = (newPrice - resource.price) / resource.price; 
+                        resource.price = newPrice;
+                    });
+                    if (!isInitial) this.showNotification("Galactic market prices have fluctuated.", "info", 3000);
+                },
+                maxTradeQuantity(item) {
+                    return Math.max(1, Math.floor(this.resources[item.key] || 100)); 
+                },
+                buyMarketResource(itemId) {
+                    const item = this.tradableMarketItems.find(r => r.id === itemId);
+                    const quantity = Math.max(1, Number(item.tradeQuantity) || 1);
+                    const totalCost = item.price * quantity;
+                    if (item && this.resources.credits >= totalCost && quantity > 0) {
+                        this.resources.credits -= totalCost;
+                        this.resources[item.key] = (this.resources[item.key] || 0) + quantity;
+                        item.trend = Math.min(0.5, item.trend + 0.02 * quantity * item.volatility); 
+                        this.stats.marketStability = Math.max(50, this.stats.marketStability - 0.1 * quantity);
+                        this.showNotification(`Bought ${quantity} ${item.name} for ${totalCost.toFixed(0)} 💰`, "success");
+                    } else {
+                        this.showNotification("Insufficient credits or invalid quantity.", "warning");
+                    }
+                },
+                sellMarketResource(itemId) {
+                    const item = this.tradableMarketItems.find(r => r.id === itemId);
+                    const quantity = Math.max(1, Number(item.tradeQuantity) || 1);
+                    if (item && this.resources[item.key] >= quantity && quantity > 0) {
+                        this.resources.credits += item.price * quantity;
+                        this.resources[item.key] -= quantity;
+                        item.trend = Math.max(-0.5, item.trend - 0.02 * quantity * item.volatility); 
+                        this.stats.marketStability = Math.max(50, this.stats.marketStability - 0.1 * quantity);
+                        this.showNotification(`Sold ${quantity} ${item.name} for ${(item.price * quantity).toFixed(0)} 💰`, "success");
+                    } else {
+                        this.showNotification(`Insufficient ${item.name} or invalid quantity.`, "warning");
+                    }
+                },
+                updateShipCosts() {
+                    this.ships.forEach(ship => {
+                        ship.cost = ship.baseCost.map(costItem => ({
+                            ...costItem,
+                            amount: Math.floor(costItem.amount * Math.pow(ship.costScalar, ship.owned))
+                        }));
+                    });
+                },
+                canAffordShip(shipId) {
+                    const ship = this.ships.find(s => s.id === shipId);
+                    if (!ship) return false;
+                    return this.canAfford(ship.cost);
+                },
+                buildShip(shipId) {
+                    const ship = this.ships.find(s => s.id === shipId);
+                    if (ship && this.canAffordShip(ship.id)) {
+                        this.deductCost(ship.cost);
+                        ship.owned++;
+                        this.updateShipCosts();
+                        this.showNotification(`${ship.name} constructed. Fleet power increased!`, "success");
+                        if (ship.unlocksFeature && !this.unlockedFeatures[ship.unlocksFeature]) {
+                            this.unlockedFeatures[ship.unlocksFeature] = true;
+                            this.showNotification(`${ship.unlocksFeature.charAt(0).toUpperCase() + ship.unlocksFeature.slice(1)} system online!`, 'success');
+                            this.unlockFeaturesByLevel();
+                        }
+                        if (ship.id === 2) { 
+                            this.updateProductionRates(); 
+                            this.showNotification("Mining Barge deployed, passive resource income increased.", "info");
+                        }
+                    } else {
+                         this.showNotification("Insufficient resources or shipyard capacity for this vessel.", "warning");
+                    }
+                },
+                canAffordResearch(techId) {
+                    const tech = this.researchTree.find(t => t.id === techId);
+                    if (!tech) return false;
+                    return this.resources[tech.costResource] >= tech.costAmount;
+                },
+                startResearch(techId) {
+                    if (this.currentResearch) { this.showNotification("A research project is already underway.", "warning"); return; }
+                    const tech = this.researchTree.find(t => t.id === techId);
+                    if (tech && !tech.completed && this.canAffordResearch(techId)) {
+                        if (tech.costResource !== 'researchPoints') {
+                             this.resources[tech.costResource] -= tech.costAmount;
+                        }
+                        this.currentResearch = {
+                            id: tech.id, name: tech.name, progress: 0,
+                            totalNeeded: tech.costAmount 
+                        };
+                        this.showNotification(`Research initiated: ${tech.name}.`, "info");
+                    } else { this.showNotification("Cannot start research: Insufficient resources or project invalid.", "warning"); }
+                },
+                completeResearch(techId) {
+                    const tech = this.researchTree.find(t => t.id === techId);
+                    if (tech && this.currentResearch && this.currentResearch.id === techId) {
+                        tech.completed = true;
+                        this.showNotification(`Research complete: ${tech.name}! Your empire has advanced.`, "success", 7000);
+                        if (tech.effectType === 'building_boost') {
+                            this.updateProductionRates();
+                            this.updateBuildingCostsAndEffects(); 
+                        } else if (tech.effectType === 'stat_boost') {
+                            this.stats[tech.stat] = (this.stats[tech.stat] || 0) + tech.amount;
+                        } else if (tech.effectType === 'building_cost_reduction') {
+                            const targetBuilding = this.buildings.find(b => b.id === tech.buildingId);
+                            if (targetBuilding) {
+                                const costItem = targetBuilding.baseCost.find(c => c.resource === tech.resource);
+                                if (costItem) {
+                                    costItem.amount *= (1 - tech.reduction); 
+                                    this.updateBuildingCostsAndEffects(); 
+                                }
+                            }
+                        } else if (tech.effectType === 'exploration_boost') {
+                            this.explorationCost.fuel = Math.floor(this.explorationCost.fuel * (1 - tech.reduction));
+                        }
+                        this.currentResearch = null;
+                        this.getAdvisorUpdate(true); 
+                        this.updateStatusImage(`Technological breakthrough: ${tech.name} implemented.`);
+                        this.incrementMissionProgress('research_completed');
+                    }
+                },
+                async generateAdvisorPortrait() {
+                    if (this.advisor.portraitUrl) return; 
+                    this.advisor.isThinking = true; 
                     try {
-                        console.log("Starting generation")
-                        const base64Image = await ttiClient.generateImage(prompt, 'Blurry, Distorted, Low quality, Pixelated, Watermark, Signature, Text, Logo, Cropped, Cut off, Low contrast, Overexposed, Underexposed, Grainy, Noisy, Artifacts, JPEG artifacts, Compression artifacts, Out of focus, Glitchy', 1024, 512)
-                        console.log("image generated")
-                        const stardate = new Date().toISOString()
-                        const info = `Level ${this.playerLevel} - ${Math.floor(this.resources.crystals)} Crystals`
-                        const newImage = {
-                            url: `data:image/jpeg;base64,${base64Image}`,
-                            stardate,
-                            info
-                        }
-                        this.statusImages.push(newImage)
-                        if (this.statusImages.length > 5) {
-                            this.statusImages.shift()
-                        }
-                        this.showNotification("Status image updated!")
-
-                        // Save the new image to IndexedDB
-                        const db = await dbPromise
-                        await db.add('images', { ...newImage, timestamp: Date.now() })
-
+                        const prompt = "Sci-fi AI core, wise and intricate, digital energy patterns, holographic, portrait for a galactic advisor, slightly ethereal, trustworthy expression, style of Syd Mead and Moebius.";
+                        const negative_prompt = "human face, blurry, low quality, deformed, watermark";
+                        const imageData = await ttiClient.generateImage(prompt, negative_prompt, 256, 256, false, '', '', 'Matty', 'DPM++ 2M Karras', 25, 7.5, 1); 
+                        this.advisor.portraitUrl = `data:image/png;base64,${imageData}`;
+                        this.showNotification("AI Advisor visual matrix online.", "info");
                     } catch (error) {
-                        console.error("Failed to update status image:", error)
-                        this.showNotification("Failed to update status image!")
+                        console.error("Error generating advisor portrait:", error);
+                        this.advisor.portraitUrl = null; 
+                    }
+                    this.advisor.isThinking = false;
+                },
+                async getAdvisorUpdate(force = false) {
+                    if (!this.unlockedFeatures.aiAdvisor || this.advisor.isThinking) return;
+                    if (!force && Date.now() - this.advisor.lastAdviceTime < this.advisor.adviceCooldown) return;
+                    this.advisor.isThinking = true;
+                    try {
+                        const gameStateSummary = {
+                            level: this.playerLevel,
+                            resources: { crystals: Math.floor(this.resources.crystals), fuel: Math.floor(this.resources.fuel), credits: Math.floor(this.resources.credits) },
+                            production: { crystals: this.productionRates.crystals.toFixed(1), fuel: this.productionRates.fuel.toFixed(1) },
+                            nextUnlock: this.playerLevel < 2 ? "Fuel & Trading" : (this.playerLevel < 3 ? "Ships & Exploration" : (this.playerLevel < 4 ? "Research" : "Advanced Tech")),
+                            lastEvent: this.galacticNews.length > 0 ? this.galacticNews[0].headline : "all quiet",
+                            currentFocus: this.currentResearch ? `researching ${this.currentResearch.name}` : (this.exploration.isExploring ? "exploring deep space" : "internal development")
+                        };
+                        let prompt = `You are a wise, slightly enigmatic AI advisor for a burgeoning galactic empire. Current Empire State: Level: ${gameStateSummary.level} Resources: C:${gameStateSummary.resources.crystals}, F:${gameStateSummary.resources.fuel}, Cr:${gameStateSummary.resources.credits} Production: C:${gameStateSummary.production.crystals}/s, F:${gameStateSummary.production.fuel}/s Anticipating: ${gameStateSummary.nextUnlock} Galactic Situation: ${gameStateSummary.lastEvent} Current Operations: ${gameStateSummary.currentFocus} Provide a piece of advice (1-2 sentences) that is insightful, encouraging, and perhaps hints at future possibilities or warns of potential challenges. Consider the empire's current level and resources. If low on a key resource for the next unlock, gently guide towards it. If doing well, suggest ambition. If a major event just happened, comment on it. The tone should be fitting for a grand strategy/idle game. Avoid generic statements. Be specific if possible. Example for early game: "Commander, our crystal reserves are promising. Soon, the stars themselves will fuel our expansion. Consider infrastructure for Fuel Synthesis." Example for mid game: "The ${gameStateSummary.lastEvent} signals growing pains in the galaxy. Bolstering our fleet or research into defensive systems might be prudent." Example for research focus: "The pursuit of ${this.currentResearch?.name || 'knowledge'} is commendable. Each discovery unfolds new layers of the cosmos for us to master."`;
+                        if (this.totalEmpireValue < this.nextLevelThreshold * 0.3 && this.playerLevel > 1) {
+                            prompt += "\nThe empire seems to be stagnating. Offer a piece of advice to kickstart growth or explore new avenues."
+                        } else if (this.resources.crystals < 50 && this.playerLevel < 3 && this.buildings.find(b=>b.id===1)?.owned < 1) {
+                            prompt += "\nOur crystal income is critically low. Focus on basic extraction to lay the foundation for greatness."
+                        }
+                        const response = lollmsClient.generate(prompt, "AI_Advisor_Detailed", 0.75, 150);
+                        this.advisor.message = response.text.trim();
+                        this.advisor.lastAdviceTime = Date.now();
+                    } catch (error) {
+                        console.error("Error getting advisor update:", error);
+                        this.advisor.message = "Signal interference... unable to provide counsel at this moment.";
+                    }
+                    this.advisor.isThinking = false;
+                },
+                async fetchGalacticNews() {
+                    if (!this.unlockedFeatures.galacticNews || this.isGeneratingNews) return;
+                    if (Date.now() - this.lastNewsTime < this.newsCooldown && this.galacticNews.length > 0) return;
+                    this.isGeneratingNews = true;
+                    try {
+                        const gameStateSummary = {
+                            level: this.playerLevel,
+                            majorResource: this.resources.crystals > this.resources.fuel ? "crystals" : "fuel",
+                            fleetSize: this.ships.reduce((sum, s) => sum + s.owned, 0),
+                            techFocus: this.currentResearch ? this.currentResearch.name : "general development",
+                            influence: this.stats.influence.toFixed(1)
+                        };
+                        const prompt = `You are a Galactic Network News (GNN) anchor. The player's empire details: Level ${gameStateSummary.level}, Focus on ${gameStateSummary.majorResource}, Fleet size ${gameStateSummary.fleetSize}, Researching ${gameStateSummary.techFocus}, Influence ${gameStateSummary.influence}%. Generate a short, intriguing sci-fi news headline (max 12 words) and a brief news blurb (1-2 sentences). The news can be about: 1. A galactic event (e.g., resource boom/bust, political tension, scientific discovery, strange anomaly). 2. A subtle reference to the player's empire if its influence is notable (e.g., "New Power Rises in Sector X"). 3. A general flavor piece about life in the galaxy. Keep it concise and engaging. Output in JSON: {"headline": "...", "blurb": "..."} Example: {"headline": "Void Whale Migration Disrupts Trade Routes!", "blurb": "Massive void whales have begun their centuries-long migration through the Orion Spur, causing temporary disruptions to interstellar shipping. Galactic authorities advise caution."} If player influence > 10: {"headline": "Mysterious Power Flexes Muscle in Cerulean Nebula", "blurb": "Unconfirmed reports indicate a rapidly expanding force, previously unknown, is making its presence felt. Galactic Concord watches with interest."}`;
+                        const response = lollmsClient.generate(prompt, "GNN_Anchor", 0.8, 180);
+                        const newsItem = JSON.parse(this.sanitizeJsonString(response.text));
+                        this.galacticNews.unshift({ ...newsItem, id: Date.now() });
+                        if (this.galacticNews.length > 7) this.galacticNews.pop();
+                        this.lastNewsTime = Date.now();
+                    } catch (error) {
+                        console.error("Error fetching galactic news:", error);
+                        this.galacticNews.unshift({ headline: "GNN Technical Difficulties", blurb: "We are experiencing transmission problems. Regular broadcasts will resume shortly.", id: Date.now() });
+                    }
+                    this.isGeneratingNews = false;
+                },
+                sanitizeJsonString(str) {
+                    let S = str.replace(/```json/g, "").replace(/```/g, "").trim();
+                    S = S.replace(/,\s*([}\]])/g, "$1");
+                    return S;
+                },
+                async updateStatusImage(customEventDescription = null, forceOverrideSetting = false) {
+                    if (this.isGeneratingImage) return;
+                    if (!forceOverrideSetting && !this.settings.autoImageUpdateEnabled && customEventDescription && customEventDescription !== "Routine empire visual scan.") {
+                        console.log("Auto image update disabled for events, skipping event-triggered generation.");
+                        return;
+                    }
+                    this.isGeneratingImage = true;
+                    try {
+                        const empireStateForPrompt = {
+                            level: this.playerLevel,
+                            resources: { crystals: Math.floor(this.resources.crystals), fuel: Math.floor(this.resources.fuel), rareMetals: Math.floor(this.resources.rareMetals), exoticMatter: this.resources.exoticMatter.toFixed(2) },
+                            dominantBuilding: this.buildings.filter(b => b.owned > 0).sort((a,b) => b.owned * b.value - a.owned * a.value)[0]?.name || "basic outposts",
+                            shipCount: this.ships.reduce((sum,s) => sum + s.owned, 0),
+                            currentResearch: this.currentResearch ? this.currentResearch.name : null,
+                            lastNews: this.galacticNews[0] ? this.galacticNews[0].headline : null,
+                            explorationActive: this.exploration.isExploring,
+                            customEvent: customEventDescription
+                        };
+                        const llmPromptForTti = await this.generateTtiPromptWithLLM(empireStateForPrompt);
+                        const finalTtiPrompt = llmPromptForTti || `Epic sci-fi scene of a level ${this.playerLevel} galactic empire, ${empireStateForPrompt.dominantBuilding}, cinematic lighting, highly detailed, trending on artstation`;
+                        const negative_prompt = "blurry, low quality, text, watermark, signature, ugly, deformed, pixelated, cartoon, anime, poorly drawn, bad anatomy";
+                        const base64Image = await ttiClient.generateImage(finalTtiPrompt, negative_prompt, 1024, 576, false, '', '', 'sd_xl_base_1.0.safetensors', 'DPM++ 2M Karras', 25, 7.5, 1); 
+                        const stardate = this.currentStardate;
+                        const info = customEventDescription || `Lvl ${this.playerLevel} - ${this.totalEmpireValueForDisplay} Val - ${Math.floor(this.resources.crystals)}💎`;
+                        const newImage = { url: `data:image/jpeg;base64,${base64Image}`, stardate, info, timestamp: Date.now() };
+                        const db = await dbPromise;
+                        const imageId = await db.add(IMAGES_STORE_NAME, newImage);
+                        newImage.id = imageId; 
+                        this.statusImages.unshift(newImage);
+                        if (this.statusImages.length > 10) { 
+                            const oldestImageToPrune = this.statusImages.pop();
+                            if (oldestImageToPrune && oldestImageToPrune.id) {
+                                await db.delete(IMAGES_STORE_NAME, oldestImageToPrune.id);
+                            }
+                        }
+                        this.currentImageIndex = 0;
+                        this.showNotification("Empire visual data refreshed.", "info");
+                    } catch (error) {
+                        console.error("Failed to update status image:", error);
+                        this.showNotification("Visual data rendering failed. Check TTI service.", "error");
                     }
                     this.isGeneratingImage = false;
                 },
-                exportGame() {
-                    const gameData = JSON.stringify({
-                        resources: this.resources,
-                        buildings: this.buildings,
-                        stats: this.stats,
-                        playerLevel: this.playerLevel,
-                        unlockedFeatures: this.unlockedFeatures,
-                        tradableResources: this.tradableResources,
-                        settings: this.settings,
-                        statusImages: this.statusImages
-                    })
-                    const blob = new Blob([gameData], {type: 'application/json'})
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'galactic_tycoon_save.json'
-                    a.click()
-                    URL.revokeObjectURL(url)
+                async generateTtiPromptWithLLM(empireState) {
+                    let context = `Player's empire is Level ${empireState.level}.`;
+                    if (empireState.level < 3) context += " It's a fledgling outpost, focused on crystal mining.";
+                    else if (empireState.level < 6) context += " It's an expanding colony with fuel refineries and basic starports. Scout ships might be visible.";
+                    else if (empireState.level < 10) context += " It's a significant regional power with research labs, shipyards constructing mining vessels or freighters, and possibly some rare metal forges.";
+                    else context += " It's an advanced civilization, perhaps with exotic matter condensers, a notable fleet, and large space stations.";
+                    context += ` Key resources: Crystals ${empireState.resources.crystals}, Fuel ${empireState.resources.fuel}.`;
+                    if (empireState.resources.rareMetals > 0) context += ` Rare Metals ${empireState.resources.rareMetals}.`;
+                    if (empireState.resources.exoticMatter > 0) context += ` Exotic Matter ${empireState.resources.exoticMatter}.`;
+                    context += ` Dominant structures appear to be ${empireState.dominantBuilding}. Total ships: ${empireState.shipCount}.`;
+                    if (empireState.currentResearch) context += ` Currently researching ${empireState.currentResearch}.`;
+                    if (empireState.lastNews) context += ` Recent galactic event: "${empireState.lastNews}".`;
+                    if (empireState.explorationActive) context += ` An exploration fleet is currently active in deep space.`;
+                    if (empireState.customEvent) context += ` Special event occurring: "${empireState.customEvent}".`;
+                    const prompt = `Based on this game state summary: ${context} Generate a vivid, artistic, and concise prompt (around 30-60 words) for a text-to-image AI to create a beautiful sci-fi artwork representing this empire. Focus on visual elements. Mention specific structures or ship types if they are significant. Desired art style: epic cinematic, highly detailed, dramatic lighting, vibrant colors balanced with deep space, reminiscent of John Berkey or Syd Mead, trending on ArtStation. Example output: "Expansive view of a Level ${empireState.level} space colony, massive ${empireState.dominantBuilding} glowing with activity, ${empireState.shipCount > 0 ? 'starships docking and departing,' : ''} distant nebulae, cinematic volumetric lighting, ultra realistic." If a custom event is provided, incorporate its theme into the visual.`;
+                    try {
+                        const response = lollmsClient.generate(prompt, "TTI_Prompter", 0.7, 100);
+                        return response.text.trim();
+                    } catch (error) {
+                        console.error("LLM TTI prompt generation failed:", error);
+                        return null; 
+                    }
                 },
-                importGame() {
-                    const input = document.createElement('input')
-                    input.type = 'file'
-                    input.accept = '.json'
-                    input.onchange = e => {
-                        const file = e.target.files[0]
-                        const reader = new FileReader()
-                        reader.onload = async event => {
+                async loadStatusImagesFromDB() {
+                    try {
+                        const db = await dbPromise;
+                        let images = await db.getAllFromIndex(IMAGES_STORE_NAME, 'timestamp'); 
+                        images.reverse(); 
+                        this.statusImages = images.slice(0,10);
+                        this.currentImageIndex = 0;
+                        if (this.statusImages.length > 0) console.log(`${this.statusImages.length} status images loaded from cache.`);
+                    } catch (error) {
+                        console.error("Failed to load status images from DB:", error);
+                    }
+                },
+                async startExploration() {
+                    if (this.exploration.isExploring || this.resources.fuel < this.explorationCost.fuel || this.ships.find(s=>s.id===1)?.owned < 1) {
+                        this.showNotification("Exploration requirements not met: Need Scout Probe and sufficient fuel.", "warning");
+                        return;
+                    }
+                    this.exploration.isExploring = true;
+                    this.resources.fuel -= this.explorationCost.fuel;
+                    this.showNotification("Scout fleet launched into the void. Awaiting their report...", "info");
+                    this.exploration.lastExplorationTime = Date.now();
+                    const explorationDuration = (15 + Math.random() * 15) * 1000; 
+                    setTimeout(async () => {
+                        await this.generateExplorationResult();
+                        this.exploration.isExploring = false;
+                    }, explorationDuration);
+                },
+                async generateExplorationResult() {
+                    try {
+                        const llmPrompt = `You are a Game Master for a sci-fi exploration game. The player (Level ${this.playerLevel}) just completed an exploration mission. Generate an interesting exploration event. It should include: - A "title" (e.g., "Derelict Ship Found", "Resource Rich Asteroid Belt", "Ancient Alien Beacon"). - A "description" (2-4 sentences detailing the discovery). - Optionally, one or two "choices" for the player, each with a "text" for the button. If no choices, the event is informational. - A potential "reward" (e.g., {type: "resource", resource: "crystals", amount: 100}, or {type: "research_boost", techId: "some_tech_id", points: 50}, or {type: "unlock", feature: "new_ship_blueprint_X"}). This reward might be tied to a choice or be direct. The event should be appropriate for the player's level. Early game (level < 5): Focus on small resource finds, minor anomalies, simple derelicts. Mid game (level 5-9): More complex events, alien ruins, choices with moderate risk/reward. Late game (level 10+): Rare resources (exotic matter), significant alien encounters, major discoveries. Output in JSON format: { "title": "...", "description": "...", "imageUrlPrompt": "A TTI prompt for an image representing this scene, e.g., ' विशालकाय परित्यक्त अंतरिक्ष यान एक नीहारिका के सामने तैर रहा है, रहस्यमय चमक, सिनेमाई'", "choices": [ { "text": "Scan the derelict", "effectTag": "scan_derelict_success" }, { "text": "Salvage for parts", "effectTag": "salvage_derelict_risky" } ], "directReward": null } Ensure imageUrlPrompt is creative and visual. Example event (early game): { "title": "Unstable Asteroid Field", "description": "Your scouts have navigated a dense but unstable asteroid field. While most rocks are common, some larger ones show unusual energy signatures.", "imageUrlPrompt": "Dense asteroid field, glowing fissures on some large asteroids, scout ship cautiously navigating, cosmic dust, cinematic lighting.", "choices": [ { "text": "Mine cautiously (Low risk, small reward)", "effectTag": "mine_asteroids_safe" }, { "text": "Attempt deep core extraction (High risk, high reward)", "effectTag": "mine_asteroids_risky" } ], "directReward": null }`;
+                        const response = lollmsClient.generate(llmPrompt, "Exploration_GM", 0.8, 400);
+                        const eventData = JSON.parse(this.sanitizeJsonString(response.text));
+                        let imageUrl = null;
+                        if (eventData.imageUrlPrompt) {
                             try {
-                                const gameData = JSON.parse(event.target.result)
-                                Object.assign(this, gameData)
-                                this.updateProductionRates()
-                                this.showNotification("Game imported successfully!")
-                                await this.saveGame()
-                            } catch (error) {
-                                console.error("Import failed:", error)
-                                this.showNotification("Failed to import game!")
+                                const ttiNegative = "blurry, low quality, text, watermark, deformed";
+                                const img64 = await ttiClient.generateImage(eventData.imageUrlPrompt, ttiNegative, 512, 288, false, '', '', 'sd_xl_base_1.0.safetensors', 'DPM++ 2M Karras', 20, 7.5, 1);
+                                imageUrl = `data:image/jpeg;base64,${img64}`;
+                            } catch (ttiError) {
+                                console.error("TTI for exploration event failed:", ttiError);
                             }
                         }
-                        reader.readAsText(file)
+                        this.exploration.currentEvent = { ...eventData, imageUrl };
+                        this.showNotification(`Exploration Report: ${eventData.title}`, "success");
+                        this.updateStatusImage(`Exploration fleet reports: ${eventData.title}`);
+                        this.incrementMissionProgress('exploration_completed');
+                    } catch (error) {
+                        console.error("Error generating exploration result:", error);
+                        this.exploration.currentEvent = { title: "Signal Lost", description: "Contact with the scout fleet was lost. They eventually returned with minor data and some common materials.", imageUrl: null, directReward: {type: "resource", resource: "crystals", amount: Math.floor(Math.random()*50*this.playerLevel) }};
                     }
-                    input.click()
+                },
+                resolveExplorationChoice(choiceIndex) {
+                    const event = this.exploration.currentEvent;
+                    if (!event || !event.choices || !event.choices[choiceIndex]) return;
+                    const choice = event.choices[choiceIndex];
+                    this.showNotification(`Decision made: ${choice.text}`, "info");
+                    let outcomeDescription = "The consequences of your decision are noted.";
+                    let outcomeReward = null;
+                    if (choice.effectTag === "scan_derelict_success") {
+                        outcomeDescription = "The derelict's logs reveal valuable star charts, granting a small research boost!";
+                        outcomeReward = {type: "resource", resource: "researchPoints", amount: 20 * this.playerLevel };
+                    } else if (choice.effectTag === "salvage_derelict_risky") {
+                        if (Math.random() > 0.4) { 
+                            outcomeDescription = "Salvage operations were successful! A good haul of rare metals.";
+                            outcomeReward = { type: "resource", resource: "rareMetals", amount: 5 * this.playerLevel };
+                        } else {
+                            outcomeDescription = "The derelict was booby-trapped! Minor damage to the scout, but they managed to retrieve some basic crystals.";
+                            outcomeReward = { type: "resource", resource: "crystals", amount: 10 * this.playerLevel };
+                        }
+                    } else if (choice.effectTag === "mine_asteroids_safe") {
+                         outcomeDescription = "Cautious mining yielded a modest amount of crystals.";
+                         outcomeReward = { type: "resource", resource: "crystals", amount: Math.floor(50 + Math.random() * 50) * this.playerLevel };
+                    } else if (choice.effectTag === "mine_asteroids_risky") {
+                        if (Math.random() > 0.3) { 
+                            outcomeDescription = "Deep core extraction was a success! A significant deposit of fuel-rich crystals and some rare metals were found!";
+                            outcomeReward = [
+                                { type: "resource", resource: "fuel", amount: Math.floor(20 + Math.random() * 30) * this.playerLevel },
+                                { type: "resource", resource: "rareMetals", amount: Math.floor(5 + Math.random() * 10) * this.playerLevel }
+                            ];
+                        } else {
+                            outcomeDescription = "The asteroid became unstable during deep core extraction! The scout team retreated with only minor finds after an emergency FTL jump.";
+                             outcomeReward = { type: "resource", resource: "crystals", amount: Math.floor(10 + Math.random() * 20) * this.playerLevel };
+                        }
+                    }
+                    this.showNotification(outcomeDescription, "info", 7000);
+                    if (outcomeReward) {
+                        if (Array.isArray(outcomeReward)) {
+                             outcomeReward.forEach(r => this.applyReward(r));
+                        } else {
+                            this.applyReward(outcomeReward);
+                        }
+                    }
+                    this.exploration.currentEvent = null; 
+                },
+                applyReward(reward) {
+                    if (!reward) return;
+                    if (reward.type === "resource") {
+                        this.resources[reward.resource] = (this.resources[reward.resource] || 0) + reward.amount;
+                        this.showNotification(`Gained ${reward.amount} ${this.getResourceName(reward.resource)}!`, "success");
+                    } else if (reward.type === "research_boost" && this.currentResearch && this.currentResearch.id === reward.techId) {
+                        this.resources.researchPoints += reward.points;
+                         this.showNotification(`Gained ${reward.points} Research Points!`, "success");
+                    } else if (reward.type === "unlock") {
+                        this.showNotification(`New discovery: ${reward.feature}! Check relevant panels.`, "success");
+                    }
+                },
+                clearExplorationEvent() {
+                    if (this.exploration.currentEvent && this.exploration.currentEvent.directReward) {
+                        this.applyReward(this.exploration.currentEvent.directReward);
+                    }
+                    this.exploration.currentEvent = null;
+                },
+                async generateMission() {
+                    if (this.isGeneratingMission || this.missions.length >=3) return;
+                    this.isGeneratingMission = true;
+                    this.lastMissionTime = Date.now();
+                    try {
+                        const possibleMissionTypes = [
+                            { type: "resource_goal", resource: "crystals", baseAmount: 1000 },
+                            { type: "resource_goal", resource: "fuel", baseAmount: 200, minLevel: 2 },
+                            { type: "building_goal", buildingId: 1, baseCount: 5 }, 
+                            { type: "building_goal", buildingId: 2, baseCount: 2, minLevel: 2 }, 
+                            { type: "ship_goal", shipId: 1, baseCount: 2, minLevel: 3 }, 
+                            { type: "research_goal", minLevel: 4 }, 
+                            { type: "explore_goal", minLevel: 3 } 
+                        ];
+                        let availableTypes = possibleMissionTypes.filter(mt => !mt.minLevel || this.playerLevel >= mt.minLevel);
+                        if (availableTypes.length === 0) availableTypes = [possibleMissionTypes[0]]; 
+                        const missionType = availableTypes[Math.floor(Math.random() * availableTypes.length)];
+                        let targetValue, rewardAmount, rewardResource, titleAction, resourceName;
+                        if (missionType.type === "resource_goal") {
+                            targetValue = Math.floor(missionType.baseAmount * (1 + this.playerLevel * 0.5) * (0.8 + Math.random() * 0.4));
+                            rewardAmount = Math.floor(targetValue * 0.1 * (this.unlockedFeatures.credits ? 1 : 0.2));
+                            rewardResource = this.unlockedFeatures.credits ? "credits" : "crystals";
+                            titleAction = `Accumulate ${targetValue.toLocaleString()} ${this.getResourceName(missionType.resource)}`;
+                            resourceName = this.getResourceName(missionType.resource);
+                        } else if (missionType.type === "building_goal") {
+                            const building = this.buildings.find(b=>b.id === missionType.buildingId);
+                            targetValue = Math.floor(missionType.baseCount + this.playerLevel * 0.2);
+                            rewardAmount = Math.floor(building.costAmount * 0.5 * (this.unlockedFeatures.credits ? 1 : 0.2));
+                             rewardResource = this.unlockedFeatures.credits ? "credits" : "crystals";
+                            titleAction = `Construct ${targetValue} ${building.name}s`;
+                            resourceName = building.name;
+                        } else if (missionType.type === "ship_goal") {
+                            const ship = this.ships.find(s=>s.id === missionType.shipId);
+                            targetValue = Math.floor(missionType.baseCount + this.playerLevel * 0.1);
+                            rewardAmount = Math.floor(ship.cost[0].amount * 0.5 * (this.unlockedFeatures.credits ? 1 : 0.2)); 
+                            rewardResource = this.unlockedFeatures.credits ? "credits" : "fuel";
+                            titleAction = `Build ${targetValue} ${ship.name}s`;
+                            resourceName = ship.name;
+                        } else if (missionType.type === "research_goal") {
+                            targetValue = 1; 
+                            rewardAmount = 50 * this.playerLevel;
+                            rewardResource = "researchPoints";
+                            titleAction = `Complete a Research Project`;
+                            resourceName = "Research";
+                        } else if (missionType.type === "explore_goal") {
+                            targetValue = 1; 
+                            rewardAmount = 100 * this.playerLevel;
+                            rewardResource = "fuel";
+                            titleAction = `Successfully Conclude an Expedition`;
+                            resourceName = "Exploration";
+                        }
+                        const llmPrompt = `You are a mission dispatcher for a galactic empire. The player's empire level is ${this.playerLevel}. The objective is: "${titleAction}". The reward will be approximately ${rewardAmount} ${rewardResource}. Generate a mission: - "title": A catchy title for this mission (e.g., "Crystal Boom", "Fueling the Fleet", "Expand Mining Ops"). - "description": A short, flavorful description (1-2 sentences) explaining why this objective is important. Output in JSON: {"title": "...", "description": "..."} Example: {"title": "Secure Crystal Supply Lines", "description": "Our expansion efforts require a significant crystal stockpile. Increase our reserves to ensure continued growth."}`;
+                        const response = lollmsClient.generate(llmPrompt, "Mission_Dispatcher", 0.7, 150);
+                        const missionDetails = JSON.parse(this.sanitizeJsonString(response.text));
+                        const newMission = {
+                            id: Date.now(), ...missionDetails, type: missionType.type, resource: missionType.resource, 
+                            buildingId: missionType.buildingId, shipId: missionType.shipId, 
+                            targetValue: targetValue, currentValue: 0, 
+                            reward: { type: "resource", resource: rewardResource, amount: rewardAmount },
+                            rewardText: `${rewardAmount.toLocaleString()} ${this.getResourceName(rewardResource)}`, progress: 0, completed: false
+                        };
+                        this.missions.push(newMission);
+                        this.showNotification(`New Objective Received: ${newMission.title}`, "info");
+                    } catch (error) {
+                        console.error("Error generating mission:", error);
+                         this.showNotification("Mission generation failed. Stand by for new directives.", "warning");
+                    }
+                    this.isGeneratingMission = false;
+                },
+                checkMissionCompletion() {
+                    this.missions.forEach(mission => {
+                        if (mission.completed) return;
+                        if (mission.type === "resource_goal") { mission.currentValue = this.resources[mission.resource]; } 
+                        else if (mission.type === "building_goal") { mission.currentValue = this.buildings.find(b=>b.id === mission.buildingId)?.owned || 0; } 
+                        else if (mission.type === "ship_goal") { mission.currentValue = this.ships.find(s=>s.id === mission.shipId)?.owned || 0; } 
+                        else if (mission.type === "research_goal") { mission.currentValue = this.researchTree.filter(t => t.completed && t.missionTracked !== mission.id).length; } 
+                        else if (mission.type === "explore_goal") {  }
+                        mission.progress = Math.min((mission.currentValue / mission.targetValue) * 100, 100);
+                        if (mission.progress >= 100) {
+                            mission.completed = true;
+                            this.applyReward(mission.reward);
+                            this.showNotification(`Objective Complete: ${mission.title}! Reward granted.`, "success", 7000);
+                            if (mission.type === "research_goal") {
+                               const justCompletedTech = this.researchTree.find(t => t.completed && t.missionTracked !== mission.id);
+                               if(justCompletedTech) justCompletedTech.missionTracked = mission.id;
+                            }
+                            setTimeout(() => { this.missions = this.missions.filter(m => m.id !== mission.id); }, 5000);
+                        }
+                    });
+                },
+                incrementMissionProgress(type) { 
+                    const mission = this.missions.find(m => !m.completed && 
+                        ((type === 'research_completed' && m.type === 'research_goal') || 
+                         (type === 'exploration_completed' && m.type === 'explore_goal')));
+                    if (mission) {
+                        mission.currentValue = (mission.currentValue || 0) + 1;
+                        this.checkMissionCompletion(); 
+                    }
                 },
                 toggleAIManager() {
-                    this.aiManagerActive = !this.aiManagerActive
-                    this.showNotification(this.aiManagerActive ? "AI Manager activated!" : "AI Manager deactivated!")
+                    this.aiManager.isActive = !this.aiManager.isActive;
+                    this.showNotification(`AI Manager ${this.aiManager.isActive ? 'Activated' : 'Deactivated'}.`, "info");
                 },
-                runAIManager() {
-                    // Simple AI logic
-                    this.buildings.forEach(building => {
-                        if (this.resources.crystals >= building.cost && Math.random() < this.aiManagerEfficiency / 100) {
-                            this.buyBuilding(building.id)
-                        }
-                    })
-
-                    if (this.unlockedFeatures.trading) {
-                        this.tradableResources.forEach(resource => {
-                            if (resource.trend > 0 && this.resources.credits >= resource.price && Math.random() < this.aiManagerEfficiency / 100) {
-                                this.buyResource(resource.id)
-                            } else if (resource.trend < 0 && this.resources[resource.key] > 0 && Math.random() < this.aiManagerEfficiency / 100) {
-                                this.sellResource(resource.id)
+                runAIManagerLogic(delta) { 
+                    if (Math.random() > (this.aiManager.efficiency / 100) * delta * 5) return; 
+                    const affordableBuildings = this.visibleBuildings.filter(b => this.canAffordBuilding(b.id)).sort((a, b) => a.costAmount - b.costAmount);
+                    if (affordableBuildings.length > 0) {
+                        this.buyBuilding(affordableBuildings[0].id);
+                        this.showNotification(`AI Manager purchased ${affordableBuildings[0].name}.`, "info", 2000);
+                        return; 
+                    }
+                    if (this.unlockedFeatures.trading && this.resources.credits > 1000) { 
+                        this.tradableMarketItemsFiltered.forEach(item => {
+                            if (!item.available) return;
+                            if (item.price < item.basePrice * 0.8 && item.trend > 0.05 && this.resources.credits > item.price * 10) {
+                                item.tradeQuantity = 10; 
+                                this.buyMarketResource(item.id);
+                                 this.showNotification(`AI Manager bought ${item.name} due to favorable market.`, "info", 2000);
+                                return;
                             }
-                        })
+                            if (item.price > item.basePrice * 1.2 && item.trend < -0.05 && this.resources[item.key] > 50) {
+                               item.tradeQuantity = 10;
+                               this.sellMarketResource(item.id);
+                                this.showNotification(`AI Manager sold ${item.name} due to favorable market.`, "info", 2000);
+                               return;
+                            }
+                        });
                     }
                 },
-                handleMusicPlayback() {
+                showNotification(message, type = 'info', duration = 5000) {
+                    const id = Date.now() + Math.random();
+                    const notification = { id, message, type, newPulse: true };
+                    this.notifications.push(notification);
+                    setTimeout(() => {
+                        const N = this.notifications.find(n => n.id === id);
+                        if (N) N.newPulse = false;
+                    }, 1000); 
+                    setTimeout(() => {
+                        this.notifications = this.notifications.filter(n => n.id !== id);
+                    }, duration);
+                },
+                showLoadGameModal() { this.loadSavedGamesFromDB(); this.activeModal = 'loadGame'; },
+                showSettingsModal() { this.activeModal = 'settings'; },
+                showCreditsModal() { this.activeModal = 'credits'; },
+                showHelpModal() { this.activeModal = 'help'; },
+                closeModal() { this.activeModal = null; },
+                saveSettingsAndCloseModal() { 
+                    this.setupAutoSave(); 
+                    this.closeModal();
+                    this.showNotification("Settings updated.", "success");
+                },
+                handleMusicToggle(play) { 
                     const audio = this.$refs.audioPlayer;
-                    // Check if the audio element exists
-                    if (!this.$refs.audioPlayer) {
-                        console.warn("Audio player not yet available");
-                        return;
-                    }                    
-                    if (this.settings.playMusic) {
-                        audio.play().catch(error => {
-                        console.error("Audio playback failed:", error);
-                        // Optionally, you can set settings.playMusic to false here
-                        // if autoplay is blocked by the browser
-                        });
+                    if (!audio) return;
+                    if (play) {
+                        audio.play().catch(e => console.warn("Music playback failed:", e));
+                        this.isMusicPlaying = true;
                     } else {
                         audio.pause();
+                        this.isMusicPlaying = false;
                     }
-                }
+                },
+                setupAutoSave() {
+                    console.log("setupAutoSave called. 'this' for setupAutoSave is:", this); 
+                    if (this.autoSaveIntervalId) clearInterval(this.autoSaveIntervalId);
 
-            },
-            watch: {
-                    'settings.playMusic': {
-                    handler: 'handleMusicPlayback',
-                    immediate: true
+                    if (this.settings.autoSaveEnabled && this.settings.autoSaveInterval > 0) {
+                        const autoSaveChanges = () => {
+                            console.log("setInterval callback. 'this' for interval is:", this); 
+                            console.log("In interval, Is getSaveData a function on this?:", typeof this.getSaveData);
+                            console.log("In interval, Is saveGameDB a function on this?:", typeof this.saveGameDB);
+
+                            if (this.gameInitialized && !this.showMainMenu) {
+                                this.saveGameDB('latestSave'); 
+                            }
+                        };
+                        this.autoSaveIntervalId = setInterval(autoSaveChanges, this.settings.autoSaveInterval * 1000);
+                        console.log("Autosave interval set up.");
+                    } else {
+                        console.log("Autosave is disabled or interval is 0.");
                     }
                 },
-            computed: {
-                visibleBuildings() {
-                    return this.buildings.filter(b => b.minLevel <= this.playerLevel)
-                },
-                filteredTradableResources() {
-                    return this.tradableResources.filter(resource => {
-                    // Check if the resource is unlocked based on unlockedFeatures
-                    switch (resource.key) {
-                        case 'crystal':
-                        return this.unlockedFeatures.crystal;
-                        case 'fuel':
-                        return this.unlockedFeatures.fuel;
-                        case 'rareMetals':
-                        return this.unlockedFeatures.rareMetals;
-                        // Add more cases for other resources as needed
-                        default:
-                        return true; // Always show resources that don't have a specific unlock condition
+                async saveGameDB(saveId = 'latestSave') {
+                    console.log("saveGameDB invoked. 'this' is:", this); 
+                    console.log("Is getSaveData a function on this within saveGameDB?:", typeof this.getSaveData); 
+
+                    if (!this.gameInitialized) {
+                        console.log("saveGameDB: game not initialized, returning.");
+                        return;
                     }
-                    });
-                }
+                    
+                    if (typeof this.getSaveData !== 'function') {
+                        console.error("CRITICAL ERROR in saveGameDB: 'this.getSaveData' is not a function.");
+                        console.error("Current 'this' context in saveGameDB:", this);
+                        this.showNotification("CRITICAL: Save function broken!", "error");
+                        return;
+                    }
+
+                    try {
+                        const db = await dbPromise;
+                        const gameDataToSave = this.getSaveData(); 
+                        
+                        // ----- AGGRESSIVE DEBUGGING BLOCK -----
+                        let pointerEventFoundPath = null;
+                        function aggressiveFindPointerEvent(obj, path = '', visited = new Set()) {
+                            if (obj === null || typeof obj !== 'object' || visited.has(obj)) {
+                                return null; // Primitive, null, or already visited (circular reference)
+                            }
+                            visited.add(obj);
+
+                            if (obj instanceof PointerEvent) {
+                                console.error(`PointerEvent (direct instance) found at: ${path}`, obj);
+                                return path;
+                            }
+                            // Check for common event object properties even if not direct instance
+                            if (typeof obj.clientX === 'number' && typeof obj.clientY === 'number' && typeof obj.target !== 'undefined' && typeof obj.preventDefault === 'function') {
+                                console.warn(`Potentially problematic event-like object found at: ${path}`, obj);
+                                // You might decide to return path here if this is too noisy but helps find the issue
+                            }
+
+
+                            for (const key in obj) {
+                                if (obj.hasOwnProperty(key)) {
+                                    const currentPath = path ? `${path}.${key}` : key;
+                                    // Special check for common Vue internal properties that might cause issues if not cleaned
+                                    if (key === '__ob__' || key === '__v_isRef' || key === '__v_isReactive') {
+                                        console.warn(`Vue internal property "${key}" found at ${currentPath}. Ensure data is plain.`, obj[key]);
+                                        // continue; // Usually, getSaveData should have handled this by creating plain objects
+                                    }
+
+                                    const result = aggressiveFindPointerEvent(obj[key], currentPath, visited);
+                                    if (result) return result; // Found it
+                                }
+                            }
+                            return null; 
+                        }
+                        
+                        console.log("--- Inspecting Data Object Tree for PointerEvents ---");
+                        pointerEventFoundPath = aggressiveFindPointerEvent(gameDataToSave, 'gameDataToSave');
+                        
+                        if (pointerEventFoundPath) {
+                            this.showNotification(`PointerEvent or problematic object found by aggressive check at: ${pointerEventFoundPath}! Check console.`, "error");
+                            console.error(`SAVE ABORTED by aggressiveFindPointerEvent. Path: ${pointerEventFoundPath}`, gameDataToSave);
+                            // For extreme debugging, try to serialize parts of the object to see where it fails
+                            try {
+                                JSON.stringify(gameDataToSave); // This would fail if there are circular refs not handled by getSaveData's deep clone logic
+                                console.log("JSON.stringify(gameDataToSave) succeeded.");
+                            } catch (e) {
+                                console.error("JSON.stringify(gameDataToSave) FAILED:", e, "This indicates circular references or BigInt not handled by getSaveData's deep cloning for specific properties.");
+                            }
+                            return; 
+                        } else {
+                            console.log("aggressiveFindPointerEvent did NOT find any definite PointerEvent in gameDataToSave.");
+                        }
+                        // ----- END AGGRESSIVE DEBUGGING BLOCK -----
+                        
+                        const saveData = {
+                            ...gameDataToSave, 
+                            id: saveId, 
+                            timestamp: Date.now(),
+                            name: saveId === 'latestSave' ? `Autosave - LvL ${this.playerLevel}` : `Manual Save - LvL ${this.playerLevel}`
+                        };
+                        
+                        console.log("Attempting db.put with fully prepared saveData:", saveData);
+                        await db.put(GAME_STORE_NAME, saveData); 
+                        
+                        if (saveId === 'latestSave' && this.settings.autoSaveEnabled) {
+                            console.log("Autosave successful.");
+                        } else {
+                            this.showNotification(`Game saved as ${saveData.name}!`, "success");
+                        }
+                        this.hasSavedGame = true; 
+                    } catch (error) {
+                        console.error("Failed to save game to DB (inside try-catch):", error); 
+                        this.showNotification("Error saving game!", "error");
+                    }
+                },
+                async loadGameDB(saveId = 'latestSave', intoTempHolder = false) {
+                    try {
+                        const db = await dbPromise;
+                        const loadedData = await db.get(GAME_STORE_NAME, saveId);
+                        if (loadedData) {
+                            if (this.gameLoopInterval) clearInterval(this.gameLoopInterval);
+                            if (this.periodicUpdateInterval) clearInterval(this.periodicUpdateInterval);
+                            if (this.autoSaveIntervalId) clearInterval(this.autoSaveIntervalId);
+                            const defaultState = getDefaultGameState();
+                            let mergedState = {};
+                            for (const key in defaultState) {
+                                if (loadedData.hasOwnProperty(key)) {
+                                    if (typeof defaultState[key] === 'object' && defaultState[key] !== null && !Array.isArray(defaultState[key])) {
+                                        mergedState[key] = { ...defaultState[key], ...loadedData[key] };
+                                    } else {
+                                        mergedState[key] = loadedData[key];
+                                    }
+                                } else {
+                                    mergedState[key] = defaultState[key];
+                                }
+                            }
+                            mergedState.buildings = defaultState.buildings.map(defBuilding => {
+                                const savedBuilding = loadedData.buildings?.find(sb => sb.id === defBuilding.id);
+                                return savedBuilding ? { ...defBuilding, ...savedBuilding } : defBuilding;
+                            });
+                            mergedState.ships = defaultState.ships.map(defShip => {
+                                const savedShip = loadedData.ships?.find(ss => ss.id === defShip.id);
+                                return savedShip ? { ...defShip, ...savedShip } : defShip;
+                            });
+                             mergedState.researchTree = defaultState.researchTree.map(defTech => {
+                                const savedTech = loadedData.researchTree?.find(st => st.id === defTech.id);
+                                return savedTech ? { ...defTech, ...savedTech } : defTech;
+                            });
+                            if (intoTempHolder) {
+                                this.loadedGameStateData = mergedState; 
+                            } else {
+                                Object.assign(this.$data, mergedState);
+                                await nextTick(); 
+                                this.initializeGameData(); 
+                            }
+                            this.closeModal();
+                            if (!intoTempHolder) this.showNotification(`Game state '${loadedData.name}' loaded successfully!`, "success");
+                            return true;
+                        } else {
+                            if (!intoTempHolder) this.showNotification("No saved game found with that ID.", "warning");
+                            return false;
+                        }
+                    } catch (error) {
+                        console.error("Failed to load game from DB:", error);
+                        if (!intoTempHolder) this.showNotification("Error loading game!", "error");
+                        return false;
+                    }
+                },
+                async loadSavedGamesFromDB() { 
+                    try {
+                        const db = await dbPromise;
+                        this.savedGames = (await db.getAll(GAME_STORE_NAME)).sort((a,b) => b.timestamp - a.timestamp).slice(0, 10); 
+                    } catch (error) {
+                        console.error("Failed to retrieve list of saved games:", error);
+                        this.savedGames = [];
+                    }
+                },
+                exportGame() {
+                    const gameData = this.getSaveData();
+                    const jsonString = JSON.stringify(gameData);
+                    const blob = new Blob([jsonString], {type: 'application/json'});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `GalacticTycoonGenesis_Save_${new Date().toISOString().slice(0,10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    this.showNotification("Game data exported.", "info");
+                },
+                importGame() {
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = '.json';
+                    input.onchange = async e => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+                        const reader = new FileReader();
+                        reader.onload = async event => {
+                            try {
+                                const importedData = JSON.parse(event.target.result);
+                                if (!importedData.playerLevel || !importedData.resources) {
+                                    throw new Error("Invalid save file format.");
+                                }
+                                if (this.gameLoopInterval) clearInterval(this.gameLoopInterval);
+                                if (this.periodicUpdateInterval) clearInterval(this.periodicUpdateInterval);
+                                if (this.autoSaveIntervalId) clearInterval(this.autoSaveIntervalId);
+                                this.loadedGameStateData = importedData; 
+                                this.initializeGameData(); 
+                                await this.saveGameDB('latestSave');
+                                this.showNotification("Game data imported successfully and saved as current!", "success");
+                            } catch (error) {
+                                console.error("Import failed:", error);
+                                this.showNotification(`Failed to import game: ${error.message}`, "error");
+                            }
+                        };
+                        reader.readAsText(file);
+                    };
+                    input.click();
+                },
             },
-            mounted() {
-                // Check if there's a saved game state
-                this.hasSavedGame = this.checkForSavedGame();
+            async mounted() {
+                console.log("Vue app mounted. Initializing app systems...");
+                await this.initApp();
             }
-        }).mount('#app')
+        }).mount('#app');
     </script>
 </body>
 </html>
