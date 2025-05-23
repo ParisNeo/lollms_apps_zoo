@@ -1,7 +1,7 @@
 import sqlite3
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse # Added to serve HTML file
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
 import datetime
@@ -13,25 +13,23 @@ import webbrowser
 import socket
 
 DATABASE_URL = "./adhd_app.db"
-HOST = "127.0.0.1" # Or "localhost"
+HOST = "127.0.0.1"
 PORT = 8000
-INDEX_HTML_PATH = "index.html" # Assuming index.html is in the same directory
-# The URL to open in the browser will now be the server's root
+INDEX_HTML_PATH = "index.html"
 SERVER_ROOT_URL = f"http://{HOST}:{PORT}/"
-
 
 # --- Database Setup ---
 def init_db():
+    # ... (your init_db code is fine) ...
     conn = sqlite3.connect(DATABASE_URL)
     cursor = conn.cursor()
-    # Tasks table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS tasks (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         description TEXT,
         due_date TEXT,
-        status TEXT DEFAULT 'todo',  -- 'todo', 'doing', 'done'
+        status TEXT DEFAULT 'todo',
         pomodoros_completed INTEGER DEFAULT 0,
         pomodoros_estimated INTEGER DEFAULT 1,
         points_value INTEGER DEFAULT 10,
@@ -39,7 +37,6 @@ def init_db():
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
-    # User Stats
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS user_stats (
         id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -54,7 +51,9 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 # --- Pydantic Models ---
+# ... (your Pydantic models are fine) ...
 class TaskBase(BaseModel):
     title: str
     description: Optional[str] = None
@@ -86,42 +85,40 @@ class UserStatsResponse(BaseModel):
 
 # --- FastAPI App Instance ---
 app = FastAPI(title="ADHD Focus Hub API")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # For development; restrict in production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # --- Helper to get DB connection ---
+# ... (your DB helpers are fine) ...
 def get_db():
     db = sqlite3.connect(DATABASE_URL)
     db.row_factory = sqlite3.Row
     return db
 
-# --- Utility Functions ---
 def update_user_points(db: sqlite3.Connection, points_to_add: int):
     cursor = db.cursor()
     cursor.execute("UPDATE user_stats SET total_points = total_points + ? WHERE id = 1", (points_to_add,))
     db.commit()
+
 
 # --- API Endpoints ---
 @app.on_event("startup")
 async def startup_event():
     init_db()
 
-# --- Serve Frontend ---
 @app.get("/")
 async def serve_index_html():
-    """Serves the main index.html file."""
     index_path = os.path.join(os.path.dirname(__file__), INDEX_HTML_PATH)
     if not os.path.exists(index_path):
         raise HTTPException(status_code=404, detail=f"{INDEX_HTML_PATH} not found at {index_path}")
     return FileResponse(index_path)
 
-# --- Task API Endpoints ---
+# ... (your /tasks, /stats, etc. API endpoints are fine) ...
 @app.post("/tasks", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(task: TaskCreate):
     db = get_db()
@@ -262,11 +259,21 @@ async def get_user_stats():
         return UserStatsResponse(total_points=0)
     return UserStatsResponse(total_points=stats["total_points"])
 
+
 # --- Server Start and Browser Opening Logic ---
 def run_server():
-    uvicorn.run("server:app", host=HOST, port=PORT, reload=True, log_level="info")
+    """Runs the Uvicorn server programmatically."""
+    print("Starting Uvicorn server programmatically (reload disabled in this mode).")
+    print(f"Access the application at {SERVER_ROOT_URL}")
+    # When running in a thread, it's safer to disable reload or use uvicorn.Server
+    # reload=True often causes issues with signal handling in threads.
+    # For development with reload, run: uvicorn server:app --reload
+    config = uvicorn.Config("server:app", host=HOST, port=PORT, log_level="info", workers=1)
+    server = uvicorn.Server(config)
+    server.run() # This call blocks within this thread.
 
 def check_server_ready(host, port, retries=15, delay=1):
+    # ... (check_server_ready function is fine) ...
     for i in range(retries):
         try:
             with socket.create_connection((host, port), timeout=1):
@@ -289,17 +296,22 @@ if __name__ == "__main__":
 
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
-    print(f"FastAPI server starting in a background thread on {SERVER_ROOT_URL}")
+    # print(f"FastAPI server starting in a background thread on {SERVER_ROOT_URL}") # Moved into run_server
 
     if check_server_ready(HOST, PORT):
         print(f"Opening application in browser at: {SERVER_ROOT_URL}")
-        webbrowser.open_new_tab(SERVER_ROOT_URL) # Changed to server's root URL
+        webbrowser.open_new_tab(SERVER_ROOT_URL)
     else:
         print(f"Could not confirm server readiness. Please open {SERVER_ROOT_URL} manually if the server starts.")
 
     try:
+        # Keep the main thread alive to allow the daemon server_thread to run
+        # and to catch KeyboardInterrupt for a cleaner shutdown.
         while server_thread.is_alive():
-            server_thread.join(timeout=1.0)
+            server_thread.join(timeout=0.5) # Check periodically
     except KeyboardInterrupt:
-        print("\nShutting down server (Ctrl+C received)...")
-    print("Server process finished.")
+        print("\nCtrl+C received in main thread. Uvicorn should shut down gracefully.")
+        # Uvicorn, when started with server.run(), should handle SIGINT properly.
+        # The daemon thread will exit once server.run() returns or the main thread exits.
+    finally:
+        print("Main script process finished.")
