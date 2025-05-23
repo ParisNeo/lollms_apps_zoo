@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Folder Structure Extractor Web App</title>
+    
+    <!-- IMPORTANT: Configure Tailwind to use 'class' for dark mode -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Enable dark mode based on the presence of the 'dark' class on an ancestor element (html in our case)
+        }
+    </script>
+    <!-- TailwindCSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+    
+    <!-- Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+    
+    <style>
+        /* Custom scrollbar for better appearance */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Dark mode scrollbar */
+        .dark ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .dark ::-webkit-scrollbar-track {
+            background: #333;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #666;
+            border-radius: 10px;
+        }
+        .dark ::-webkit-scrollbar-thumb:hover {
+            background: #888;
+        }
+
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: flex; /* Use flex for inner layout */
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        
+        .tree-container {
+            overflow: auto;
+            max-height: calc(100vh - 350px); /* Adjust based on header/footer */
+            min-height: 200px;
+        }
+        .tree-node-item {
+            display: flex;
+            align-items: center;
+            padding: 2px 0;
+        }
+        .tree-node-item .indent {
+            width: 1rem; /* Adjust as needed */
+            flex-shrink: 0;
+        }
+        .tree-node-item .icon {
+            margin-right: 0.25rem;
+        }
+        .tree-node-item.is-dir > label > input[type="checkbox"] {
+            margin-right: 0.25rem;
+        }
+
+        /* Basic styling for the file tree - to simulate QTreeView's padding/indentation */
+        .file-tree ul {
+            list-style: none;
+            padding-left: 0;
+            margin-left: 0;
+        }
+        .file-tree li {
+            padding-left: 1.5rem; /* Indentation for nested items */
+            margin: 0.1rem 0;
+        }
+        .file-tree li label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            word-break: break-all;
+            white-space: normal;
+        }
+        .file-tree li input[type="checkbox"] {
+            flex-shrink: 0;
+            margin-right: 0.5rem;
+        }
+        .file-tree li.disabled label {
+            color: #999; /* Grey out disabled items */
+            cursor: not-allowed;
+        }
+
+        /* Styles for tooltips */
+        [data-tooltip]:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            z-index: 100;
+            margin-top: 5px; /* Adjust as needed for position relative to element */
+            left: 50%;
+            transform: translateX(-50%);
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 flex flex-col h-screen">
+    <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
+        <h1 class="text-xl font-bold">Folder Structure Extractor Web App</h1>
+        <div class="flex items-center space-x-2">
+            <span id="status-message" class="text-sm">Ready.</span>
+            <button id="theme-toggle" class="p-2 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                ☀️ / 🌙
+            </button>
+        </div>
+    </header>
+
+    <main class="flex flex-col flex-grow p-4 overflow-hidden">
+        <div class="flex space-x-1 mb-4 border-b border-gray-300 dark:border-gray-700">
+            <button id="tab1-btn" class="tab-button active flex-1 py-2 px-4 text-center rounded-t-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-700">
+                1. Project & Filters
+            </button>
+            <button id="tab2-btn" class="tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 disabled:opacity-50" disabled>
+                2. Explorer & Prompt
+            </button>
+            <button id="tab3-btn" class="tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 disabled:opacity-50" disabled>
+                3. Output
+            </button>
+        </div>
+
+        <div id="tab1-content" class="tab-content active flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-y-auto">
+            <section class="mb-4">
+                <h2 class="text-lg font-semibold mb-2">Target Project</h2>
+                <div class="flex items-center space-x-2 mb-2">
+                    <input type="text" id="folder-path-input" placeholder="Enter target folder path (e.g., /path/to/my/project)"
+                           class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500">
+                    <button id="load-tree-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                        Load Project Tree
+                    </button>
+                </div>
+                <!-- New button for server-side browse -->
+                <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                    <button id="browse-server-folder-btn" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm disabled:opacity-50"
+                            data-tooltip="WARNING: This opens a folder dialog on the SERVER'S machine, NOT your browser. Only useful if server is running on your desktop with a display.">
+                        Browse Server Folder (Server-Side)
+                    </button>
+                    <span class="ml-2 text-red-500 dark:text-red-400 font-bold">⚠️ Server-side dialog!</span>
+                </div>
+                <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                    Note: The server must have read access to the specified folder path.
+                </p>
+            </section>
+
+            <div class="flex-grow overflow-y-auto">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Exclusion Presets -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2">Exclusion Presets</h3>
+                        <div id="preset-list" class="flex flex-wrap gap-2">
+                            <!-- Presets will be loaded here by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Custom Filtering Rules -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2">Custom Filtering Rules</h3>
+                        <div class="space-y-2">
+                            <label class="block text-sm">Exclude Folders (Names):</label>
+                            <input type="text" id="custom-folders-input" placeholder="e.g., docs,tests,temp"
+                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <label class="block text-sm">Exclude Extensions:</label>
+                            <input type="text" id="custom-extensions-input" placeholder="e.g., .log,.tmp,.bak"
+                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <label class="block text-sm">Exclude Patterns (Glob):</label>
+                            <input type="text" id="custom-patterns-input" placeholder="e.g., *.log,temp_*,cache_*/"
+                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <label class="block text-sm">More Exclude Patterns (Tree):</label>
+                            <input type="text" id="dynamic-exclude-input" placeholder="e.g., *.private,credentials.json"
+                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <label class="block text-sm">Include Paths/Patterns (Tree):</label>
+                            <input type="text" id="custom-inclusions-input" placeholder="e.g., src/main/, README.md, docs/*.md"
+                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <!-- Generation Options -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2">Generation Options</h3>
+                        <div class="flex items-center justify-between mb-2">
+                            <label for="max-file-size-input" class="text-sm">Max File Size (for Content):</label>
+                            <input type="number" id="max-file-size-input" value="1.0" min="0.01" step="0.1"
+                                   class="w-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <span class="ml-2 text-sm">MB</span>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="save-output-checkbox" class="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
+                            <label for="save-output-checkbox" class="ml-2 text-sm">Save Markdown output automatically on Generate</label>
+                        </div>
+                    </div>
+
+                    <!-- Documentation Integration -->
+                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2">Documentation Integration</h3>
+                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                            Import Markdown/Text documentation files (appended to prompt):
+                        </p>
+                        <ul id="doc-list" class="border border-gray-300 dark:border-gray-600 rounded-md h-28 overflow-y-auto p-2 bg-white dark:bg-gray-800 text-sm">
+                            <!-- Docs will be loaded here by JS -->
+                        </ul>
+                        <div class="flex gap-2 mt-2">
+                            <input type="file" id="add-docs-input" multiple accept=".md,.markdown,.txt" class="hidden">
+                            <button id="add-docs-btn" class="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm">Add Docs...</button>
+                            <button id="remove-docs-btn" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm">Remove Selected</button>
+                            <button id="clear-docs-btn" class="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">Clear All</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab2-content" class="tab-content flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden">
+            <div class="flex flex-col md:flex-row flex-grow h-full gap-4">
+                <!-- Left: File Tree -->
+                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-800">
+                    <h2 class="text-lg font-semibold mb-2">Project Explorer</h2>
+                    <div class="flex items-center space-x-2 mb-2">
+                        <button id="refresh-tree-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
+                                data-tooltip="Reloads the tree based on current folder and filter settings (from Tab 1)">Refresh Tree</button>
+                        <button id="expand-all-btn" class="px-3 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-md text-sm">Expand All</button>
+                        <button id="collapse-all-btn" class="px-3 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-md text-sm">Collapse All</button>
+                        <div class="flex-grow"></div>
+                        <button id="check-all-text-btn" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm">Check All Text</button>
+                        <button id="uncheck-all-btn" class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm">Uncheck All</button>
+                    </div>
+                    <div id="file-tree-container" class="file-tree flex-grow overflow-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-900">
+                        No project tree loaded. Please go to "1. Project & Filters" tab and load.
+                    </div>
+                </div>
+
+                <!-- Right: Custom Instructions Prompt -->
+                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-800">
+                    <h2 class="text-lg font-semibold mb-2">Custom Instructions Prompt</h2>
+                    <div class="flex items-center space-x-2 mb-2">
+                        <label for="template-select" class="text-sm">Template:</label>
+                        <select id="template-select" class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                            <!-- Options populated by JS -->
+                        </select>
+                        <button id="load-template-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm">Load</button>
+                        <button id="save-template-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm">Save As...</button>
+                        <button id="manage-template-btn" class="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">Manage...</button>
+                    </div>
+                    <textarea id="custom-prompt-textarea" placeholder="Enter instructions for an AI, or load a template. Placeholders like {FOLDER_NAME} will be substituted. Imported documentation will be added above this."
+                              class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[120px]"></textarea>
+                    <button id="generate-btn" class="mt-4 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md text-lg font-bold disabled:opacity-50">
+                        Generate Structure Text
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab3-content" class="tab-content flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden">
+            <div class="flex space-x-1 mb-2 border-b border-gray-300 dark:border-gray-700">
+                <button id="raw-output-tab-btn" class="sub-tab-button active flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700">Raw Markdown</button>
+                <button id="rendered-output-tab-btn" class="sub-tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-700">Rendered Preview</button>
+            </div>
+            <div id="raw-output-content" class="sub-tab-content active flex-grow">
+                <textarea id="raw-output-textarea" readonly placeholder="Generated Markdown output will appear here."
+                          class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm resize-none"></textarea>
+            </div>
+            <div id="rendered-output-content" class="sub-tab-content flex-grow hidden">
+                <div id="rendered-output-div" class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 overflow-auto markdown-body">
+                    A basic rendered preview of the Markdown will appear here.
+                </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button id="copy-raw-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:opacity-50">Copy Raw Markdown</button>
+                <button id="clear-output-btn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md">Clear Output</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/main.js"></script>
+</body>
+</html>
