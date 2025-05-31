@@ -1,309 +1,326 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class=""> <!-- Start with no 'dark' class, JS will add it -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Folder Structure Extractor Web App</title>
     
-    <!-- IMPORTANT: Configure Tailwind to use 'class' for dark mode -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
-            darkMode: 'class', // Enable dark mode based on the presence of the 'dark' class on an ancestor element (html in our case)
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    // You can extend Tailwind's theme here if needed
+                }
+            }
         }
     </script>
-    <!-- TailwindCSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="/static/style.css">
+    <!-- Custom CSS should come after Tailwind to allow overrides -->
+    <link rel="stylesheet" href="/static/style.css"> 
     
-    <!-- Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@2.4.0/dist/purify.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js"></script>
     
     <style>
         /* Custom scrollbar for better appearance */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #edf2f7; border-radius: 10px; } /* Tailwind gray-200 */
+        ::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; } /* Tailwind gray-500 */
+        ::-webkit-scrollbar-thumb:hover { background: #718096; } /* Tailwind gray-600 */
         
-        /* Dark mode scrollbar */
-        .dark ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        .dark ::-webkit-scrollbar-track {
-            background: #333;
-            border-radius: 10px;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #666;
-            border-radius: 10px;
-        }
-        .dark ::-webkit-scrollbar-thumb:hover {
-            background: #888;
-        }
+        .dark ::-webkit-scrollbar-track { background: #2d3748; } /* Tailwind gray-800 */
+        .dark ::-webkit-scrollbar-thumb { background: #718096; } /* Tailwind gray-600 */
+        .dark ::-webkit-scrollbar-thumb:hover { background: #a0aec0; } /* Tailwind gray-500 */
 
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: flex; /* Use flex for inner layout */
-            flex-direction: column;
-            flex-grow: 1;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: flex; flex-direction: column; flex-grow: 1; }
         
-        .tree-container {
-            overflow: auto;
-            max-height: calc(100vh - 350px); /* Adjust based on header/footer */
-            min-height: 200px;
-        }
-        .tree-node-item {
-            display: flex;
-            align-items: center;
-            padding: 2px 0;
-        }
-        .tree-node-item .indent {
-            width: 1rem; /* Adjust as needed */
-            flex-shrink: 0;
-        }
-        .tree-node-item .icon {
-            margin-right: 0.25rem;
-        }
-        .tree-node-item.is-dir > label > input[type="checkbox"] {
-            margin-right: 0.25rem;
-        }
+        .sub-tab-content { display: none; }
+        .sub-tab-content.active { display: flex; flex-direction: column; flex-grow: 1; }
+        /* Special case for textarea to behave like block */
+        .sub-tab-content.active textarea { display: block; }
 
-        /* Basic styling for the file tree - to simulate QTreeView's padding/indentation */
-        .file-tree ul {
-            list-style: none;
-            padding-left: 0;
-            margin-left: 0;
-        }
-        .file-tree li {
-            padding-left: 1.5rem; /* Indentation for nested items */
-            margin: 0.1rem 0;
-        }
-        .file-tree li label {
-            display: flex;
-            align-items: center;
-            cursor: pointer;
-            word-break: break-all;
-            white-space: normal;
-        }
-        .file-tree li input[type="checkbox"] {
-            flex-shrink: 0;
-            margin-right: 0.5rem;
-        }
-        .file-tree li.disabled label {
-            color: #999; /* Grey out disabled items */
-            cursor: not-allowed;
-        }
 
-        /* Styles for tooltips */
+        /* Basic styling for the file tree if JS-added classes are minimal */
+        .file-tree ul { list-style: none; padding-left: 0; margin-left: 0; }
+        /* Indentation is handled by JS adding ml-4 to nested ULs */
+
+        /* Tooltip Styling */
+        [data-tooltip] { position: relative; }
         [data-tooltip]:hover::after {
             content: attr(data-tooltip);
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            z-index: 100;
-            margin-top: 5px; /* Adjust as needed for position relative to element */
+            bottom: 100%; /* Position above the element */
             left: 50%;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(-5px); /* Center and add small gap */
+            background-color: #2d3748; /* Tailwind gray-800 */
+            color: white;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.75rem; /* text-xs */
+            line-height: 1rem; /* leading-tight */
+            white-space: nowrap;
+            z-index: 50; /* Ensure it's above other elements */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
         }
+        [data-tooltip]:hover::before { /* Optional: triangle for tooltip */
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(0px); /* Position slightly overlapping the tooltip base */
+            border-width: 5px;
+            border-style: solid;
+            border-color: #2d3748 transparent transparent transparent;
+            z-index: 50;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+        }
+        [data-tooltip]:hover::after,
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+        .dark [data-tooltip]:hover::after { background-color: #1a202c; } /* Tailwind gray-900 for dark */
+        .dark [data-tooltip]:hover::before { border-top-color: #1a202c; }
+
+
+        /* Markdown body styling (add to your style.css or here) */
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; }
+        .markdown-body h1 { font-size: 1.5em; } .markdown-body h2 { font-size: 1.25em; } .markdown-body h3 { font-size: 1.1em; }
+        .markdown-body p { margin-bottom: 0.75em; line-height: 1.6; }
+        .markdown-body ul, .markdown-body ol { margin-left: 1.5em; margin-bottom: 0.75em; }
+        .markdown-body li { margin-bottom: 0.25em; }
+        .markdown-body code { 
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            padding: 0.1em 0.3em; 
+            border-radius: 3px; 
+            font-size: 0.9em;
+        }
+        .markdown-body pre { 
+            background-color: #f3f4f6; /* Tailwind gray-100 */
+            padding: 0.75em; 
+            border-radius: 6px; 
+            overflow-x: auto; 
+            margin-bottom: 1em; 
+            font-size: 0.9em;
+        }
+        .markdown-body pre code { background-color: transparent; padding: 0; font-size: 1em;}
+        .dark .markdown-body code { background-color: #374151; /* Tailwind gray-700 */ color: #d1d5db; /* Tailwind gray-300 */}
+        .dark .markdown-body pre { background-color: #1f2937; /* Tailwind gray-800 */ color: #d1d5db; }
+        .dark .markdown-body pre code { color: #d1d5db;}
+        .markdown-body blockquote { border-left: 3px solid #d1d5db; margin-left:0; padding-left: 1em; color: #6b7280;}
+        .dark .markdown-body blockquote { border-left-color: #4b5563; color: #9ca3af;}
+        .markdown-body table { border-collapse: collapse; width: auto; margin-bottom: 1em;}
+        .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.5em;}
+        .dark .markdown-body th, .dark .markdown-body td { border-color: #4b5563;}
+        .markdown-body hr { border-top: 1px solid #e5e7eb; margin: 1em 0;}
+        .dark .markdown-body hr { border-top-color: #374151;}
     </style>
 </head>
-<body class="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 flex flex-col h-screen">
-    <header class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-md">
-        <h1 class="text-xl font-bold">Folder Structure Extractor Web App</h1>
-        <div class="flex items-center space-x-2">
-            <span id="status-message" class="text-sm">Ready.</span>
-            <button id="theme-toggle" class="p-2 rounded-full hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                ☀️ / 🌙
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col h-screen selection:bg-blue-500 selection:text-white">
+    <header class="bg-blue-600 dark:bg-blue-700 text-white p-3 flex justify-between items-center shadow-lg sticky top-0 z-40">
+        <h1 class="text-xl font-semibold">Folder Extractor</h1>
+        <div class="flex items-center space-x-3">
+            <div id="status-message" class="text-sm px-2 py-1 rounded-md bg-blue-500 dark:bg-blue-600 min-w-[200px] text-center truncate" title="Status messages will appear here.">Ready.</div>
+            <button id="theme-toggle" title="Toggle light/dark theme" class="p-2 rounded-full hover:bg-blue-700 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50 text-lg">
+                <!-- Icon will be set by JS -->
             </button>
         </div>
     </header>
 
-    <main class="flex flex-col flex-grow p-4 overflow-hidden">
-        <div class="flex space-x-1 mb-4 border-b border-gray-300 dark:border-gray-700">
-            <button id="tab1-btn" class="tab-button active flex-1 py-2 px-4 text-center rounded-t-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-700">
+    <main class="flex flex-col flex-grow p-3 md:p-4 overflow-hidden">
+        <div class="flex space-x-1 mb-3 border-b border-gray-300 dark:border-gray-700">
+            <button id="tab1-btn" class="tab-button active flex-1 py-2.5 px-4 text-center text-sm font-medium rounded-t-lg focus:outline-none focus:z-10">
                 1. Project & Filters
             </button>
-            <button id="tab2-btn" class="tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 disabled:opacity-50" disabled>
+            <button id="tab2-btn" class="tab-button flex-1 py-2.5 px-4 text-center text-sm font-medium rounded-t-lg focus:outline-none focus:z-10 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
                 2. Explorer & Prompt
             </button>
-            <button id="tab3-btn" class="tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700 disabled:opacity-50" disabled>
+            <button id="tab3-btn" class="tab-button flex-1 py-2.5 px-4 text-center text-sm font-medium rounded-t-lg focus:outline-none focus:z-10 disabled:opacity-60 disabled:cursor-not-allowed" disabled>
                 3. Output
             </button>
         </div>
 
-        <div id="tab1-content" class="tab-content active flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-y-auto">
+        <!-- Tab 1: Project & Filters -->
+        <div id="tab1-content" class="tab-content active flex-grow p-3 bg-white dark:bg-gray-800 rounded-b-lg shadow-inner overflow-y-auto">
             <section class="mb-4">
-                <h2 class="text-lg font-semibold mb-2">Target Project</h2>
-                <div class="flex items-center space-x-2 mb-2">
-                    <input type="text" id="folder-path-input" placeholder="Enter target folder path (e.g., /path/to/my/project)"
-                           class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-blue-500 focus:border-blue-500">
-                    <button id="load-tree-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50">
+                <h2 class="text-lg font-semibold mb-2 text-gray-800 dark:text-gray-200">Target Project</h2>
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 mb-2">
+                    <input type="text" id="folder-path-input" placeholder="Enter target folder path (e.g., /path/to/project)"
+                           class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm">
+                    <button id="load-tree-btn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 disabled:opacity-60 disabled:cursor-not-allowed text-sm font-medium whitespace-nowrap">
                         Load Project Tree
                     </button>
                 </div>
-                <!-- New button for server-side browse -->
-                <div class="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                    <button id="browse-server-folder-btn" class="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-sm disabled:opacity-50"
-                            data-tooltip="WARNING: This opens a folder dialog on the SERVER'S machine, NOT your browser. Only useful if server is running on your desktop with a display.">
+                <div class="mt-2 text-sm">
+                    <button id="browse-server-folder-btn" class="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-md text-xs font-medium disabled:opacity-60"
+                            data-tooltip="WARNING: This opens a folder dialog ON THE SERVER, not your browser. Useful if server is on your desktop with GUI.">
                         Browse Server Folder (Server-Side)
                     </button>
-                    <span class="ml-2 text-red-500 dark:text-red-400 font-bold">⚠️ Server-side dialog!</span>
+                    <span class="ml-2 text-red-500 dark:text-red-400 text-xs font-semibold">⚠️ Server-side dialog!</span>
                 </div>
-                <p class="text-sm text-gray-600 dark:text-gray-300 mt-2">
-                    Note: The server must have read access to the specified folder path.
+                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Server must have read access to the folder.
                 </p>
             </section>
 
-            <div class="flex-grow overflow-y-auto">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex-grow overflow-y-auto space-y-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <!-- Exclusion Presets -->
-                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 class="text-md font-semibold mb-2">Exclusion Presets</h3>
-                        <div id="preset-list" class="flex flex-wrap gap-2">
+                    <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Exclusion Presets</h3>
+                        <div id="preset-list" class="space-y-1 max-h-48 overflow-y-auto">
                             <!-- Presets will be loaded here by JS -->
                         </div>
                     </div>
 
                     <!-- Custom Filtering Rules -->
-                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 class="text-md font-semibold mb-2">Custom Filtering Rules</h3>
-                        <div class="space-y-2">
-                            <label class="block text-sm">Exclude Folders (Names):</label>
+                    <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
+                        <h3 class="text-md font-semibold text-gray-700 dark:text-gray-300">Custom Filtering Rules</h3>
+                        <div>
+                            <label for="custom-folders-input" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Exclude Folders (Names, comma-sep):</label>
                             <input type="text" id="custom-folders-input" placeholder="e.g., docs,tests,temp"
-                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <label class="block text-sm">Exclude Extensions:</label>
+                                   class="w-full p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="custom-extensions-input" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Exclude Extensions (comma-sep):</label>
                             <input type="text" id="custom-extensions-input" placeholder="e.g., .log,.tmp,.bak"
-                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <label class="block text-sm">Exclude Patterns (Glob):</label>
+                                   class="w-full p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="custom-patterns-input" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Exclude Patterns (Glob, comma-sep):</label>
                             <input type="text" id="custom-patterns-input" placeholder="e.g., *.log,temp_*,cache_*/"
-                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <label class="block text-sm">More Exclude Patterns (Tree):</label>
+                                   class="w-full p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="dynamic-exclude-input" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">More Exclude Patterns (Temp, comma-sep):</label>
                             <input type="text" id="dynamic-exclude-input" placeholder="e.g., *.private,credentials.json"
-                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <label class="block text-sm">Include Paths/Patterns (Tree):</label>
-                            <input type="text" id="custom-inclusions-input" placeholder="e.g., src/main/, README.md, docs/*.md"
-                                   class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                                   class="w-full p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500">
+                        </div>
+                         <div>
+                            <label for="custom-inclusions-input" class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-0.5">Include Paths/Patterns (Glob, comma-sep):</label>
+                            <input type="text" id="custom-inclusions-input" placeholder="e.g., src/main/,README.md"
+                                   class="w-full p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500">
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <!-- Generation Options -->
-                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 class="text-md font-semibold mb-2">Generation Options</h3>
+                    <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Generation Options</h3>
                         <div class="flex items-center justify-between mb-2">
-                            <label for="max-file-size-input" class="text-sm">Max File Size (for Content):</label>
-                            <input type="number" id="max-file-size-input" value="1.0" min="0.01" step="0.1"
-                                   class="w-24 p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
-                            <span class="ml-2 text-sm">MB</span>
+                            <label for="max-file-size-input" class="text-sm text-gray-700 dark:text-gray-300">Max File Size (Content):</label>
+                            <div class="flex items-center">
+                                <input type="number" id="max-file-size-input" value="1.0" min="0.01" step="0.1"
+                                   class="w-20 p-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-right focus:ring-1 focus:ring-blue-500">
+                                <span class="ml-1.5 text-sm text-gray-600 dark:text-gray-400">MB</span>
+                            </div>
                         </div>
                         <div class="flex items-center">
-                            <input type="checkbox" id="save-output-checkbox" class="form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500">
-                            <label for="save-output-checkbox" class="ml-2 text-sm">Save Markdown output automatically on Generate</label>
+                            <input type="checkbox" id="save-output-checkbox" class="form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
+                            <label for="save-output-checkbox" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Save Markdown output on Generate</label>
                         </div>
                     </div>
 
                     <!-- Documentation Integration -->
-                    <div class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600">
-                        <h3 class="text-md font-semibold mb-2">Documentation Integration</h3>
-                        <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
-                            Import Markdown/Text documentation files (appended to prompt):
+                    <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
+                        <h3 class="text-md font-semibold mb-1 text-gray-700 dark:text-gray-300">Documentation Integration</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">
+                            Import Markdown/Text docs (appended to prompt):
                         </p>
-                        <ul id="doc-list" class="border border-gray-300 dark:border-gray-600 rounded-md h-28 overflow-y-auto p-2 bg-white dark:bg-gray-800 text-sm">
+                        <ul id="doc-list" class="border border-gray-300 dark:border-gray-600 rounded-md h-24 overflow-y-auto p-1 bg-white dark:bg-gray-700 text-sm">
                             <!-- Docs will be loaded here by JS -->
                         </ul>
-                        <div class="flex gap-2 mt-2">
-                            <input type="file" id="add-docs-input" multiple accept=".md,.markdown,.txt" class="hidden">
-                            <button id="add-docs-btn" class="flex-1 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm">Add Docs...</button>
-                            <button id="remove-docs-btn" class="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm">Remove Selected</button>
-                            <button id="clear-docs-btn" class="flex-1 px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">Clear All</button>
+                        <div class="grid grid-cols-3 gap-1.5 mt-1.5">
+                            <input type="file" id="add-docs-input" multiple accept=".md,.markdown,.txt,text/plain" class="hidden">
+                            <button id="add-docs-btn" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium whitespace-nowrap">Add Docs...</button>
+                            <button id="remove-docs-btn" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-xs font-medium whitespace-nowrap">Remove Sel.</button>
+                            <button id="clear-docs-btn" class="px-3 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-xs font-medium whitespace-nowrap">Clear All</button>
                         </div>
                     </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                     <button id="reset-settings-btn" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-gray-800 dark:text-gray-900 rounded-md text-sm font-medium focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800">
+                        Reset All Settings to Default
+                    </button>
                 </div>
             </div>
         </div>
 
-        <div id="tab2-content" class="tab-content flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden">
-            <div class="flex flex-col md:flex-row flex-grow h-full gap-4">
+        <!-- Tab 2: Explorer & Prompt -->
+        <div id="tab2-content" class="tab-content flex-grow p-0 md:p-3 bg-white dark:bg-gray-800 rounded-b-lg shadow-inner overflow-hidden">
+            <div class="flex flex-col lg:flex-row flex-grow h-full gap-3">
                 <!-- Left: File Tree -->
-                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-800">
-                    <h2 class="text-lg font-semibold mb-2">Project Explorer</h2>
-                    <div class="flex items-center space-x-2 mb-2">
-                        <button id="refresh-tree-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm"
-                                data-tooltip="Reloads the tree based on current folder and filter settings (from Tab 1)">Refresh Tree</button>
-                        <button id="expand-all-btn" class="px-3 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-md text-sm">Expand All</button>
-                        <button id="collapse-all-btn" class="px-3 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-100 rounded-md text-sm">Collapse All</button>
+                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-750 min-h-[300px] lg:min-h-0">
+                    <h2 class="text-md font-semibold mb-1.5 text-gray-800 dark:text-gray-200">Project Explorer</h2>
+                    <div class="flex flex-wrap items-center gap-1.5 mb-1.5 text-xs">
+                        <button id="refresh-tree-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-60"
+                                data-tooltip="Reload tree (current folder & Tab 1 filters)">Refresh</button>
+                        <button id="expand-all-btn" class="px-2.5 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 rounded-md disabled:opacity-60">Expand All</button>
+                        <button id="collapse-all-btn" class="px-2.5 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 rounded-md disabled:opacity-60">Collapse All</button>
                         <div class="flex-grow"></div>
-                        <button id="check-all-text-btn" class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white rounded-md text-sm">Check All Text</button>
-                        <button id="uncheck-all-btn" class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm">Uncheck All</button>
+                        <button id="check-all-text-btn" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-60">Check All</button>
+                        <button id="uncheck-all-btn" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60">Uncheck All</button>
                     </div>
-                    <div id="file-tree-container" class="file-tree flex-grow overflow-auto border border-gray-300 dark:border-gray-600 rounded-md p-2 bg-white dark:bg-gray-900">
-                        No project tree loaded. Please go to "1. Project & Filters" tab and load.
+                    <div id="file-tree-container" class="file-tree flex-grow overflow-auto border border-gray-300 dark:border-gray-600 rounded-md p-1.5 bg-white dark:bg-gray-800 text-sm">
+                        <p class="text-gray-500 dark:text-gray-400 p-2">Load a project on Tab 1 to see the file tree.</p>
                     </div>
                 </div>
 
                 <!-- Right: Custom Instructions Prompt -->
-                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-800">
-                    <h2 class="text-lg font-semibold mb-2">Custom Instructions Prompt</h2>
-                    <div class="flex items-center space-x-2 mb-2">
-                        <label for="template-select" class="text-sm">Template:</label>
-                        <select id="template-select" class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100">
+                <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-750 min-h-[300px] lg:min-h-0">
+                    <h2 class="text-md font-semibold mb-1.5 text-gray-800 dark:text-gray-200">Custom Instructions Prompt</h2>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-1.5 text-xs">
+                        <label for="template-select" class="text-xs font-medium text-gray-700 dark:text-gray-300 self-center sm:self-auto whitespace-nowrap">Template:</label>
+                        <select id="template-select" class="flex-grow p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 text-xs">
                             <!-- Options populated by JS -->
                         </select>
-                        <button id="load-template-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm">Load</button>
-                        <button id="save-template-btn" class="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-sm">Save As...</button>
-                        <button id="manage-template-btn" class="px-3 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm">Manage...</button>
+                        <button id="load-template-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md">Load</button>
+                        <button id="save-template-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md">Save As...</button>
+                        <button id="manage-template-btn" class="px-2.5 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md">Manage...</button>
                     </div>
-                    <textarea id="custom-prompt-textarea" placeholder="Enter instructions for an AI, or load a template. Placeholders like {FOLDER_NAME} will be substituted. Imported documentation will be added above this."
-                              class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[120px]"></textarea>
-                    <button id="generate-btn" class="mt-4 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-md text-lg font-bold disabled:opacity-50">
+                    <textarea id="custom-prompt-textarea" placeholder="Enter instructions for an AI, or load a template. Placeholders like {FOLDER_NAME} will be substituted. Imported documentation will be added after this."
+                              class="flex-grow p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 min-h-[150px] focus:ring-1 focus:ring-blue-500"></textarea>
+                    <button id="generate-btn" class="mt-2.5 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-base font-semibold disabled:opacity-60 disabled:cursor-not-allowed">
                         Generate Structure Text
                     </button>
                 </div>
             </div>
         </div>
 
-        <div id="tab3-content" class="tab-content flex-grow p-4 bg-white dark:bg-gray-700 rounded-lg shadow-md overflow-hidden">
-            <div class="flex space-x-1 mb-2 border-b border-gray-300 dark:border-gray-700">
-                <button id="raw-output-tab-btn" class="sub-tab-button active flex-1 py-2 px-4 text-center rounded-t-lg bg-gray-200 dark:bg-gray-900 border border-gray-300 dark:border-gray-700">Raw Markdown</button>
-                <button id="rendered-output-tab-btn" class="sub-tab-button flex-1 py-2 px-4 text-center rounded-t-lg bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-700">Rendered Preview</button>
-            </div>
-            <div id="raw-output-content" class="sub-tab-content active flex-grow">
-                <textarea id="raw-output-textarea" readonly placeholder="Generated Markdown output will appear here."
-                          class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 font-mono text-sm resize-none"></textarea>
-            </div>
-            <div id="rendered-output-content" class="sub-tab-content flex-grow hidden">
-                <div id="rendered-output-div" class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100 overflow-auto markdown-body">
-                    A basic rendered preview of the Markdown will appear here.
+        <!-- Tab 3: Output -->
+        <div id="tab3-content" class="tab-content flex-grow p-0 md:p-3 bg-white dark:bg-gray-800 rounded-b-lg shadow-inner overflow-hidden">
+            <div class="flex flex-col h-full">
+                <div class="flex space-x-1 mb-1.5 border-b border-gray-300 dark:border-gray-700">
+                    <button id="raw-output-btn" class="sub-tab-button active flex-1 py-2 px-4 text-center text-sm font-medium rounded-t-lg focus:outline-none">Raw Markdown</button>
+                    <button id="rendered-output-btn" class="sub-tab-button flex-1 py-2 px-4 text-center text-sm font-medium rounded-t-lg focus:outline-none">Rendered Preview</button>
                 </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-4">
-                <button id="copy-raw-btn" class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-md disabled:opacity-50">Copy Raw Markdown</button>
-                <button id="clear-output-btn" class="px-4 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-md">Clear Output</button>
+                <div id="raw-output-content" class="sub-tab-content active flex-grow">
+                    <textarea id="raw-output-textarea" readonly placeholder="Generated Markdown output will appear here."
+                              class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-850 text-gray-800 dark:text-gray-200 font-mono text-xs resize-none focus:ring-1 focus:ring-blue-500"></textarea>
+                </div>
+                <div id="rendered-output-content" class="sub-tab-content flex-grow"> <!-- initially hidden by JS if not active -->
+                    <div id="rendered-output-div" class="w-full h-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-850 text-gray-800 dark:text-gray-200 overflow-auto markdown-body text-sm">
+                        <p class="text-gray-500 dark:text-gray-400">A rendered preview of the Markdown will appear here.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-2 mt-2.5 shrink-0">
+                    <button id="copy-raw-btn" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-medium disabled:opacity-60 disabled:cursor-not-allowed">Copy Raw Markdown</button>
+                    <button id="clear-output-btn" class="px-4 py-1.5 bg-gray-500 hover:bg-gray-600 text-white rounded-md text-sm font-medium">Clear Output</button>
+                </div>
             </div>
         </div>
     </main>
 
-    <script src="/static/main.js"></script>
+    <!-- Ensure this script is loaded last -->
+    <script src="/static/main.js"></script> 
 </body>
 </html>
