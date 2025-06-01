@@ -1,58 +1,36 @@
 // static/script.js
 
-// Function to update status message
 function showStatus(message, type = 'info') {
     const statusDiv = document.getElementById('status-message');
-    if (!statusDiv) {
-        console.warn("Status message div not found.");
-        console.log(`STATUS (${type.toUpperCase()}): ${message}`);
-        return;
-    }
+    if (!statusDiv) { console.warn("Status div not found."); console.log(`STATUS (${type.toUpperCase()}): ${message}`); return; }
     statusDiv.textContent = message;
-    statusDiv.className = 'text-sm p-1 rounded-md'; // Reset classes and add base styling
-    if (type === 'error') {
-        statusDiv.classList.add('text-red-700', 'dark:text-red-300', 'bg-red-100', 'dark:bg-red-900');
-    } else if (type === 'warning') {
-        statusDiv.classList.add('text-yellow-700', 'dark:text-yellow-300', 'bg-yellow-100', 'dark:bg-yellow-900');
-    } else if (type === 'success') {
-        statusDiv.classList.add('text-green-700', 'dark:text-green-300', 'bg-green-100', 'dark:bg-green-900');
-    } else { // info
-        statusDiv.classList.add('text-blue-700', 'dark:text-blue-300', 'bg-blue-100', 'dark:bg-blue-900');
-    }
+    statusDiv.className = 'text-sm p-1 rounded-md min-w-[200px] text-center truncate'; 
+    if (type === 'error') statusDiv.classList.add('text-red-700', 'dark:text-red-300', 'bg-red-100', 'dark:bg-red-900');
+    else if (type === 'warning') statusDiv.classList.add('text-yellow-700', 'dark:text-yellow-300', 'bg-yellow-100', 'dark:bg-yellow-900');
+    else if (type === 'success') statusDiv.classList.add('text-green-700', 'dark:text-green-300', 'bg-green-100', 'dark:bg-green-900');
+    else statusDiv.classList.add('text-blue-700', 'dark:text-blue-300', 'bg-blue-100', 'dark:bg-blue-900');
     console.log(`STATUS (${type.toUpperCase()}): ${message}`);
 }
 
 function showLoading(element, isLoading, loadingText = 'Loading...', originalText = null) {
     if (!element) return;
     if (isLoading) {
-        element.disabled = true;
-        element.classList.add('opacity-75', 'cursor-wait');
-        if (originalText !== null) {
-            element.dataset.originalText = originalText;
-        } else if (!element.dataset.originalText) {
-            element.dataset.originalText = element.textContent;
-        }
+        element.disabled = true; element.classList.add('opacity-75', 'cursor-wait');
+        if (originalText !== null) element.dataset.originalText = originalText;
+        else if (!element.dataset.originalText) element.dataset.originalText = element.textContent;
         element.textContent = loadingText;
     } else {
-        element.disabled = false;
-        element.classList.remove('opacity-75', 'cursor-wait');
-        if (element.dataset.originalText) {
-             element.textContent = element.dataset.originalText;
-             delete element.dataset.originalText; // Clean up
-        }
+        element.disabled = false; element.classList.remove('opacity-75', 'cursor-wait');
+        if (element.dataset.originalText) { element.textContent = element.dataset.originalText; delete element.dataset.originalText; }
     }
 }
 
 async function handleResponse(response) {
     if (!response.ok) {
         let errorData;
-        try { errorData = await response.json(); } catch (e) {
-            const textResponse = await response.text();
-            errorData = { detail: textResponse || `HTTP error! status: ${response.status}` };
-        }
+        try { errorData = await response.json(); } catch (e) { errorData = { detail: (await response.text()) || `HTTP error! status: ${response.status}` }; }
         const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
-        showStatus(errorMessage, 'error');
-        throw new Error(errorMessage);
+        showStatus(errorMessage, 'error'); throw new Error(errorMessage);
     }
     return response.json();
 }
@@ -62,146 +40,113 @@ const tabContents = document.querySelectorAll('.tab-content');
 function activateTab(tabId) {
     tabButtons.forEach(button => {
         const isActive = button.id === `${tabId}-btn`;
-        button.classList.toggle('active', isActive);
-        button.classList.toggle('bg-white', isActive);
-        button.classList.toggle('dark:bg-gray-700', isActive);
-        button.classList.toggle('text-blue-600', isActive);
-        button.classList.toggle('dark:text-blue-400', isActive);
-        button.classList.toggle('border-blue-500', isActive); // Active border
-        button.classList.toggle('bg-gray-200', !isActive);
-        button.classList.toggle('dark:bg-gray-900', !isActive);
-        button.classList.toggle('text-gray-600', !isActive);
-        button.classList.toggle('dark:text-gray-400', !isActive);
-        button.classList.toggle('border-transparent', !isActive); // Inactive border
+        button.classList.toggle('active', isActive); button.classList.toggle('bg-white', isActive); button.classList.toggle('dark:bg-gray-700', isActive);
+        button.classList.toggle('text-blue-600', isActive); button.classList.toggle('dark:text-blue-400', isActive); button.classList.toggle('border-blue-500', isActive);
+        button.classList.toggle('bg-gray-200', !isActive); button.classList.toggle('dark:bg-gray-900', !isActive);
+        button.classList.toggle('text-gray-600', !isActive); button.classList.toggle('dark:text-gray-400', !isActive); button.classList.toggle('border-transparent', !isActive);
     });
     tabContents.forEach(content => {
         content.classList.toggle('active', content.id === `${tabId}-content`);
         content.style.display = content.id === `${tabId}-content` ? 'flex' : 'none';
     });
 }
-tabButtons.forEach(button => button.addEventListener('click', () => {
-    if (!button.disabled) activateTab(button.id.replace('-btn', ''));
-}));
+tabButtons.forEach(button => button.addEventListener('click', () => { if (!button.disabled) activateTab(button.id.replace('-btn', '')); }));
 
 const subTabButtons = document.querySelectorAll('.sub-tab-button');
 const subTabContents = document.querySelectorAll('.sub-tab-content');
 function activateSubTab(tabId) {
     subTabButtons.forEach(button => {
         const isActive = button.id === `${tabId}-btn`;
-        button.classList.toggle('active', isActive);
-        button.classList.toggle('bg-white', isActive);
-        button.classList.toggle('dark:bg-gray-700', isActive);
-        button.classList.toggle('text-blue-600', isActive);
-        button.classList.toggle('dark:text-blue-400', isActive);
-        button.classList.toggle('border-blue-500', isActive);
-
-        button.classList.toggle('bg-gray-200', !isActive);
-        button.classList.toggle('dark:bg-gray-900', !isActive);
+        button.classList.toggle('active', isActive); button.classList.toggle('bg-white', isActive); button.classList.toggle('dark:bg-gray-700', isActive);
+        button.classList.toggle('text-blue-600', isActive); button.classList.toggle('dark:text-blue-400', isActive); button.classList.toggle('border-blue-500', isActive);
+        button.classList.toggle('bg-gray-200', !isActive); button.classList.toggle('dark:bg-gray-900', !isActive);
         button.classList.toggle('text-gray-900', !isActive && !document.documentElement.classList.contains('dark'));
         button.classList.toggle('text-gray-100', !isActive && document.documentElement.classList.contains('dark'));
         button.classList.toggle('border-transparent', !isActive);
-
     });
-    subTabContents.forEach(content => {
-        content.style.display = content.id === `${tabId}-content` ? (content.tagName === 'TEXTAREA' ? 'block' : 'flex') : 'none';
-    });
+    subTabContents.forEach(content => { content.style.display = content.id === `${tabId}-content` ? (content.tagName === 'TEXTAREA' ? 'block' : 'flex') : 'none'; });
 }
 subTabButtons.forEach(button => button.addEventListener('click', () => activateSubTab(button.id.replace('-btn', ''))));
 
-// --- Element Selectors ---
-const folderPathInput = document.getElementById('folder-path-input');
-const loadTreeBtn = document.getElementById('load-tree-btn');
-const browseServerFolderBtn = document.getElementById('browse-server-folder-btn');
-const presetList = document.getElementById('preset-list');
-const customFoldersInput = document.getElementById('custom-folders-input');
-const customExtensionsInput = document.getElementById('custom-extensions-input');
-const customPatternsInput = document.getElementById('custom-patterns-input');
-const dynamicExcludeInput = document.getElementById('dynamic-exclude-input');
-const customInclusionsInput = document.getElementById('custom-inclusions-input');
-const maxFileSizeInput = document.getElementById('max-file-size-input');
-const saveOutputCheckbox = document.getElementById('save-output-checkbox');
-const docList = document.getElementById('doc-list');
-const addDocsInput = document.getElementById('add-docs-input');
-const addDocsBtn = document.getElementById('add-docs-btn');
-const removeDocsBtn = document.getElementById('remove-docs-btn');
-const clearDocsBtn = document.getElementById('clear-docs-btn');
-const refreshTreeBtn = document.getElementById('refresh-tree-btn');
-const expandAllBtn = document.getElementById('expand-all-btn');
-const collapseAllBtn = document.getElementById('collapse-all-btn');
-const checkAllTextBtn = document.getElementById('check-all-text-btn');
-const uncheckAllBtn = document.getElementById('uncheck-all-btn');
-const fileTreeContainer = document.getElementById('file-tree-container');
-const templateSelect = document.getElementById('template-select');
-const loadTemplateBtn = document.getElementById('load-template-btn');
-const saveTemplateBtn = document.getElementById('save-template-btn');
-const manageTemplateBtn = document.getElementById('manage-template-btn');
-const customPromptTextarea = document.getElementById('custom-prompt-textarea');
-const generateBtn = document.getElementById('generate-btn');
-const rawOutputTextarea = document.getElementById('raw-output-textarea');
-const renderedOutputDiv = document.getElementById('rendered-output-div');
-const copyRawBtn = document.getElementById('copy-raw-btn');
-const clearOutputBtn = document.getElementById('clear-output-btn');
-const themeToggle = document.getElementById('theme-toggle');
-const resetSettingsBtn = document.getElementById('reset-settings-btn');
+const S = id => document.getElementById(id);
+const folderPathInput = S('folder-path-input'), loadTreeBtn = S('load-tree-btn'), browseServerFolderBtn = S('browse-server-folder-btn'),
+      presetList = S('preset-list'), customFoldersInput = S('custom-folders-input'), customExtensionsInput = S('custom-extensions-input'),
+      customPatternsInput = S('custom-patterns-input'), dynamicExcludeInput = S('dynamic-exclude-input'), customInclusionsInput = S('custom-inclusions-input'),
+      maxFileSizeInput = S('max-file-size-input'), saveOutputCheckbox = S('save-output-checkbox'), docList = S('doc-list'),
+      addDocsInput = S('add-docs-input'), addDocsBtn = S('add-docs-btn'), removeDocsBtn = S('remove-docs-btn'), clearDocsBtn = S('clear-docs-btn'),
+      refreshTreeBtn = S('refresh-tree-btn'), expandAllBtn = S('expand-all-btn'), collapseAllBtn = S('collapse-all-btn'),
+      checkAllTextBtn = S('check-all-text-btn'), uncheckAllBtn = S('uncheck-all-btn'), fileTreeContainer = S('file-tree-container'),
+      templateSelect = S('template-select'), loadTemplateBtn = S('load-template-btn'), saveTemplateBtn = S('save-template-btn'),
+      manageTemplateBtn = S('manage-template-btn'), customPromptTextarea = S('custom-prompt-textarea'), generateBtn = S('generate-btn'),
+      rawOutputTextarea = S('raw-output-textarea'), renderedOutputDiv = S('rendered-output-div'), copyRawBtn = S('copy-raw-btn'),
+      clearOutputBtn = S('clear-output-btn'), themeToggle = S('theme-toggle'), resetSettingsBtn = S('reset-settings-btn');
 
-// --- Client State Management ---
 const clientState = {
     folderPath: '',
-    filterSettings: {
-        selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '',
-        dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0,
-    },
+    filterSettings: { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 },
     saveOutputChecked: false, customPrompt: '', loadedDocPaths: [],
-    checkedTreePathsAbs: new Set(), promptTemplates: [], currentTheme: 'light', appVersion: '2.8.1' // Match backend
+    checkedTreePathsMap: new Map(), 
+    hardExcludedPathsAbs: new Set(), // New: For items to be excluded from tree generation
+    promptTemplates: [], currentTheme: 'light', appVersion: '2.8.3' // Version bump
+};
+
+const PRESET_PRESELECTION_RULES = {
+    "Python Project": {
+        include_ext: [".py", ".pyw", ".pyi", ".md", ".txt", ".ini", ".cfg", ".toml", ".yaml", ".yml", ".json", ".sh", ".cfg", ".conf"],
+        include_filenames: ["requirements.txt", "setup.py", "pyproject.toml", "readme.md", "readme", "dockerfile", "docker-compose.yml", ".env.example", "manage.py", "app.py", "main.py", "wsgi.py", "asgi.py", "gunicorn.conf.py"],
+        exclude_dirs_for_selection: ["venv", ".venv", "env", ".env", "build", "dist", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis", ".tox", "docs/_build", "htmlcov", "migrations"]
+    },
+    "Node.js Project": {
+        include_ext: [".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".jsx", ".tsx", ".json", ".md", ".txt", ".yaml", ".yml", ".html", ".css", ".scss", ".less", ".vue", ".svelte"],
+        include_filenames: ["package.json", "readme.md", "readme", "dockerfile", "docker-compose.yml", ".env.example", "server.js", "app.js", "index.js", "main.js", "vite.config.js", "webpack.config.js", "tsconfig.json", ".eslintrc.json", ".prettierrc.json"],
+        exclude_dirs_for_selection: ["node_modules", "build", "dist", ".output", ".nuxt", ".next", "coverage", "public/build", "storybook-static"]
+    },
+    "Java Project (Maven/Gradle)": {
+        include_ext: [".java", ".kt", ".scala", ".xml", ".properties", ".yml", ".yaml", ".md", ".txt", ".gradle", ".json"],
+        include_filenames: ["pom.xml", "build.gradle", "readme.md", "readme", "dockerfile", "application.properties", "application.yml", "settings.gradle"],
+        exclude_dirs_for_selection: ["target", "build", ".gradle", "bin", "out"]
+    },
+    "Git Repository": { 
+        include_ext: [".md", ".txt", ".yaml", ".yml", ".json", ".xml", ".ini", ".cfg", ".conf", ".sh", ".bat"], 
+        include_filenames: ["readme.md", "readme", "license", "contributing.md", "changelog.md", "dockerfile", ".gitignore", ".gitattributes"],
+        exclude_dirs_for_selection: [".git", ".vscode", ".idea"] 
+    }
 };
 
 function saveStateToLocalStorage() {
     try {
         localStorage.setItem('folderExtractorState_v' + clientState.appVersion, JSON.stringify(clientState, (key, value) => {
-            return (key === 'checkedTreePathsAbs' && value instanceof Set) ? Array.from(value) : value;
+            if (key === 'checkedTreePathsMap' && value instanceof Map) return Object.fromEntries(value);
+            if (key === 'hardExcludedPathsAbs' && value instanceof Set) return Array.from(value);
+            return value;
         }));
-    } catch (e) {
-        console.error("Error saving state to localStorage:", e);
-        showStatus("Could not save settings to local storage. It might be full or disabled.", "error");
-    }
+    } catch (e) { console.error("Error saving state:", e); showStatus("Could not save settings (localStorage full/disabled).", "error"); }
 }
+
 function loadStateFromLocalStorage() {
-    const savedState = localStorage.getItem('folderExtractorState_v' + clientState.appVersion);
-    if (savedState) {
+    const savedStateJSON = localStorage.getItem('folderExtractorState_v' + clientState.appVersion);
+    if (savedStateJSON) {
         try {
-            const parsedState = JSON.parse(savedState);
-            // Basic version check (can be more sophisticated)
+            const parsedState = JSON.parse(savedStateJSON);
             if (parsedState.appVersion !== clientState.appVersion) {
-                console.warn(`Loaded state from older version (${parsedState.appVersion}). Current: ${clientState.appVersion}. Resetting to defaults.`);
-                resetClientState(false); // Don't show status message yet
-            } else {
-                Object.assign(clientState, parsedState);
-            }
-            clientState.checkedTreePathsAbs = new Set(Array.isArray(clientState.checkedTreePathsAbs) ? clientState.checkedTreePathsAbs : []);
+                console.warn(`State from older version (${parsedState.appVersion}). Resetting.`); resetClientState(false);
+            } else { Object.assign(clientState, parsedState); }
+            
+            clientState.checkedTreePathsMap = new Map(parsedState.checkedTreePathsMap ? Object.entries(parsedState.checkedTreePathsMap) : []);
+            clientState.hardExcludedPathsAbs = new Set(Array.isArray(parsedState.hardExcludedPathsAbs) ? parsedState.hardExcludedPathsAbs : []);
+            
             applyStateToUI();
             showStatus('Loaded settings from local storage.');
-        } catch (e) {
-            console.error('Failed to parse state from local storage:', e);
-            resetClientState(); applyStateToUI(); // applyStateToUI calls showStatus
-        }
-    } else {
-        resetClientState(true); // Show "No saved settings"
-        applyStateToUI();
-    }
+        } catch (e) { console.error('Failed to parse state:', e); resetClientState(); applyStateToUI(); }
+    } else { resetClientState(true); applyStateToUI(); }
 }
 
 function resetClientState(showMsg = true) {
     clientState.folderPath = '';
-    clientState.filterSettings = {
-        selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '',
-        dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0,
-    };
-    clientState.saveOutputChecked = false;
-    clientState.customPrompt = '';
-    clientState.loadedDocPaths = [];
-    clientState.checkedTreePathsAbs = new Set();
-    // Don't reset theme or prompt templates on general reset
-    // clientState.currentTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    clientState.filterSettings = { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 };
+    clientState.saveOutputChecked = false; clientState.customPrompt = ''; clientState.loadedDocPaths = [];
+    clientState.checkedTreePathsMap = new Map();
+    clientState.hardExcludedPathsAbs = new Set();
     saveStateToLocalStorage();
     if (showMsg) showStatus('Settings reset to defaults.');
 }
@@ -209,312 +154,210 @@ function resetClientState(showMsg = true) {
 function applyStateToUI() {
     folderPathInput.value = clientState.folderPath;
     document.querySelectorAll('.preset-checkbox').forEach(cb => cb.checked = clientState.filterSettings.selected_presets.includes(cb.value));
-    customFoldersInput.value = clientState.filterSettings.custom_folders;
-    customExtensionsInput.value = clientState.filterSettings.custom_extensions;
-    customPatternsInput.value = clientState.filterSettings.custom_patterns;
-    dynamicExcludeInput.value = clientState.filterSettings.dynamic_patterns;
-    customInclusionsInput.value = clientState.filterSettings.custom_inclusions;
-    maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
-    saveOutputCheckbox.checked = clientState.saveOutputChecked;
-    customPromptTextarea.value = clientState.customPrompt;
-    updateDocListUI(); // Renders loadedDocPaths
-    updateFileTreeDependentUIs(); // Updates buttons based on tree/selections
-    
-    // Apply theme
-    if (clientState.currentTheme === 'dark') {
-        document.documentElement.classList.add('dark');
-        themeToggle.innerHTML = '☀️'; // Sun icon for light mode
-    } else {
-        document.documentElement.classList.remove('dark');
-        themeToggle.innerHTML = '🌙'; // Moon icon for dark mode
-    }
-    // Initial tab states
-    activateTab('tab1');
-    activateSubTab('raw-output'); // Default to raw output
+    customFoldersInput.value = clientState.filterSettings.custom_folders; customExtensionsInput.value = clientState.filterSettings.custom_extensions;
+    customPatternsInput.value = clientState.filterSettings.custom_patterns; dynamicExcludeInput.value = clientState.filterSettings.dynamic_patterns;
+    customInclusionsInput.value = clientState.filterSettings.custom_inclusions; maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
+    saveOutputCheckbox.checked = clientState.saveOutputChecked; customPromptTextarea.value = clientState.customPrompt;
+    updateDocListUI(); updateFileTreeDependentUIs(); applyCheckedPathsToTreeVisuals();
+    document.documentElement.classList.toggle('dark', clientState.currentTheme === 'dark');
+    themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
+    activateTab('tab1'); activateSubTab('raw-output');
 }
 function updateClientStateFromUI() {
     clientState.folderPath = folderPathInput.value.trim();
     clientState.filterSettings.selected_presets = Array.from(document.querySelectorAll('.preset-checkbox:checked')).map(cb => cb.value);
-    clientState.filterSettings.custom_folders = customFoldersInput.value.trim();
-    clientState.filterSettings.custom_extensions = customExtensionsInput.value.trim();
-    clientState.filterSettings.custom_patterns = customPatternsInput.value.trim();
-    clientState.filterSettings.dynamic_patterns = dynamicExcludeInput.value.trim();
+    clientState.filterSettings.custom_folders = customFoldersInput.value.trim(); clientState.filterSettings.custom_extensions = customExtensionsInput.value.trim();
+    clientState.filterSettings.custom_patterns = customPatternsInput.value.trim(); clientState.filterSettings.dynamic_patterns = dynamicExcludeInput.value.trim();
     clientState.filterSettings.custom_inclusions = customInclusionsInput.value.trim();
     clientState.filterSettings.max_file_size_mb = parseFloat(maxFileSizeInput.value) || 1.0;
-    clientState.saveOutputChecked = saveOutputCheckbox.checked;
-    clientState.customPrompt = customPromptTextarea.value;
-    // checkedTreePathsAbs and loadedDocPaths are updated directly by their respective handlers
-    saveStateToLocalStorage();
-    updateFileTreeDependentUIs();
+    clientState.saveOutputChecked = saveOutputCheckbox.checked; clientState.customPrompt = customPromptTextarea.value;
+    saveStateToLocalStorage(); updateFileTreeDependentUIs();
 }
 
 function updateFileTreeDependentUIs() {
     const hasFolderPath = !!clientState.folderPath;
     const hasTreeItems = fileTreeContainer.children.length > 0 && fileTreeContainer.querySelector('ul');
-    const hasCheckedItems = clientState.checkedTreePathsAbs.size > 0;
+    const hasSelections = clientState.checkedTreePathsMap.size > 0;
 
-    // Tab 2 (Project Explorer)
     tabButtons[1].disabled = !hasFolderPath;
     [refreshTreeBtn, expandAllBtn, collapseAllBtn, checkAllTextBtn, uncheckAllBtn].forEach(btn => btn.disabled = !hasTreeItems);
-    
-    // Tab 3 (Output) - should be disabled if no generation happened, handled by generateBtn logic primarily
-    // But also disable if no folder path, as generation is impossible
-    // tabButtons[2].disabled = !hasFolderPath; // Re-enable if generation happens
-
-    generateBtn.disabled = !hasFolderPath || !hasTreeItems || !hasCheckedItems;
+    generateBtn.disabled = !hasFolderPath || !hasTreeItems || !hasSelections;
 }
 
-
-// Event listeners for UI elements to update clientState
-folderPathInput.addEventListener('change', updateClientStateFromUI);
-[customFoldersInput, customExtensionsInput, customPatternsInput, dynamicExcludeInput, customInclusionsInput, maxFileSizeInput].forEach(input => {
-    input.addEventListener('input', updateClientStateFromUI);
-    input.addEventListener('change', updateClientStateFromUI); // For selections like number input step
+[folderPathInput, customFoldersInput, customExtensionsInput, customPatternsInput, dynamicExcludeInput, customInclusionsInput, maxFileSizeInput].forEach(input => {
+    input.addEventListener('input', updateClientStateFromUI); input.addEventListener('change', updateClientStateFromUI);
 });
-saveOutputCheckbox.addEventListener('change', updateClientStateFromUI);
-customPromptTextarea.addEventListener('input', updateClientStateFromUI);
-presetList.addEventListener('change', e => {
-    if (e.target.classList.contains('preset-checkbox')) updateClientStateFromUI();
+saveOutputCheckbox.addEventListener('change', updateClientStateFromUI); customPromptTextarea.addEventListener('input', updateClientStateFromUI);
+presetList.addEventListener('change', e => { 
+    if (e.target.classList.contains('preset-checkbox')) {
+        updateClientStateFromUI();
+        if (e.target.checked && fileTreeContainer.querySelector('ul')) {
+            applyPresetBasedPreselection();
+        }
+    }
 });
 resetSettingsBtn.addEventListener('click', () => {
-    if (confirm("Are you sure you want to reset all settings to their defaults? This will clear the folder path, filters, and loaded documents.")) {
-        resetClientState();
-        applyStateToUI(); // Re-apply to show defaults
-        fileTreeContainer.innerHTML = ''; // Clear the tree display
-        rawOutputTextarea.value = ''; // Clear output
-        renderedOutputDiv.innerHTML = 'Preview here.';
-        tabButtons[1].disabled = true; // Disable explorer tab
-        tabButtons[2].disabled = true; // Disable output tab
+    if (confirm("Reset all settings to default? This clears folder path, filters, and loaded documents.")) {
+        resetClientState(); applyStateToUI(); fileTreeContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 p-2">Load a project on Tab 1 to see the file tree.</p>'; rawOutputTextarea.value = '';
+        renderedOutputDiv.innerHTML = 'Preview here.'; tabButtons[1].disabled = true; tabButtons[2].disabled = true;
     }
 });
 
 const presetOptions = ["Python Project", "Node.js Project", "Java Project (Maven/Gradle)", "Git Repository", "IDE/Editor Configs", "Operating System/Misc", "Log Files", "Binary/Archives", "Large Media Files"];
-function populatePresetList() {
-    presetList.innerHTML = ''; // Clear existing
+function populatePresetList() { 
+    presetList.innerHTML = '';
     presetOptions.forEach(name => {
-        const id = `preset-${name.replace(/[\s\/]+/g, '-').replace(/[^\w-]+/g, '')}`; // Sanitize ID
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.id = id;
-        checkbox.value = name;
+        const id = `preset-${name.replace(/[\s\/]+/g, '-').replace(/[^\w-]+/g, '')}`;
+        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.id = id; checkbox.value = name;
         checkbox.classList.add('preset-checkbox', 'form-checkbox', 'h-4', 'w-4', 'text-blue-600', 'rounded', 'focus:ring-blue-500', 'dark:focus:ring-offset-gray-800', 'dark:bg-gray-700', 'dark:border-gray-600');
-        
-        const label = document.createElement('label');
-        label.htmlFor = id;
-        label.classList.add('ml-2', 'text-sm', 'text-gray-700', 'dark:text-gray-300', 'cursor-pointer');
-        label.textContent = name;
-
-        const div = document.createElement('div');
-        div.classList.add('flex', 'items-center', 'py-1.5', 'px-2', 'my-1', 'rounded-md', 'bg-gray-100', 'dark:bg-gray-800', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
-        
-        div.appendChild(checkbox);
-        div.appendChild(label);
-        
-        // Make the whole div clickable to toggle the checkbox
-        div.addEventListener('click', (e) => {
-            // Prevent double-toggle if checkbox or label itself is clicked
-            if (e.target !== checkbox && e.target !== label) {
-                checkbox.checked = !checkbox.checked;
-                checkbox.dispatchEvent(new Event('change', { bubbles: true })); // Ensure change event fires
-            }
-        });
+        const label = document.createElement('label'); label.htmlFor = id; label.classList.add('ml-2', 'text-sm', 'text-gray-700', 'dark:text-gray-300', 'cursor-pointer'); label.textContent = name;
+        const div = document.createElement('div'); div.classList.add('flex', 'items-center', 'py-1.5', 'px-2', 'my-1', 'rounded-md', 'bg-gray-100', 'dark:bg-gray-800', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
+        div.appendChild(checkbox); div.appendChild(label);
+        div.addEventListener('click', (e) => { if (e.target !== checkbox && e.target !== label) { checkbox.checked = !checkbox.checked; checkbox.dispatchEvent(new Event('change', { bubbles: true })); } });
         presetList.appendChild(div);
     });
 }
 
-// --- Documentation Management ---
-function updateDocListUI() {
-    docList.innerHTML = ''; // Clear previous items
+function updateDocListUI() { 
+    docList.innerHTML = '';
     if (clientState.loadedDocPaths.length === 0) {
-        const li = document.createElement('li');
-        li.classList.add('text-sm', 'text-gray-500', 'dark:text-gray-400', 'py-2', 'text-center');
-        li.textContent = 'No documentation files loaded.';
-        docList.appendChild(li);
+        const li = document.createElement('li'); li.classList.add('text-sm', 'text-gray-500', 'dark:text-gray-400', 'py-2', 'text-center'); li.textContent = 'No documentation files loaded.'; docList.appendChild(li);
     } else {
         clientState.loadedDocPaths.forEach(path => {
-            const li = document.createElement('li');
-            li.classList.add('flex', 'items-center', 'justify-between', 'py-1.5', 'px-2', 'border-b', 'border-gray-200', 'dark:border-gray-700', 'last:border-b-0', 'hover:bg-gray-100', 'dark:hover:bg-gray-700');
-            li.dataset.path = path;
-
-            const fileName = path.split(/[\/\\]/).pop();
-            const parentDir = path.split(/[\/\\]/).slice(-2, -1)[0] || ''; // Get parent dir name
-            
-            const textSpan = document.createElement('span');
-            textSpan.classList.add('truncate', 'text-sm', 'text-gray-700', 'dark:text-gray-300');
-            textSpan.title = path;
-            textSpan.textContent = `${fileName} ${parentDir ? '('+parentDir+')' : ''}`;
-
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.classList.add('doc-checkbox', 'form-checkbox', 'h-4', 'w-4', 'text-blue-600', 'rounded', 'ml-2', 'focus:ring-blue-500');
-            
-            li.appendChild(textSpan);
-            li.appendChild(checkbox);
-
-            // Click on list item toggles its checkbox
-            li.addEventListener('click', e => {
-                if (e.target !== checkbox) { // Don't interfere if checkbox itself is clicked
-                    checkbox.checked = !checkbox.checked;
-                }
-            });
+            const li = document.createElement('li'); li.classList.add('flex', 'items-center', 'justify-between', 'py-1.5', 'px-2', 'border-b', 'border-gray-200', 'dark:border-gray-700', 'last:border-b-0', 'hover:bg-gray-100', 'dark:hover:bg-gray-700'); li.dataset.path = path;
+            const fileName = path.split(/[\/\\]/).pop(); const parentDir = path.split(/[\/\\]/).slice(-2, -1)[0] || '';
+            const textSpan = document.createElement('span'); textSpan.classList.add('truncate', 'text-sm', 'text-gray-700', 'dark:text-gray-300'); textSpan.title = path; textSpan.textContent = `${fileName} ${parentDir ? '('+parentDir+')' : ''}`;
+            const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.classList.add('doc-checkbox', 'form-checkbox', 'h-4', 'w-4', 'text-blue-600', 'rounded', 'ml-2', 'focus:ring-blue-500');
+            li.appendChild(textSpan); li.appendChild(checkbox);
+            li.addEventListener('click', e => { if (e.target !== checkbox) checkbox.checked = !checkbox.checked; });
             docList.appendChild(li);
         });
     }
     saveStateToLocalStorage();
 }
 addDocsBtn.addEventListener('click', () => addDocsInput.click());
-addDocsInput.addEventListener('change', async e => {
-    let addedCount = 0;
-    const newPaths = [];
+addDocsInput.addEventListener('change', async e => { 
+    let addedCount = 0; const newPaths = [];
     for (const file of e.target.files) {
-        // For browser file input, `file.path` is not available for security reasons.
-        // We will use `file.name` and store the File object itself if we need to read it later.
-        // However, the backend expects paths. This part needs adjustment if truly reading files client-side vs. just paths.
-        // For now, assuming backend handles these paths. If these are local paths, backend can't access them.
-        // Let's assume these are paths the *server* can access, or we'll need a file upload mechanism.
-        const filePath = file.webkitRelativePath || file.name; // webkitRelativePath for folder uploads
-        if (!clientState.loadedDocPaths.includes(filePath)) {
-            newPaths.push(filePath);
-            addedCount++;
-        } else {
-            showStatus(`Documentation file already added: ${file.name}`, 'warning');
-        }
+        const filePath = file.webkitRelativePath || file.name;
+        if (!clientState.loadedDocPaths.includes(filePath)) { newPaths.push(filePath); addedCount++; }
+        else { showStatus(`Doc already added: ${file.name}`, 'warning'); }
     }
-    if (addedCount > 0) {
-        clientState.loadedDocPaths.push(...newPaths);
-        clientState.loadedDocPaths.sort(); // Keep it sorted
-        updateDocListUI();
-        showStatus(`Added ${addedCount} documentation file(s).`, 'success');
-    }
-    addDocsInput.value = ''; // Reset file input
+    if (addedCount > 0) { clientState.loadedDocPaths.push(...newPaths); clientState.loadedDocPaths.sort(); updateDocListUI(); showStatus(`Added ${addedCount} doc(s).`, 'success');}
+    addDocsInput.value = '';
 });
-removeDocsBtn.addEventListener('click', () => {
+removeDocsBtn.addEventListener('click', () => { 
     const selectedPaths = Array.from(docList.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.parentElement.dataset.path);
-    if (!selectedPaths.length) { showStatus('Select documentation files to remove.', 'warning'); return; }
-    clientState.loadedDocPaths = clientState.loadedDocPaths.filter(p => !selectedPaths.includes(p));
-    updateDocListUI();
-    showStatus(`Removed ${selectedPaths.length} documentation file(s).`, 'success');
+    if (!selectedPaths.length) { showStatus('Select docs to remove.', 'warning'); return; }
+    clientState.loadedDocPaths = clientState.loadedDocPaths.filter(p => !selectedPaths.includes(p)); updateDocListUI(); showStatus(`Removed ${selectedPaths.length} doc(s).`, 'success');
 });
-clearDocsBtn.addEventListener('click', () => {
-    if (!clientState.loadedDocPaths.length) { showStatus('Documentation list is already empty.', 'info'); return; }
-    if (confirm('Are you sure you want to remove all loaded documentation files?')) {
-        clientState.loadedDocPaths = [];
-        updateDocListUI();
-        showStatus('Cleared all documentation files.', 'success');
-    }
+clearDocsBtn.addEventListener('click', () => { 
+    if (!clientState.loadedDocPaths.length) { showStatus('Doc list empty.', 'info'); return; }
+    if (confirm('Remove all loaded docs?')) { clientState.loadedDocPaths = []; updateDocListUI(); showStatus('Cleared all docs.', 'success'); }
 });
 
-// --- Project Tree (File Explorer) ---
-function renderTree(itemsToRenderInThisLevel, parentDomElementToAppendLi, isRootLevelList = true) {
-    // itemsToRenderInThisLevel is expected to be an ARRAY of item objects.
-    // parentDomElementToAppendLi is the UL to which the LI elements of this level will be appended.
-
-    itemsToRenderInThisLevel.sort((a, b) => {
-        if (a.is_dir && !b.is_dir) return -1; 
-        if (!a.is_dir && b.is_dir) return 1;  
-        return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
-    });
-
-    itemsToRenderInThisLevel.forEach(itemData => {
-        const li = document.createElement('li');
-        li.classList.add('flex', 'flex-col', 'text-sm'); 
-
-        const labelContainer = document.createElement('div');
-        labelContainer.classList.add('flex', 'items-center', 'py-0.5', 'hover:bg-gray-100', 'dark:hover:bg-gray-700', 'rounded');
-
-        const label = document.createElement('label');
-        label.classList.add('flex', 'items-center', 'cursor-pointer', 'flex-grow', 'py-0.5', 'px-1');
-        label.dataset.path = itemData.path;
-        label.title = itemData.path;
-
-        const checkbox = document.createElement('input');
-        checkbox.type = 'checkbox';
-        checkbox.classList.add('tree-checkbox', 'form-checkbox', 'h-3.5', 'w-3.5', 'text-blue-600', 'border-gray-300', 'rounded', 'mr-2', 'flex-shrink-0', 'focus:ring-blue-500', 'dark:bg-gray-700', 'dark:border-gray-600');
-        checkbox.disabled = !itemData.can_be_checked;
-        if (itemData.tooltip) checkbox.title = itemData.tooltip;
-
-        if (clientState.checkedTreePathsAbs.has(itemData.path)) checkbox.checked = true;
-
-        checkbox.addEventListener('change', (event) => {
-            const path = event.target.closest('label').dataset.path;
-            const isChecked = event.target.checked;
-            updateCheckedState(path, isChecked, li);
+function renderTree(itemsToRender, parentDomElement, isRoot = true) {
+    itemsToRender.sort((a, b) => (a.is_dir && !b.is_dir) ? -1 : (!a.is_dir && b.is_dir) ? 1 : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+    itemsToRender.forEach(itemData => {
+        const li = document.createElement('li'); li.classList.add('flex', 'flex-col', 'text-sm');
+        const itemRow = document.createElement('div'); itemRow.classList.add('flex', 'items-center', 'py-0.5', 'hover:bg-gray-100', 'dark:hover:bg-gray-700', 'rounded');
+        
+        const hardExcludeButton = document.createElement('button');
+        hardExcludeButton.innerHTML = '&#x2717;'; // X mark
+        hardExcludeButton.classList.add('hard-exclude-btn', 'text-xs', 'p-0.5', 'mr-1.5', 'border', 'rounded', 'bg-red-200', 'dark:bg-red-700', 'hover:bg-red-300', 'dark:hover:bg-red-600', 'text-red-700', 'dark:text-red-100');
+        hardExcludeButton.title = 'Exclude this item and its children from tree display and output.';
+        if (clientState.hardExcludedPathsAbs.has(itemData.path)) {
+            hardExcludeButton.classList.add('opacity-50'); // Visually indicate it's active
+        }
+        hardExcludeButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (clientState.hardExcludedPathsAbs.has(itemData.path)) {
+                clientState.hardExcludedPathsAbs.delete(itemData.path);
+                hardExcludeButton.classList.remove('opacity-50');
+                showStatus(`Path '${itemData.name}' removed from tree exclusions. Refresh tree.`, 'info');
+            } else {
+                clientState.hardExcludedPathsAbs.add(itemData.path);
+                hardExcludeButton.classList.add('opacity-50');
+                showStatus(`Path '${itemData.name}' added to tree exclusions. Refresh tree to see changes.`, 'info');
+            }
             saveStateToLocalStorage();
-            updateFileTreeDependentUIs();
+            performLoadTree(); // Automatically refresh the tree to reflect hard exclusions
         });
+        itemRow.appendChild(hardExcludeButton);
+        
+        const label = document.createElement('label'); label.classList.add('flex', 'items-center', 'cursor-pointer', 'flex-grow', 'py-0.5', 'px-1');
+        label.dataset.path = itemData.path; label.title = itemData.path + (itemData.tooltip ? ` (${itemData.tooltip})` : '');
 
-        const iconSpan = document.createElement('span');
-        iconSpan.classList.add('icon', 'mr-1.5', 'flex-shrink-0');
-        let toggleIconElement = null;
-        let childrenUl = null; 
+        const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
+        checkbox.classList.add('tree-checkbox', 'form-checkbox', 'h-3.5', 'w-3.5', 'text-blue-600', 'border-gray-300', 'rounded', 'mr-1.5', 'flex-shrink-0', 'focus:ring-blue-500', 'dark:bg-gray-700', 'dark:border-gray-600');
+        checkbox.disabled = !itemData.can_be_checked; if (itemData.tooltip) checkbox.title = itemData.tooltip;
+        if (clientState.checkedTreePathsMap.get(itemData.path) === 'full') checkbox.checked = true;
 
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = itemData.name + (itemData.is_dir ? '/' : '');
-        nameSpan.classList.add('truncate');
+        const iconSpan = document.createElement('span'); iconSpan.classList.add('icon', 'mr-1.5', 'flex-shrink-0');
+        const nameSpan = document.createElement('span'); nameSpan.textContent = itemData.name + (itemData.is_dir ? '/' : ''); nameSpan.classList.add('truncate');
+        
+        if (itemData.is_signature_candidate) { 
+            const sigButton = document.createElement('button'); sigButton.textContent = 'S';
+            sigButton.classList.add('sig-button', 'mr-1.5', 'border', 'rounded', 'bg-purple-200', 'dark:bg-purple-600', 'hover:bg-purple-300', 'dark:hover:bg-purple-500', 'text-purple-700', 'dark:text-purple-100');
+            sigButton.title = 'Select for Signatures only';
+            if (clientState.checkedTreePathsMap.get(itemData.path) === 'signatures') sigButton.classList.add('active-sig');
 
+            sigButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const currentSelection = clientState.checkedTreePathsMap.get(itemData.path);
+                if (currentSelection === 'signatures') { 
+                    clientState.checkedTreePathsMap.delete(itemData.path);
+                    sigButton.classList.remove('active-sig');
+                } else { 
+                    clientState.checkedTreePathsMap.set(itemData.path, 'signatures');
+                    sigButton.classList.add('active-sig');
+                    if (checkbox.checked) checkbox.checked = false; 
+                }
+                updateFileTreeDependentUIs(); saveStateToLocalStorage();
+            });
+            label.appendChild(sigButton);
+        }
+        
+        label.appendChild(checkbox); label.appendChild(iconSpan); label.appendChild(nameSpan);
+        
+        checkbox.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            if (isChecked) {
+                clientState.checkedTreePathsMap.set(itemData.path, 'full');
+                const sigButton = label.querySelector('.sig-button'); 
+                if (sigButton) sigButton.classList.remove('active-sig');
+            } else { 
+                if (clientState.checkedTreePathsMap.get(itemData.path) === 'full') {
+                    clientState.checkedTreePathsMap.delete(itemData.path);
+                }
+            }
+            propagateFullCheckToChildren(li, isChecked);
+            updateFileTreeDependentUIs(); saveStateToLocalStorage();
+        });
+        
+        let toggleIconElement = null, childrenUl = null;
         if (itemData.is_dir) {
             iconSpan.innerHTML = '📁';
             if (itemData.children && itemData.children.length > 0) {
                 li.classList.add('has-children');
-                toggleIconElement = document.createElement('span');
-                toggleIconElement.innerHTML = '▶️'; 
+                toggleIconElement = document.createElement('span'); toggleIconElement.innerHTML = '▶️';
                 toggleIconElement.classList.add('toggle-icon', 'mr-1', 'cursor-pointer', 'text-xs', 'select-none', 'flex-shrink-0');
-
-                childrenUl = document.createElement('ul');
-                childrenUl.classList.add('list-none', 'p-0', 'm-0', 'ml-4', 'hidden'); 
-                // DEBUG: Add a border to see if nested ULs are created and where
-                // childrenUl.style.border = "1px dashed red"; 
-
-
-                toggleIconElement.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    const isHidden = childrenUl.classList.toggle('hidden');
-                    toggleIconElement.innerHTML = isHidden ? '▶️' : '🔽';
-                });
-
-                nameSpan.classList.add('cursor-pointer');
-                nameSpan.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    if (toggleIconElement) {
-                        toggleIconElement.click();
-                    }
-                });
+                childrenUl = document.createElement('ul'); childrenUl.classList.add('list-none', 'p-0', 'm-0', 'ml-4', 'hidden');
+                toggleIconElement.addEventListener('click', (e) => { e.stopPropagation(); childrenUl.classList.toggle('hidden'); toggleIconElement.innerHTML = childrenUl.classList.contains('hidden') ? '▶️' : '🔽'; });
+                nameSpan.classList.add('cursor-pointer'); nameSpan.addEventListener('click', (e) => { e.stopPropagation(); if (toggleIconElement) toggleIconElement.click(); });
             }
-        } else if (itemData.is_text) {
-            iconSpan.innerHTML = '📄';
-        } else {
-            iconSpan.innerHTML = '▫️';
-        }
+        } else if (itemData.is_text) iconSpan.innerHTML = '📄'; else iconSpan.innerHTML = '▫️';
 
-        if (!itemData.can_be_checked) {
-            label.classList.add('opacity-60', 'cursor-not-allowed');
-            nameSpan.classList.add('text-gray-500', 'dark:text-gray-400');
-        }
-
-        if (toggleIconElement) labelContainer.appendChild(toggleIconElement);
-        label.appendChild(checkbox);
-        label.appendChild(iconSpan);
-        label.appendChild(nameSpan);
-        labelContainer.appendChild(label);
-        li.appendChild(labelContainer); 
-
-        if (itemData.is_dir && itemData.children && itemData.children.length > 0 && childrenUl) {
-            renderTree(itemData.children, childrenUl, false); 
-            li.appendChild(childrenUl); 
-        }
-
-        parentDomElementToAppendLi.appendChild(li); 
+        if (!itemData.can_be_checked) { label.classList.add('opacity-60', 'cursor-not-allowed'); nameSpan.classList.add('text-gray-500', 'dark:text-gray-400'); }
+        
+        if (toggleIconElement) itemRow.appendChild(toggleIconElement);
+        itemRow.appendChild(label); li.appendChild(itemRow);
+        if (childrenUl) { renderTree(itemData.children, childrenUl, false); li.appendChild(childrenUl); }
+        parentDomElement.appendChild(li);
     });
 }
 
-function updateCheckedState(path, isChecked, listItemElement) {
-    if (isChecked) {
-        clientState.checkedTreePathsAbs.add(path);
-    } else {
-        clientState.checkedTreePathsAbs.delete(path);
-    }
-
-    // If it's a directory, propagate check state to its children in the DOM
+function propagateFullCheckToChildren(listItemElement, isChecked) {
     const isDir = listItemElement.querySelector('.icon').textContent === '📁';
     if (isDir) {
         const childCheckboxes = listItemElement.querySelectorAll('ul > li > div > label > .tree-checkbox:not(:disabled)');
@@ -522,504 +365,361 @@ function updateCheckedState(path, isChecked, listItemElement) {
             if (cb.checked !== isChecked) {
                 cb.checked = isChecked;
                 const childPath = cb.closest('label').dataset.path;
-                if (isChecked) clientState.checkedTreePathsAbs.add(childPath);
-                else clientState.checkedTreePathsAbs.delete(childPath);
+                const childSigButton = cb.closest('label').querySelector('.sig-button');
+                if (isChecked) { 
+                    clientState.checkedTreePathsMap.set(childPath, 'full');
+                    if (childSigButton) childSigButton.classList.remove('active-sig');
+                } else { 
+                    if (clientState.checkedTreePathsMap.get(childPath) === 'full') {
+                        clientState.checkedTreePathsMap.delete(childPath);
+                    }
+                }
             }
         });
     }
 }
 
-// In performLoadTree function:
+function applyCheckedPathsToTreeVisuals() {
+    fileTreeContainer.querySelectorAll('li').forEach(liItem => {
+        const itemRow = liItem.querySelector('div.flex.items-center');
+        if(!itemRow) return;
+
+        const label = itemRow.querySelector('label[data-path]');
+        if (!label) return;
+        const path = label.dataset.path;
+        const selectionType = clientState.checkedTreePathsMap.get(path);
+
+        const checkbox = label.querySelector('.tree-checkbox');
+        const sigButton = label.querySelector('.sig-button');
+        const hardExcludeButton = itemRow.querySelector('.hard-exclude-btn');
+
+
+        if (checkbox) checkbox.checked = (selectionType === 'full');
+        if (sigButton) sigButton.classList.toggle('active-sig', selectionType === 'signatures');
+        if (hardExcludeButton) hardExcludeButton.classList.toggle('opacity-50', clientState.hardExcludedPathsAbs.has(path));
+
+    });
+}
+
+
 async function performLoadTree() {
     const folderPath = folderPathInput.value.trim();
-    if (!folderPath) { showStatus('Please enter a folder path first.', 'warning'); return; }
+    if (!folderPath) { showStatus('Please enter a folder path.', 'warning'); return; }
     
-    clientState.checkedTreePathsAbs.clear();
-    clientState.loadedDocPaths = []; 
-    updateDocListUI();
-    rawOutputTextarea.value = "";
-    renderedOutputDiv.innerHTML = "Preview here.";
-    copyRawBtn.disabled = true;
-    tabButtons[2].disabled = true;
+    // Don't clear checkedTreePathsMap or hardExcludedPathsAbs here, they persist across loads unless explicitly reset
+    // clientState.loadedDocPaths = []; // Optionally clear docs, or let user manage
+    // updateDocListUI(); 
+    rawOutputTextarea.value = ""; renderedOutputDiv.innerHTML = "Preview here.";
+    copyRawBtn.disabled = true; tabButtons[2].disabled = true;
 
-    showLoading(loadTreeBtn, true, 'Loading Tree...', 'Load Project Tree');
-    showLoading(refreshTreeBtn, true, 'Refreshing...', 'Refresh');
-    showStatus('Loading project tree...', 'info');
-    fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Loading tree structure...</p>';
+    showLoading(loadTreeBtn, true, 'Loading...', 'Load Project Tree'); showLoading(refreshTreeBtn, true, 'Refreshing...', 'Refresh');
+    showStatus('Loading project tree...', 'info'); fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Loading tree...</p>';
 
     try {
         const response = await fetch('/api/load_project_tree', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ folder_path: folderPath, filters: clientState.filterSettings })
+            body: JSON.stringify({ 
+                folder_path: folderPath, 
+                filters: clientState.filterSettings,
+                hard_excluded_paths: Array.from(clientState.hardExcludedPathsAbs) // Send hard exclusions
+            })
         });
         const data = await handleResponse(response);
-        fileTreeContainer.innerHTML = ''; // Clear "Loading tree..."
-
-        // Debug: Log the received data structure
-        // console.log("Received tree data from backend:", JSON.stringify(data.tree, null, 2));
+        fileTreeContainer.innerHTML = ''; 
 
         if (data.tree && data.tree.length > 0 && data.tree[0]) {
-            const rootObjectFromBackend = data.tree[0];
-            const topLevelItemsToRender = rootObjectFromBackend.children || [];
-
-            const rootUl = document.createElement('ul');
-            rootUl.classList.add('list-none', 'p-0', 'm-0');
+            const rootNode = data.tree[0]; const topLevelItems = rootNode.children || [];
+            const rootUl = document.createElement('ul'); rootUl.classList.add('list-none', 'p-0', 'm-0');
             fileTreeContainer.appendChild(rootUl);
 
-            if (topLevelItemsToRender.length > 0) {
-                renderTree(topLevelItemsToRender, rootUl, true); // Pass children of the root
-            } else {
-                // If the root folder itself is empty but we want to show its name
-                // This part is optional, current behavior will show an empty tree which is fine
-                // fileTreeContainer.innerHTML = `<p class="p-4 text-gray-500 dark:text-gray-400">Folder '${rootObjectFromBackend.name || 'root'}' is empty or all items are filtered.</p>`;
-                 const emptyMsgLi = document.createElement('li');
-                 emptyMsgLi.textContent = `Folder "${rootObjectFromBackend.name || 'Project Root'}" is empty or all items filtered.`;
-                 emptyMsgLi.classList.add('text-gray-500','dark:text-gray-400', 'p-1', 'italic');
-                 rootUl.appendChild(emptyMsgLi);
-
+            if (topLevelItems.length > 0) renderTree(topLevelItems, rootUl, true);
+            else {
+                const emptyMsgLi = document.createElement('li'); emptyMsgLi.textContent = `Folder "${rootNode.name || 'Root'}" empty or all items filtered/excluded.`;
+                emptyMsgLi.classList.add('text-gray-500','dark:text-gray-400', 'p-1', 'italic'); rootUl.appendChild(emptyMsgLi);
             }
-            
-            showStatus(`Project tree for "${rootObjectFromBackend.name || folderPath}" loaded.`, 'success');
-            preselectFilesFromFirstTemplate();
-            tabButtons[1].disabled = false;
-            activateTab('tab2');
+            showStatus(`Tree for "${rootNode.name || folderPath}" loaded.`, 'success');
+            applyCheckedPathsToTreeVisuals(); // Ensure existing selections are visually updated
+            applyPresetBasedPreselection(); 
+            tabButtons[1].disabled = false; activateTab('tab2');
         } else {
-            fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">No items found based on current filters or folder is empty/inaccessible.</p>';
-            showStatus('No items found or folder is empty/inaccessible based on filters.', 'warning');
-            tabButtons[1].disabled = false; // Still enable, just show empty state
+            fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">No items found or folder empty/inaccessible/fully excluded.</p>';
+            showStatus('No items found or folder empty/inaccessible/fully excluded.', 'warning'); tabButtons[1].disabled = false;
         }
     } catch (error) {
         console.error('Error loading tree:', error);
-        fileTreeContainer.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">Error loading tree: ${error.message}.<br>Check folder path and server logs.</p>`;
+        fileTreeContainer.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">Error loading tree: ${error.message}.</p>`;
         tabButtons[1].disabled = true;
     } finally {
-        showLoading(loadTreeBtn, false, null, 'Load Project Tree');
-        showLoading(refreshTreeBtn, false, null, 'Refresh');
-        updateClientStateFromUI();
+        showLoading(loadTreeBtn, false); showLoading(refreshTreeBtn, false); updateClientStateFromUI();
     }
 }
+loadTreeBtn.addEventListener('click', performLoadTree); refreshTreeBtn.addEventListener('click', performLoadTree);
 
-loadTreeBtn.addEventListener('click', performLoadTree);
-refreshTreeBtn.addEventListener('click', performLoadTree);
-
-browseServerFolderBtn.addEventListener('click', async () => {
-    showLoading(browseServerFolderBtn, true, 'Browsing...', 'Browse Server Folder (Server-Side)');
-    showStatus('Opening folder dialog on the server...', 'info');
+browseServerFolderBtn.addEventListener('click', async () => { 
+    showLoading(browseServerFolderBtn, true, 'Browsing...', 'Browse Server Folder (Server-Side)'); showStatus('Opening server folder dialog...', 'info');
     try {
         const response = await fetch('/api/browse_server_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
         const data = await handleResponse(response);
-        if (data.status === 'success' && data.path) {
-            folderPathInput.value = data.path;
-            updateClientStateFromUI(); // This will save folderPath
-            showStatus(`Server-side dialog returned: ${data.path}. Click 'Load Project Tree' to load it.`, 'success');
-            // Optionally, trigger loadTree directly:
-            // performLoadTree(); 
-        } else if (data.status === 'cancelled') {
-            showStatus('Server-side folder selection was cancelled.', 'info');
-        } else {
-            showStatus(`Unexpected response from server browse: ${JSON.stringify(data)}`, 'error');
-        }
-    } catch (error) {
-        console.error('Error browsing server folder:', error);
-        showStatus(`Failed to browse server folder: ${error.message}. Check server logs.`, 'error');
-    } finally {
-        showLoading(browseServerFolderBtn, false, null, 'Browse Server Folder (Server-Side)');
-    }
+        if (data.status === 'success' && data.path) { folderPathInput.value = data.path; updateClientStateFromUI(); showStatus(`Server returned: ${data.path}. Click 'Load Tree'.`, 'success'); }
+        else if (data.status === 'cancelled') showStatus('Server folder selection cancelled.', 'info');
+        else showStatus(`Unexpected response from server browse: ${JSON.stringify(data)}`, 'error');
+    } catch (error) { console.error('Error browsing server folder:', error); showStatus(`Failed to browse server folder: ${error.message}.`, 'error'); }
+    finally { showLoading(browseServerFolderBtn, false); }
 });
 
-function expandCollapseTree(expand, element = fileTreeContainer) {
+function expandCollapseTree(expand, element = fileTreeContainer) { 
     const toggleIcons = element.querySelectorAll('li.has-children > div > span.toggle-icon');
     toggleIcons.forEach(toggle => {
         const childUl = toggle.closest('li').querySelector('ul');
         if (childUl) {
             const isCurrentlyHidden = childUl.classList.contains('hidden');
-            if (expand && isCurrentlyHidden) { // If we want to expand AND it's hidden
-                toggle.click(); // Simulate click to expand
-            } else if (!expand && !isCurrentlyHidden) { // If we want to collapse AND it's visible
-                toggle.click(); // Simulate click to collapse
+            if (expand && isCurrentlyHidden) toggle.click(); else if (!expand && !isCurrentlyHidden) toggle.click();
+        }
+    });
+    if (expand) setTimeout(() => { element.querySelectorAll('li.has-children > ul:not(.hidden)').forEach(ul => expandCollapseTree(expand, ul)); }, 50);
+}
+expandAllBtn.addEventListener('click', () => expandCollapseTree(true)); collapseAllBtn.addEventListener('click', () => expandCollapseTree(false));
+
+checkAllTextBtn.addEventListener('click', () => {
+    showStatus('Checking all for full content...', 'info');
+    // clientState.checkedTreePathsMap.clear(); // Don't clear, just ensure full content type
+    fileTreeContainer.querySelectorAll('li').forEach(li => {
+        const checkbox = li.querySelector('.tree-checkbox:not(:disabled)');
+        if (checkbox) {
+            const path = checkbox.closest('label').dataset.path;
+            if (!clientState.hardExcludedPathsAbs.has(path)) { // Only check if not hard-excluded
+                checkbox.checked = true;
+                clientState.checkedTreePathsMap.set(path, 'full');
+                const sigButton = checkbox.closest('label').querySelector('.sig-button');
+                if (sigButton) sigButton.classList.remove('active-sig');
             }
         }
     });
-     // If expanding, ensure all children that become visible are also processed.
-    if (expand) {
-        setTimeout(() => { // Allow DOM to update from clicks
-            element.querySelectorAll('li.has-children > ul:not(.hidden)').forEach(visibleChildUl => {
-                expandCollapseTree(expand, visibleChildUl);
-            });
-        }, 50); // Small delay
-    }
-}
-expandAllBtn.addEventListener('click', () => expandCollapseTree(true));
-collapseAllBtn.addEventListener('click', () => expandCollapseTree(false));
-
-checkAllTextBtn.addEventListener('click', () => {
-    showStatus('Checking all checkable items in tree...', 'info');
-    clientState.checkedTreePathsAbs.clear(); // Start fresh
-    fileTreeContainer.querySelectorAll('li').forEach(li => {
-        const checkbox = li.querySelector('.tree-checkbox');
-        if (checkbox && !checkbox.disabled) {
-            checkbox.checked = true;
-            const path = checkbox.closest('label').dataset.path;
-            clientState.checkedTreePathsAbs.add(path);
-        }
-    });
-    saveStateToLocalStorage();
-    updateFileTreeDependentUIs();
-    showStatus('All checkable items are now checked.', 'success');
+    saveStateToLocalStorage(); updateFileTreeDependentUIs(); applyCheckedPathsToTreeVisuals();
+    showStatus('All checkable (non-hard-excluded) items set to "full content".', 'success');
 });
 uncheckAllBtn.addEventListener('click', () => {
-    showStatus('Unchecking all items in tree...', 'info');
-    clientState.checkedTreePathsAbs.clear();
+    showStatus('Unchecking all items...', 'info');
+    clientState.checkedTreePathsMap.clear();
     fileTreeContainer.querySelectorAll('.tree-checkbox:not(:disabled)').forEach(cb => cb.checked = false);
-    saveStateToLocalStorage();
-    updateFileTreeDependentUIs();
+    fileTreeContainer.querySelectorAll('.sig-button.active-sig').forEach(sb => sb.classList.remove('active-sig'));
+    saveStateToLocalStorage(); updateFileTreeDependentUIs();
     showStatus('All items unchecked.', 'success');
 });
-// This function is not strictly needed if state is managed well, but can be a fallback
-function applyCheckedPathsToTree() {
-    fileTreeContainer.querySelectorAll('.tree-checkbox').forEach(cb => {
-        const path = cb.closest('label').dataset.path;
-        cb.checked = clientState.checkedTreePathsAbs.has(path);
-    });
-}
 
-// --- Prompt Templates ---
-async function fetchPromptTemplates() {
+async function fetchPromptTemplates() { 
     try {
-        const response = await fetch('/api/prompt_templates');
-        const data = await handleResponse(response);
-        clientState.promptTemplates = data.map(t => ({ name: t.name, content: t.content }));
-        populateTemplateSelect();
+        const response = await fetch('/api/prompt_templates'); const data = await handleResponse(response);
+        clientState.promptTemplates = data.map(t => ({ name: t.name, content: t.content })); populateTemplateSelect();
     } catch (error) { console.error('Error fetching prompt templates:', error); showStatus('Failed to load prompt templates.', 'error'); }
 }
-function populateTemplateSelect() {
+function populateTemplateSelect() { 
     templateSelect.innerHTML = '<option value="">-- Select Template --</option>';
-    clientState.promptTemplates.forEach(t => {
-        const option = document.createElement('option');
-        option.value = t.name;
-        option.textContent = t.name;
-        templateSelect.appendChild(option);
-    });
-    // Try to re-select current template if its content matches
-    const currentPromptContent = customPromptTextarea.value.trim();
-    if (currentPromptContent) {
-        const foundTemplate = clientState.promptTemplates.find(t => t.content.trim() === currentPromptContent);
-        if (foundTemplate) {
-            templateSelect.value = foundTemplate.name;
-        }
-    }
+    clientState.promptTemplates.forEach(t => { const option = document.createElement('option'); option.value = t.name; option.textContent = t.name; templateSelect.appendChild(option); });
+    const foundTemplate = clientState.promptTemplates.find(t => t.content.trim() === customPromptTextarea.value.trim());
+    if (foundTemplate) templateSelect.value = foundTemplate.name;
 }
-loadTemplateBtn.addEventListener('click', () => {
-    const selectedName = templateSelect.value;
-    if (!selectedName) { showStatus('No template selected.', 'warning'); return; }
+loadTemplateBtn.addEventListener('click', () => { 
+    const selectedName = templateSelect.value; if (!selectedName) { showStatus('No template selected.', 'warning'); return; }
     const template = clientState.promptTemplates.find(t => t.name === selectedName);
     if (template) {
         let content = template.content;
-        // Apply placeholders (basic client-side, server does more thorough job if needed for generation)
         const folderName = clientState.folderPath ? clientState.folderPath.split(/[\/\\]/).pop() : 'UnknownProject';
-        content = content.replace(/{FOLDER_NAME}/g, folderName);
-        content = content.replace(/{FOLDER_PATH}/g, clientState.folderPath || 'N/A');
-        content = content.replace(/{DATE}/g, new Date().toISOString().slice(0, 10));
-        content = content.replace(/{TIME}/g, new Date().toLocaleTimeString());
-        content = content.replace(/{DATETIME}/g, new Date().toLocaleString());
-        content = content.replace(/{AUTHOR}/g, 'User'); // Client-side might not know server username
-        content = content.replace(/{USER_REQUEST}/g, '[Your specific request here]');
-        
-        customPromptTextarea.value = content;
-        updateClientStateFromUI(); // Save the new prompt to state
-        showStatus(`Loaded template: ${selectedName}`, 'success');
-    } else {
-        showStatus(`Template '${selectedName}' not found.`, 'error');
-    }
+        content = content.replace(/{FOLDER_NAME}/g, folderName).replace(/{FOLDER_PATH}/g, clientState.folderPath || 'N/A')
+                         .replace(/{DATE}/g, new Date().toISOString().slice(0, 10)).replace(/{TIME}/g, new Date().toLocaleTimeString())
+                         .replace(/{DATETIME}/g, new Date().toLocaleString()).replace(/{AUTHOR}/g, 'User')
+                         .replace(/{USER_REQUEST}/g, '[Your specific request here]');
+        customPromptTextarea.value = content; updateClientStateFromUI(); showStatus(`Loaded template: ${selectedName}`, 'success');
+    } else showStatus(`Template '${selectedName}' not found.`, 'error');
 });
-saveTemplateBtn.addEventListener('click', async () => {
-    const content = customPromptTextarea.value.trim();
-    if (!content) { showStatus('Prompt content is empty. Cannot save empty template.', 'warning'); return; }
-    let name = prompt('Enter a name for this template:');
-    if (!name) return; // User cancelled
-    name = name.trim();
-    if (!name) { alert('Template name cannot be empty.'); return; }
-
-    const existingTemplate = clientState.promptTemplates.find(t => t.name === name);
-    if (existingTemplate && existingTemplate.content !== content) {
-        if (!confirm(`A template named '${name}' already exists with different content. Overwrite it?`)) return;
-    } else if (existingTemplate && existingTemplate.content === content) {
-        showStatus(`Template '${name}' with the same content already exists.`, 'info');
-        templateSelect.value = name; // Ensure it's selected
-        return;
-    }
-
+saveTemplateBtn.addEventListener('click', async () => { 
+    const content = customPromptTextarea.value.trim(); if (!content) { showStatus('Prompt empty.', 'warning'); return; }
+    let name = prompt('Enter template name:'); if (!name) return; name = name.trim(); if (!name) { alert('Name cannot be empty.'); return; }
+    const existing = clientState.promptTemplates.find(t => t.name === name);
+    if (existing && existing.content !== content && !confirm(`Template '${name}' exists. Overwrite?`)) return;
+    if (existing && existing.content === content) { showStatus(`Template '${name}' already exists.`, 'info'); templateSelect.value = name; return; }
     try {
-        const response = await fetch('/api/save_template', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, content })
-        });
-        const data = await handleResponse(response);
-        showStatus(data.message || `Template '${name}' saved successfully.`, data.status === 'success' || data.status === 'reverted_to_default' ? 'success' : 'warning');
-        await fetchPromptTemplates(); // Refresh list
-        templateSelect.value = name; // Select the newly saved/updated template
-        updateClientStateFromUI();
-    } catch (error) {
-        console.error('Error saving template:', error);
-        showStatus(`Failed to save template: ${error.message}`, 'error');
-    }
+        const response = await fetch('/api/save_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, content }) });
+        const data = await handleResponse(response); showStatus(data.message || `Template '${name}' saved.`, data.status.startsWith('success') || data.status.startsWith('reverted') ? 'success' : 'warning');
+        await fetchPromptTemplates(); templateSelect.value = name; updateClientStateFromUI();
+    } catch (error) { console.error('Error saving template:', error); showStatus(`Failed to save template: ${error.message}`, 'error'); }
 });
-manageTemplateBtn.addEventListener('click', async () => {
-    const action = prompt("Manage Templates:\n1. Delete a template\n2. Copy a template\n\nEnter action number (1 or 2):");
-    if (!action) return;
-
+manageTemplateBtn.addEventListener('click', async () => { 
+    const action = prompt("Manage Templates:\n1. Delete/Revert template\n2. Copy template\nEnter action (1 or 2):"); if (!action) return;
     if (action === '1') {
-        const nameToDelete = prompt("Enter the exact name of the template to delete:");
-        if (!nameToDelete) return;
-        const templateToDelete = clientState.promptTemplates.find(t => t.name === nameToDelete);
-        if (!templateToDelete) { showStatus(`Template '${nameToDelete}' not found.`, 'warning'); return; }
-        if (!confirm(`Are you sure you want to delete/revert the template '${nameToDelete}'?`)) return;
+        const nameToDelete = prompt("Enter exact name of template to delete/revert:"); if (!nameToDelete) return;
+        const templateToDelete = clientState.promptTemplates.find(t => t.name === nameToDelete); if (!templateToDelete) { showStatus(`Template '${nameToDelete}' not found.`, 'warning'); return; }
+        if (!confirm(`Delete/Revert template '${nameToDelete}'?`)) return;
         try {
-            const response = await fetch('/api/delete_template', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                // Send full template data as backend might expect it for certain checks
-                body: JSON.stringify({ name: templateToDelete.name, content: templateToDelete.content })
-            });
-            const data = await handleResponse(response);
-            showStatus(data.message || `Template '${nameToDelete}' processed.`, data.status.startsWith('success') || data.status.startsWith('reverted') ? 'success' : 'warning');
-            await fetchPromptTemplates(); // Refresh list
-            if (customPromptTextarea.value === templateToDelete.content) { // If deleted template was active
-                customPromptTextarea.value = "";
-                updateClientStateFromUI();
-            }
-        } catch (error) {
-            console.error('Error deleting template:', error);
-            showStatus(`Failed to delete template: ${error.message}`, 'error');
-        }
+            const response = await fetch('/api/delete_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: templateToDelete.name, content: templateToDelete.content }) });
+            const data = await handleResponse(response); showStatus(data.message || `Template '${nameToDelete}' processed.`, data.status.includes('success') || data.status.includes('reverted') || data.status.includes('deleted') ? 'success' : 'warning');
+            await fetchPromptTemplates(); if (customPromptTextarea.value === templateToDelete.content) { customPromptTextarea.value = ""; updateClientStateFromUI(); }
+        } catch (error) { console.error('Error deleting template:', error); showStatus(`Failed to delete template: ${error.message}`, 'error'); }
     } else if (action === '2') {
-        const nameToCopy = prompt("Enter the exact name of the template to copy:");
-        if (!nameToCopy) return;
-        const originalTemplate = clientState.promptTemplates.find(t => t.name === nameToCopy);
-        if (!originalTemplate) { showStatus(`Template '${nameToCopy}' not found.`, 'warning'); return; }
-        
-        let newName = `${originalTemplate.name} (Copy)`;
-        let count = 1;
-        while (clientState.promptTemplates.some(t => t.name === newName)) {
-            newName = `${originalTemplate.name} (Copy ${++count})`;
-        }
+        const nameToCopy = prompt("Enter exact name of template to copy:"); if (!nameToCopy) return;
+        const original = clientState.promptTemplates.find(t => t.name === nameToCopy); if (!original) { showStatus(`Template '${nameToCopy}' not found.`, 'warning'); return; }
+        let newName = `${original.name} (Copy)`; let count = 1; while (clientState.promptTemplates.some(t => t.name === newName)) newName = `${original.name} (Copy ${++count})`;
         if (!confirm(`Copy template '${nameToCopy}' as '${newName}'?`)) return;
         try {
-            const response = await fetch('/api/save_template', { // Use save endpoint for copying
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newName, content: originalTemplate.content })
-            });
-            const data = await handleResponse(response);
-            showStatus(data.message || `Template copied as '${newName}'.`, 'success');
-            await fetchPromptTemplates();
-            templateSelect.value = newName; // Select the new copy
-            customPromptTextarea.value = originalTemplate.content; // Load its content
-            updateClientStateFromUI();
-        } catch (error) {
-            console.error('Error copying template:', error);
-            showStatus(`Failed to copy template: ${error.message}`, 'error');
-        }
-    } else {
-        showStatus('Invalid action selected.', 'warning');
-    }
+            const response = await fetch('/api/save_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, content: original.content }) });
+            const data = await handleResponse(response); showStatus(data.message || `Template copied as '${newName}'.`, 'success');
+            await fetchPromptTemplates(); templateSelect.value = newName; customPromptTextarea.value = original.content; updateClientStateFromUI();
+        } catch (error) { console.error('Error copying template:', error); showStatus(`Failed to copy template: ${error.message}`, 'error'); }
+    } else showStatus('Invalid action.', 'warning');
 });
 
-
-// --- Generation and Output ---
 generateBtn.addEventListener('click', async () => {
-    const currentFolderPath = clientState.folderPath; // Use state for consistency
-    if (!currentFolderPath) { showStatus('Folder path is missing. Please set it on Tab 1.', 'warning'); activateTab('tab1'); return; }
-    if (!fileTreeContainer.children.length || !fileTreeContainer.querySelector('ul')) { showStatus('Project tree not loaded or empty. Load it on Tab 1 or 2.', 'warning'); activateTab('tab1'); return; }
-    if (clientState.checkedTreePathsAbs.size === 0) { showStatus('No files or folders selected in the Project Explorer (Tab 2).', 'warning'); activateTab('tab2'); return; }
+    const currentFolderPath = clientState.folderPath;
+    if (!currentFolderPath) { showStatus('Folder path missing (Tab 1).', 'warning'); activateTab('tab1'); return; }
+    if (!fileTreeContainer.children.length || !fileTreeContainer.querySelector('ul')) { showStatus('Project tree not loaded/empty (Tab 1/2).', 'warning'); activateTab('tab1'); return; }
+    
+    const selectedFilesForPayload = Array.from(clientState.checkedTreePathsMap.entries())
+        .filter(([path, type]) => !clientState.hardExcludedPathsAbs.has(path)) // Ensure hard-excluded are not sent for content
+        .map(([path, type]) => ({ path, type }));
+
+    if (selectedFilesForPayload.length === 0) { showStatus('No files selected for content/signatures (or all selected are hard-excluded).', 'warning'); activateTab('tab2'); return; }
+
 
     showLoading(generateBtn, true, 'Generating...', 'Generate Structure Text');
-    rawOutputTextarea.value = 'Generating structure and content... Please wait.';
-    renderedOutputDiv.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Generating... Please wait.</p>';
-    copyRawBtn.disabled = true;
-    tabButtons[2].disabled = false; // Enable output tab
-    activateTab('tab3');
-    // activateSubTab('raw-output'); // Ensure raw output is visible initially
-
-    updateClientStateFromUI(); // Ensure latest settings are used
+    rawOutputTextarea.value = 'Generating...'; renderedOutputDiv.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Generating...</p>';
+    copyRawBtn.disabled = true; tabButtons[2].disabled = false; activateTab('tab3');
+    updateClientStateFromUI(); // Ensure latest custom prompt etc. is captured.
 
     try {
         const response = await fetch('/api/generate_structure', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                folder_path: currentFolderPath,
-                filters: clientState.filterSettings,
-                selected_paths_abs: Array.from(clientState.checkedTreePathsAbs),
-                custom_prompt: clientState.customPrompt,
-                loaded_doc_paths: clientState.loadedDocPaths
+                folder_path: currentFolderPath, filters: clientState.filterSettings,
+                selected_files_info: selectedFilesForPayload, 
+                custom_prompt: clientState.customPrompt, 
+                loaded_doc_paths: clientState.loadedDocPaths,
+                hard_excluded_paths: Array.from(clientState.hardExcludedPathsAbs) // Send hard exclusions for tree markdown generation
             })
         });
         const data = await handleResponse(response);
         rawOutputTextarea.value = data.markdown;
-        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-            renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.markdown));
-        } else {
-            renderedOutputDiv.innerHTML = '<p class="text-red-500">Error: Markdown parser or sanitizer not loaded.</p>';
-            console.error("marked.js or DOMPurify not loaded for rendering.");
-        }
+        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.markdown));
+        else { renderedOutputDiv.innerHTML = '<p class="text-red-500">Markdown parser/sanitizer not loaded.</p>'; console.error("marked.js or DOMPurify not loaded.");}
         copyRawBtn.disabled = false;
 
         if (clientState.saveOutputChecked) {
-            const projName = currentFolderPath.split(/[\/\\]/).pop() || 'project_output';
-            const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T-]/g, '');
-            const filename = `folder_structure_${projName}_${timestamp}.md`;
-            const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+            const projName = currentFolderPath.split(/[\/\\]/).pop() || 'project'; const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T-]/g, '');
+            const filename = `folder_structure_${projName}_${timestamp}.md`; const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
             showStatus('Output generated and download initiated.', 'success');
-        } else {
-            showStatus('Output generated successfully. View on Tab 3.', 'success');
-        }
+        } else showStatus('Output generated. View on Tab 3.', 'success');
     } catch (error) {
-        console.error('Error generating structure text:', error);
-        const errorMsg = `Error generating output: ${error.message}`;
-        rawOutputTextarea.value = `\`\`\`error\n${errorMsg}\nCheck console for details.\n\`\`\``;
-        renderedOutputDiv.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">${errorMsg}</p>`;
+        console.error('Error generating structure text:', error); const errorMsg = `Error generating output: ${error.message}`;
+        rawOutputTextarea.value = `\`\`\`error\n${errorMsg}\nCheck console.\n\`\`\``; renderedOutputDiv.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">${errorMsg}</p>`;
         showStatus(`Generation failed: ${error.message}`, 'error');
-    } finally {
-        showLoading(generateBtn, false, null, 'Generate Structure Text');
-    }
+    } finally { showLoading(generateBtn, false); }
 });
 
-copyRawBtn.addEventListener('click', () => {
-    if (rawOutputTextarea.value) {
-        navigator.clipboard.writeText(rawOutputTextarea.value)
-            .then(() => showStatus('Raw Markdown copied to clipboard.', 'success'))
-            .catch(err => {
-                console.error('Failed to copy raw output:', err);
-                showStatus('Failed to copy. Check browser permissions or console.', 'error');
-            });
-    } else {
-        showStatus('Nothing to copy from raw output.', 'warning');
-    }
+copyRawBtn.addEventListener('click', () => { 
+    if (rawOutputTextarea.value) navigator.clipboard.writeText(rawOutputTextarea.value).then(() => showStatus('Raw Markdown copied.', 'success')).catch(err => { console.error('Failed to copy:', err); showStatus('Failed to copy. Check permissions.', 'error'); });
+    else showStatus('Nothing to copy.', 'warning');
 });
-clearOutputBtn.addEventListener('click', () => {
-    rawOutputTextarea.value = '';
-    renderedOutputDiv.innerHTML = 'Preview here.';
-    copyRawBtn.disabled = true;
-    showStatus('Output cleared.');
+clearOutputBtn.addEventListener('click', () => { 
+    rawOutputTextarea.value = ''; renderedOutputDiv.innerHTML = 'Preview here.'; copyRawBtn.disabled = true; showStatus('Output cleared.');
 });
-themeToggle.addEventListener('click', () => {
-    document.documentElement.classList.toggle('dark');
-    clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
-    showStatus(`Theme switched to ${clientState.currentTheme}.`);
-    saveStateToLocalStorage();
+themeToggle.addEventListener('click', () => { 
+    document.documentElement.classList.toggle('dark'); clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+    themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙'; showStatus(`Theme: ${clientState.currentTheme}.`); saveStateToLocalStorage();
 });
 
-// --- Pre-selection Logic ---
-function globToRegex(glob) {
-    // More robust glob to regex:
-    // - Escape regex special chars
-    // - Convert * to .*
-    // - Convert ? to .
-    // - Handle ** for multiple directory levels
-    // - Anchor to start and end
-    let regex = glob.replace(/([.?+^$[\]\\(){}|-])/g, "\\$1"); // Escape special chars
-    regex = regex.replace(/\*\*/g, "(.*/)?([^/]+)"); // ** matches zero or more dirs
-    regex = regex.replace(/\*/g, "[^/]*");   // * matches anything except slash
-    regex = regex.replace(/\?/g, "[^/]");    // ? matches any char except slash
-    return new RegExp('^' + regex + '$');
+function getRelativePath(fullPath, rootPath) {
+    const normalizedRoot = rootPath.endsWith('/') || rootPath.endsWith('\\') ? rootPath : rootPath + '/';
+    if (fullPath.startsWith(normalizedRoot)) {
+        return fullPath.substring(normalizedRoot.length);
+    }
+    return fullPath.split(/[\/\\]/).pop(); 
 }
 
-function preselectFilesFromFirstTemplate() {
-    if (clientState.promptTemplates.length === 0 || !clientState.promptTemplates[0]) {
-        showStatus("No templates available for pre-selection.", "info");
-        return;
-    }
-    const firstTemplateContent = clientState.promptTemplates[0].content;
-    const patternMatch = firstTemplateContent.match(/<!--\s*PRESELECT_PATTERNS:\s*([^->]+)\s*-->/i);
+function applyPresetBasedPreselection() {
+    if (clientState.filterSettings.selected_presets.length === 0) return;
+    if (!fileTreeContainer.querySelector('ul')) return; 
 
-    if (!patternMatch || !patternMatch[1]) {
-        showStatus("No pre-selection patterns found in the first template (<!-- PRESELECT_PATTERNS: ... -->).", "info");
-        return;
+    let appliedRule = null;
+    for (const presetName of clientState.filterSettings.selected_presets) {
+        if (PRESET_PRESELECTION_RULES[presetName]) {
+            appliedRule = PRESET_PRESELECTION_RULES[presetName];
+            break; 
+        }
     }
+    if (!appliedRule) return;
 
-    const patterns = patternMatch[1].split(',').map(p => p.trim()).filter(p => p);
-    if (patterns.length === 0) {
-        showStatus("No valid pre-selection patterns extracted from the first template.", "info");
-        return;
-    }
-    showStatus(`Attempting pre-selection with patterns: ${patterns.join(', ')}`, "info");
-
+    showStatus(`Applying pre-selection for: ${clientState.filterSettings.selected_presets.find(p => PRESET_PRESELECTION_RULES[p])}...`, 'info');
     let preselectedCount = 0;
-    const rootFolderPath = clientState.folderPath; // From state
-    if (!rootFolderPath) {
-        showStatus("Cannot pre-select: Folder path not set.", "warning");
-        return;
-    }
-    const resolvedRootPath = rootFolderPath.endsWith('/') || rootFolderPath.endsWith('\\') ? rootFolderPath : rootFolderPath + '/';
-
+    
     fileTreeContainer.querySelectorAll('li').forEach(liItem => {
-        const checkbox = liItem.querySelector('.tree-checkbox:not(:disabled)');
-        if (!checkbox) return;
+        const itemRow = liItem.querySelector('div.flex.items-center');
+        if(!itemRow) return;
+        const label = itemRow.querySelector('label[data-path]');
+        if (!label) return;
 
-        const label = checkbox.closest('label');
-        const fullPath = label.dataset.path; // Absolute path from tree data
-        
-        // Calculate path relative to the project root for matching
-        let relativePath = fullPath;
-        if (fullPath.startsWith(resolvedRootPath)) {
-            relativePath = fullPath.substring(resolvedRootPath.length);
-        } else if (fullPath.startsWith(rootFolderPath)) { // Handle if root path didn't have trailing slash initially
-             relativePath = fullPath.substring(rootFolderPath.length).replace(/^[\/\\]+/, '');
+        const checkbox = label.querySelector('.tree-checkbox:not(:disabled)');
+        if (!checkbox) return; 
+
+        const fullPath = label.dataset.path;
+        if (clientState.hardExcludedPathsAbs.has(fullPath)) return; // Skip hard-excluded items
+
+        const relativePath = getRelativePath(fullPath, clientState.folderPath);
+        const fileName = fullPath.split(/[\/\\]/).pop().toLowerCase();
+        const fileExtWithDot = "." + fileName.split('.').pop(); // Ensure dot for extension matching
+
+        let shouldSelect = false;
+
+        if (appliedRule.include_ext && appliedRule.include_ext.includes(fileExtWithDot)) {
+            shouldSelect = true;
+        }
+        if (appliedRule.include_filenames && appliedRule.include_filenames.includes(fileName)) {
+            shouldSelect = true;
         }
         
-        const nameOnly = fullPath.split(/[\/\\]/).pop();
-
-        for (const globPattern of patterns) {
-            try {
-                const regexPattern = globToRegex(globPattern);
-                if (regexPattern.test(relativePath) || regexPattern.test(nameOnly)) {
-                    if (!checkbox.checked) { // Only check if not already checked (e.g. by user)
-                        checkbox.checked = true;
-                        updateCheckedState(fullPath, true, liItem); // Use helper to update state
-                        preselectedCount++;
-                    }
-                    break; // Move to next file if matched by one pattern
+        if (shouldSelect && appliedRule.exclude_dirs_for_selection) {
+            for (const dirToExclude of appliedRule.exclude_dirs_for_selection) {
+                const dirToExcludeNormalized = dirToExclude.endsWith('/') ? dirToExclude : dirToExclude + '/';
+                if (relativePath.toLowerCase().startsWith(dirToExcludeNormalized.toLowerCase())) { // Case insensitive dir check
+                    shouldSelect = false;
+                    break;
                 }
-            } catch (e) {
-                console.warn(`Invalid glob pattern for pre-selection: '${globPattern}'`, e);
-                showStatus(`Warning: Invalid pre-selection pattern: ${globPattern}`, 'warning');
-                patterns.splice(patterns.indexOf(globPattern), 1); // Remove invalid pattern for future iterations
+                 // Also check if current path is exactly the dir to exclude (e.g. "dist" vs "dist/file.js")
+                if (relativePath.toLowerCase() === dirToExclude.toLowerCase()) {
+                     shouldSelect = false;
+                     break;
+                }
+            }
+        }
+        
+        const isDir = liItem.querySelector('.icon').textContent === '📁';
+        if(isDir && shouldSelect) { // For now, preset preselection only selects files, not entire dirs
+            shouldSelect = false;
+        }
+
+
+        if (shouldSelect) {
+            if (!clientState.checkedTreePathsMap.has(fullPath) || clientState.checkedTreePathsMap.get(fullPath) !== 'full') {
+                 clientState.checkedTreePathsMap.set(fullPath, 'full');
+                 preselectedCount++;
             }
         }
     });
 
+    applyCheckedPathsToTreeVisuals(); 
+    updateFileTreeDependentUIs();
+    saveStateToLocalStorage();
+
     if (preselectedCount > 0) {
-        saveStateToLocalStorage(); // Save the new selections
-        updateFileTreeDependentUIs();
-        showStatus(`Pre-selected ${preselectedCount} items based on first template patterns.`, "success");
+        showStatus(`Pre-selected ${preselectedCount} files based on project type.`, "success");
     } else {
-        showStatus("No new items matched pre-selection patterns.", "info");
+        showStatus("No additional files matched project type pre-selection rules.", "info");
     }
 }
 
-// --- Initialization ---
-document.addEventListener('DOMContentLoaded', () => {
-    populatePresetList(); // Dynamic presets
-    loadStateFromLocalStorage(); // Load saved state, then apply to UI
-    fetchPromptTemplates(); // Fetch and populate templates
-    
-    // Initial UI state based on loaded/default clientState
-    updateFileTreeDependentUIs(); // Set initial disabled states for buttons
-    
-    // Set initial active tabs (Tab 1, Raw Output)
-    activateTab('tab1');
-    activateSubTab('raw-output'); // Default to raw output
 
-    showStatus('Application ready. Enter project folder and load tree, or load saved settings.', 'info');
+document.addEventListener('DOMContentLoaded', () => {
+    populatePresetList(); loadStateFromLocalStorage(); fetchPromptTemplates();
+    updateFileTreeDependentUIs(); activateTab('tab1'); activateSubTab('raw-output');
+    showStatus('Application ready.', 'info');
 });

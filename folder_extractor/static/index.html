@@ -11,109 +11,61 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    // You can extend Tailwind's theme here if needed
+                     colors: {
+                        'gray-750': '#303a4c', // Example custom dark gray
+                        'gray-850': '#181f2b', // Example custom darker gray
+                    }
                 }
             }
         }
     </script>
-    <!-- Custom CSS should come after Tailwind to allow overrides -->
     <link rel="stylesheet" href="/static/style.css"> 
-    
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js"></script>
     
     <style>
-        /* Custom scrollbar for better appearance */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #edf2f7; border-radius: 10px; } /* Tailwind gray-200 */
-        ::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; } /* Tailwind gray-500 */
-        ::-webkit-scrollbar-thumb:hover { background: #718096; } /* Tailwind gray-600 */
-        
-        .dark ::-webkit-scrollbar-track { background: #2d3748; } /* Tailwind gray-800 */
-        .dark ::-webkit-scrollbar-thumb { background: #718096; } /* Tailwind gray-600 */
-        .dark ::-webkit-scrollbar-thumb:hover { background: #a0aec0; } /* Tailwind gray-500 */
+        ::-webkit-scrollbar-track { background: #edf2f7; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #718096; }
+        .dark ::-webkit-scrollbar-track { background: #2d3748; }
+        .dark ::-webkit-scrollbar-thumb { background: #718096; }
+        .dark ::-webkit-scrollbar-thumb:hover { background: #a0aec0; }
 
-        .tab-content { display: none; }
-        .tab-content.active { display: flex; flex-direction: column; flex-grow: 1; }
-        
-        .sub-tab-content { display: none; }
-        .sub-tab-content.active { display: flex; flex-direction: column; flex-grow: 1; }
-        /* Special case for textarea to behave like block */
+        .tab-content, .sub-tab-content { display: none; }
+        .tab-content.active, .sub-tab-content.active { display: flex; flex-direction: column; flex-grow: 1; }
         .sub-tab-content.active textarea { display: block; }
 
-
-        /* Basic styling for the file tree if JS-added classes are minimal */
         .file-tree ul { list-style: none; padding-left: 0; margin-left: 0; }
-        /* Indentation is handled by JS adding ml-4 to nested ULs */
-
-        /* Tooltip Styling */
+        
         [data-tooltip] { position: relative; }
         [data-tooltip]:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 100%; /* Position above the element */
-            left: 50%;
-            transform: translateX(-50%) translateY(-5px); /* Center and add small gap */
-            background-color: #2d3748; /* Tailwind gray-800 */
-            color: white;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 0.75rem; /* text-xs */
-            line-height: 1rem; /* leading-tight */
-            white-space: nowrap;
-            z-index: 50; /* Ensure it's above other elements */
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
+            content: attr(data-tooltip); position: absolute; bottom: 100%; left: 50%;
+            transform: translateX(-50%) translateY(-5px); background-color: #2d3748; color: white;
+            padding: 6px 10px; border-radius: 4px; font-size: 0.75rem; line-height: 1rem;
+            white-space: nowrap; z-index: 50; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            opacity: 0; visibility: hidden; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
         }
-        [data-tooltip]:hover::before { /* Optional: triangle for tooltip */
-            content: '';
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%) translateY(0px); /* Position slightly overlapping the tooltip base */
-            border-width: 5px;
-            border-style: solid;
-            border-color: #2d3748 transparent transparent transparent;
-            z-index: 50;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
-        }
-        [data-tooltip]:hover::after,
         [data-tooltip]:hover::before {
-            opacity: 1;
-            visibility: visible;
+            content: ''; position: absolute; bottom: 100%; left: 50%;
+            transform: translateX(-50%) translateY(0px); border-width: 5px; border-style: solid;
+            border-color: #2d3748 transparent transparent transparent; z-index: 50;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s ease-in-out, visibility 0.2s ease-in-out;
         }
-        .dark [data-tooltip]:hover::after { background-color: #1a202c; } /* Tailwind gray-900 for dark */
+        [data-tooltip]:hover::after, [data-tooltip]:hover::before { opacity: 1; visibility: visible; }
+        .dark [data-tooltip]:hover::after { background-color: #1a202c; }
         .dark [data-tooltip]:hover::before { border-top-color: #1a202c; }
 
-
-        /* Markdown body styling (add to your style.css or here) */
         .markdown-body h1, .markdown-body h2, .markdown-body h3 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 600; }
         .markdown-body h1 { font-size: 1.5em; } .markdown-body h2 { font-size: 1.25em; } .markdown-body h3 { font-size: 1.1em; }
         .markdown-body p { margin-bottom: 0.75em; line-height: 1.6; }
         .markdown-body ul, .markdown-body ol { margin-left: 1.5em; margin-bottom: 0.75em; }
         .markdown-body li { margin-bottom: 0.25em; }
-        .markdown-body code { 
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-            background-color: #f3f4f6; /* Tailwind gray-100 */
-            padding: 0.1em 0.3em; 
-            border-radius: 3px; 
-            font-size: 0.9em;
-        }
-        .markdown-body pre { 
-            background-color: #f3f4f6; /* Tailwind gray-100 */
-            padding: 0.75em; 
-            border-radius: 6px; 
-            overflow-x: auto; 
-            margin-bottom: 1em; 
-            font-size: 0.9em;
-        }
+        .markdown-body code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background-color: #f3f4f6; padding: 0.1em 0.3em; border-radius: 3px; font-size: 0.9em; }
+        .markdown-body pre { background-color: #f3f4f6; padding: 0.75em; border-radius: 6px; overflow-x: auto; margin-bottom: 1em; font-size: 0.9em; }
         .markdown-body pre code { background-color: transparent; padding: 0; font-size: 1em;}
-        .dark .markdown-body code { background-color: #374151; /* Tailwind gray-700 */ color: #d1d5db; /* Tailwind gray-300 */}
-        .dark .markdown-body pre { background-color: #1f2937; /* Tailwind gray-800 */ color: #d1d5db; }
+        .dark .markdown-body code { background-color: #374151; color: #d1d5db; }
+        .dark .markdown-body pre { background-color: #1f2937; color: #d1d5db; }
         .dark .markdown-body pre code { color: #d1d5db;}
         .markdown-body blockquote { border-left: 3px solid #d1d5db; margin-left:0; padding-left: 1em; color: #6b7280;}
         .dark .markdown-body blockquote { border-left-color: #4b5563; color: #9ca3af;}
@@ -122,6 +74,23 @@
         .dark .markdown-body th, .dark .markdown-body td { border-color: #4b5563;}
         .markdown-body hr { border-top: 1px solid #e5e7eb; margin: 1em 0;}
         .dark .markdown-body hr { border-top-color: #374151;}
+
+        .sig-button { /* Style for the 'S' button */
+            font-weight: bold;
+            padding: 0px 4px; /* Smaller padding */
+            line-height: 1; /* Tight line height */
+            min-width: 1.25rem; /* Ensure it's clickable ~20px */
+            height: 1.25rem;
+        }
+        .sig-button.active-sig {
+            background-color: #6d28d9; /* Tailwind purple-700 */
+            color: white;
+            border-color: #5b21b6; /* Tailwind purple-800 */
+        }
+        .dark .sig-button.active-sig {
+            background-color: #4c1d95; /* Tailwind purple-800 */
+            border-color: #3b0764; /* Tailwind purple-900 */
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 flex flex-col h-screen selection:bg-blue-500 selection:text-white">
@@ -173,15 +142,10 @@
 
             <div class="flex-grow overflow-y-auto space-y-4">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <!-- Exclusion Presets -->
                     <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
                         <h3 class="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Exclusion Presets</h3>
-                        <div id="preset-list" class="space-y-1 max-h-48 overflow-y-auto">
-                            <!-- Presets will be loaded here by JS -->
-                        </div>
+                        <div id="preset-list" class="space-y-1 max-h-48 overflow-y-auto"></div>
                     </div>
-
-                    <!-- Custom Filtering Rules -->
                     <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600 space-y-3">
                         <h3 class="text-md font-semibold text-gray-700 dark:text-gray-300">Custom Filtering Rules</h3>
                         <div>
@@ -213,7 +177,6 @@
                 </div>
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    <!-- Generation Options -->
                     <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
                         <h3 class="text-md font-semibold mb-2 text-gray-700 dark:text-gray-300">Generation Options</h3>
                         <div class="flex items-center justify-between mb-2">
@@ -229,16 +192,10 @@
                             <label for="save-output-checkbox" class="ml-2 text-sm text-gray-700 dark:text-gray-300">Save Markdown output on Generate</label>
                         </div>
                     </div>
-
-                    <!-- Documentation Integration -->
                     <div class="bg-gray-50 dark:bg-gray-750 p-3 rounded-lg border border-gray-200 dark:border-gray-600">
                         <h3 class="text-md font-semibold mb-1 text-gray-700 dark:text-gray-300">Documentation Integration</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">
-                            Import Markdown/Text docs (appended to prompt):
-                        </p>
-                        <ul id="doc-list" class="border border-gray-300 dark:border-gray-600 rounded-md h-24 overflow-y-auto p-1 bg-white dark:bg-gray-700 text-sm">
-                            <!-- Docs will be loaded here by JS -->
-                        </ul>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-1.5">Import Markdown/Text docs (appended to prompt):</p>
+                        <ul id="doc-list" class="border border-gray-300 dark:border-gray-600 rounded-md h-24 overflow-y-auto p-1 bg-white dark:bg-gray-700 text-sm"></ul>
                         <div class="grid grid-cols-3 gap-1.5 mt-1.5">
                             <input type="file" id="add-docs-input" multiple accept=".md,.markdown,.txt,text/plain" class="hidden">
                             <button id="add-docs-btn" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md text-xs font-medium whitespace-nowrap">Add Docs...</button>
@@ -258,31 +215,25 @@
         <!-- Tab 2: Explorer & Prompt -->
         <div id="tab2-content" class="tab-content flex-grow p-0 md:p-3 bg-white dark:bg-gray-800 rounded-b-lg shadow-inner overflow-hidden">
             <div class="flex flex-col lg:flex-row flex-grow h-full gap-3">
-                <!-- Left: File Tree -->
                 <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-750 min-h-[300px] lg:min-h-0">
                     <h2 class="text-md font-semibold mb-1.5 text-gray-800 dark:text-gray-200">Project Explorer</h2>
                     <div class="flex flex-wrap items-center gap-1.5 mb-1.5 text-xs">
-                        <button id="refresh-tree-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-60"
-                                data-tooltip="Reload tree (current folder & Tab 1 filters)">Refresh</button>
+                        <button id="refresh-tree-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md disabled:opacity-60" data-tooltip="Reload tree (current folder & Tab 1 filters)">Refresh</button>
                         <button id="expand-all-btn" class="px-2.5 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 rounded-md disabled:opacity-60">Expand All</button>
                         <button id="collapse-all-btn" class="px-2.5 py-1 bg-gray-300 hover:bg-gray-400 dark:bg-gray-600 dark:hover:bg-gray-500 text-gray-800 dark:text-gray-200 rounded-md disabled:opacity-60">Collapse All</button>
                         <div class="flex-grow"></div>
-                        <button id="check-all-text-btn" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-60">Check All</button>
+                        <button id="check-all-text-btn" class="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-md disabled:opacity-60" data-tooltip="Check all items for FULL content.">Check All (Full)</button>
                         <button id="uncheck-all-btn" class="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-md disabled:opacity-60">Uncheck All</button>
                     </div>
                     <div id="file-tree-container" class="file-tree flex-grow overflow-auto border border-gray-300 dark:border-gray-600 rounded-md p-1.5 bg-white dark:bg-gray-800 text-sm">
                         <p class="text-gray-500 dark:text-gray-400 p-2">Load a project on Tab 1 to see the file tree.</p>
                     </div>
                 </div>
-
-                <!-- Right: Custom Instructions Prompt -->
                 <div class="flex-1 flex flex-col border border-gray-200 dark:border-gray-600 rounded-lg p-2 bg-gray-50 dark:bg-gray-750 min-h-[300px] lg:min-h-0">
                     <h2 class="text-md font-semibold mb-1.5 text-gray-800 dark:text-gray-200">Custom Instructions Prompt</h2>
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 mb-1.5 text-xs">
                         <label for="template-select" class="text-xs font-medium text-gray-700 dark:text-gray-300 self-center sm:self-auto whitespace-nowrap">Template:</label>
-                        <select id="template-select" class="flex-grow p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 text-xs">
-                            <!-- Options populated by JS -->
-                        </select>
+                        <select id="template-select" class="flex-grow p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-1 focus:ring-blue-500 text-xs"></select>
                         <button id="load-template-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md">Load</button>
                         <button id="save-template-btn" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md">Save As...</button>
                         <button id="manage-template-btn" class="px-2.5 py-1 bg-gray-500 hover:bg-gray-600 text-white rounded-md">Manage...</button>
@@ -307,7 +258,7 @@
                     <textarea id="raw-output-textarea" readonly placeholder="Generated Markdown output will appear here."
                               class="w-full h-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-850 text-gray-800 dark:text-gray-200 font-mono text-xs resize-none focus:ring-1 focus:ring-blue-500"></textarea>
                 </div>
-                <div id="rendered-output-content" class="sub-tab-content flex-grow"> <!-- initially hidden by JS if not active -->
+                <div id="rendered-output-content" class="sub-tab-content flex-grow">
                     <div id="rendered-output-div" class="w-full h-full p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-850 text-gray-800 dark:text-gray-200 overflow-auto markdown-body text-sm">
                         <p class="text-gray-500 dark:text-gray-400">A rendered preview of the Markdown will appear here.</p>
                     </div>
@@ -319,8 +270,6 @@
             </div>
         </div>
     </main>
-
-    <!-- Ensure this script is loaded last -->
     <script src="/static/main.js"></script> 
 </body>
 </html>
