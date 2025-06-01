@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snake Kingdom: Evolutionary Battle</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            margin-top: 50px;
+        }
+        
+        header {
+            margin-bottom: 40px;
+            animation: fadeIn 1s ease-out;
+        }
+        
+        h1 {
+            font-size: 3.5rem;
+            margin-bottom: 15px;
+            background: linear-gradient(to right, #00c9ff, #92fe9d);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 15px rgba(0, 201, 255, 0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.5rem;
+            color: #a0d2eb;
+            margin-bottom: 30px;
+        }
+        
+        .python-card {
+            background: rgba(30, 30, 40, 0.85);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 30px 0;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 201, 255, 0.2);
+            backdrop-filter: blur(10px);
+            animation: slideUp 1s ease-out;
+        }
+        
+        .python-icon {
+            font-size: 8rem;
+            margin: 20px 0;
+            color: #ffd343;
+            text-shadow: 0 0 20px rgba(255, 211, 67, 0.5);
+        }
+        
+        .instruction {
+            font-size: 1.8rem;
+            margin: 30px 0;
+            color: #92fe9d;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #00c9ff, #92fe9d);
+            color: #0f2027;
+            border: none;
+            padding: 18px 45px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 30px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 20px rgba(0, 201, 255, 0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 201, 255, 0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -60%;
+            width: 20px;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.3);
+            transform: rotate(25deg);
+            transition: all 0.5s;
+        }
+        
+        .btn:hover::after {
+            left: 120%;
+        }
+        
+        .steps {
+            text-align: left;
+            background: rgba(40, 40, 55, 0.6);
+            padding: 30px;
+            border-radius: 15px;
+            margin: 40px 0;
+            border-left: 5px solid #00c9ff;
+        }
+        
+        .steps h2 {
+            color: #00c9ff;
+            margin-bottom: 20px;
+        }
+        
+        .steps ol {
+            padding-left: 25px;
+        }
+        
+        .steps li {
+            margin: 15px 0;
+            font-size: 1.2rem;
+            line-height: 1.6;
+        }
+        
+        .steps code {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            color: #ffd343;
+        }
+        
+        .features {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 25px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: rgba(40, 40, 55, 0.6);
+            border-radius: 15px;
+            padding: 25px;
+            width: 220px;
+            transition: transform 0.3s ease;
+            border: 1px solid rgba(0, 201, 255, 0.2);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            background: rgba(50, 50, 70, 0.7);
+        }
+        
+        .feature-card h3 {
+            color: #92fe9d;
+            margin-bottom: 15px;
+        }
+        
+        .snake-animation {
+            position: relative;
+            height: 120px;
+            margin: 40px auto;
+            width: 300px;
+        }
+        
+        .snake-segment {
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            border-radius: 7px;
+            background: linear-gradient(135deg, #00c9ff, #92fe9d);
+            box-shadow: 0 0 10px rgba(0, 201, 255, 0.5);
+            transition: all 0.3s ease;
+        }
+        
+        .snake-head {
+            width: 30px;
+            height: 30px;
+            background: linear-gradient(135deg, #ffd343, #ff6b6b);
+            box-shadow: 0 0 15px rgba(255, 211, 67, 0.7);
+            z-index: 10;
+        }
+        
+        .food {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            box-shadow: 0 0 10px rgba(255, 107, 107, 0.7);
+            animation: pulse 1.5s infinite;
+        }
+        
+        footer {
+            margin-top: 50px;
+            padding: 20px;
+            color: #a0d2eb;
+            font-size: 1.1rem;
+            width: 100%;
+            border-top: 1px solid rgba(0, 201, 255, 0.2);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { 
+                opacity: 0;
+                transform: translateY(50px);
+            }
+            to { 
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .subtitle { font-size: 1.2rem; }
+            .instruction { font-size: 1.4rem; }
+            .python-icon { font-size: 6rem; }
+            .btn { padding: 15px 35px; font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Snake Kingdom: Evolutionary Battle</h1>
+            <p class="subtitle">A Revolutionary Snake Battle Experience</p>
+        </header>
+        
+        <div class="python-card">
+            <div class="python-icon">🐍</div>
+            <p class="instruction">This is a Python application</p>
+            <p style="font-size: 1.3rem; margin-bottom: 20px;">Please run the Python server to play the game</p>
+            <button class="btn" id="serverBtn">Start Python Server</button>
+        </div>
+        
+        <div class="steps">
+            <h2>How to Run the Game</h2>
+            <ol>
+                <li>Make sure you have Python installed (version 3.6 or later)</li>
+                <li>Install PyGame: <code>pip install pygame</code></li>
+                <li>Download the game script: <code>snake_kingdom.py</code></li>
+                <li>Run the game: <code>python snake_kingdom.py</code></li>
+                <li>Use arrow keys to control your snake and battle for dominance!</li>
+            </ol>
+        </div>
+        
+        <div class="snake-animation" id="snakeAnimation"></div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <h3>Evolutionary Gameplay</h3>
+                <p>Bigger snakes can eat chunks of smaller snakes</p>
+            </div>
+            <div class="feature-card">
+                <h3>King of the Hill</h3>
+                <p>Largest snake becomes the crowned king</p>
+            </div>
+            <div class="feature-card">
+                <h3>Power-ups</h3>
+                <p>Use magnets to attract food strategically</p>
+            </div>
+            <div class="feature-card">
+                <h3>Multi-level</h3>
+                <p>Progress through increasingly challenging arenas</p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Snake Kingdom: Evolutionary Battle | Python & PyGame | Version 1.0</p>
+        </footer>
+    </div>
+
+    <script>
+        // Create snake animation
+        function createSnakeAnimation() {
+            const container = document.getElementById('snakeAnimation');
+            const segments = 8;
+            const segmentSize = 25;
+            const spacing = 5;
+            
+            // Create snake head
+            const head = document.createElement('div');
+            head.className = 'snake-segment snake-head';
+            container.appendChild(head);
+            
+            // Create snake body segments
+            for (let i = 1; i < segments; i++) {
+                const segment = document.createElement('div');
+                segment.className = 'snake-segment';
+                container.appendChild(segment);
+            }
+            
+            // Create food items
+            for (let i = 0; i < 3; i++) {
+                const food = document.createElement('div');
+                food.className = 'food';
+                food.style.left = `${Math.random() * 250}px`;
+                food.style.top = `${Math.random() * 80}px`;
+                container.appendChild(food);
+            }
+            
+            // Animate snake
+            animateSnake();
+        }
+        
+        function animateSnake() {
+            const segments = document.querySelectorAll('.snake-segment');
+            const path = [
+                {x: 0, y: 50},
+                {x: 150, y: 20},
+                {x: 250, y: 70},
+                {x: 150, y: 100},
+                {x: 50, y: 40}
+            ];
+            
+            let step = 0;
+            let pathIndex = 0;
+            let direction = 1;
+            
+            function moveSnake() {
+                if (step >= 100) {
+                    step = 0;
+                    pathIndex = (pathIndex + direction) % path.length;
+                    
+                    if (pathIndex === path.length - 1) direction = -1;
+                    else if (pathIndex === 0) direction = 1;
+                }
+                
+                const currentPoint = path[pathIndex];
+                const nextPoint = path[(pathIndex + direction) % path.length];
+                
+                const x = currentPoint.x + (nextPoint.x - currentPoint.x) * (step / 100);
+                const y = currentPoint.y + (nextPoint.y - currentPoint.y) * (step / 100);
+                
+                segments[0].style.left = `${x}px`;
+                segments[0].style.top = `${y}px`;
+                
+                // Move the rest of the segments to follow the head
+                for (let i = 1; i < segments.length; i++) {
+                    const prevSegment = segments[i - 1];
+                    const segment = segments[i];
+                    
+                    // Add a delay effect for trailing segments
+                    setTimeout(() => {
+                        segment.style.left = prevSegment.style.left;
+                        segment.style.top = prevSegment.style.top;
+                    }, i * 30);
+                }
+                
+                step += 1;
+                requestAnimationFrame(moveSnake);
+            }
+            
+            moveSnake();
+        }
+        
+        // Button functionality
+        document.getElementById('serverBtn').addEventListener('click', function() {
+            this.textContent = 'Starting Server...';
+            this.disabled = true;
+            
+            // Simulate server starting
+            setTimeout(() => {
+                alert('Python server started! Please run the game script to play.');
+                this.textContent = 'Start Python Server';
+                this.disabled = false;
+            }, 1500);
+        });
+        
+        // Initialize animation
+        window.onload = createSnakeAnimation;
+    </script>
+</body>
+</html>
