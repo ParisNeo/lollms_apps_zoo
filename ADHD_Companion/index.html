@@ -3,514 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ADHD Focus Hub</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <title>ADHD Focus Hub - LOLLMS Integration</title>
     <style>
-        body { font-family: 'Inter', sans-serif; } /* Optional: Use a Tailwind-friendly font */
-        .task-done { text-decoration: line-through; opacity: 0.7; }
-        [v-cloak] { display: none; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            background-color: #f0f2f5; /* Light grey background */
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            background-color: #ffffff; /* White card */
+            padding: 40px 50px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+        .logo {
+            font-size: 3em; /* Larger emoji or icon */
+            margin-bottom: 20px;
+            color: #5dade2; /* A pleasant blue */
+        }
+        h1 {
+            color: #2c3e50; /* Darker heading color */
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        p {
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 25px;
+            color: #555;
+        }
+        .lollms-button-like {
+            display: inline-block;
+            background-color: #5dade2; /* Blue button */
+            color: white;
+            padding: 12px 25px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 1em;
+            transition: background-color 0.2s ease;
+            cursor: default; /* Not a real button here */
+        }
+        .lollms-button-like:hover {
+            background-color: #3498db; /* Darker blue on hover */
+        }
+        .footer-note {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #777;
+        }
+         /* Optional: LOLLMS-like color accents */
+        .accent-bar {
+            width: 80px;
+            height: 5px;
+            background-color: #e74c3c; /* LOLLMS-like accent color (e.g., red) */
+            margin: 0 auto 25px auto;
+            border-radius: 3px;
+        }
     </style>
 </head>
-<body class="bg-slate-100 text-slate-800">
-    <div id="app" class="container mx-auto p-4 max-w-4xl">
-        
-        <header class="mb-8 text-center">
-            <h1 class="text-4xl font-bold text-sky-600">ADHD Focus Hub</h1>
-            <p class="text-slate-600">Organize, Focus, Achieve!</p>
-        </header>
-
-        <!-- Notifications -->
-        <div v-if="notification.message" 
-             :class="['p-3 rounded-md mb-4 text-white', notification.type === 'success' ? 'bg-green-500' : 'bg-red-500']"
-             @click="notification.message = ''">
-            {{ notification.message }}
+<body>
+    <div class="container">
+        <div class="logo">🎯</div> <!-- Or a relevant icon like a brain, clock -->
+        <h1>ADHD Focus Hub</h1>
+        <div class="accent-bar"></div>
+        <p>
+            This application, the <strong>ADHD Focus Hub</strong>, is designed to be run as a service or personality
+            within the <strong>LOLLMS</strong> (Lord of Large Language Models) framework.
+        </p>
+        <p>
+            Please launch it using the appropriate "Run Server," "Start Service," or "Select Personality" button
+            within your LOLLMS web UI.
+        </p>
+        <div class="lollms-button-like">
+            Access via LOLLMS Interface
         </div>
-
-        <!-- Stats & Gamification -->
-        <section class="mb-6 p-4 bg-white rounded-lg shadow">
-            <h2 class="text-2xl font-semibold text-sky-700 mb-2">Your Progress</h2>
-            <div class="flex justify-between items-center">
-                <p>Points: <span class="font-bold text-xl text-amber-500">{{ userStats.points }}</span></p>
-                <p>Level: <span class="font-bold text-xl text-purple-500">{{ userStats.level }}</span></p>
-            </div>
-            <div class="w-full bg-slate-200 rounded-full h-2.5 mt-2">
-                <div class="bg-sky-500 h-2.5 rounded-full" :style="{ width: userStats.levelProgress + '%' }"></div>
-            </div>
-        </section>
-
-        <!-- Pomodoro Timer -->
-        <section class="mb-6 p-4 bg-white rounded-lg shadow">
-            <h2 class="text-2xl font-semibold text-sky-700 mb-2">Pomodoro Timer</h2>
-            <div v-if="pomodoro.currentTask" class="mb-2">
-                Focusing on: <span class="font-semibold">{{ pomodoro.currentTask.title }}</span>
-            </div>
-            <div class="text-5xl font-mono text-center my-4" 
-                 :class="{'text-red-500': pomodoro.isBreak, 'text-sky-600': !pomodoro.isBreak && pomodoro.isRunning }">
-                {{ pomodoro.displayTime }}
-            </div>
-            <div class="flex justify-center space-x-2">
-                <button @click="togglePomodoro" 
-                        class="px-4 py-2 rounded-md text-white"
-                        :class="pomodoro.isRunning ? 'bg-orange-500 hover:bg-orange-600' : 'bg-sky-500 hover:bg-sky-600'">
-                    {{ pomodoro.isRunning ? 'Pause' : (pomodoro.timeLeft === pomodoro.workDuration * 60 ? 'Start Focus' : 'Resume') }}
-                </button>
-                <button @click="resetPomodoro" v-if="pomodoro.isRunning || pomodoro.timeLeft < pomodoro.workDuration * 60"
-                        class="px-4 py-2 bg-slate-400 hover:bg-slate-500 text-white rounded-md">
-                    Reset
-                </button>
-            </div>
-             <div class="mt-4 flex justify-center items-center space-x-2">
-                <label for="workDuration" class="text-sm">Work (min):</label>
-                <input type="number" id="workDuration" v-model.number="pomodoro.config.workDuration" class="w-16 p-1 border rounded">
-                <label for="breakDuration" class="text-sm">Break (min):</label>
-                <input type="number" id="breakDuration" v-model.number="pomodoro.config.breakDuration" class="w-16 p-1 border rounded">
-            </div>
-        </section>
-
-        <!-- Objectives/Tasks -->
-        <section class="mb-6 p-4 bg-white rounded-lg shadow">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold text-sky-700">Objectives / Tasks</h2>
-                <button @click="showAddTaskModal = true" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md">
-                    + Add Task
-                </button>
-            </div>
-
-            <!-- Task Filters -->
-            <div class="mb-4 flex space-x-2">
-                <button @click="taskFilter = 'all'" :class="['px-3 py-1 rounded', taskFilter === 'all' ? 'bg-sky-500 text-white' : 'bg-slate-200']">All</button>
-                <button @click="taskFilter = 'todo'" :class="['px-3 py-1 rounded', taskFilter === 'todo' ? 'bg-sky-500 text-white' : 'bg-slate-200']">To Do</button>
-                <button @click="taskFilter = 'doing'" :class="['px-3 py-1 rounded', taskFilter === 'doing' ? 'bg-sky-500 text-white' : 'bg-slate-200']">Doing</button>
-                <button @click="taskFilter = 'done'" :class="['px-3 py-1 rounded', taskFilter === 'done' ? 'bg-sky-500 text-white' : 'bg-slate-200']">Done</button>
-            </div>
-
-            <div v-if="filteredTasks.length === 0" class="text-slate-500 text-center py-4">No tasks yet. Add one!</div>
-            
-            <ul class="space-y-3">
-                <li v-for="task in filteredTasks" :key="task.id" 
-                    class="p-3 border rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center hover:shadow-md transition-shadow"
-                    :class="{ 'border-l-4 border-sky-500': task.status === 'doing', 'opacity-60 bg-slate-50': task.status === 'done' }">
-                    
-                    <div class="flex-grow mb-2 sm:mb-0">
-                        <h3 class="font-semibold text-lg" :class="{'task-done': task.status === 'done'}">{{ task.title }}</h3>
-                        <p class="text-sm text-slate-600" :class="{'task-done': task.status === 'done'}">{{ task.description }}</p>
-                        <p class="text-xs text-slate-500 mt-1">
-                            Due: {{ formatDate(task.due_date) }} | 
-                            Pomodoros: {{ task.pomodoros_completed }} / {{ task.pomodoros_estimated }} |
-                            Points: {{ task.points_value }}
-                        </p>
-                    </div>
-
-                    <div class="flex space-x-1 mt-2 sm:mt-0 flex-shrink-0">
-                        <button v-if="task.status !== 'done' && !pomodoro.isRunning" @click="startPomodoroForTask(task)" title="Start Pomodoro"
-                                class="p-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-md text-xs">▶️ Focus</button>
-                        
-                        <select v-model="task.status" @change="updateTaskStatus(task)" 
-                                class="p-1.5 border rounded-md text-xs bg-white">
-                            <option value="todo">To Do</option>
-                            <option value="doing">Doing</option>
-                            <option value="done">Done</option>
-                        </select>
-                        
-                        <button @click="prepareEditTask(task)" title="Edit Task"
-                                class="p-1.5 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md text-xs">✏️</button>
-                        <button @click="deleteTask(task.id)" title="Delete Task"
-                                class="p-1.5 bg-red-500 hover:bg-red-600 text-white rounded-md text-xs">🗑️</button>
-                    </div>
-                </li>
-            </ul>
-        </section>
-
-        <!-- Add/Edit Task Modal -->
-        <div v-if="showAddTaskModal || editingTask" 
-             class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-                <h3 class="text-xl font-semibold mb-4">{{ editingTask ? 'Edit Task' : 'Add New Task' }}</h3>
-                <form @submit.prevent="editingTask ? submitEditTask() : submitNewTask()">
-                    <div class="mb-3">
-                        <label for="title" class="block text-sm font-medium text-slate-700">Title</label>
-                        <input type="text" v-model="currentTaskForm.title" id="title" required
-                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
-                    </div>
-                    <div class="mb-3">
-                        <label for="description" class="block text-sm font-medium text-slate-700">Description</label>
-                        <textarea v-model="currentTaskForm.description" id="description" rows="3"
-                                  class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="due_date" class="block text-sm font-medium text-slate-700">Due Date</label>
-                        <input type="date" v-model="currentTaskForm.due_date" id="due_date"
-                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
-                    </div>
-                    <div class="mb-3">
-                        <label for="pomodoros_estimated" class="block text-sm font-medium text-slate-700">Estimated Pomodoros</label>
-                        <input type="number" v-model.number="currentTaskForm.pomodoros_estimated" id="pomodoros_estimated" min="1"
-                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
-                    </div>
-                     <div class="mb-4">
-                        <label for="points_value" class="block text-sm font-medium text-slate-700">Points Value</label>
-                        <input type="number" v-model.number="currentTaskForm.points_value" id="points_value" min="1"
-                               class="mt-1 block w-full px-3 py-2 border border-slate-300 rounded-md shadow-sm focus:outline-none focus:ring-sky-500 focus:border-sky-500 sm:text-sm">
-                    </div>
-                    <div class="flex justify-end space-x-2">
-                        <button type="button" @click="closeTaskModal" 
-                                class="px-4 py-2 bg-slate-300 hover:bg-slate-400 rounded-md">Cancel</button>
-                        <button type="submit" 
-                                class="px-4 py-2 bg-sky-500 hover:bg-sky-600 text-white rounded-md">
-                            {{ editingTask ? 'Save Changes' : 'Add Task' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-
+        <p class="footer-note">
+            Attempting to access this <code>index.html</code> page directly will not start the application's interactive GUI.
+        </p>
     </div>
-
-    <script>
-        const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
-
-        createApp({
-            setup() {
-                const tasks = ref([]);
-                const showAddTaskModal = ref(false);
-                const editingTask = ref(null); // Holds the task object being edited
-                const defaultTaskForm = {
-                    title: '',
-                    description: '',
-                    due_date: new Date().toISOString().split('T')[0],
-                    status: 'todo',
-                    pomodoros_estimated: 1,
-                    points_value: 10
-                };
-                const currentTaskForm = reactive({...defaultTaskForm});
-                const taskFilter = ref('all'); // 'all', 'todo', 'doing', 'done'
-
-                const notification = reactive({ message: '', type: 'success' }); // type: 'success' or 'error'
-
-                const userStats = reactive({
-                    points: 0,
-                    level: 1,
-                    pointsPerLevel: 100,
-                    levelProgress: 0,
-                });
-
-                const pomodoro = reactive({
-                    isRunning: false,
-                    isBreak: false,
-                    timerId: null,
-                    config: {
-                        workDuration: 25, // minutes
-                        breakDuration: 5, // minutes
-                    },
-                    timeLeft: 25 * 60, // seconds
-                    currentTask: null, // task object
-                    get displayTime() {
-                        const minutes = Math.floor(this.timeLeft / 60);
-                        const seconds = this.timeLeft % 60;
-                        return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-                    }
-                });
-
-                const API_URL = 'http://localhost:8000'; // Adjust if your FastAPI runs elsewhere
-
-                // --- Utility Methods ---
-                function showAppNotification(message, type = 'success', duration = 3000) {
-                    notification.message = message;
-                    notification.type = type;
-                    if (duration) {
-                        setTimeout(() => {
-                            notification.message = '';
-                        }, duration);
-                    }
-                }
-                
-                function formatDate(dateString) {
-                    if (!dateString) return 'N/A';
-                    const date = new Date(dateString);
-                    return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-                }
-
-                // --- Task Methods ---
-                async function fetchTasks() {
-                    try {
-                        const response = await axios.get(`${API_URL}/tasks`);
-                        tasks.value = response.data;
-                    } catch (error) {
-                        console.error("Error fetching tasks:", error);
-                        showAppNotification("Failed to load tasks.", "error");
-                    }
-                }
-
-                function resetTaskForm() {
-                    Object.assign(currentTaskForm, defaultTaskForm);
-                    currentTaskForm.due_date = new Date().toISOString().split('T')[0]; // Reset date
-                }
-
-                function closeTaskModal() {
-                    showAddTaskModal.value = false;
-                    editingTask.value = null;
-                    resetTaskForm();
-                }
-                
-                function prepareEditTask(task) {
-                    editingTask.value = task; // Keep original reference for now
-                    Object.assign(currentTaskForm, task); // Populate form
-                    showAddTaskModal.value = true; // Open modal
-                }
-
-                async function submitNewTask() {
-                    if (!currentTaskForm.title) return;
-                    try {
-                        const response = await axios.post(`${API_URL}/tasks`, currentTaskForm);
-                        tasks.value.push(response.data);
-                        closeTaskModal();
-                        showAppNotification("Task added successfully!", "success");
-                        fetchUserStats(); // Update stats if needed
-                    } catch (error) {
-                        console.error("Error adding task:", error);
-                        showAppNotification("Failed to add task.", "error");
-                    }
-                }
-                
-                async function submitEditTask() {
-                    if (!editingTask.value || !currentTaskForm.title) return;
-                    try {
-                        const taskDataToUpdate = { ...currentTaskForm };
-                        delete taskDataToUpdate.id; // Don't send ID in body for PUT usually
-
-                        const response = await axios.put(`${API_URL}/tasks/${editingTask.value.id}`, taskDataToUpdate);
-                        const index = tasks.value.findIndex(t => t.id === editingTask.value.id);
-                        if (index !== -1) {
-                            tasks.value[index] = response.data;
-                        }
-                        closeTaskModal();
-                        showAppNotification("Task updated successfully!", "success");
-                    } catch (error) {
-                        console.error("Error updating task:", error);
-                        showAppNotification("Failed to update task.", "error");
-                    }
-                }
-
-                async function updateTaskStatus(task) {
-                     try {
-                        const response = await axios.put(`${API_URL}/tasks/${task.id}`, { status: task.status });
-                        const index = tasks.value.findIndex(t => t.id === task.id);
-                        if (index !== -1) {
-                            tasks.value[index] = response.data; // Update with potentially more data from backend
-                        }
-                        showAppNotification(`Task "${task.title}" moved to ${task.status}.`, "success");
-                        if (task.status === 'done') {
-                             // Award points only if not already awarded (backend should handle this logic ideally)
-                            // For now, we assume backend handles point awarding on status change to 'done'
-                            fetchUserStats();
-                        }
-                    } catch (error) {
-                        console.error("Error updating task status:", error);
-                        showAppNotification("Failed to update task status.", "error");
-                        // Revert status optimism
-                        await fetchTasks(); 
-                    }
-                }
-
-                async function deleteTask(taskId) {
-                    if (!confirm("Are you sure you want to delete this task?")) return;
-                    try {
-                        await axios.delete(`${API_URL}/tasks/${taskId}`);
-                        tasks.value = tasks.value.filter(t => t.id !== taskId);
-                        showAppNotification("Task deleted.", "success");
-                        fetchUserStats(); // If deleting a task might affect points
-                    } catch (error) {
-                        console.error("Error deleting task:", error);
-                        showAppNotification("Failed to delete task.", "error");
-                    }
-                }
-
-                const filteredTasks = computed(() => {
-                    if (taskFilter.value === 'all') return tasks.value;
-                    return tasks.value.filter(task => task.status === taskFilter.value);
-                });
-
-                // --- Pomodoro Methods ---
-                function tick() {
-                    if (pomodoro.timeLeft > 0) {
-                        pomodoro.timeLeft--;
-                    } else {
-                        clearInterval(pomodoro.timerId);
-                        pomodoro.isRunning = false;
-                        handlePomodoroCompletion();
-                    }
-                }
-
-                function togglePomodoro() {
-                    if (!pomodoro.currentTask && !pomodoro.isBreak) {
-                        showAppNotification("Please select a task to start a Pomodoro for, or start a general Pomodoro.", "error");
-                        // Or, allow general pomodoro:
-                        // pomodoro.currentTask = { title: "General Focus", id: null }; 
-                        // if (!pomodoro.currentTask) return; 
-                        // For this app, let's require a task for focus sessions for better tracking.
-                        // Allow starting breaks without a task.
-                         if (pomodoro.timeLeft === pomodoro.config.workDuration * 60 && !pomodoro.isBreak) {
-                             showAppNotification("Select a task first using '▶️ Focus' button on a task.", "error");
-                             return;
-                         }
-                    }
-
-                    pomodoro.isRunning = !pomodoro.isRunning;
-                    if (pomodoro.isRunning) {
-                        pomodoro.timerId = setInterval(tick, 1000);
-                    } else {
-                        clearInterval(pomodoro.timerId);
-                    }
-                }
-
-                function resetPomodoro() {
-                    clearInterval(pomodoro.timerId);
-                    pomodoro.isRunning = false;
-                    pomodoro.isBreak = false;
-                    pomodoro.timeLeft = pomodoro.config.workDuration * 60;
-                    // Do not clear currentTask here, user might want to restart for same task
-                }
-
-                async function handlePomodoroCompletion() {
-                    // Browser notification
-                    if (Notification.permission === "granted") {
-                        new Notification("Pomodoro Finished!", {
-                            body: pomodoro.isBreak ? "Break's over! Time to focus." : "Great work! Time for a break.",
-                        });
-                    } else if (Notification.permission !== "denied") {
-                        Notification.requestPermission().then(permission => {
-                            if (permission === "granted") {
-                                new Notification("Pomodoro Finished!", { body: "Great work!" });
-                            }
-                        });
-                    }
-                    alert(pomodoro.isBreak ? "Break's over! Time to focus." : "Great work! Time for a break.");
-
-
-                    if (!pomodoro.isBreak && pomodoro.currentTask && pomodoro.currentTask.id) {
-                        // Completed a work session
-                        showAppNotification(`Pomodoro for "${pomodoro.currentTask.title}" completed!`, "success");
-                        try {
-                            const response = await axios.post(`${API_URL}/tasks/${pomodoro.currentTask.id}/complete_pomodoro`);
-                            const updatedTask = response.data;
-                            const taskIndex = tasks.value.findIndex(t => t.id === updatedTask.id);
-                            if (taskIndex !== -1) tasks.value[taskIndex] = updatedTask;
-                            
-                            fetchUserStats(); // Fetch updated points
-
-                            // Check if task is complete based on pomodoros
-                            if (updatedTask.pomodoros_completed >= updatedTask.pomodoros_estimated && updatedTask.status !== 'done') {
-                                updatedTask.status = 'done';
-                                await updateTaskStatus(updatedTask); // This will also call fetchUserStats
-                            }
-
-                        } catch (error) {
-                            console.error("Error completing pomodoro on backend:", error);
-                            showAppNotification("Failed to record pomodoro completion.", "error");
-                        }
-                        // Start break
-                        pomodoro.isBreak = true;
-                        pomodoro.timeLeft = pomodoro.config.breakDuration * 60;
-                        // pomodoro.currentTask = null; // Keep task context for "Break after X"
-                        togglePomodoro(); // Auto-start break
-                    } else {
-                        // Completed a break session
-                        showAppNotification("Break finished. Ready for the next focus session?", "success");
-                        pomodoro.isBreak = false;
-                        pomodoro.timeLeft = pomodoro.config.workDuration * 60;
-                        // pomodoro.currentTask should still be set if a task was active before break
-                    }
-                }
-
-                function startPomodoroForTask(task) {
-                    if (pomodoro.isRunning) {
-                        showAppNotification("A Pomodoro is already running.", "error");
-                        return;
-                    }
-                    if (task.status === 'done') {
-                        showAppNotification("This task is already completed.", "error");
-                        return;
-                    }
-                    pomodoro.currentTask = task;
-                    pomodoro.isBreak = false;
-                    pomodoro.timeLeft = pomodoro.config.workDuration * 60;
-                    pomodoro.isRunning = false; // So togglePomodoro starts it
-                    togglePomodoro();
-                    showAppNotification(`Starting Pomodoro for "${task.title}".`, "success");
-
-                    // Optionally mark task as 'doing'
-                    if(task.status === 'todo') {
-                        task.status = 'doing';
-                        updateTaskStatus(task);
-                    }
-                }
-                
-                watch(() => pomodoro.config.workDuration, (newVal) => {
-                    if (!pomodoro.isRunning && !pomodoro.isBreak) {
-                        pomodoro.timeLeft = newVal * 60;
-                    }
-                });
-                watch(() => pomodoro.config.breakDuration, (newVal) => {
-                     if (!pomodoro.isRunning && pomodoro.isBreak) {
-                        pomodoro.timeLeft = newVal * 60; // Adjust if break duration changes mid-break (if not running)
-                    }
-                });
-
-
-                // --- Gamification ---
-                async function fetchUserStats() {
-                    try {
-                        const response = await axios.get(`${API_URL}/stats`);
-                        userStats.points = response.data.total_points;
-                        userStats.level = Math.floor(userStats.points / userStats.pointsPerLevel) + 1;
-                        userStats.levelProgress = (userStats.points % userStats.pointsPerLevel) / userStats.pointsPerLevel * 100;
-                    } catch (error) {
-                        console.error("Error fetching user stats:", error);
-                        showAppNotification("Failed to load user stats.", "error");
-                    }
-                }
-
-
-                // --- Lifecycle Hooks ---
-                onMounted(() => {
-                    fetchTasks();
-                    fetchUserStats();
-                    // Request notification permission on load
-                    if (Notification.permission !== "granted" && Notification.permission !== "denied") {
-                        Notification.requestPermission();
-                    }
-                    pomodoro.timeLeft = pomodoro.config.workDuration * 60; // Initialize display time
-                });
-
-                return {
-                    tasks,
-                    showAddTaskModal,
-                    editingTask,
-                    currentTaskForm,
-                    submitNewTask,
-                    submitEditTask,
-                    prepareEditTask,
-                    updateTaskStatus,
-                    deleteTask,
-                    closeTaskModal,
-                    formatDate,
-                    taskFilter,
-                    filteredTasks,
-
-                    notification,
-                    showAppNotification,
-
-                    userStats,
-                    
-                    pomodoro,
-                    togglePomodoro,
-                    resetPomodoro,
-                    startPomodoroForTask,
-                };
-            }
-        }).mount('#app');
-    </script>
 </body>
 </html>
