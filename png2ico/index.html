@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-translate-key="appTitle">PNG to ICO Converter</title>
+    <title data-translate-key="appTitle">Image to ICO Converter</title>
     <link rel="icon" href="favicon.ico" type="image/x-icon"> <!-- Add your favicon.ico here -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* --- Styles are unchanged, so they are omitted for brevity --- */
         /* Base styles (Light mode by default) */
         body {
             background-image: linear-gradient(to bottom right, #e0f2fe, #bae6fd); /* Light sky gradient */
@@ -75,7 +76,7 @@
 <body class="flex flex-col items-center justify-center min-h-screen p-4 font-sans antialiased">
     <div class="glass-card shadow-2xl p-6 sm:p-8 md:p-10 max-w-lg w-full">
         <div class="flex justify-between items-center mb-6">
-            <h1 class="text-3xl sm:text-4xl font-bold text-theme-primary" data-translate-key="pageTitle">PNG to ICO Converter</h1>
+            <h1 class="text-3xl sm:text-4xl font-bold text-theme-primary" data-translate-key="pageTitle">Image to ICO Converter</h1>
             <button id="themeToggleBtn" class="p-2 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors">
                 <!-- Icons will be injected by JS -->
             </button>
@@ -86,12 +87,13 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.338 0 4.5 4.5 0 01-1.41 8.775H6.75z" />
             </svg>
             <p class="mt-3 text-sm text-theme-secondary">
-                <span data-translate-key="dropZoneText">Drag & Drop your PNG file, or</span>
+                <span data-translate-key="dropZoneText">Drag & Drop your image file, or</span>
                 <label for="fileInput" class="font-semibold text-theme-accent hover:underline cursor-pointer" data-translate-key="dropZoneBrowse">
                     browse files
                 </label>
             </p>
-            <input type="file" id="fileInput" accept=".png" class="hidden">
+            <!-- CHANGE 1: Updated accept attribute to include more image types -->
+            <input type="file" id="fileInput" accept="image/png, image/jpeg, image/gif, image/svg+xml, image/webp, image/bmp, .png, .jpg, .jpeg, .gif, .svg, .webp, .bmp" class="hidden">
             <p id="fileNameDisplay" class="text-xs text-theme-muted mt-2 truncate h-4"></p>
         </div>
 
@@ -148,12 +150,12 @@
     </footer>
 
     <script>
-        // --- Translations ---
+        // --- Translations (CHANGE 2: Updated with more generic text) ---
         const translations = {
             en: {
-                appTitle: "PNG to ICO Converter",
-                pageTitle: "PNG to ICO Converter",
-                dropZoneText: "Drag & Drop your PNG file, or",
+                appTitle: "Image to ICO Converter",
+                pageTitle: "Image to ICO Converter",
+                dropZoneText: "Drag & Drop your image file, or",
                 dropZoneBrowse: "browse files",
                 selectIcoSizeLabel: "Select ICO Size:",
                 convertButtonText: "Convert to ICO",
@@ -161,21 +163,24 @@
                 previewTitle: "ICO Preview (Resized)",
                 footerBuiltOn: "Built on",
                 footerBy: "by",
-                // Dynamic messages (can be functions for more complex cases)
                 messageConverting: "Converting...",
-                messageSelectFile: "Please select a PNG file first.",
-                messageInvalidFile: "Invalid file. Please select a PNG.",
+                messageSelectFile: "Please select an image file first.",
+                messageInvalidFile: "Invalid file type. Please select a valid image (PNG, JPG, SVG, etc.).",
                 messageErrorCreatingIco: "Error creating ICO. Try a different size or image.",
                 messageErrorLoadingImage: "Could not load image. File may be corrupt.",
                 messageErrorReadingFile: "Error reading file.",
                 messageConversionSuccess: "Conversion successful! Download ready.",
                 downloadButtonBase: "Download",
-                icoSuffix: "ICO"
+                icoSuffix: "ICO",
+                copyBase64ButtonText: "Copy as Base64",
+                copiedButtonText: "Copied!",
+                messageBase64Copied: "Base64 data copied to clipboard!",
+                messageClipboardError: "Could not copy to clipboard."
             },
             fr: {
-                appTitle: "Convertisseur PNG vers ICO",
-                pageTitle: "Convertisseur PNG vers ICO",
-                dropZoneText: "Glissez-déposez votre fichier PNG, ou",
+                appTitle: "Convertisseur Image vers ICO",
+                pageTitle: "Convertisseur Image vers ICO",
+                dropZoneText: "Glissez-déposez votre fichier image, ou",
                 dropZoneBrowse: "parcourir",
                 selectIcoSizeLabel: "Taille de l'ICO :",
                 convertButtonText: "Convertir en ICO",
@@ -184,19 +189,23 @@
                 footerBuiltOn: "Basé sur",
                 footerBy: "par",
                 messageConverting: "Conversion en cours...",
-                messageSelectFile: "Veuillez d'abord sélectionner un fichier PNG.",
-                messageInvalidFile: "Fichier invalide. Veuillez sélectionner un PNG.",
+                messageSelectFile: "Veuillez d'abord sélectionner un fichier image.",
+                messageInvalidFile: "Type de fichier invalide. Veuillez sélectionner une image (PNG, JPG, SVG, etc.).",
                 messageErrorCreatingIco: "Erreur de création ICO. Essayez une autre taille/image.",
                 messageErrorLoadingImage: "Impossible de charger l'image. Fichier corrompu?",
                 messageErrorReadingFile: "Erreur de lecture du fichier.",
                 messageConversionSuccess: "Conversion réussie ! Téléchargement prêt.",
                 downloadButtonBase: "Télécharger",
-                icoSuffix: "ICO"
+                icoSuffix: "ICO",
+                copyBase64ButtonText: "Copier en Base64",
+                copiedButtonText: "Copié !",
+                messageBase64Copied: "Données Base64 copiées dans le presse-papiers !",
+                messageClipboardError: "Impossible de copier dans le presse-papiers."
             },
             es: {
-                appTitle: "Convertidor PNG a ICO",
-                pageTitle: "Convertidor PNG a ICO",
-                dropZoneText: "Arrastra y suelta tu archivo PNG, o",
+                appTitle: "Convertidor de Imagen a ICO",
+                pageTitle: "Convertidor de Imagen a ICO",
+                dropZoneText: "Arrastra y suelta tu archivo de imagen, o",
                 dropZoneBrowse: "explorar archivos",
                 selectIcoSizeLabel: "Seleccionar tamaño de ICO:",
                 convertButtonText: "Convertir a ICO",
@@ -205,14 +214,18 @@
                 footerBuiltOn: "Construido sobre",
                 footerBy: "por",
                 messageConverting: "Convirtiendo...",
-                messageSelectFile: "Por favor, selecciona un archivo PNG primero.",
-                messageInvalidFile: "Archivo inválido. Selecciona un PNG.",
+                messageSelectFile: "Por favor, selecciona un archivo de imagen primero.",
+                messageInvalidFile: "Tipo de archivo inválido. Selecciona una imagen válida (PNG, JPG, SVG, etc.).",
                 messageErrorCreatingIco: "Error al crear ICO. Prueba otro tamaño/imagen.",
                 messageErrorLoadingImage: "No se pudo cargar la imagen. ¿Archivo corrupto?",
                 messageErrorReadingFile: "Error al leer el archivo.",
                 messageConversionSuccess: "¡Conversión exitosa! Descarga lista.",
                 downloadButtonBase: "Descargar",
-                icoSuffix: "ICO"
+                icoSuffix: "ICO",
+                copyBase64ButtonText: "Copiar como Base64",
+                copiedButtonText: "¡Copiado!",
+                messageBase64Copied: "¡Datos Base64 copiados al portapapeles!",
+                messageClipboardError: "No se pudo copiar al portapapeles."
             }
         };
         let currentLanguage = 'en';
@@ -229,17 +242,15 @@
                     el.textContent = translations[lang][key];
                 }
             });
-            // Update dynamic elements like button states if needed
-            if (currentFile) handleFileSelect(currentFile); // Re-render messages with new lang
+            if (currentFile) handleFileSelect(currentFile);
             else handleFileSelect(null);
         }
 
-        // --- Theme Toggle ---
+        // --- Theme Toggle (unchanged) ---
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
         const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
         const selectElement = document.getElementById('icoSize');
-
 
         function applyTheme(theme) {
             if (theme === 'dark') {
@@ -261,9 +272,8 @@
             applyTheme(newTheme);
         });
 
-        // --- Core App Logic (mostly unchanged, adapted for i18n messages) ---
+        // --- Core App Logic ---
         const fileInput = document.getElementById('fileInput');
-        // ... (rest of your const declarations from previous script)
         const convertBtn = document.getElementById('convertBtn');
         const clearBtn = document.getElementById('clearBtn');
         const outputDiv = document.getElementById('output');
@@ -274,8 +284,11 @@
         const dropZone = document.getElementById('dropZone');
         const fileNameDisplay = document.getElementById('fileNameDisplay');
         const spinner = document.getElementById('spinner');
-        const buttonText = document.getElementById('buttonText'); // The span containing the text inside convertBtn
+        const buttonText = document.getElementById('buttonText');
         let currentFile = null;
+
+        // CHANGE 3: Define allowed types and update validation logic
+        const allowedMimeTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/svg+xml', 'image/webp', 'image/bmp'];
 
         function getTranslatedMessage(key, replacements = {}) {
             let message = translations[currentLanguage][key] || translations.en[key] || `Missing translation: ${key}`;
@@ -286,15 +299,14 @@
         }
 
         function displayMessage(messageKey, type = 'info', replacements = {}) {
-            const message = getTranslatedMessage(messageKey, replacements);
+            const message = messageKey ? getTranslatedMessage(messageKey, replacements) : '';
             messageArea.textContent = message;
-            // ... (rest of displayMessage styling logic, make sure classes are theme-aware if needed)
             messageArea.className = 'mt-5 text-center text-sm min-h-[1.25em] '; 
             if (type === 'error') {
                 messageArea.classList.add('text-red-500', 'dark:text-red-400', 'font-medium');
             } else if (type === 'success') {
                 messageArea.classList.add('text-green-600', 'dark:text-green-400', 'font-medium');
-            } else { // info
+            } else {
                 messageArea.classList.add('text-theme-secondary');
             }
         }
@@ -302,11 +314,11 @@
         function showSpinner(show) {
             if (show) {
                 spinner.classList.remove('hidden');
-                document.getElementById('buttonText').classList.add('hidden'); // Ensure correct span is hidden
+                buttonText.classList.add('hidden');
                 convertBtn.disabled = true;
             } else {
                 spinner.classList.add('hidden');
-                document.getElementById('buttonText').classList.remove('hidden');
+                buttonText.classList.remove('hidden');
                 convertBtn.disabled = !currentFile; 
             }
         }
@@ -315,33 +327,30 @@
             fileInput.value = ''; currentFile = null; outputDiv.innerHTML = '';
             imageCard.classList.add('hidden'); convertedImage.src = '#'; 
             convertedImage.alt = 'Converted Image Preview';
-            displayMessage(''); // Clears message
+            displayMessage('');
             fileNameDisplay.textContent = ''; icoSizeSelect.value = '32';
             showSpinner(false); 
         }
 
         function handleFileSelect(file) {
             imageCard.classList.add('hidden'); outputDiv.innerHTML = ''; 
-            if (file && file.type === 'image/png') {
+            // Updated validation check
+            if (file && allowedMimeTypes.includes(file.type)) {
                 currentFile = file;
                 fileNameDisplay.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
-                // No message here, or a very neutral one, as it's just selection
-                displayMessage('statusFileSelected', 'info'); // Example: a key for "File ready."
+                displayMessage('');
                 convertBtn.disabled = false;
             } else {
                 currentFile = null; fileNameDisplay.textContent = '';
-                if (file) { displayMessage('messageInvalidFile', 'error'); } 
-                else { displayMessage(''); /* Cleared */ }
+                if (file) { 
+                    displayMessage('messageInvalidFile', 'error'); // Use the new generic error message
+                } 
+                else { displayMessage(''); }
                 convertBtn.disabled = true;
             }
         }
-        // Add 'statusFileSelected' to translations if you use it above:
-        // en: { ..., statusFileSelected: "File ready. Choose size and convert." }, fr: { ... } etc.
-        // For now, I'll remove the automatic message on file select to keep it simpler.
-        // User will see file name and can then press convert.
 
-
-        fileInput.onchange = function() { /* ... */ handleFileSelect(this.files[0] || null); };
+        fileInput.onchange = function() { handleFileSelect(this.files[0] || null); };
         clearBtn.onclick = resetUI;
         dropZone.onclick = () => fileInput.click();
 
@@ -350,8 +359,8 @@
             document.body.addEventListener(eventName, preventDefaults, false); 
         });
         function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
-        ['dragenter', 'dragover'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.add('drag-over')));
-        ['dragleave', 'drop'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.remove('drag-over')));
+        ['dragenter', 'dragover'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.add('drag-over', 'border-blue-500/80')));
+        ['dragleave', 'drop'].forEach(eName => dropZone.addEventListener(eName, () => dropZone.classList.remove('drag-over', 'border-blue-500/80')));
         dropZone.addEventListener('drop', (event) => {
             if (event.dataTransfer.files.length) {
                 fileInput.files = event.dataTransfer.files; 
@@ -359,6 +368,7 @@
             }
         });
 
+        // The core conversion logic remains the same, as the browser handles decoding.
         convertBtn.onclick = function() {
             if (!currentFile) { displayMessage('messageSelectFile', 'error'); return; }
             showSpinner(true); displayMessage('messageConverting', 'info');
@@ -374,7 +384,7 @@
                     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
                     ctx.drawImage(img, 0, 0, selectedSize, selectedSize);
 
-                    convertedImage.src = canvas.toDataURL('image/png');
+                    convertedImage.src = canvas.toDataURL('image/png'); // Preview is always a PNG
                     convertedImage.style.width = `${Math.min(selectedSize, 96)}px`;
                     convertedImage.style.height = `${Math.min(selectedSize, 96)}px`;
                     convertedImage.alt = `Preview of ${selectedSize}x${selectedSize} ICO`;
@@ -386,15 +396,44 @@
                             showSpinner(false); return;
                         }
                         const url = URL.createObjectURL(blob);
+                        
                         const a = document.createElement('a');
                         a.href = url;
                         const baseName = currentFile.name.substring(0, currentFile.name.lastIndexOf('.')) || 'converted';
                         a.download = `${baseName}_${selectedSize}x${selectedSize}.ico`;
-                        // Dynamic download text
                         a.textContent = `${getTranslatedMessage('downloadButtonBase')} ${selectedSize}x${selectedSize} ${getTranslatedMessage('icoSuffix')}`;
-                        a.className = 'inline-block bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition shadow-sm hover:shadow-md border border-green-700 dark:border-green-600';
-                        
-                        outputDiv.innerHTML = ''; outputDiv.appendChild(a);
+                        a.className = 'inline-block bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md transition shadow-sm hover:shadow-md border border-green-700 dark:border-green-600 w-full sm:w-auto';
+
+                        const copyBtn = document.createElement('button');
+                        copyBtn.textContent = getTranslatedMessage('copyBase64ButtonText');
+                        copyBtn.className = 'inline-block bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-theme-secondary dark:text-gray-300 font-semibold py-2 px-4 rounded-md transition shadow-sm hover:shadow-md border border-gray-400 dark:border-gray-600 w-full sm:w-auto';
+                        copyBtn.onclick = () => {
+                            const blobReader = new FileReader();
+                            blobReader.onloadend = () => {
+                                const base64data = blobReader.result;
+                                navigator.clipboard.writeText(base64data).then(() => {
+                                    const originalText = getTranslatedMessage('copyBase64ButtonText');
+                                    copyBtn.textContent = getTranslatedMessage('copiedButtonText');
+                                    displayMessage('messageBase64Copied', 'success');
+                                    setTimeout(() => {
+                                        copyBtn.textContent = originalText;
+                                    }, 2500);
+                                }).catch(err => {
+                                    console.error('Failed to copy: ', err);
+                                    displayMessage('messageClipboardError', 'error');
+                                });
+                            };
+                            blobReader.onerror = () => { displayMessage('messageErrorReadingFile', 'error'); };
+                            blobReader.readAsDataURL(blob);
+                        };
+
+                        outputDiv.innerHTML = '';
+                        const buttonContainer = document.createElement('div');
+                        buttonContainer.className = 'flex flex-col sm:flex-row items-center justify-center gap-3';
+                        buttonContainer.appendChild(a);
+                        buttonContainer.appendChild(copyBtn);
+                        outputDiv.appendChild(buttonContainer);
+
                         displayMessage('messageConversionSuccess', 'success');
                         showSpinner(false);
                     }, 'image/x-icon', 1.0);
@@ -406,7 +445,7 @@
             reader.readAsDataURL(currentFile);
         };
 
-        // --- Initial Load ---
+        // --- Initial Load (unchanged) ---
         document.addEventListener('DOMContentLoaded', () => {
             const storedTheme = localStorage.getItem('theme') || 'light';
             applyTheme(storedTheme);
