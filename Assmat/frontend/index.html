@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulateur de Paie pour Assistante Maternelle</title>
+    <link rel="icon" type="image/png" href="/icon.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              primary: {
+                light: '#60a5fa', // blue-400
+                DEFAULT: '#3b82f6', // blue-500
+                dark: '#2563eb',  // blue-600
+              },
+            },
+            fontFamily: {
+              sans: ['Poppins', 'sans-serif'],
+              mono: ['Source Code Pro', 'monospace'],
+            }
+          }
+        }
+      }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+    
+    <link rel="stylesheet" href="print.css" media="print">
+    <link rel="stylesheet" href="style.css">
+    
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body class="bg-slate-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans transition-colors duration-300">
+    
+    <div id="toast-container" class="fixed top-4 right-4 z-50 grid gap-2"></div>
+
+    <header id="main-header" class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center h-16">
+            <div class="flex items-center gap-3">
+                <img src="/icon.png" alt="Logo" class="h-8 w-8">
+                <span class="text-xl font-semibold">Simulateur Assmat</span>
+            </div>
+            <button id="theme-toggle-btn" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700" title="Changer de thème"></button>
+        </div>
+    </header>
+    
+    <main id="app-container" class="max-w-5xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div id="home-screen">
+            <header class="flex flex-wrap justify-between items-center gap-4 pb-4 mb-6 border-b border-gray-200 dark:border-gray-700">
+                <h1 class="text-2xl sm:text-3xl font-bold">Mes Simulations</h1>
+                <div class="flex items-center gap-2 sm:gap-4">
+                    <button id="compare-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-white dark:bg-gray-700 shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"><span id="icon-compare"></span>Comparer</button>
+                    <button id="new-session-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-red-800 text-white hover:bg-primary-dark shadow-sm border border-primary-dark"><span id="icon-add"></span>Nouvelle Simulation</button>
+                </div>
+            </header>
+            <div id="session-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+        </div>
+
+        <div id="calculator-screen" class="hidden">
+            <header class="flex justify-between items-center pb-4 mb-6 border-b border-gray-200 dark:border-gray-700">
+                <button id="back-to-home-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-white dark:bg-gray-700 shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"><span id="icon-back"></span>Retour</button>
+                <h1 id="calculator-title" class="text-2xl sm:text-3xl font-bold text-center flex-grow"></h1>
+            </header>
+            <form id="sim-form" novalidate class="space-y-8">
+                <fieldset class="border dark:border-gray-700 rounded-lg p-6"><legend class="text-primary-light font-semibold px-2 text-lg">Informations Générales</legend><div class="form-group"><label for="session-name" class="block text-sm font-medium mb-1">Nom de la simulation</label><input type="text" id="session-name" required placeholder="Ex: Contrat de Léo Durand" class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"></div></fieldset>
+                <fieldset class="border dark:border-gray-700 rounded-lg p-6"><legend class="text-primary-light font-semibold px-2 text-lg">Planning Hebdomadaire</legend><div id="planning-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4"></div></fieldset>
+                <fieldset class="border dark:border-gray-700 rounded-lg p-6"><legend class="text-primary-light font-semibold px-2 text-lg">Détails du Contrat</legend><div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                    <div class="form-group"><label for="tarif-horaire-net" class="block text-sm font-medium mb-1">Tarif Horaire Net (€)</label><input type="number" id="tarif-horaire-net" step="0.01" required value="4.50" class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"></div>
+                    <div class="form-group"><label for="frais-entretien" class="block text-sm font-medium mb-1">Indemnité d'entretien / jour (€)</label><input type="number" id="frais-entretien" step="0.01" required value="3.73" class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"></div>
+                    <div class="form-group"><label for="type-contrat" class="block text-sm font-medium mb-1">Type de contrat</label><select id="type-contrat" required class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"><option value="annee_complete">Année Complète (47 sem. d'accueil)</option><option value="annee_incomplete">Année Incomplète (≤ 46 sem. d'accueil)</option></select></div>
+                    <div class="form-group hidden" id="semaines-incomplete-group"><label for="semaines-travaillees" class="block text-sm font-medium mb-1">Nombre de semaines d'accueil</label><input type="number" id="semaines-travaillees" min="1" max="46" value="42" class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"></div>
+                    <div class="form-group md:col-span-2"><label for="date-debut-contrat" class="block text-sm font-medium mb-1">Date de début du contrat</label><input type="date" id="date-debut-contrat" required class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light"></div>
+                </div></fieldset>
+                <button type="submit" class="w-full py-3 px-4 rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors  bg-red-800 text-white hover:bg-primary-dark shadow-sm border border-primary-dark text-lg">Enregistrer et Calculer</button>
+            </form>
+            <div id="results-container" class="hidden mt-10 space-y-8">
+                <header id="print-header" class="flex justify-between items-center gap-4 flex-wrap">
+                    <h2 id="print-title" class="text-2xl font-bold">Rapport de Simulation</h2>
+                    <div id="print-btn-container" class="flex items-center gap-2">
+                        <button id="engagement-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-white dark:bg-gray-700 shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <span id="icon-contract"></span>Engagement
+                        </button>
+                        <button id="print-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-white dark:bg-gray-700 shadow-sm border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600">
+                            <span id="icon-print"></span>Imprimer Rapport
+                        </button>
+                    </div>
+                </header>
+                <div id="print-summary-container"></div>
+                <div id="base-results" class="space-y-6"></div>
+                <div class="p-6 rounded-lg bg-white dark:bg-gray-800 border border-dashed border-primary-light">
+                    <h3 class="text-xl font-semibold mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">Outil de Déclaration Mensuelle</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400 mb-4">Calculez le montant exact à déclarer à Pajemploi pour un mois spécifique.</p>
+                    <div class="form-group">
+                        <label for="jours-accueil-mois" class="block text-sm font-medium mb-1">Nombre de jours d'accueil réels dans le mois</label>
+                        <input type="number" id="jours-accueil-mois" min="0" placeholder="Ex: 20" class="w-full rounded-md border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 shadow-sm focus:border-primary-light focus:ring-primary-light">
+                    </div>
+                    <div id="monthly-results-display" class="hidden mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                        <div class="flex justify-between items-baseline"><span class="font-medium">Salaire net de base</span><span id="res-decl-salaire-net" class="font-semibold text-lg"></span></div>
+                        <div class="flex justify-between items-baseline"><span class="font-medium">+ 1/12ème des congés payés</span><span id="res-decl-cp" class="font-semibold text-lg"></span></div>
+                        <div class="flex justify-between items-baseline"><span class="font-medium">+ Indemnités d'entretien</span><span id="res-decl-entretien" class="font-semibold text-lg"></span></div>
+                        <div class="flex justify-between items-baseline mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
+                            <span class="font-bold text-lg">NET À PAYER ET À DÉCLARER</span><span id="res-decl-total" class="font-bold text-xl text-primary-light"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <div id="spinner-overlay" class="hidden fixed inset-0 bg-white/70 dark:bg-black/70 flex items-center justify-center z-50"><div class="w-12 h-12 border-4 border-gray-200 border-t-primary-DEFAULT rounded-full animate-spin"></div></div>
+    <div id="comparison-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4"><div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-4xl"><header class="flex justify-between items-center pb-3 mb-4 border-b border-gray-200 dark:border-gray-700"><h3 class="text-xl font-semibold">Comparaison des Simulations</h3><button id="close-modal-btn" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-2xl font-bold leading-none">×</button></header><div id="comparison-content" class="overflow-x-auto"></div></div></div>
+    <div id="engagement-modal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-40 p-4">
+        <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-2xl">
+            <header class="flex justify-between items-center pb-3 mb-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-semibold">Engagement Réciproque</h3>
+                <button id="close-engagement-modal-btn" class="p-2 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 text-2xl font-bold leading-none">×</button>
+            </header>
+            <div id="engagement-printable-area">
+                <h4 id="engagement-title" class="text-lg font-bold text-center mb-6"></h4>
+                <div id="engagement-content" class="space-y-4"></div>
+            </div>
+            <footer class="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                <button id="print-engagement-btn" class="py-2 px-4 rounded-lg font-semibold flex items-center gap-2 transition-colors bg-primary-DEFAULT text-white hover:bg-primary-dark shadow-sm border border-primary-dark">
+                    <span id="icon-print-engagement"></span>Imprimer
+                </button>
+            </footer>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
