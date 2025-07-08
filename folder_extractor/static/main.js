@@ -86,7 +86,7 @@ const clientState = {
     filterSettings: { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 },
     saveOutputChecked: false, customPrompt: '', loadedDocPaths: [],
     checkedTreePathsMap: new Map(), 
-    hardExcludedPathsAbs: new Set(), // New: For items to be excluded from tree generation
+    markedForRemovalPaths: new Set(), // Renamed from hardExcludedPathsAbs
     promptTemplates: [], currentTheme: 'light', appVersion: '2.8.3' // Version bump
 };
 
@@ -117,7 +117,7 @@ function saveStateToLocalStorage() {
     try {
         localStorage.setItem('folderExtractorState_v' + clientState.appVersion, JSON.stringify(clientState, (key, value) => {
             if (key === 'checkedTreePathsMap' && value instanceof Map) return Object.fromEntries(value);
-            if (key === 'hardExcludedPathsAbs' && value instanceof Set) return Array.from(value);
+            if (key === 'markedForRemovalPaths' && value instanceof Set) return Array.from(value);
             return value;
         }));
     } catch (e) { console.error("Error saving state:", e); showStatus("Could not save settings (localStorage full/disabled).", "error"); }
@@ -133,7 +133,7 @@ function loadStateFromLocalStorage() {
             } else { Object.assign(clientState, parsedState); }
             
             clientState.checkedTreePathsMap = new Map(parsedState.checkedTreePathsMap ? Object.entries(parsedState.checkedTreePathsMap) : []);
-            clientState.hardExcludedPathsAbs = new Set(Array.isArray(parsedState.hardExcludedPathsAbs) ? parsedState.hardExcludedPathsAbs : []);
+            clientState.markedForRemovalPaths = new Set(Array.isArray(parsedState.markedForRemovalPaths) ? parsedState.markedForRemovalPaths : []);
             
             applyStateToUI();
             showStatus('Loaded settings from local storage.');
@@ -146,7 +146,7 @@ function resetClientState(showMsg = true) {
     clientState.filterSettings = { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 };
     clientState.saveOutputChecked = false; clientState.customPrompt = ''; clientState.loadedDocPaths = [];
     clientState.checkedTreePathsMap = new Map();
-    clientState.hardExcludedPathsAbs = new Set();
+    clientState.markedForRemovalPaths = new Set();
     saveStateToLocalStorage();
     if (showMsg) showStatus('Settings reset to defaults.');
 }
@@ -259,34 +259,54 @@ clearDocsBtn.addEventListener('click', () => {
 function renderTree(itemsToRender, parentDomElement, isRoot = true) {
     itemsToRender.sort((a, b) => (a.is_dir && !b.is_dir) ? -1 : (!a.is_dir && b.is_dir) ? 1 : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
     itemsToRender.forEach(itemData => {
-        const li = document.createElement('li'); li.classList.add('flex', 'flex-col', 'text-sm');
-        const itemRow = document.createElement('div'); itemRow.classList.add('flex', 'items-center', 'py-0.5', 'hover:bg-gray-100', 'dark:hover:bg-gray-700', 'rounded');
+        const li = document.createElement('li');
+        li.classList.add('flex', 'flex-col', 'text-sm');
+        const itemRow = document.createElement('div');
+        itemRow.classList.add('flex', 'items-center', 'py-0.5', 'hover:bg-gray-100', 'dark:hover:bg-gray-700', 'rounded');
         
-        const hardExcludeButton = document.createElement('button');
-        hardExcludeButton.innerHTML = '&#x2717;'; // X mark
-        hardExcludeButton.classList.add('hard-exclude-btn', 'text-xs', 'p-0.5', 'mr-1.5', 'border', 'rounded', 'bg-red-200', 'dark:bg-red-700', 'hover:bg-red-300', 'dark:hover:bg-red-600', 'text-red-700', 'dark:text-red-100');
-        hardExcludeButton.title = 'Exclude this item and its children from tree display and output.';
-        if (clientState.hardExcludedPathsAbs.has(itemData.path)) {
-            hardExcludeButton.classList.add('opacity-50'); // Visually indicate it's active
+        const isMarkedForRemoval = clientState.markedForRemovalPaths.has(itemData.path);
+        if (isMarkedForRemoval) {
+            li.classList.add('marked-for-removal');
         }
-        hardExcludeButton.addEventListener('click', (e) => {
+
+        const removalToggleButton = document.createElement('button');
+        removalToggleButton.innerHTML = isMarkedForRemoval ? '↩️' : '✗'; // Undo or X mark
+        removalToggleButton.classList.add('removal-toggle-btn', 'text-xs', 'p-0.5', 'mr-1.5', 'border', 'rounded', 'bg-red-200', 'dark:bg-red-700', 'hover:bg-red-300', 'dark:hover:bg-red-600', 'text-red-700', 'dark:text-red-100');
+        removalToggleButton.title = isMarkedForRemoval ? 'Restore this item to the project.' : 'Mark this item for removal from the final output.';
+        
+        const label = document.createElement('label'); // Define label here so it's in scope for the listener
+        label.classList.add('flex', 'items-center', 'cursor-pointer', 'flex-grow', 'py-0.5', 'px-1');
+        label.dataset.path = itemData.path;
+        label.title = itemData.path + (itemData.tooltip ? ` (${itemData.tooltip})` : '');
+
+        removalToggleButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            if (clientState.hardExcludedPathsAbs.has(itemData.path)) {
-                clientState.hardExcludedPathsAbs.delete(itemData.path);
-                hardExcludeButton.classList.remove('opacity-50');
-                showStatus(`Path '${itemData.name}' removed from tree exclusions. Refresh tree.`, 'info');
-            } else {
-                clientState.hardExcludedPathsAbs.add(itemData.path);
-                hardExcludeButton.classList.add('opacity-50');
-                showStatus(`Path '${itemData.name}' added to tree exclusions. Refresh tree to see changes.`, 'info');
+            const isNowMarked = li.classList.toggle('marked-for-removal');
+            
+            if (isNowMarked) { // Item is now marked for removal
+                clientState.markedForRemovalPaths.add(itemData.path);
+                removalToggleButton.innerHTML = '↩️';
+                removalToggleButton.title = 'Restore this item to the project.';
+
+                // Uncheck and remove from selection maps
+                clientState.checkedTreePathsMap.delete(itemData.path);
+                const checkbox = label.querySelector('.tree-checkbox');
+                if (checkbox) checkbox.checked = false;
+                const sigButton = label.querySelector('.sig-button');
+                if (sigButton) sigButton.classList.remove('active-sig');
+                propagateFullCheckToChildren(li, false); // Uncheck all children too
+                
+                showStatus(`Marked '${itemData.name}' for removal.`, 'info');
+            } else { // Item is now restored
+                clientState.markedForRemovalPaths.delete(itemData.path);
+                removalToggleButton.innerHTML = '✗';
+                removalToggleButton.title = 'Mark this item for removal from the final output.';
+                showStatus(`Restored '${itemData.name}'.`, 'info');
             }
             saveStateToLocalStorage();
-            performLoadTree(); // Automatically refresh the tree to reflect hard exclusions
+            updateFileTreeDependentUIs();
         });
-        itemRow.appendChild(hardExcludeButton);
-        
-        const label = document.createElement('label'); label.classList.add('flex', 'items-center', 'cursor-pointer', 'flex-grow', 'py-0.5', 'px-1');
-        label.dataset.path = itemData.path; label.title = itemData.path + (itemData.tooltip ? ` (${itemData.tooltip})` : '');
+        itemRow.appendChild(removalToggleButton);
 
         const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
         checkbox.classList.add('tree-checkbox', 'form-checkbox', 'h-3.5', 'w-3.5', 'text-blue-600', 'border-gray-300', 'rounded', 'mr-1.5', 'flex-shrink-0', 'focus:ring-blue-500', 'dark:bg-gray-700', 'dark:border-gray-600');
@@ -304,6 +324,7 @@ function renderTree(itemsToRender, parentDomElement, isRoot = true) {
 
             sigButton.addEventListener('click', (e) => {
                 e.stopPropagation();
+                if (li.classList.contains('marked-for-removal')) return; // Don't allow selection on removed items
                 const currentSelection = clientState.checkedTreePathsMap.get(itemData.path);
                 if (currentSelection === 'signatures') { 
                     clientState.checkedTreePathsMap.delete(itemData.path);
@@ -321,6 +342,7 @@ function renderTree(itemsToRender, parentDomElement, isRoot = true) {
         label.appendChild(checkbox); label.appendChild(iconSpan); label.appendChild(nameSpan);
         
         checkbox.addEventListener('change', (e) => {
+            if (li.classList.contains('marked-for-removal')) { e.target.checked = false; return; } // Don't allow selection
             const isChecked = e.target.checked;
             if (isChecked) {
                 clientState.checkedTreePathsMap.set(itemData.path, 'full');
@@ -360,12 +382,19 @@ function renderTree(itemsToRender, parentDomElement, isRoot = true) {
 function propagateFullCheckToChildren(listItemElement, isChecked) {
     const isDir = listItemElement.querySelector('.icon').textContent === '📁';
     if (isDir) {
-        const childCheckboxes = listItemElement.querySelectorAll('ul > li > div > label > .tree-checkbox:not(:disabled)');
-        childCheckboxes.forEach(cb => {
-            if (cb.checked !== isChecked) {
-                cb.checked = isChecked;
-                const childPath = cb.closest('label').dataset.path;
-                const childSigButton = cb.closest('label').querySelector('.sig-button');
+        const childListItems = listItemElement.querySelectorAll('ul > li');
+        childListItems.forEach(childLi => {
+            const checkbox = childLi.querySelector('div > label > .tree-checkbox:not(:disabled)');
+            if (!checkbox) return;
+            // Only propagate check action to items that are NOT marked for removal
+            if (isChecked && childLi.classList.contains('marked-for-removal')) {
+                return; // Skip checking this removed item
+            }
+
+            if (checkbox.checked !== isChecked) {
+                checkbox.checked = isChecked;
+                const childPath = checkbox.closest('label').dataset.path;
+                const childSigButton = childLi.querySelector('div > label > .sig-button');
                 if (isChecked) { 
                     clientState.checkedTreePathsMap.set(childPath, 'full');
                     if (childSigButton) childSigButton.classList.remove('active-sig');
@@ -391,24 +420,26 @@ function applyCheckedPathsToTreeVisuals() {
 
         const checkbox = label.querySelector('.tree-checkbox');
         const sigButton = label.querySelector('.sig-button');
-        const hardExcludeButton = itemRow.querySelector('.hard-exclude-btn');
+        const removalToggleButton = itemRow.querySelector('.removal-toggle-btn');
+        
+        // Handle marking for removal visual state
+        const isMarked = clientState.markedForRemovalPaths.has(path);
+        liItem.classList.toggle('marked-for-removal', isMarked);
+        if (removalToggleButton) {
+            removalToggleButton.innerHTML = isMarked ? '↩️' : '✗';
+            removalToggleButton.title = isMarked ? 'Restore this item to the project.' : 'Mark this item for removal from the final output.';
+        }
 
-
+        // Handle selection visual state
         if (checkbox) checkbox.checked = (selectionType === 'full');
         if (sigButton) sigButton.classList.toggle('active-sig', selectionType === 'signatures');
-        if (hardExcludeButton) hardExcludeButton.classList.toggle('opacity-50', clientState.hardExcludedPathsAbs.has(path));
-
     });
 }
-
 
 async function performLoadTree() {
     const folderPath = folderPathInput.value.trim();
     if (!folderPath) { showStatus('Please enter a folder path.', 'warning'); return; }
     
-    // Don't clear checkedTreePathsMap or hardExcludedPathsAbs here, they persist across loads unless explicitly reset
-    // clientState.loadedDocPaths = []; // Optionally clear docs, or let user manage
-    // updateDocListUI(); 
     rawOutputTextarea.value = ""; renderedOutputDiv.innerHTML = "Preview here.";
     copyRawBtn.disabled = true; tabButtons[2].disabled = true;
 
@@ -421,7 +452,6 @@ async function performLoadTree() {
             body: JSON.stringify({ 
                 folder_path: folderPath, 
                 filters: clientState.filterSettings,
-                hard_excluded_paths: Array.from(clientState.hardExcludedPathsAbs) // Send hard exclusions
             })
         });
         const data = await handleResponse(response);
@@ -434,16 +464,16 @@ async function performLoadTree() {
 
             if (topLevelItems.length > 0) renderTree(topLevelItems, rootUl, true);
             else {
-                const emptyMsgLi = document.createElement('li'); emptyMsgLi.textContent = `Folder "${rootNode.name || 'Root'}" empty or all items filtered/excluded.`;
+                const emptyMsgLi = document.createElement('li'); emptyMsgLi.textContent = `Folder "${rootNode.name || 'Root'}" empty or all items filtered.`;
                 emptyMsgLi.classList.add('text-gray-500','dark:text-gray-400', 'p-1', 'italic'); rootUl.appendChild(emptyMsgLi);
             }
             showStatus(`Tree for "${rootNode.name || folderPath}" loaded.`, 'success');
-            applyCheckedPathsToTreeVisuals(); // Ensure existing selections are visually updated
+            applyCheckedPathsToTreeVisuals(); 
             applyPresetBasedPreselection(); 
             tabButtons[1].disabled = false; activateTab('tab2');
         } else {
-            fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">No items found or folder empty/inaccessible/fully excluded.</p>';
-            showStatus('No items found or folder empty/inaccessible/fully excluded.', 'warning'); tabButtons[1].disabled = false;
+            fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">No items found or folder empty/inaccessible/fully filtered.</p>';
+            showStatus('No items found or folder empty/inaccessible/fully filtered.', 'warning'); tabButtons[1].disabled = false;
         }
     } catch (error) {
         console.error('Error loading tree:', error);
@@ -482,21 +512,21 @@ expandAllBtn.addEventListener('click', () => expandCollapseTree(true)); collapse
 
 checkAllTextBtn.addEventListener('click', () => {
     showStatus('Checking all for full content...', 'info');
-    // clientState.checkedTreePathsMap.clear(); // Don't clear, just ensure full content type
     fileTreeContainer.querySelectorAll('li').forEach(li => {
+        if (li.classList.contains('marked-for-removal')) {
+            return;
+        }
         const checkbox = li.querySelector('.tree-checkbox:not(:disabled)');
         if (checkbox) {
             const path = checkbox.closest('label').dataset.path;
-            if (!clientState.hardExcludedPathsAbs.has(path)) { // Only check if not hard-excluded
-                checkbox.checked = true;
-                clientState.checkedTreePathsMap.set(path, 'full');
-                const sigButton = checkbox.closest('label').querySelector('.sig-button');
-                if (sigButton) sigButton.classList.remove('active-sig');
-            }
+            checkbox.checked = true;
+            clientState.checkedTreePathsMap.set(path, 'full');
+            const sigButton = checkbox.closest('label').querySelector('.sig-button');
+            if (sigButton) sigButton.classList.remove('active-sig');
         }
     });
     saveStateToLocalStorage(); updateFileTreeDependentUIs(); applyCheckedPathsToTreeVisuals();
-    showStatus('All checkable (non-hard-excluded) items set to "full content".', 'success');
+    showStatus('All checkable items set to "full content".', 'success');
 });
 uncheckAllBtn.addEventListener('click', () => {
     showStatus('Unchecking all items...', 'info');
@@ -574,11 +604,18 @@ generateBtn.addEventListener('click', async () => {
     if (!fileTreeContainer.children.length || !fileTreeContainer.querySelector('ul')) { showStatus('Project tree not loaded/empty (Tab 1/2).', 'warning'); activateTab('tab1'); return; }
     
     const selectedFilesForPayload = Array.from(clientState.checkedTreePathsMap.entries())
-        .filter(([path, type]) => !clientState.hardExcludedPathsAbs.has(path)) // Ensure hard-excluded are not sent for content
+        .filter(([path, type]) => !clientState.markedForRemovalPaths.has(path))
         .map(([path, type]) => ({ path, type }));
-
-    if (selectedFilesForPayload.length === 0) { showStatus('No files selected for content/signatures (or all selected are hard-excluded).', 'warning'); activateTab('tab2'); return; }
-
+    
+    if (selectedFilesForPayload.length === 0) { 
+        if (clientState.checkedTreePathsMap.size > 0) {
+            showStatus('All selected files are marked for removal. Nothing to generate.', 'warning');
+        } else {
+            showStatus('No files selected for content/signatures.', 'warning');
+        }
+        activateTab('tab2'); 
+        return; 
+    }
 
     showLoading(generateBtn, true, 'Generating...', 'Generate Structure Text');
     rawOutputTextarea.value = 'Generating...'; renderedOutputDiv.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Generating...</p>';
@@ -593,7 +630,7 @@ generateBtn.addEventListener('click', async () => {
                 selected_files_info: selectedFilesForPayload, 
                 custom_prompt: clientState.customPrompt, 
                 loaded_doc_paths: clientState.loadedDocPaths,
-                hard_excluded_paths: Array.from(clientState.hardExcludedPathsAbs) // Send hard exclusions for tree markdown generation
+                hard_excluded_paths: Array.from(clientState.markedForRemovalPaths)
             })
         });
         const data = await handleResponse(response);
@@ -653,6 +690,8 @@ function applyPresetBasedPreselection() {
     let preselectedCount = 0;
     
     fileTreeContainer.querySelectorAll('li').forEach(liItem => {
+        if (liItem.classList.contains('marked-for-removal')) return;
+        
         const itemRow = liItem.querySelector('div.flex.items-center');
         if(!itemRow) return;
         const label = itemRow.querySelector('label[data-path]');
@@ -662,11 +701,9 @@ function applyPresetBasedPreselection() {
         if (!checkbox) return; 
 
         const fullPath = label.dataset.path;
-        if (clientState.hardExcludedPathsAbs.has(fullPath)) return; // Skip hard-excluded items
-
         const relativePath = getRelativePath(fullPath, clientState.folderPath);
         const fileName = fullPath.split(/[\/\\]/).pop().toLowerCase();
-        const fileExtWithDot = "." + fileName.split('.').pop(); // Ensure dot for extension matching
+        const fileExtWithDot = "." + fileName.split('.').pop();
 
         let shouldSelect = false;
 
@@ -680,12 +717,11 @@ function applyPresetBasedPreselection() {
         if (shouldSelect && appliedRule.exclude_dirs_for_selection) {
             for (const dirToExclude of appliedRule.exclude_dirs_for_selection) {
                 const dirToExcludeNormalized = dirToExclude.endsWith('/') ? dirToExclude : dirToExclude + '/';
-                if (relativePath.toLowerCase().startsWith(dirToExcludeNormalized.toLowerCase())) { // Case insensitive dir check
+                if (relativePath.toLowerCase().startsWith(dirToExcludeNormalized.toLowerCase())) {
                     shouldSelect = false;
                     break;
                 }
-                 // Also check if current path is exactly the dir to exclude (e.g. "dist" vs "dist/file.js")
-                if (relativePath.toLowerCase() === dirToExclude.toLowerCase()) {
+                 if (relativePath.toLowerCase() === dirToExclude.toLowerCase()) {
                      shouldSelect = false;
                      break;
                 }
@@ -693,10 +729,9 @@ function applyPresetBasedPreselection() {
         }
         
         const isDir = liItem.querySelector('.icon').textContent === '📁';
-        if(isDir && shouldSelect) { // For now, preset preselection only selects files, not entire dirs
+        if(isDir && shouldSelect) {
             shouldSelect = false;
         }
-
 
         if (shouldSelect) {
             if (!clientState.checkedTreePathsMap.has(fullPath) || clientState.checkedTreePathsMap.get(fullPath) !== 'full') {
