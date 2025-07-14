@@ -1,50 +1,40 @@
-# Folder Structure to Text (Folder Extractor) v2.3
+# Folder Structure to Text (Folder Extractor) v3.0
 
-**Author:** ParisNeo with Gemini 2.5
+**Author:** ParisNeo with Gemini
 **Category:** Developer Tools, Utilities, AI Tools
-**License:** MIT (Assumed)
+**License:** MIT
 
 ## Overview
 
-Folder Structure to Text is a comprehensive PyQt5 application designed to generate a Markdown-formatted text representation of a specified folder's structure and its contents. It allows users to select a project folder, customize inclusion and exclusion rules (using presets, specific folder/file names, extensions, and glob patterns), and control aspects like maximum file size for content extraction.
+Folder Structure to Text is a powerful web-based utility designed to help developers, technical writers, and AI prompt engineers analyze and document software projects. It generates a comprehensive Markdown representation of a folder's structure, including optional file contents or code signatures.
 
-This tool is particularly useful for:
-*   **Developers:** Quickly generating an overview of a project's layout and key files.
-*   **Technical Writers:** Creating documentation that includes code snippets and file structures.
-*   **AI Users/Prompt Engineers:** Preparing detailed context from a codebase for Large Language Models (LLMs).
-*   **General Documentation:** Archiving or sharing the state and content of a folder.
+The application now features a full **Project Management Dashboard**, allowing you to save, manage, and quickly access multiple projects. A key enhancement is the integration with **AI language models** (like Lollms or any OpenAI-compatible service) to intelligently suggest which files are relevant to a specific development task, streamlining the process of building context for feature development or bug fixing.
 
-It features a user-friendly interface with theme support, environment settings management (load/save configurations), integration of external documentation files into the output, and customizable AI prompt templates to streamline workflows.
+## Core Features
 
-## Features
-
-*   **Text-Based Folder Tree:** Generates a visual tree representation of folder structures (e.g., `📁my_folder/`, `📄my_file.py`).
-*   **File Content Inclusion:** Includes the content of text-based files directly in the output, formatted within Markdown code blocks.
-*   **Markdown Output:** Produces a single, well-formatted Markdown document.
-*   **Advanced Filtering:**
-    *   **Exclusion Presets:** Common presets for Python, Node.js, C/C++, Rust, Java projects to quickly ignore typical build artifacts, virtual environments, etc.
-    *   **Custom Exclusions:** Define specific folder names, file extensions, and glob patterns (e.g., `*.log`, `temp_*/`) to exclude.
-    *   **Custom Inclusions:** Specify paths or glob patterns (e.g., `src/main/`, `README.md`, `docs/*.md`) to ensure specific files/folders are included, even if they might otherwise be filtered.
-    *   **Dynamic Exclusions:** Add patterns that are dynamically evaluated during generation.
-*   **File Size Limit:** Configurable maximum file size (in MB) for including file content, preventing overly large outputs.
-*   **User-Friendly GUI:**
-    *   Built with PyQt5 for a responsive desktop experience.
-    *   Theme support via `qt_material` for customizable dark and light modes.
-    *   Tabbed interface for settings and output.
-*   **Environment & Configuration Management:**
-    *   **Save/Load Environments:** Save all current settings (folder path, filters, prompt, theme, etc.) to a JSON file and load them back later.
-    *   **Recent Environments:** Quickly access recently used environment configuration files.
-*   **AI Prompting Assistance:**
-    *   **Prompt Templates:** Create, save, and manage reusable prompt templates. Supports placeholders like `{FOLDER_NAME}`, `{AUTHOR}`, `{DATE}`, etc., which are automatically filled.
-    *   **Interactive AI Workflow Support:** Default templates include standard AI interaction sequences (e.g., `[CONFIRM_PLAN]`, `[CONFIRM_FILE: path/to/file.ext]`).
-    *   **Documentation Integration:** Import content from external Markdown or text files directly into the final output, often used to provide supplementary context to an AI.
-*   **Output Management:**
-    *   **Raw Markdown Display:** View the generated Markdown directly.
-    *   **Rendered Preview:** A basic preview of how the Markdown might look when rendered.
-    *   **Copy to Clipboard:** Easily copy the full raw Markdown output.
-    *   **Auto-Save Option:** Optionally save the generated Markdown to a file automatically upon generation.
-*   **Status Bar:** Provides feedback, warnings, and error messages.
-*   **Icon Integration:** Uses `qtawesome` and local SVG assets for a more polished user experience.
+*   **Project Management Dashboard:**
+    *   Save and manage a list of your projects.
+    *   "Star" important projects for easy access.
+    *   CRUD (Create, Read, Update, Delete) functionality for your project list.
+*   **AI-Powered File Selection:**
+    *   Connect to any OpenAI-compatible LLM service (e.g., `lollms-chat`).
+    *   Provide a natural language goal (e.g., "implement user authentication").
+    *   The AI will analyze your project's file list and automatically select the most relevant files for the task.
+*   **Advanced Tree Generation & Filtering:**
+    *   Generates a visual, text-based tree of your project's folder structure.
+    *   Includes full file content or, for Python/JavaScript, extracts high-level code signatures (classes and functions).
+    *   **Smart Refresh Options:** When reloading a project tree, choose to either preserve your manually selected files or have the app automatically re-select files based on presets.
+    *   Extensive filtering capabilities:
+        *   **Exclusion Presets:** Quickly ignore common files and folders for Python, Node.js, Java, and more.
+        *   **Custom Rules:** Exclude specific folders, extensions, or glob patterns.
+        *   **Inclusion Rules:** Ensure specific files or folders are always included, overriding any exclusion rules.
+*   **Customizable AI Prompting Workflow:**
+    *   **Prompt Templates:** Create, save, and manage reusable prompt templates with dynamic placeholders (`{FOLDER_NAME}`, `{DATE}`, etc.).
+    *   **Documentation Integration:** Append external documentation files directly into your prompt context.
+*   **Modern Web Interface:**
+    *   A clean, responsive UI built with FastAPI and TailwindCSS.
+    *   Full support for light and dark themes.
+    *   All settings are saved in your browser's local storage for persistence.
 
 ## Installation
 
@@ -53,102 +43,45 @@ It features a user-friendly interface with theme support, environment settings m
 *   Python 3.7+
 *   `pip` (Python package installer)
 
-### Dependencies
-
-The application uses `pipmaster` to ensure Python packages are installed. If you don't have `pipmaster`, install it first:
-```bash
-pip install pipmaster
-```
-Then, upon first run, `pipmaster` will attempt to install the following required packages:
-*   `PyQt5`
-*   `markdown`
-*   `qt_material`
-*   `qtawesome`
-
-Alternatively, you can pre-install them:
-```bash
-pip install PyQt5 markdown qt_material qtawesome
-```
-
 ### Running the Application
 
-1.  Ensure all prerequisites and dependencies are installed.
-2.  Save the `server.py` file and the `assets/` folder (if provided with icons) in a directory, for example, `folder_extractor/`.
-    ```
-    📁 folder_extractor/
-    ├─ 📁 assets/  (contains .svg icons if used)
-    └─ 📄 server.py
-    ```
-3.  Navigate to this directory in your terminal.
-4.  Run the script:
+The application uses `pipmaster` to automatically install its dependencies on the first run.
+
+1.  Save the `server.py` script.
+2.  Create a `static` folder in the same directory and place `index.html`, `main.js`, and `style.css` inside it (if they are provided as separate files).
+3.  Navigate to the directory in your terminal.
+4.  Run the server:
     ```bash
     python server.py
     ```
+5.  The application will automatically open in your default web browser at `http://127.0.0.1:8765`.
 
-## Usage
+## How to Use
 
-1.  **Launch the Application:** Execute `python server.py`.
-2.  **Select Target Folder:**
-    *   Click the "Browse..." button or type the path to the project folder you want to analyze into the "Target Project Folder" field.
-3.  **Configure Settings (Settings Tab):**
-    *   **Exclusion Presets:** Select one or more presets (e.g., "Python Project") from the list to apply common exclusion rules.
-    *   **Custom Filtering:**
-        *   **Exclude Folders:** Enter comma-separated folder names to exclude (e.g., `docs,temp`).
-        *   **Exclude Exts:** Enter comma-separated extensions to exclude (e.g., `.log,.tmp`).
-        *   **Exclude Patterns:** Enter comma-separated glob patterns for exclusion (e.g., `*.bak`, `cache_*/`).
-        *   **Dynamic Exclude:** Add more specific exclusion patterns.
-        *   **Include Paths/Patterns:** Crucially, specify files or folders to *ensure* they are included (e.g., `src/core/important_module.py`, `config/*.json`). This can override broad exclusion rules for specific items.
-    *   **Generation Options:**
-        *   **Max File Size:** Set the maximum size (in MB) for a file's content to be included.
-        *   **Save Markdown output automatically:** Check if you want the output to be saved to a file immediately after generation.
-    *   **Documentation Integration:**
-        *   Click "Add Docs..." to select Markdown (`.md`, `.markdown`) or text (`.txt`) files. Their content will be prepended to the "Custom Instructions Prompt" section in the final output.
-        *   Manage added files with "Remove Selected" or "Clear All".
-    *   **Custom Instructions Prompt:**
-        *   Select a pre-defined AI prompt template from the "Template" dropdown (e.g., "AI: Add New Feature").
-        *   Click "Load" to populate the text area with the template content. Placeholders like `{FOLDER_NAME}` will be resolved.
-        *   Modify the prompt as needed or write your own from scratch.
-        *   Use "Save As..." to save the current text area content as a new template.
-        *   Click "Manage..." to add, edit, remove, or copy your custom prompt templates.
-4.  **Generate Output:**
-    *   Click the "Generate Structure Text" button.
-    *   The application will process the folder based on your settings.
-5.  **View Output (Output Tab):**
-    *   **Raw Markdown:** Shows the complete generated Markdown text.
-    *   **Rendered Preview:** Provides a basic HTML rendering of the Markdown.
-    *   Use "Copy Raw Markdown" to copy the content to your clipboard.
-    *   Use "Clear Output" to empty the output areas.
-6.  **Managing Environments (File Menu):**
-    *   **Save Environment / Save Environment As...:** Save your current settings (folder path, all filters, prompt, theme, etc.) to a JSON file for later reuse.
-    *   **Load Environment... / Load Recent Environment:** Load previously saved settings.
-    *   **New Project:** Clears the folder path and output, but keeps current settings for a new analysis.
-7.  **Changing Themes (View Menu):**
-    *   Select a theme from the "Theme" submenu to change the application's appearance.
+### 1. Project Dashboard
 
-## Placeholders for Prompts
+*   When you first launch the app, you'll see the project dashboard.
+*   Click **"Add New Project"** to add your first project by providing a name and browsing to its folder path on the server.
+*   Your projects will appear as cards. You can **star**, **edit**, or **delete** them.
+*   Click on a project card to open the main **Extractor View**.
 
-The following placeholders can be used in custom prompt templates and will be automatically substituted:
+### 2. Extractor View (Loading a Project)
 
-*   `{FOLDER_NAME}`: Name of the selected target folder.
-*   `{FOLDER_PATH}`: Full path to the selected target folder.
-*   `{DATE}`: Current date (YYYY-MM-DD).
-*   `{TIME}`: Current time (HH:MM:SS).
-*   `{DATETIME}`: Current date and time (YYYY-MM-DD HH:MM:SS).
-*   `{AUTHOR}`: Current system username.
-*   `{USER_REQUEST}`: (Used internally by default AI templates) Placeholder for the specific user request.
-
-## File Structure (of this tool)
-
-```text
-📁 folder_extractor/
-├─ 📁 assets/         # Contains .svg icons for the UI
-└─ 📄 server.py       # The main Python application script
-```
-
-## Contributing
-
-Contributions are welcome! Please feel free to fork the repository, make changes, and submit pull requests. For bugs or feature requests, please open an issue. (Note: Assumes a public repository setup)
+*   **Tab 1: Project & Filters:**
+    *   Your project path is pre-filled.
+    *   Configure exclusion/inclusion filters and set the max file size for content extraction.
+    *   **(New) LLM Settings:** Enter the URL and API Key for your OpenAI-compatible LLM service.
+    *   Click **"Load Project Tree"**.
+*   **Tab 2: Explorer & Prompt:**
+    *   The file tree for your project is displayed. You can manually check files for **full content** or click the **'S'** button for **signatures** (for `.py`/`.js` files).
+    *   **(New) Refreshing:** The "Refresh" button will now ask if you want to **Preserve** your current selections or **Repopulate** them based on project presets.
+    *   **(New) AI Select:** Click **"AI Select..."**, enter your goal (e.g., "fix login bug"), and let the configured LLM check the most relevant files for you.
+    *   Select and load an AI prompt template, or write your own custom instructions.
+*   **Tab 3: Output:**
+    *   Click **"Generate Structure Text"**.
+    *   The final Markdown output, combining your instructions, the folder tree, and selected file contents/signatures, will be generated.
+    *   You can view the raw Markdown, see a rendered preview, and copy it to your clipboard.
 
 ## License
 
-This project is licensed under the Apache 2.0 License.
+This project is licensed under the MIT License.

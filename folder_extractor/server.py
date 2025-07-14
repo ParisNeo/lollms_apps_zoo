@@ -9,6 +9,8 @@ from datetime import datetime
 from typing import List, Dict, Optional, Any, Set
 import webbrowser
 import threading
+import uuid
+import httpx
 
 try:
     import pipmaster
@@ -17,7 +19,7 @@ except ImportError:
     os.system(f"{sys.executable} -m pip install pipmaster")
     import pipmaster
 
-pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart"])
+pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart", "httpx"])
 
 from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.staticfiles import StaticFiles
@@ -25,9 +27,11 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 APP_TITLE = "Folder Structure Extractor Web App"
-APP_VERSION = "2.8.5"
+APP_VERSION = "3.1.0"
 CONFIG_DIR = Path.home() / ".config" / "folder_extractor_web"
 PROMPTS_FILE = CONFIG_DIR / "prompt_templates.json"
+PROJECTS_FILE = CONFIG_DIR / "projects.json"
+LLM_SETTINGS_FILE = CONFIG_DIR / "llm_settings.json"
 
 DEFAULT_TEMPLATES_DATA = [
   {
@@ -122,6 +126,43 @@ class Template(BaseModel):
 class DeleteTemplateRequest(BaseModel):
     name: str
     content: Optional[str] = None
+
+class Project(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    name: str
+    path: str
+    starred: bool = False
+    last_accessed: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+
+class ProjectUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    path: Optional[str] = None
+    starred: Optional[bool] = None
+
+class LLMSettings(BaseModel):
+    url: str = ""
+    api_key: str = ""
+
+class LLMSelectRequest(BaseModel):
+    project_path: str
+    user_goal: str
+    filters: FilterSettings
+
+def load_json_file(file_path: Path, default_value: Any) -> Any:
+    if not file_path.exists():
+        return default_value
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, IOError):
+        return default_value
+
+def save_json_file(file_path: Path, data: Any):
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2)
+    except IOError as e:
+        print(f"Error saving to {file_path}: {e}")
 
 def get_exclusion_sets(filters: FilterSettings) -> (Set[str], Set[str], Set[str]):
     excluded_folders = set()
@@ -320,22 +361,138 @@ def get_default_templates() -> List[Dict]:
     return DEFAULT_TEMPLATES_DATA
 
 def load_prompt_templates() -> List[Dict]:
-    if not PROMPTS_FILE.exists():
-        templates = get_default_templates()
-        save_prompt_templates(templates)
-        return templates
-    try:
-        with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except (json.JSONDecodeError, IOError):
-        return get_default_templates()
+    return load_json_file(PROMPTS_FILE, get_default_templates())
 
 def save_prompt_templates(templates: List[Dict]):
+    save_json_file(PROMPTS_FILE, templates)
+
+@app.get("/api/projects", response_model=List[Project])
+async def get_projects():
+    projects = load_json_file(PROJECTS_FILE, [])
+    return sorted(projects, key=lambda p: p['last_accessed'], reverse=True)
+
+@app.post("/api/projects", response_model=Project)
+async def create_project(project: Project):
+    projects = load_json_file(PROJECTS_FILE, [])
+    if any(p['path'] == project.path for p in projects):
+        raise HTTPException(status_code=409, detail="Project with this path already exists.")
+    projects.append(project.model_dump())
+    save_json_file(PROJECTS_FILE, projects)
+    return project
+
+@app.put("/api/projects/{project_id}", response_model=Project)
+async def update_project(project_id: str, update_data: ProjectUpdateRequest):
+    projects = load_json_file(PROJECTS_FILE, [])
+    project_index = next((i for i, p in enumerate(projects) if p['id'] == project_id), None)
+    if project_index is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    
+    project_dict = projects[project_index]
+    update_dict = update_data.model_dump(exclude_unset=True)
+    project_dict.update(update_dict)
+    project_dict['last_accessed'] = datetime.utcnow().isoformat()
+    
+    projects[project_index] = project_dict
+    save_json_file(PROJECTS_FILE, projects)
+    return Project(**project_dict)
+
+@app.delete("/api/projects/{project_id}", status_code=204)
+async def delete_project(project_id: str):
+    projects = load_json_file(PROJECTS_FILE, [])
+    initial_len = len(projects)
+    projects = [p for p in projects if p['id'] != project_id]
+    if len(projects) == initial_len:
+        raise HTTPException(status_code=404, detail="Project not found.")
+    save_json_file(PROJECTS_FILE, projects)
+
+@app.get("/api/settings/llm", response_model=LLMSettings)
+async def get_llm_settings():
+    return load_json_file(LLM_SETTINGS_FILE, LLMSettings().model_dump())
+
+@app.post("/api/settings/llm", status_code=204)
+async def save_llm_settings(settings: LLMSettings):
+    save_json_file(LLM_SETTINGS_FILE, settings.model_dump())
+
+@app.post("/api/llm_select_files")
+async def llm_select_files(request: LLMSelectRequest):
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.url:
+        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
+
     try:
-        with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(templates, f, indent=2)
-    except IOError as e:
-        print(f"Error saving prompt templates: {e}")
+        tree_nodes = build_file_tree_with_selection_info(request.project_path, request.filters)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading project structure: {e}")
+
+    file_list = []
+    def flatten_tree(nodes):
+        for node in nodes:
+            path = Path(node["path"])
+            relative_path = path.relative_to(request.project_path)
+            if not node["is_dir"]:
+                file_list.append(str(relative_path).replace('\\', '/'))
+            if node.get("children"):
+                flatten_tree(node["children"])
+    
+    if tree_nodes:
+        flatten_tree(tree_nodes[0].get("children", []))
+    
+    if not file_list:
+        return JSONResponse(content={"status": "success", "files": []})
+
+    system_prompt = (
+        "You are an expert software development assistant. Your task is to analyze a user's instructions and a list of project files. "
+        "First, determine the user's primary goal from their instructions (e.g., 'add a feature', 'fix a bug', 'refactor code'). "
+        "Then, identify the most relevant files from the list that a developer would need to work on to achieve that goal. "
+        "Respond ONLY with a JSON array of strings, where each string is the full relative path of a relevant file. "
+        "Do not include any other text, explanation, or markdown formatting. Your entire response must be a single valid JSON array."
+        "\nExample response: [\"src/main.py\", \"core/utils.py\", \"tests/test_utils.py\"]"
+    )
+
+    user_message = f"User Instructions:\n---\n{request.user_goal}\n---\n\nProject Files:\n{json.dumps(file_list, indent=2)}"
+
+    headers = {"Content-Type": "application/json"}
+    if settings.api_key:
+        headers["Authorization"] = f"Bearer {settings.api_key}"
+
+    payload = {
+        "model": "lollms-chat",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.0,
+        "max_tokens": 2048
+    }
+    
+    content_str = ""
+    try:
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.post(settings.url, json=payload, headers=headers)
+        response.raise_for_status()
+        llm_response = response.json()
+        content_str = llm_response['choices'][0]['message']['content']
+        
+        match = re.search(r'\[.*\]', content_str, re.DOTALL)
+        if not match:
+            raise ValueError("LLM response did not contain a valid JSON array.")
+        
+        selected_files = json.loads(match.group(0))
+
+        if not isinstance(selected_files, list) or not all(isinstance(f, str) for f in selected_files):
+            raise ValueError("LLM response was not a JSON array of strings.")
+            
+        project_root = Path(request.project_path)
+        absolute_paths = [str(project_root / Path(f)) for f in selected_files if (project_root / Path(f)).exists()]
+
+        return {"status": "success", "files": absolute_paths}
+
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {settings.url}. Error: {e}")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        raise HTTPException(status_code=500, detail=f"Could not parse LLM response. Error: {e}. Raw response: {content_str}")
 
 @app.post("/api/load_project_tree")
 async def api_load_project_tree(request: LoadProjectTreeRequest):
@@ -354,7 +511,6 @@ async def api_generate_structure(request: GenerateStructureRequest):
     hard_excluded_set = set(request.hard_excluded_paths)
     md_tree = generate_markdown_tree(str(root_path), hard_excluded_set)
     
-    # --- Process Prompt and Placeholders ---
     try:
         author = os.getlogin()
     except Exception:
@@ -362,7 +518,6 @@ async def api_generate_structure(request: GenerateStructureRequest):
         
     gen_dt = datetime.now()
     
-    # Start with the base prompt and replace placeholders
     processed_prompt = request.custom_prompt
     processed_prompt = processed_prompt.replace("{FOLDER_NAME}", root_path.name)
     processed_prompt = processed_prompt.replace("{FOLDER_PATH}", str(root_path))
@@ -371,7 +526,6 @@ async def api_generate_structure(request: GenerateStructureRequest):
     processed_prompt = processed_prompt.replace("{DATETIME}", gen_dt.strftime("%Y-%m-%d %H:%M:%S"))
     processed_prompt = processed_prompt.replace("{AUTHOR}", author)
     
-    # Append documentation content to the processed prompt
     if request.loaded_doc_paths:
         doc_contents = ["\n\n---\n\n## Imported Documentation"]
         for doc_path_str in request.loaded_doc_paths:
@@ -385,7 +539,6 @@ async def api_generate_structure(request: GenerateStructureRequest):
                 doc_contents.append(f"### Doc: `{doc_path.name}` [Not found on server]")
         processed_prompt += "\n".join(doc_contents)
     
-    # --- Process File Contents ---
     file_contents = []
     selected_files_map = {Path(info['path']).resolve(): info['type'] for info in request.selected_files_info}
     
@@ -413,7 +566,6 @@ async def api_generate_structure(request: GenerateStructureRequest):
         except Exception as e:
             file_contents.append(f"```\nError reading file: {relative_path}\n{e}\n```")
 
-    # --- Assemble Final Markdown ---
     final_md_parts = [
         f"# Folder Structure: {root_path.name}",
         f"*(Generated: {gen_dt.strftime('%Y-%m-%d %H:%M:%S')})*",
@@ -459,9 +611,9 @@ async def save_template(template: Template):
     existing_template_index = next((i for i, t in enumerate(templates) if t['name'] == template.name), None)
     
     if existing_template_index is not None:
-        templates[existing_template_index] = template.dict()
+        templates[existing_template_index] = template.model_dump()
     else:
-        templates.append(template.dict())
+        templates.append(template.model_dump())
     
     save_prompt_templates(templates)
     return {"status": "success", "message": f"Template '{template.name}' saved."}

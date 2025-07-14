@@ -1,760 +1,777 @@
-// static/script.js
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Global State & Element Selectors ---
+    const S = id => document.getElementById(id);
+    const
+        appTitle = S('app-title'),
+        statusMessage = S('status-message'),
+        themeToggle = S('theme-toggle'),
+        settingsBtn = S('settings-btn'),
+        // Views
+        projectListView = S('project-list-view'),
+        extractorView = S('extractor-view'),
+        // Project List View
+        projectCardsContainer = S('project-cards-container'),
+        addProjectBtn = S('add-project-btn'),
+        // Extractor View
+        backToProjectsBtn = S('back-to-projects-btn'),
+        folderPathInput = S('folder-path-input'),
+        loadTreeBtn = S('load-tree-btn'),
+        presetList = S('preset-list'),
+        customFoldersInput = S('custom-folders-input'),
+        customExtensionsInput = S('custom-extensions-input'),
+        customPatternsInput = S('custom-patterns-input'),
+        customInclusionsInput = S('custom-inclusions-input'),
+        maxFileSizeInput = S('max-file-size-input'),
+        docList = S('doc-list'),
+        addDocsInput = S('add-docs-input'),
+        addDocsBtn = S('add-docs-btn'),
+        removeDocsBtn = S('remove-docs-btn'),
+        clearDocsBtn = S('clear-docs-btn'),
+        // Tab 2
+        fileTreeContainer = S('file-tree-container'),
+        refreshTreeBtn = S('refresh-tree-btn'),
+        aiSelectBtn = S('ai-select-btn'),
+        checkAllTextBtn = S('check-all-text-btn'),
+        uncheckAllBtn = S('uncheck-all-btn'),
+        templateSelect = S('template-select'),
+        loadTemplateBtn = S('load-template-btn'),
+        customPromptTextarea = S('custom-prompt-textarea'),
+        generateBtn = S('generate-btn'),
+        // Tab 3
+        rawOutputTextarea = S('raw-output-textarea'),
+        renderedOutputDiv = S('rendered-output-div'),
+        copyRawBtn = S('copy-raw-btn'),
+        // Modals
+        refreshChoiceModal = S('refresh-choice-modal'),
+        refreshPreserveBtn = S('refresh-preserve-btn'),
+        refreshRepopulateBtn = S('refresh-repopulate-btn'),
+        refreshCancelBtn = S('refresh-cancel-btn'),
+        settingsModal = S('settings-modal'),
+        modalLlmSettingsForm = S('modal-llm-settings-form'),
+        modalLlmUrlInput = S('modal-llm-url-input'),
+        modalLlmApiKeyInput = S('modal-llm-api-key-input'),
+        modalSaveLlmSettingsBtn = S('modal-save-llm-settings-btn'),
+        modalCloseSettingsBtn = S('modal-close-settings-btn'),
+        setDefaultLollmsBtn = S('set-default-lollms-btn'),
+        apiKeyToggleBtn = S('api-key-toggle-btn');
 
-function showStatus(message, type = 'info') {
-    const statusDiv = document.getElementById('status-message');
-    if (!statusDiv) { console.warn("Status div not found."); console.log(`STATUS (${type.toUpperCase()}): ${message}`); return; }
-    statusDiv.textContent = message;
-    statusDiv.className = 'text-sm p-1 rounded-md min-w-[200px] text-center truncate'; 
-    if (type === 'error') statusDiv.classList.add('text-red-700', 'dark:text-red-300', 'bg-red-100', 'dark:bg-red-900');
-    else if (type === 'warning') statusDiv.classList.add('text-yellow-700', 'dark:text-yellow-300', 'bg-yellow-100', 'dark:bg-yellow-900');
-    else if (type === 'success') statusDiv.classList.add('text-green-700', 'dark:text-green-300', 'bg-green-100', 'dark:bg-green-900');
-    else statusDiv.classList.add('text-blue-700', 'dark:text-blue-300', 'bg-blue-100', 'dark:bg-blue-900');
-    console.log(`STATUS (${type.toUpperCase()}): ${message}`);
-}
 
-function showLoading(element, isLoading, loadingText = 'Loading...', originalText = null) {
-    if (!element) return;
-    if (isLoading) {
-        element.disabled = true; element.classList.add('opacity-75', 'cursor-wait');
-        if (originalText !== null) element.dataset.originalText = originalText;
-        else if (!element.dataset.originalText) element.dataset.originalText = element.textContent;
-        element.textContent = loadingText;
-    } else {
-        element.disabled = false; element.classList.remove('opacity-75', 'cursor-wait');
-        if (element.dataset.originalText) { element.textContent = element.dataset.originalText; delete element.dataset.originalText; }
-    }
-}
-
-async function handleResponse(response) {
-    if (!response.ok) {
-        let errorData;
-        try { errorData = await response.json(); } catch (e) { errorData = { detail: (await response.text()) || `HTTP error! status: ${response.status}` }; }
-        const errorMessage = errorData.detail || `HTTP error! status: ${response.status}`;
-        showStatus(errorMessage, 'error'); throw new Error(errorMessage);
-    }
-    return response.json();
-}
-
-const tabButtons = document.querySelectorAll('.tab-button');
-const tabContents = document.querySelectorAll('.tab-content');
-function activateTab(tabId) {
-    tabButtons.forEach(button => {
-        const isActive = button.id === `${tabId}-btn`;
-        button.classList.toggle('active', isActive); button.classList.toggle('bg-white', isActive); button.classList.toggle('dark:bg-gray-700', isActive);
-        button.classList.toggle('text-blue-600', isActive); button.classList.toggle('dark:text-blue-400', isActive); button.classList.toggle('border-blue-500', isActive);
-        button.classList.toggle('bg-gray-200', !isActive); button.classList.toggle('dark:bg-gray-900', !isActive);
-        button.classList.toggle('text-gray-600', !isActive); button.classList.toggle('dark:text-gray-400', !isActive); button.classList.toggle('border-transparent', !isActive);
-    });
-    tabContents.forEach(content => {
-        content.classList.toggle('active', content.id === `${tabId}-content`);
-        content.style.display = content.id === `${tabId}-content` ? 'flex' : 'none';
-    });
-}
-tabButtons.forEach(button => button.addEventListener('click', () => { if (!button.disabled) activateTab(button.id.replace('-btn', '')); }));
-
-const subTabButtons = document.querySelectorAll('.sub-tab-button');
-const subTabContents = document.querySelectorAll('.sub-tab-content');
-function activateSubTab(tabId) {
-    subTabButtons.forEach(button => {
-        const isActive = button.id === `${tabId}-btn`;
-        button.classList.toggle('active', isActive); button.classList.toggle('bg-white', isActive); button.classList.toggle('dark:bg-gray-700', isActive);
-        button.classList.toggle('text-blue-600', isActive); button.classList.toggle('dark:text-blue-400', isActive); button.classList.toggle('border-blue-500', isActive);
-        button.classList.toggle('bg-gray-200', !isActive); button.classList.toggle('dark:bg-gray-900', !isActive);
-        button.classList.toggle('text-gray-900', !isActive && !document.documentElement.classList.contains('dark'));
-        button.classList.toggle('text-gray-100', !isActive && document.documentElement.classList.contains('dark'));
-        button.classList.toggle('border-transparent', !isActive);
-    });
-    subTabContents.forEach(content => { content.style.display = content.id === `${tabId}-content` ? (content.tagName === 'TEXTAREA' ? 'block' : 'flex') : 'none'; });
-}
-subTabButtons.forEach(button => button.addEventListener('click', () => activateSubTab(button.id.replace('-btn', ''))));
-
-const S = id => document.getElementById(id);
-const folderPathInput = S('folder-path-input'), loadTreeBtn = S('load-tree-btn'), browseServerFolderBtn = S('browse-server-folder-btn'),
-      presetList = S('preset-list'), customFoldersInput = S('custom-folders-input'), customExtensionsInput = S('custom-extensions-input'),
-      customPatternsInput = S('custom-patterns-input'), dynamicExcludeInput = S('dynamic-exclude-input'), customInclusionsInput = S('custom-inclusions-input'),
-      maxFileSizeInput = S('max-file-size-input'), saveOutputCheckbox = S('save-output-checkbox'), docList = S('doc-list'),
-      addDocsInput = S('add-docs-input'), addDocsBtn = S('add-docs-btn'), removeDocsBtn = S('remove-docs-btn'), clearDocsBtn = S('clear-docs-btn'),
-      refreshTreeBtn = S('refresh-tree-btn'), expandAllBtn = S('expand-all-btn'), collapseAllBtn = S('collapse-all-btn'),
-      checkAllTextBtn = S('check-all-text-btn'), uncheckAllBtn = S('uncheck-all-btn'), fileTreeContainer = S('file-tree-container'),
-      templateSelect = S('template-select'), loadTemplateBtn = S('load-template-btn'), saveTemplateBtn = S('save-template-btn'),
-      manageTemplateBtn = S('manage-template-btn'), customPromptTextarea = S('custom-prompt-textarea'), generateBtn = S('generate-btn'),
-      rawOutputTextarea = S('raw-output-textarea'), renderedOutputDiv = S('rendered-output-div'), copyRawBtn = S('copy-raw-btn'),
-      clearOutputBtn = S('clear-output-btn'), themeToggle = S('theme-toggle'), resetSettingsBtn = S('reset-settings-btn');
-
-const clientState = {
-    folderPath: '',
-    filterSettings: { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 },
-    saveOutputChecked: false, customPrompt: '', loadedDocPaths: [],
-    checkedTreePathsMap: new Map(), 
-    markedForRemovalPaths: new Set(), // Renamed from hardExcludedPathsAbs
-    promptTemplates: [], currentTheme: 'light', appVersion: '2.8.3' // Version bump
-};
-
-const PRESET_PRESELECTION_RULES = {
-    "Python Project": {
-        include_ext: [".py", ".pyw", ".pyi", ".md", ".txt", ".ini", ".cfg", ".toml", ".yaml", ".yml", ".json", ".sh", ".cfg", ".conf"],
-        include_filenames: ["requirements.txt", "setup.py", "pyproject.toml", "readme.md", "readme", "dockerfile", "docker-compose.yml", ".env.example", "manage.py", "app.py", "main.py", "wsgi.py", "asgi.py", "gunicorn.conf.py"],
-        exclude_dirs_for_selection: ["venv", ".venv", "env", ".env", "build", "dist", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", ".hypothesis", ".tox", "docs/_build", "htmlcov", "migrations"]
-    },
-    "Node.js Project": {
-        include_ext: [".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".jsx", ".tsx", ".json", ".md", ".txt", ".yaml", ".yml", ".html", ".css", ".scss", ".less", ".vue", ".svelte"],
-        include_filenames: ["package.json", "readme.md", "readme", "dockerfile", "docker-compose.yml", ".env.example", "server.js", "app.js", "index.js", "main.js", "vite.config.js", "webpack.config.js", "tsconfig.json", ".eslintrc.json", ".prettierrc.json"],
-        exclude_dirs_for_selection: ["node_modules", "build", "dist", ".output", ".nuxt", ".next", "coverage", "public/build", "storybook-static"]
-    },
-    "Java Project (Maven/Gradle)": {
-        include_ext: [".java", ".kt", ".scala", ".xml", ".properties", ".yml", ".yaml", ".md", ".txt", ".gradle", ".json"],
-        include_filenames: ["pom.xml", "build.gradle", "readme.md", "readme", "dockerfile", "application.properties", "application.yml", "settings.gradle"],
-        exclude_dirs_for_selection: ["target", "build", ".gradle", "bin", "out"]
-    },
-    "Git Repository": { 
-        include_ext: [".md", ".txt", ".yaml", ".yml", ".json", ".xml", ".ini", ".cfg", ".conf", ".sh", ".bat"], 
-        include_filenames: ["readme.md", "readme", "license", "contributing.md", "changelog.md", "dockerfile", ".gitignore", ".gitattributes"],
-        exclude_dirs_for_selection: [".git", ".vscode", ".idea"] 
-    }
-};
-
-function saveStateToLocalStorage() {
-    try {
-        localStorage.setItem('folderExtractorState_v' + clientState.appVersion, JSON.stringify(clientState, (key, value) => {
-            if (key === 'checkedTreePathsMap' && value instanceof Map) return Object.fromEntries(value);
-            if (key === 'markedForRemovalPaths' && value instanceof Set) return Array.from(value);
-            return value;
-        }));
-    } catch (e) { console.error("Error saving state:", e); showStatus("Could not save settings (localStorage full/disabled).", "error"); }
-}
-
-function loadStateFromLocalStorage() {
-    const savedStateJSON = localStorage.getItem('folderExtractorState_v' + clientState.appVersion);
-    if (savedStateJSON) {
-        try {
-            const parsedState = JSON.parse(savedStateJSON);
-            if (parsedState.appVersion !== clientState.appVersion) {
-                console.warn(`State from older version (${parsedState.appVersion}). Resetting.`); resetClientState(false);
-            } else { Object.assign(clientState, parsedState); }
-            
-            clientState.checkedTreePathsMap = new Map(parsedState.checkedTreePathsMap ? Object.entries(parsedState.checkedTreePathsMap) : []);
-            clientState.markedForRemovalPaths = new Set(Array.isArray(parsedState.markedForRemovalPaths) ? parsedState.markedForRemovalPaths : []);
-            
-            applyStateToUI();
-            showStatus('Loaded settings from local storage.');
-        } catch (e) { console.error('Failed to parse state:', e); resetClientState(); applyStateToUI(); }
-    } else { resetClientState(true); applyStateToUI(); }
-}
-
-function resetClientState(showMsg = true) {
-    clientState.folderPath = '';
-    clientState.filterSettings = { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', dynamic_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 };
-    clientState.saveOutputChecked = false; clientState.customPrompt = ''; clientState.loadedDocPaths = [];
-    clientState.checkedTreePathsMap = new Map();
-    clientState.markedForRemovalPaths = new Set();
-    saveStateToLocalStorage();
-    if (showMsg) showStatus('Settings reset to defaults.');
-}
-
-function applyStateToUI() {
-    folderPathInput.value = clientState.folderPath;
-    document.querySelectorAll('.preset-checkbox').forEach(cb => cb.checked = clientState.filterSettings.selected_presets.includes(cb.value));
-    customFoldersInput.value = clientState.filterSettings.custom_folders; customExtensionsInput.value = clientState.filterSettings.custom_extensions;
-    customPatternsInput.value = clientState.filterSettings.custom_patterns; dynamicExcludeInput.value = clientState.filterSettings.dynamic_patterns;
-    customInclusionsInput.value = clientState.filterSettings.custom_inclusions; maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
-    saveOutputCheckbox.checked = clientState.saveOutputChecked; customPromptTextarea.value = clientState.customPrompt;
-    updateDocListUI(); updateFileTreeDependentUIs(); applyCheckedPathsToTreeVisuals();
-    document.documentElement.classList.toggle('dark', clientState.currentTheme === 'dark');
-    themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
-    activateTab('tab1'); activateSubTab('raw-output');
-}
-function updateClientStateFromUI() {
-    clientState.folderPath = folderPathInput.value.trim();
-    clientState.filterSettings.selected_presets = Array.from(document.querySelectorAll('.preset-checkbox:checked')).map(cb => cb.value);
-    clientState.filterSettings.custom_folders = customFoldersInput.value.trim(); clientState.filterSettings.custom_extensions = customExtensionsInput.value.trim();
-    clientState.filterSettings.custom_patterns = customPatternsInput.value.trim(); clientState.filterSettings.dynamic_patterns = dynamicExcludeInput.value.trim();
-    clientState.filterSettings.custom_inclusions = customInclusionsInput.value.trim();
-    clientState.filterSettings.max_file_size_mb = parseFloat(maxFileSizeInput.value) || 1.0;
-    clientState.saveOutputChecked = saveOutputCheckbox.checked; clientState.customPrompt = customPromptTextarea.value;
-    saveStateToLocalStorage(); updateFileTreeDependentUIs();
-}
-
-function updateFileTreeDependentUIs() {
-    const hasFolderPath = !!clientState.folderPath;
-    const hasTreeItems = fileTreeContainer.children.length > 0 && fileTreeContainer.querySelector('ul');
-    const hasSelections = clientState.checkedTreePathsMap.size > 0;
-
-    tabButtons[1].disabled = !hasFolderPath;
-    [refreshTreeBtn, expandAllBtn, collapseAllBtn, checkAllTextBtn, uncheckAllBtn].forEach(btn => btn.disabled = !hasTreeItems);
-    generateBtn.disabled = !hasFolderPath || !hasTreeItems || !hasSelections;
-}
-
-[folderPathInput, customFoldersInput, customExtensionsInput, customPatternsInput, dynamicExcludeInput, customInclusionsInput, maxFileSizeInput].forEach(input => {
-    input.addEventListener('input', updateClientStateFromUI); input.addEventListener('change', updateClientStateFromUI);
-});
-saveOutputCheckbox.addEventListener('change', updateClientStateFromUI); customPromptTextarea.addEventListener('input', updateClientStateFromUI);
-presetList.addEventListener('change', e => { 
-    if (e.target.classList.contains('preset-checkbox')) {
-        updateClientStateFromUI();
-        if (e.target.checked && fileTreeContainer.querySelector('ul')) {
-            applyPresetBasedPreselection();
-        }
-    }
-});
-resetSettingsBtn.addEventListener('click', () => {
-    if (confirm("Reset all settings to default? This clears folder path, filters, and loaded documents.")) {
-        resetClientState(); applyStateToUI(); fileTreeContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 p-2">Load a project on Tab 1 to see the file tree.</p>'; rawOutputTextarea.value = '';
-        renderedOutputDiv.innerHTML = 'Preview here.'; tabButtons[1].disabled = true; tabButtons[2].disabled = true;
-    }
-});
-
-const presetOptions = ["Python Project", "Node.js Project", "Java Project (Maven/Gradle)", "Git Repository", "IDE/Editor Configs", "Operating System/Misc", "Log Files", "Binary/Archives", "Large Media Files"];
-function populatePresetList() { 
-    presetList.innerHTML = '';
-    presetOptions.forEach(name => {
-        const id = `preset-${name.replace(/[\s\/]+/g, '-').replace(/[^\w-]+/g, '')}`;
-        const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.id = id; checkbox.value = name;
-        checkbox.classList.add('preset-checkbox', 'form-checkbox', 'h-4', 'w-4', 'text-blue-600', 'rounded', 'focus:ring-blue-500', 'dark:focus:ring-offset-gray-800', 'dark:bg-gray-700', 'dark:border-gray-600');
-        const label = document.createElement('label'); label.htmlFor = id; label.classList.add('ml-2', 'text-sm', 'text-gray-700', 'dark:text-gray-300', 'cursor-pointer'); label.textContent = name;
-        const div = document.createElement('div'); div.classList.add('flex', 'items-center', 'py-1.5', 'px-2', 'my-1', 'rounded-md', 'bg-gray-100', 'dark:bg-gray-800', 'hover:bg-gray-200', 'dark:hover:bg-gray-700');
-        div.appendChild(checkbox); div.appendChild(label);
-        div.addEventListener('click', (e) => { if (e.target !== checkbox && e.target !== label) { checkbox.checked = !checkbox.checked; checkbox.dispatchEvent(new Event('change', { bubbles: true })); } });
-        presetList.appendChild(div);
-    });
-}
-
-function updateDocListUI() { 
-    docList.innerHTML = '';
-    if (clientState.loadedDocPaths.length === 0) {
-        const li = document.createElement('li'); li.classList.add('text-sm', 'text-gray-500', 'dark:text-gray-400', 'py-2', 'text-center'); li.textContent = 'No documentation files loaded.'; docList.appendChild(li);
-    } else {
-        clientState.loadedDocPaths.forEach(path => {
-            const li = document.createElement('li'); li.classList.add('flex', 'items-center', 'justify-between', 'py-1.5', 'px-2', 'border-b', 'border-gray-200', 'dark:border-gray-700', 'last:border-b-0', 'hover:bg-gray-100', 'dark:hover:bg-gray-700'); li.dataset.path = path;
-            const fileName = path.split(/[\/\\]/).pop(); const parentDir = path.split(/[\/\\]/).slice(-2, -1)[0] || '';
-            const textSpan = document.createElement('span'); textSpan.classList.add('truncate', 'text-sm', 'text-gray-700', 'dark:text-gray-300'); textSpan.title = path; textSpan.textContent = `${fileName} ${parentDir ? '('+parentDir+')' : ''}`;
-            const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.classList.add('doc-checkbox', 'form-checkbox', 'h-4', 'w-4', 'text-blue-600', 'rounded', 'ml-2', 'focus:ring-blue-500');
-            li.appendChild(textSpan); li.appendChild(checkbox);
-            li.addEventListener('click', e => { if (e.target !== checkbox) checkbox.checked = !checkbox.checked; });
-            docList.appendChild(li);
-        });
-    }
-    saveStateToLocalStorage();
-}
-addDocsBtn.addEventListener('click', () => addDocsInput.click());
-addDocsInput.addEventListener('change', async e => { 
-    let addedCount = 0; const newPaths = [];
-    for (const file of e.target.files) {
-        const filePath = file.webkitRelativePath || file.name;
-        if (!clientState.loadedDocPaths.includes(filePath)) { newPaths.push(filePath); addedCount++; }
-        else { showStatus(`Doc already added: ${file.name}`, 'warning'); }
-    }
-    if (addedCount > 0) { clientState.loadedDocPaths.push(...newPaths); clientState.loadedDocPaths.sort(); updateDocListUI(); showStatus(`Added ${addedCount} doc(s).`, 'success');}
-    addDocsInput.value = '';
-});
-removeDocsBtn.addEventListener('click', () => { 
-    const selectedPaths = Array.from(docList.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.parentElement.dataset.path);
-    if (!selectedPaths.length) { showStatus('Select docs to remove.', 'warning'); return; }
-    clientState.loadedDocPaths = clientState.loadedDocPaths.filter(p => !selectedPaths.includes(p)); updateDocListUI(); showStatus(`Removed ${selectedPaths.length} doc(s).`, 'success');
-});
-clearDocsBtn.addEventListener('click', () => { 
-    if (!clientState.loadedDocPaths.length) { showStatus('Doc list empty.', 'info'); return; }
-    if (confirm('Remove all loaded docs?')) { clientState.loadedDocPaths = []; updateDocListUI(); showStatus('Cleared all docs.', 'success'); }
-});
-
-function renderTree(itemsToRender, parentDomElement, isRoot = true) {
-    itemsToRender.sort((a, b) => (a.is_dir && !b.is_dir) ? -1 : (!a.is_dir && b.is_dir) ? 1 : a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
-    itemsToRender.forEach(itemData => {
-        const li = document.createElement('li');
-        li.classList.add('flex', 'flex-col', 'text-sm');
-        const itemRow = document.createElement('div');
-        itemRow.classList.add('flex', 'items-center', 'py-0.5', 'hover:bg-gray-100', 'dark:hover:bg-gray-700', 'rounded');
-        
-        const isMarkedForRemoval = clientState.markedForRemovalPaths.has(itemData.path);
-        if (isMarkedForRemoval) {
-            li.classList.add('marked-for-removal');
-        }
-
-        const removalToggleButton = document.createElement('button');
-        removalToggleButton.innerHTML = isMarkedForRemoval ? '↩️' : '✗'; // Undo or X mark
-        removalToggleButton.classList.add('removal-toggle-btn', 'text-xs', 'p-0.5', 'mr-1.5', 'border', 'rounded', 'bg-red-200', 'dark:bg-red-700', 'hover:bg-red-300', 'dark:hover:bg-red-600', 'text-red-700', 'dark:text-red-100');
-        removalToggleButton.title = isMarkedForRemoval ? 'Restore this item to the project.' : 'Mark this item for removal from the final output.';
-        
-        const label = document.createElement('label'); // Define label here so it's in scope for the listener
-        label.classList.add('flex', 'items-center', 'cursor-pointer', 'flex-grow', 'py-0.5', 'px-1');
-        label.dataset.path = itemData.path;
-        label.title = itemData.path + (itemData.tooltip ? ` (${itemData.tooltip})` : '');
-
-        removalToggleButton.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const isNowMarked = li.classList.toggle('marked-for-removal');
-            
-            if (isNowMarked) { // Item is now marked for removal
-                clientState.markedForRemovalPaths.add(itemData.path);
-                removalToggleButton.innerHTML = '↩️';
-                removalToggleButton.title = 'Restore this item to the project.';
-
-                // Uncheck and remove from selection maps
-                clientState.checkedTreePathsMap.delete(itemData.path);
-                const checkbox = label.querySelector('.tree-checkbox');
-                if (checkbox) checkbox.checked = false;
-                const sigButton = label.querySelector('.sig-button');
-                if (sigButton) sigButton.classList.remove('active-sig');
-                propagateFullCheckToChildren(li, false); // Uncheck all children too
-                
-                showStatus(`Marked '${itemData.name}' for removal.`, 'info');
-            } else { // Item is now restored
-                clientState.markedForRemovalPaths.delete(itemData.path);
-                removalToggleButton.innerHTML = '✗';
-                removalToggleButton.title = 'Mark this item for removal from the final output.';
-                showStatus(`Restored '${itemData.name}'.`, 'info');
-            }
-            saveStateToLocalStorage();
-            updateFileTreeDependentUIs();
-        });
-        itemRow.appendChild(removalToggleButton);
-
-        const checkbox = document.createElement('input'); checkbox.type = 'checkbox';
-        checkbox.classList.add('tree-checkbox', 'form-checkbox', 'h-3.5', 'w-3.5', 'text-blue-600', 'border-gray-300', 'rounded', 'mr-1.5', 'flex-shrink-0', 'focus:ring-blue-500', 'dark:bg-gray-700', 'dark:border-gray-600');
-        checkbox.disabled = !itemData.can_be_checked; if (itemData.tooltip) checkbox.title = itemData.tooltip;
-        if (clientState.checkedTreePathsMap.get(itemData.path) === 'full') checkbox.checked = true;
-
-        const iconSpan = document.createElement('span'); iconSpan.classList.add('icon', 'mr-1.5', 'flex-shrink-0');
-        const nameSpan = document.createElement('span'); nameSpan.textContent = itemData.name + (itemData.is_dir ? '/' : ''); nameSpan.classList.add('truncate');
-        
-        if (itemData.is_signature_candidate) { 
-            const sigButton = document.createElement('button'); sigButton.textContent = 'S';
-            sigButton.classList.add('sig-button', 'mr-1.5', 'border', 'rounded', 'bg-purple-200', 'dark:bg-purple-600', 'hover:bg-purple-300', 'dark:hover:bg-purple-500', 'text-purple-700', 'dark:text-purple-100');
-            sigButton.title = 'Select for Signatures only';
-            if (clientState.checkedTreePathsMap.get(itemData.path) === 'signatures') sigButton.classList.add('active-sig');
-
-            sigButton.addEventListener('click', (e) => {
-                e.stopPropagation();
-                if (li.classList.contains('marked-for-removal')) return; // Don't allow selection on removed items
-                const currentSelection = clientState.checkedTreePathsMap.get(itemData.path);
-                if (currentSelection === 'signatures') { 
-                    clientState.checkedTreePathsMap.delete(itemData.path);
-                    sigButton.classList.remove('active-sig');
-                } else { 
-                    clientState.checkedTreePathsMap.set(itemData.path, 'signatures');
-                    sigButton.classList.add('active-sig');
-                    if (checkbox.checked) checkbox.checked = false; 
-                }
-                updateFileTreeDependentUIs(); saveStateToLocalStorage();
-            });
-            label.appendChild(sigButton);
-        }
-        
-        label.appendChild(checkbox); label.appendChild(iconSpan); label.appendChild(nameSpan);
-        
-        checkbox.addEventListener('change', (e) => {
-            if (li.classList.contains('marked-for-removal')) { e.target.checked = false; return; } // Don't allow selection
-            const isChecked = e.target.checked;
-            if (isChecked) {
-                clientState.checkedTreePathsMap.set(itemData.path, 'full');
-                const sigButton = label.querySelector('.sig-button'); 
-                if (sigButton) sigButton.classList.remove('active-sig');
-            } else { 
-                if (clientState.checkedTreePathsMap.get(itemData.path) === 'full') {
-                    clientState.checkedTreePathsMap.delete(itemData.path);
-                }
-            }
-            propagateFullCheckToChildren(li, isChecked);
-            updateFileTreeDependentUIs(); saveStateToLocalStorage();
-        });
-        
-        let toggleIconElement = null, childrenUl = null;
-        if (itemData.is_dir) {
-            iconSpan.innerHTML = '📁';
-            if (itemData.children && itemData.children.length > 0) {
-                li.classList.add('has-children');
-                toggleIconElement = document.createElement('span'); toggleIconElement.innerHTML = '▶️';
-                toggleIconElement.classList.add('toggle-icon', 'mr-1', 'cursor-pointer', 'text-xs', 'select-none', 'flex-shrink-0');
-                childrenUl = document.createElement('ul'); childrenUl.classList.add('list-none', 'p-0', 'm-0', 'ml-4', 'hidden');
-                toggleIconElement.addEventListener('click', (e) => { e.stopPropagation(); childrenUl.classList.toggle('hidden'); toggleIconElement.innerHTML = childrenUl.classList.contains('hidden') ? '▶️' : '🔽'; });
-                nameSpan.classList.add('cursor-pointer'); nameSpan.addEventListener('click', (e) => { e.stopPropagation(); if (toggleIconElement) toggleIconElement.click(); });
-            }
-        } else if (itemData.is_text) iconSpan.innerHTML = '📄'; else iconSpan.innerHTML = '▫️';
-
-        if (!itemData.can_be_checked) { label.classList.add('opacity-60', 'cursor-not-allowed'); nameSpan.classList.add('text-gray-500', 'dark:text-gray-400'); }
-        
-        if (toggleIconElement) itemRow.appendChild(toggleIconElement);
-        itemRow.appendChild(label); li.appendChild(itemRow);
-        if (childrenUl) { renderTree(itemData.children, childrenUl, false); li.appendChild(childrenUl); }
-        parentDomElement.appendChild(li);
-    });
-}
-
-function propagateFullCheckToChildren(listItemElement, isChecked) {
-    const isDir = listItemElement.querySelector('.icon').textContent === '📁';
-    if (isDir) {
-        const childListItems = listItemElement.querySelectorAll('ul > li');
-        childListItems.forEach(childLi => {
-            const checkbox = childLi.querySelector('div > label > .tree-checkbox:not(:disabled)');
-            if (!checkbox) return;
-            // Only propagate check action to items that are NOT marked for removal
-            if (isChecked && childLi.classList.contains('marked-for-removal')) {
-                return; // Skip checking this removed item
-            }
-
-            if (checkbox.checked !== isChecked) {
-                checkbox.checked = isChecked;
-                const childPath = checkbox.closest('label').dataset.path;
-                const childSigButton = childLi.querySelector('div > label > .sig-button');
-                if (isChecked) { 
-                    clientState.checkedTreePathsMap.set(childPath, 'full');
-                    if (childSigButton) childSigButton.classList.remove('active-sig');
-                } else { 
-                    if (clientState.checkedTreePathsMap.get(childPath) === 'full') {
-                        clientState.checkedTreePathsMap.delete(childPath);
-                    }
-                }
-            }
-        });
-    }
-}
-
-function applyCheckedPathsToTreeVisuals() {
-    fileTreeContainer.querySelectorAll('li').forEach(liItem => {
-        const itemRow = liItem.querySelector('div.flex.items-center');
-        if(!itemRow) return;
-
-        const label = itemRow.querySelector('label[data-path]');
-        if (!label) return;
-        const path = label.dataset.path;
-        const selectionType = clientState.checkedTreePathsMap.get(path);
-
-        const checkbox = label.querySelector('.tree-checkbox');
-        const sigButton = label.querySelector('.sig-button');
-        const removalToggleButton = itemRow.querySelector('.removal-toggle-btn');
-        
-        // Handle marking for removal visual state
-        const isMarked = clientState.markedForRemovalPaths.has(path);
-        liItem.classList.toggle('marked-for-removal', isMarked);
-        if (removalToggleButton) {
-            removalToggleButton.innerHTML = isMarked ? '↩️' : '✗';
-            removalToggleButton.title = isMarked ? 'Restore this item to the project.' : 'Mark this item for removal from the final output.';
-        }
-
-        // Handle selection visual state
-        if (checkbox) checkbox.checked = (selectionType === 'full');
-        if (sigButton) sigButton.classList.toggle('active-sig', selectionType === 'signatures');
-    });
-}
-
-async function performLoadTree() {
-    const folderPath = folderPathInput.value.trim();
-    if (!folderPath) { showStatus('Please enter a folder path.', 'warning'); return; }
+    const clientState = {
+        currentView: 'projects',
+        activeProjectId: null,
+        projects: [],
+        promptTemplates: [],
+        llmSettings: { url: '', api_key: '' },
+        filterSettings: {}, 
+        checkedTreePathsMap: new Map(),
+        markedForRemovalPaths: new Set(),
+        customPrompt: '',
+        loadedDocPaths: [],
+        currentTheme: 'light',
+        appVersion: '3.1.2'
+    };
     
-    rawOutputTextarea.value = ""; renderedOutputDiv.innerHTML = "Preview here.";
-    copyRawBtn.disabled = true; tabButtons[2].disabled = true;
+    const icons = {
+        eye: `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>`,
+        eyeSlash: `<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" /></svg>`
+    };
 
-    showLoading(loadTreeBtn, true, 'Loading...', 'Load Project Tree'); showLoading(refreshTreeBtn, true, 'Refreshing...', 'Refresh');
-    showStatus('Loading project tree...', 'info'); fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Loading tree...</p>';
-
-    try {
-        const response = await fetch('/api/load_project_tree', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                folder_path: folderPath, 
-                filters: clientState.filterSettings,
-            })
-        });
-        const data = await handleResponse(response);
-        fileTreeContainer.innerHTML = ''; 
-
-        if (data.tree && data.tree.length > 0 && data.tree[0]) {
-            const rootNode = data.tree[0]; const topLevelItems = rootNode.children || [];
-            const rootUl = document.createElement('ul'); rootUl.classList.add('list-none', 'p-0', 'm-0');
-            fileTreeContainer.appendChild(rootUl);
-
-            if (topLevelItems.length > 0) renderTree(topLevelItems, rootUl, true);
-            else {
-                const emptyMsgLi = document.createElement('li'); emptyMsgLi.textContent = `Folder "${rootNode.name || 'Root'}" empty or all items filtered.`;
-                emptyMsgLi.classList.add('text-gray-500','dark:text-gray-400', 'p-1', 'italic'); rootUl.appendChild(emptyMsgLi);
-            }
-            showStatus(`Tree for "${rootNode.name || folderPath}" loaded.`, 'success');
-            applyCheckedPathsToTreeVisuals(); 
-            applyPresetBasedPreselection(); 
-            tabButtons[1].disabled = false; activateTab('tab2');
-        } else {
-            fileTreeContainer.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">No items found or folder empty/inaccessible/fully filtered.</p>';
-            showStatus('No items found or folder empty/inaccessible/fully filtered.', 'warning'); tabButtons[1].disabled = false;
-        }
-    } catch (error) {
-        console.error('Error loading tree:', error);
-        fileTreeContainer.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">Error loading tree: ${error.message}.</p>`;
-        tabButtons[1].disabled = true;
-    } finally {
-        showLoading(loadTreeBtn, false); showLoading(refreshTreeBtn, false); updateClientStateFromUI();
+    // --- Utility Functions ---
+    function showStatus(message, type = 'info') {
+        if (!statusMessage) return;
+        statusMessage.textContent = message;
+        statusMessage.className = 'text-sm px-3 py-1.5 rounded-lg min-w-[220px] text-center truncate transition-all';
+        const typeClasses = {
+            error: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300',
+            warning: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300',
+            success: 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300',
+            info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+        };
+        statusMessage.classList.add(...(typeClasses[type] || typeClasses.info).split(' '));
     }
-}
-loadTreeBtn.addEventListener('click', performLoadTree); refreshTreeBtn.addEventListener('click', performLoadTree);
 
-browseServerFolderBtn.addEventListener('click', async () => { 
-    showLoading(browseServerFolderBtn, true, 'Browsing...', 'Browse Server Folder (Server-Side)'); showStatus('Opening server folder dialog...', 'info');
-    try {
-        const response = await fetch('/api/browse_server_folder', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        const data = await handleResponse(response);
-        if (data.status === 'success' && data.path) { folderPathInput.value = data.path; updateClientStateFromUI(); showStatus(`Server returned: ${data.path}. Click 'Load Tree'.`, 'success'); }
-        else if (data.status === 'cancelled') showStatus('Server folder selection cancelled.', 'info');
-        else showStatus(`Unexpected response from server browse: ${JSON.stringify(data)}`, 'error');
-    } catch (error) { console.error('Error browsing server folder:', error); showStatus(`Failed to browse server folder: ${error.message}.`, 'error'); }
-    finally { showLoading(browseServerFolderBtn, false); }
-});
-
-function expandCollapseTree(expand, element = fileTreeContainer) { 
-    const toggleIcons = element.querySelectorAll('li.has-children > div > span.toggle-icon');
-    toggleIcons.forEach(toggle => {
-        const childUl = toggle.closest('li').querySelector('ul');
-        if (childUl) {
-            const isCurrentlyHidden = childUl.classList.contains('hidden');
-            if (expand && isCurrentlyHidden) toggle.click(); else if (!expand && !isCurrentlyHidden) toggle.click();
+    async function handleApiResponse(responsePromise) {
+        try {
+            const response = await responsePromise;
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({ detail: `HTTP Error ${response.status}: ${response.statusText}` }));
+                throw new Error(errorData.detail);
+            }
+            return response.status === 204 ? null : response.json();
+        } catch (error) {
+            throw new Error(error.message || "A network error occurred.");
         }
-    });
-    if (expand) setTimeout(() => { element.querySelectorAll('li.has-children > ul:not(.hidden)').forEach(ul => expandCollapseTree(expand, ul)); }, 50);
-}
-expandAllBtn.addEventListener('click', () => expandCollapseTree(true)); collapseAllBtn.addEventListener('click', () => expandCollapseTree(false));
+    }
+    
+    // --- View Management ---
+    function switchView(viewName, projectId = null) {
+        clientState.currentView = viewName;
+        if (projectListView) projectListView.classList.toggle('active', viewName === 'projects');
+        if (extractorView) extractorView.classList.toggle('active', viewName === 'extractor');
+        
+        if (viewName === 'extractor') {
+            loadProjectIntoExtractor(projectId);
+        } else {
+            appTitle.textContent = "Folder Extractor";
+            clientState.activeProjectId = null;
+        }
+    }
 
-checkAllTextBtn.addEventListener('click', () => {
-    showStatus('Checking all for full content...', 'info');
-    fileTreeContainer.querySelectorAll('li').forEach(li => {
-        if (li.classList.contains('marked-for-removal')) {
+    // --- Project Management ---
+    async function fetchProjects() {
+        try {
+            clientState.projects = await handleApiResponse(fetch('/api/projects'));
+            renderProjectCards();
+        } catch (error) {
+            showStatus(`Error fetching projects: ${error.message}`, 'error');
+        }
+    }
+
+    function renderProjectCards() {
+        if (!projectCardsContainer) return;
+        projectCardsContainer.innerHTML = '';
+        if (clientState.projects.length === 0) {
+            projectCardsContainer.innerHTML = `<div class="col-span-full text-center p-8">
+                <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">No projects found.</h3>
+                <p class="text-gray-500 dark:text-gray-400 mt-2">Click "Add New Project" to get started.</p>
+            </div>`;
             return;
         }
-        const checkbox = li.querySelector('.tree-checkbox:not(:disabled)');
-        if (checkbox) {
-            const path = checkbox.closest('label').dataset.path;
-            checkbox.checked = true;
-            clientState.checkedTreePathsMap.set(path, 'full');
-            const sigButton = checkbox.closest('label').querySelector('.sig-button');
-            if (sigButton) sigButton.classList.remove('active-sig');
-        }
-    });
-    saveStateToLocalStorage(); updateFileTreeDependentUIs(); applyCheckedPathsToTreeVisuals();
-    showStatus('All checkable items set to "full content".', 'success');
-});
-uncheckAllBtn.addEventListener('click', () => {
-    showStatus('Unchecking all items...', 'info');
-    clientState.checkedTreePathsMap.clear();
-    fileTreeContainer.querySelectorAll('.tree-checkbox:not(:disabled)').forEach(cb => cb.checked = false);
-    fileTreeContainer.querySelectorAll('.sig-button.active-sig').forEach(sb => sb.classList.remove('active-sig'));
-    saveStateToLocalStorage(); updateFileTreeDependentUIs();
-    showStatus('All items unchecked.', 'success');
-});
-
-async function fetchPromptTemplates() { 
-    try {
-        const response = await fetch('/api/prompt_templates'); const data = await handleResponse(response);
-        clientState.promptTemplates = data.map(t => ({ name: t.name, content: t.content })); populateTemplateSelect();
-    } catch (error) { console.error('Error fetching prompt templates:', error); showStatus('Failed to load prompt templates.', 'error'); }
-}
-function populateTemplateSelect() { 
-    templateSelect.innerHTML = '<option value="">-- Select Template --</option>';
-    clientState.promptTemplates.forEach(t => { const option = document.createElement('option'); option.value = t.name; option.textContent = t.name; templateSelect.appendChild(option); });
-    const foundTemplate = clientState.promptTemplates.find(t => t.content.trim() === customPromptTextarea.value.trim());
-    if (foundTemplate) templateSelect.value = foundTemplate.name;
-}
-loadTemplateBtn.addEventListener('click', () => { 
-    const selectedName = templateSelect.value; if (!selectedName) { showStatus('No template selected.', 'warning'); return; }
-    const template = clientState.promptTemplates.find(t => t.name === selectedName);
-    if (template) {
-        let content = template.content;
-        const folderName = clientState.folderPath ? clientState.folderPath.split(/[\/\\]/).pop() : 'UnknownProject';
-        content = content.replace(/{FOLDER_NAME}/g, folderName).replace(/{FOLDER_PATH}/g, clientState.folderPath || 'N/A')
-                         .replace(/{DATE}/g, new Date().toISOString().slice(0, 10)).replace(/{TIME}/g, new Date().toLocaleTimeString())
-                         .replace(/{DATETIME}/g, new Date().toLocaleString()).replace(/{AUTHOR}/g, 'User')
-                         .replace(/{USER_REQUEST}/g, '[Your specific request here]');
-        customPromptTextarea.value = content; updateClientStateFromUI(); showStatus(`Loaded template: ${selectedName}`, 'success');
-    } else showStatus(`Template '${selectedName}' not found.`, 'error');
-});
-saveTemplateBtn.addEventListener('click', async () => { 
-    const content = customPromptTextarea.value.trim(); if (!content) { showStatus('Prompt empty.', 'warning'); return; }
-    let name = prompt('Enter template name:'); if (!name) return; name = name.trim(); if (!name) { alert('Name cannot be empty.'); return; }
-    const existing = clientState.promptTemplates.find(t => t.name === name);
-    if (existing && existing.content !== content && !confirm(`Template '${name}' exists. Overwrite?`)) return;
-    if (existing && existing.content === content) { showStatus(`Template '${name}' already exists.`, 'info'); templateSelect.value = name; return; }
-    try {
-        const response = await fetch('/api/save_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, content }) });
-        const data = await handleResponse(response); showStatus(data.message || `Template '${name}' saved.`, data.status.startsWith('success') || data.status.startsWith('reverted') ? 'success' : 'warning');
-        await fetchPromptTemplates(); templateSelect.value = name; updateClientStateFromUI();
-    } catch (error) { console.error('Error saving template:', error); showStatus(`Failed to save template: ${error.message}`, 'error'); }
-});
-manageTemplateBtn.addEventListener('click', async () => { 
-    const action = prompt("Manage Templates:\n1. Delete/Revert template\n2. Copy template\nEnter action (1 or 2):"); if (!action) return;
-    if (action === '1') {
-        const nameToDelete = prompt("Enter exact name of template to delete/revert:"); if (!nameToDelete) return;
-        const templateToDelete = clientState.promptTemplates.find(t => t.name === nameToDelete); if (!templateToDelete) { showStatus(`Template '${nameToDelete}' not found.`, 'warning'); return; }
-        if (!confirm(`Delete/Revert template '${nameToDelete}'?`)) return;
-        try {
-            const response = await fetch('/api/delete_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: templateToDelete.name, content: templateToDelete.content }) });
-            const data = await handleResponse(response); showStatus(data.message || `Template '${nameToDelete}' processed.`, data.status.includes('success') || data.status.includes('reverted') || data.status.includes('deleted') ? 'success' : 'warning');
-            await fetchPromptTemplates(); if (customPromptTextarea.value === templateToDelete.content) { customPromptTextarea.value = ""; updateClientStateFromUI(); }
-        } catch (error) { console.error('Error deleting template:', error); showStatus(`Failed to delete template: ${error.message}`, 'error'); }
-    } else if (action === '2') {
-        const nameToCopy = prompt("Enter exact name of template to copy:"); if (!nameToCopy) return;
-        const original = clientState.promptTemplates.find(t => t.name === nameToCopy); if (!original) { showStatus(`Template '${nameToCopy}' not found.`, 'warning'); return; }
-        let newName = `${original.name} (Copy)`; let count = 1; while (clientState.promptTemplates.some(t => t.name === newName)) newName = `${original.name} (Copy ${++count})`;
-        if (!confirm(`Copy template '${nameToCopy}' as '${newName}'?`)) return;
-        try {
-            const response = await fetch('/api/save_template', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: newName, content: original.content }) });
-            const data = await handleResponse(response); showStatus(data.message || `Template copied as '${newName}'.`, 'success');
-            await fetchPromptTemplates(); templateSelect.value = newName; customPromptTextarea.value = original.content; updateClientStateFromUI();
-        } catch (error) { console.error('Error copying template:', error); showStatus(`Failed to copy template: ${error.message}`, 'error'); }
-    } else showStatus('Invalid action.', 'warning');
-});
-
-generateBtn.addEventListener('click', async () => {
-    const currentFolderPath = clientState.folderPath;
-    if (!currentFolderPath) { showStatus('Folder path missing (Tab 1).', 'warning'); activateTab('tab1'); return; }
-    if (!fileTreeContainer.children.length || !fileTreeContainer.querySelector('ul')) { showStatus('Project tree not loaded/empty (Tab 1/2).', 'warning'); activateTab('tab1'); return; }
-    
-    const selectedFilesForPayload = Array.from(clientState.checkedTreePathsMap.entries())
-        .filter(([path, type]) => !clientState.markedForRemovalPaths.has(path))
-        .map(([path, type]) => ({ path, type }));
-    
-    if (selectedFilesForPayload.length === 0) { 
-        if (clientState.checkedTreePathsMap.size > 0) {
-            showStatus('All selected files are marked for removal. Nothing to generate.', 'warning');
-        } else {
-            showStatus('No files selected for content/signatures.', 'warning');
-        }
-        activateTab('tab2'); 
-        return; 
-    }
-
-    showLoading(generateBtn, true, 'Generating...', 'Generate Structure Text');
-    rawOutputTextarea.value = 'Generating...'; renderedOutputDiv.innerHTML = '<p class="p-4 text-gray-500 dark:text-gray-400">Generating...</p>';
-    copyRawBtn.disabled = true; tabButtons[2].disabled = false; activateTab('tab3');
-    updateClientStateFromUI(); // Ensure latest custom prompt etc. is captured.
-
-    try {
-        const response = await fetch('/api/generate_structure', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                folder_path: currentFolderPath, filters: clientState.filterSettings,
-                selected_files_info: selectedFilesForPayload, 
-                custom_prompt: clientState.customPrompt, 
-                loaded_doc_paths: clientState.loadedDocPaths,
-                hard_excluded_paths: Array.from(clientState.markedForRemovalPaths)
-            })
+        clientState.projects.forEach(p => {
+            const card = document.createElement('div');
+            card.className = 'project-card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col cursor-pointer border dark:border-gray-700';
+            card.dataset.id = p.id;
+            card.innerHTML = `
+                <div class="flex-grow">
+                    <h3 class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate">${p.name}</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 break-all" title="${p.path}">${p.path}</p>
+                </div>
+                <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
+                    <button class="star-btn p-2 text-gray-400 hover:text-yellow-400 ${p.starred ? 'starred' : ''}" data-action="star" title="Star project">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                    </button>
+                    <div class="space-x-2">
+                        <button class="p-2 text-gray-400 hover:text-blue-500" data-action="edit" title="Edit project"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg></button>
+                        <button class="p-2 text-gray-400 hover:text-red-500" data-action="delete" title="Delete project"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg></button>
+                    </div>
+                </div>`;
+            card.addEventListener('click', (e) => {
+                const action = e.target.closest('button')?.dataset.action;
+                if (action) {
+                    e.stopPropagation();
+                    handleProjectAction(action, p.id);
+                } else {
+                    switchView('extractor', p.id);
+                }
+            });
+            projectCardsContainer.appendChild(card);
         });
-        const data = await handleResponse(response);
-        rawOutputTextarea.value = data.markdown;
-        if (typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(data.markdown));
-        else { renderedOutputDiv.innerHTML = '<p class="text-red-500">Markdown parser/sanitizer not loaded.</p>'; console.error("marked.js or DOMPurify not loaded.");}
-        copyRawBtn.disabled = false;
-
-        if (clientState.saveOutputChecked) {
-            const projName = currentFolderPath.split(/[\/\\]/).pop() || 'project'; const timestamp = new Date().toISOString().slice(0, 19).replace(/[:T-]/g, '');
-            const filename = `folder_structure_${projName}_${timestamp}.md`; const blob = new Blob([data.markdown], { type: 'text/markdown;charset=utf-8' });
-            const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-            showStatus('Output generated and download initiated.', 'success');
-        } else showStatus('Output generated. View on Tab 3.', 'success');
-    } catch (error) {
-        console.error('Error generating structure text:', error); const errorMsg = `Error generating output: ${error.message}`;
-        rawOutputTextarea.value = `\`\`\`error\n${errorMsg}\nCheck console.\n\`\`\``; renderedOutputDiv.innerHTML = `<p class="p-4 text-red-600 dark:text-red-400">${errorMsg}</p>`;
-        showStatus(`Generation failed: ${error.message}`, 'error');
-    } finally { showLoading(generateBtn, false); }
-});
-
-copyRawBtn.addEventListener('click', () => { 
-    if (rawOutputTextarea.value) navigator.clipboard.writeText(rawOutputTextarea.value).then(() => showStatus('Raw Markdown copied.', 'success')).catch(err => { console.error('Failed to copy:', err); showStatus('Failed to copy. Check permissions.', 'error'); });
-    else showStatus('Nothing to copy.', 'warning');
-});
-clearOutputBtn.addEventListener('click', () => { 
-    rawOutputTextarea.value = ''; renderedOutputDiv.innerHTML = 'Preview here.'; copyRawBtn.disabled = true; showStatus('Output cleared.');
-});
-themeToggle.addEventListener('click', () => { 
-    document.documentElement.classList.toggle('dark'); clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-    themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙'; showStatus(`Theme: ${clientState.currentTheme}.`); saveStateToLocalStorage();
-});
-
-function getRelativePath(fullPath, rootPath) {
-    const normalizedRoot = rootPath.endsWith('/') || rootPath.endsWith('\\') ? rootPath : rootPath + '/';
-    if (fullPath.startsWith(normalizedRoot)) {
-        return fullPath.substring(normalizedRoot.length);
     }
-    return fullPath.split(/[\/\\]/).pop(); 
-}
 
-function applyPresetBasedPreselection() {
-    if (clientState.filterSettings.selected_presets.length === 0) return;
-    if (!fileTreeContainer.querySelector('ul')) return; 
+    async function handleProjectAction(action, projectId) {
+        const project = clientState.projects.find(p => p.id === projectId);
+        if (!project) return;
 
-    let appliedRule = null;
-    for (const presetName of clientState.filterSettings.selected_presets) {
-        if (PRESET_PRESELECTION_RULES[presetName]) {
-            appliedRule = PRESET_PRESELECTION_RULES[presetName];
-            break; 
+        switch (action) {
+            case 'star':
+                try {
+                    await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ starred: !project.starred })}));
+                    await fetchProjects();
+                } catch (error) { showStatus(`Error starring project: ${error.message}`, 'error'); }
+                break;
+            case 'edit':
+                const newName = prompt("Enter new project name:", project.name);
+                if (newName && newName.trim() !== project.name) {
+                    try {
+                        await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: newName.trim() })}));
+                        await fetchProjects();
+                    } catch (error) { showStatus(`Error updating project: ${error.message}`, 'error'); }
+                }
+                break;
+            case 'delete':
+                if (confirm(`Are you sure you want to delete project "${project.name}"?`)) {
+                    try {
+                        await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'DELETE' }));
+                        await fetchProjects();
+                    } catch (error) { showStatus(`Error deleting project: ${error.message}`, 'error'); }
+                }
+                break;
         }
     }
-    if (!appliedRule) return;
-
-    showStatus(`Applying pre-selection for: ${clientState.filterSettings.selected_presets.find(p => PRESET_PRESELECTION_RULES[p])}...`, 'info');
-    let preselectedCount = 0;
     
-    fileTreeContainer.querySelectorAll('li').forEach(liItem => {
-        if (liItem.classList.contains('marked-for-removal')) return;
-        
-        const itemRow = liItem.querySelector('div.flex.items-center');
-        if(!itemRow) return;
-        const label = itemRow.querySelector('label[data-path]');
-        if (!label) return;
-
-        const checkbox = label.querySelector('.tree-checkbox:not(:disabled)');
-        if (!checkbox) return; 
-
-        const fullPath = label.dataset.path;
-        const relativePath = getRelativePath(fullPath, clientState.folderPath);
-        const fileName = fullPath.split(/[\/\\]/).pop().toLowerCase();
-        const fileExtWithDot = "." + fileName.split('.').pop();
-
-        let shouldSelect = false;
-
-        if (appliedRule.include_ext && appliedRule.include_ext.includes(fileExtWithDot)) {
-            shouldSelect = true;
-        }
-        if (appliedRule.include_filenames && appliedRule.include_filenames.includes(fileName)) {
-            shouldSelect = true;
+    // --- Extractor Logic ---
+    function loadProjectIntoExtractor(projectId) {
+        const project = clientState.projects.find(p => p.id === projectId);
+        if (!project) {
+            showStatus('Project not found.', 'error');
+            switchView('projects');
+            return;
         }
         
-        if (shouldSelect && appliedRule.exclude_dirs_for_selection) {
-            for (const dirToExclude of appliedRule.exclude_dirs_for_selection) {
-                const dirToExcludeNormalized = dirToExclude.endsWith('/') ? dirToExclude : dirToExclude + '/';
-                if (relativePath.toLowerCase().startsWith(dirToExcludeNormalized.toLowerCase())) {
-                    shouldSelect = false;
-                    break;
-                }
-                 if (relativePath.toLowerCase() === dirToExclude.toLowerCase()) {
-                     shouldSelect = false;
-                     break;
-                }
-            }
-        }
+        clientState.activeProjectId = projectId;
+        appTitle.textContent = project.name;
         
-        const isDir = liItem.querySelector('.icon').textContent === '📁';
-        if(isDir && shouldSelect) {
-            shouldSelect = false;
-        }
+        const savedState = JSON.parse(localStorage.getItem(`projectState_${projectId}`) || '{}');
 
-        if (shouldSelect) {
-            if (!clientState.checkedTreePathsMap.has(fullPath) || clientState.checkedTreePathsMap.get(fullPath) !== 'full') {
-                 clientState.checkedTreePathsMap.set(fullPath, 'full');
-                 preselectedCount++;
-            }
-        }
-    });
+        clientState.filterSettings = savedState.filterSettings || { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 };
+        clientState.checkedTreePathsMap = new Map(Object.entries(savedState.checkedTreePathsMap || {}));
+        clientState.markedForRemovalPaths = new Set(savedState.markedForRemovalPaths || []);
+        clientState.customPrompt = savedState.customPrompt || '';
+        clientState.loadedDocPaths = savedState.loadedDocPaths || [];
 
-    applyCheckedPathsToTreeVisuals(); 
-    updateFileTreeDependentUIs();
-    saveStateToLocalStorage();
+        folderPathInput.value = project.path;
+        maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
+        customFoldersInput.value = clientState.filterSettings.custom_folders;
+        customExtensionsInput.value = clientState.filterSettings.custom_extensions;
+        customPatternsInput.value = clientState.filterSettings.custom_patterns;
+        customInclusionsInput.value = clientState.filterSettings.custom_inclusions;
+        customPromptTextarea.value = clientState.customPrompt;
+        
+        document.querySelectorAll('.preset-checkbox').forEach(cb => {
+            cb.checked = clientState.filterSettings.selected_presets.includes(cb.value);
+        });
 
-    if (preselectedCount > 0) {
-        showStatus(`Pre-selected ${preselectedCount} files based on project type.`, "success");
-    } else {
-        showStatus("No additional files matched project type pre-selection rules.", "info");
+        updateDocListUI();
+        fileTreeContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 p-4 text-center">Click "Load Project Tree" to begin.</p>';
+        rawOutputTextarea.value = '';
+        renderedOutputDiv.innerHTML = 'A rendered preview will appear here.';
+        updateExtractorUIStates();
     }
-}
+    
+    function saveProjectState() {
+        if (!clientState.activeProjectId) return;
+        const stateToSave = {
+            filterSettings: clientState.filterSettings,
+            checkedTreePathsMap: Object.fromEntries(clientState.checkedTreePathsMap),
+            markedForRemovalPaths: Array.from(clientState.markedForRemovalPaths),
+            customPrompt: customPromptTextarea.value,
+            loadedDocPaths: clientState.loadedDocPaths,
+        };
+        localStorage.setItem(`projectState_${clientState.activeProjectId}`, JSON.stringify(stateToSave));
+    }
+    
+    function updateExtractorClientStateFromUI() {
+        if (!clientState.activeProjectId) return;
+        clientState.filterSettings = {
+            selected_presets: Array.from(document.querySelectorAll('.preset-checkbox:checked')).map(cb => cb.value),
+            custom_folders: customFoldersInput.value.trim(),
+            custom_extensions: customExtensionsInput.value.trim(),
+            custom_patterns: customPatternsInput.value.trim(),
+            custom_inclusions: customInclusionsInput.value.trim(),
+            max_file_size_mb: parseFloat(maxFileSizeInput.value) || 1.0
+        };
+        clientState.customPrompt = customPromptTextarea.value;
+        saveProjectState();
+    }
+
+    // --- LLM & Template Settings ---
+    async function fetchLlmSettings() {
+        try {
+            clientState.llmSettings = await handleApiResponse(fetch('/api/settings/llm'));
+            if(modalLlmUrlInput) modalLlmUrlInput.value = clientState.llmSettings.url;
+            if(modalLlmApiKeyInput) modalLlmApiKeyInput.value = clientState.llmSettings.api_key;
+        } catch(error) {
+            showStatus('Could not load LLM settings.', 'warning');
+        }
+    }
+
+    async function fetchPromptTemplates() {
+        try {
+            clientState.promptTemplates = await handleApiResponse(fetch('/api/prompt_templates'));
+            populateTemplateSelect();
+        } catch(error) {
+            showStatus('Could not load prompt templates.', 'error');
+        }
+    }
+    
+    function populateTemplateSelect() {
+        if (!templateSelect) return;
+        const currentVal = templateSelect.value;
+        templateSelect.innerHTML = '<option value="">-- Select Template --</option>';
+        clientState.promptTemplates.forEach(t => {
+            const option = document.createElement('option');
+            option.value = t.name;
+            option.textContent = t.name;
+            templateSelect.appendChild(option);
+        });
+        templateSelect.value = currentVal;
+    }
+
+    // --- Tree Rendering & Manipulation ---
+    function renderTree(items, parentDomElement) {
+        items.sort((a, b) => (a.is_dir === b.is_dir) ? a.name.localeCompare(b.name, undefined, { numeric: true }) : a.is_dir ? -1 : 1);
+        items.forEach(item => {
+            const li = document.createElement('li');
+            li.className = 'flex flex-col text-sm';
+            
+            const itemRow = document.createElement('div');
+            itemRow.className = 'item-row flex items-center py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded';
+
+            const isMarkedForRemoval = clientState.markedForRemovalPaths.has(item.path);
+            if (isMarkedForRemoval) li.classList.add('marked-for-removal');
+            
+            let toggleIcon = null;
+            if (item.is_dir && item.children && item.children.length > 0) {
+                toggleIcon = document.createElement('span');
+                toggleIcon.className = 'toggle-icon mr-1 cursor-pointer text-xs';
+                itemRow.appendChild(toggleIcon);
+            }
+
+            const removalBtn = document.createElement('button');
+            removalBtn.className = 'removal-toggle-btn text-xs p-1 mx-1.5 rounded bg-red-200 dark:bg-red-800 hover:bg-red-300 dark:hover:bg-red-700 text-red-700 dark:text-red-100';
+            itemRow.appendChild(removalBtn);
+
+            const label = document.createElement('label');
+            label.className = 'item-label flex items-center cursor-pointer flex-grow py-0.5 px-1';
+            label.dataset.path = item.path;
+            label.title = item.path + (item.tooltip ? ` (${item.tooltip})` : '');
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'tree-checkbox form-checkbox h-3.5 w-3.5 text-blue-600 border-gray-300 rounded mr-1.5 flex-shrink-0 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600';
+            checkbox.disabled = !item.can_be_checked;
+            label.appendChild(checkbox);
+
+            if (item.is_signature_candidate) { 
+                const sigButton = document.createElement('button');
+                sigButton.textContent = 'S';
+                sigButton.className = 'sig-button mr-1.5 border rounded bg-purple-200 dark:bg-purple-600 hover:bg-purple-300 dark:hover:bg-purple-500 text-purple-700 dark:text-purple-100';
+                sigButton.title = 'Select for Signatures only';
+                label.appendChild(sigButton);
+
+                sigButton.addEventListener('click', e => {
+                    e.stopPropagation();
+                    if (li.classList.contains('marked-for-removal')) return;
+                    const currentSelection = clientState.checkedTreePathsMap.get(item.path);
+                    if (currentSelection === 'signatures') {
+                        clientState.checkedTreePathsMap.delete(item.path);
+                    } else {
+                        clientState.checkedTreePathsMap.set(item.path, 'signatures');
+                        checkbox.checked = false;
+                    }
+                    applySelectionsToTree();
+                    saveProjectState();
+                });
+            }
+            
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'icon mr-1.5 flex-shrink-0';
+            iconSpan.innerHTML = item.is_dir ? '📁' : (item.is_text ? '📄' : '▫️');
+            label.appendChild(iconSpan);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = item.name + (item.is_dir ? '/' : '');
+            nameSpan.className = 'truncate';
+            label.appendChild(nameSpan);
+
+            itemRow.appendChild(label);
+            li.appendChild(itemRow);
+
+            let childrenUl = null;
+            if (item.is_dir && item.children && item.children.length > 0) {
+                childrenUl = document.createElement('ul');
+                childrenUl.className = 'list-none p-0 m-0 ml-4 hidden';
+                renderTree(item.children, childrenUl);
+                li.appendChild(childrenUl);
+            }
+            
+            const updateToggleIcon = () => {
+                if(toggleIcon) toggleIcon.innerHTML = childrenUl.classList.contains('hidden') ? '▶️' : '🔽';
+            };
+            
+            if (toggleIcon) {
+                toggleIcon.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    childrenUl.classList.toggle('hidden');
+                    updateToggleIcon();
+                });
+            }
+            
+            const updateRemovalState = () => {
+                const isMarked = clientState.markedForRemovalPaths.has(item.path);
+                li.classList.toggle('marked-for-removal', isMarked);
+                removalBtn.innerHTML = isMarked ? '↩️' : '✗';
+                removalBtn.title = isMarked ? 'Restore this item' : 'Mark for removal';
+            };
+            
+            removalBtn.addEventListener('click', e => {
+                e.stopPropagation();
+                const isNowMarked = !clientState.markedForRemovalPaths.has(item.path);
+                
+                const pathsToUpdate = [item.path];
+                if (item.is_dir) {
+                    li.querySelectorAll('.item-label').forEach(descLabel => pathsToUpdate.push(descLabel.dataset.path));
+                }
+
+                pathsToUpdate.forEach(path => {
+                    if (isNowMarked) {
+                        clientState.markedForRemovalPaths.add(path);
+                        clientState.checkedTreePathsMap.delete(path);
+                    } else {
+                        clientState.markedForRemovalPaths.delete(path);
+                    }
+                });
+                
+                applySelectionsToTree();
+                saveProjectState();
+            });
+
+            checkbox.addEventListener('change', e => {
+                if(li.classList.contains('marked-for-removal')) {
+                    e.target.checked = false;
+                    return;
+                }
+                const isChecked = e.target.checked;
+                if (isChecked) {
+                    clientState.checkedTreePathsMap.set(item.path, 'full');
+                    const sigButton = label.querySelector('.sig-button');
+                    if (sigButton) sigButton.classList.remove('active-sig');
+                } else {
+                    clientState.checkedTreePathsMap.delete(item.path);
+                }
+
+                if (item.is_dir) {
+                    propagateCheckState(li, isChecked);
+                }
+
+                applySelectionsToTree();
+                saveProjectState();
+            });
+            
+            updateToggleIcon();
+            updateRemovalState();
+            parentDomElement.appendChild(li);
+        });
+    }
+
+    function propagateCheckState(listItem, isChecked) {
+        listItem.querySelectorAll('li').forEach(childLi => {
+            if (childLi.classList.contains('marked-for-removal')) return;
+
+            const checkbox = childLi.querySelector('.tree-checkbox:not(:disabled)');
+            if (checkbox) {
+                const path = childLi.querySelector('.item-label').dataset.path;
+                if(isChecked) {
+                    clientState.checkedTreePathsMap.set(path, 'full');
+                    const sigButton = childLi.querySelector('.sig-button');
+                    if (sigButton) sigButton.classList.remove('active-sig');
+                } else {
+                    clientState.checkedTreePathsMap.delete(path);
+                }
+            }
+        });
+    }
+
+    function applySelectionsToTree() {
+        document.querySelectorAll('li').forEach(li => {
+            const label = li.querySelector('.item-label');
+            if(!label) return;
+            
+            const path = label.dataset.path;
+            const isMarked = clientState.markedForRemovalPaths.has(path);
+            li.classList.toggle('marked-for-removal', isMarked);
+            li.querySelector('.removal-toggle-btn').innerHTML = isMarked ? '↩️' : '✗';
+
+            const checkbox = label.querySelector('.tree-checkbox');
+            const sigButton = label.querySelector('.sig-button');
+            
+            if (checkbox) checkbox.checked = clientState.checkedTreePathsMap.get(path) === 'full';
+            if (sigButton) sigButton.classList.toggle('active-sig', clientState.checkedTreePathsMap.get(path) === 'signatures');
+        });
+        updateExtractorUIStates();
+    }
 
 
-document.addEventListener('DOMContentLoaded', () => {
-    populatePresetList(); loadStateFromLocalStorage(); fetchPromptTemplates();
-    updateFileTreeDependentUIs(); activateTab('tab1'); activateSubTab('raw-output');
-    showStatus('Application ready.', 'info');
+    async function performLoadTree(repopulate = false) {
+        if (!clientState.activeProjectId) return;
+        const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+        if (!project) return;
+        
+        if (repopulate) {
+            clientState.checkedTreePathsMap.clear();
+            clientState.markedForRemovalPaths.clear();
+        }
+
+        showStatus('Loading project tree...', 'info');
+        if (fileTreeContainer) fileTreeContainer.innerHTML = '<p class="p-4">Loading...</p>';
+        
+        try {
+            const response = await handleApiResponse(fetch('/api/load_project_tree', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ folder_path: project.path, filters: clientState.filterSettings })
+            }));
+            
+            if (fileTreeContainer) fileTreeContainer.innerHTML = '';
+            if (response.tree && response.tree.length > 0) {
+                const rootUl = document.createElement('ul');
+                rootUl.className = 'list-none p-0 m-0';
+                renderTree(response.tree[0].children, rootUl);
+                fileTreeContainer.appendChild(rootUl);
+                applySelectionsToTree();
+                showStatus('Tree loaded successfully.', 'success');
+                switchTab('tab2');
+            } else {
+                if (fileTreeContainer) fileTreeContainer.innerHTML = '<p class="p-4">No files found or folder is empty/filtered.</p>';
+                showStatus('No items found in project.', 'warning');
+            }
+        } catch (error) {
+            if (fileTreeContainer) fileTreeContainer.innerHTML = `<p class="p-4 text-red-500">Error: ${error.message}</p>`;
+            showStatus(`Error loading tree: ${error.message}`, 'error');
+        } finally {
+            updateExtractorUIStates();
+        }
+    }
+    
+    // --- Event Listeners & UI Updates ---
+    function updateExtractorUIStates() {
+        const hasTree = fileTreeContainer && fileTreeContainer.querySelector('ul');
+        const hasSelections = clientState.checkedTreePathsMap.size > 0;
+        
+        const tab2Btn = document.getElementById('tab2-btn');
+        const tab3Btn = document.getElementById('tab3-btn');
+
+        if(tab2Btn) tab2Btn.disabled = !hasTree;
+        if(tab3Btn) tab3Btn.disabled = !hasTree;
+        if(generateBtn) generateBtn.disabled = !hasTree || !hasSelections;
+        if(copyRawBtn) copyRawBtn.disabled = !rawOutputTextarea || rawOutputTextarea.value.length === 0;
+        [refreshTreeBtn, aiSelectBtn, checkAllTextBtn, uncheckAllBtn].forEach(b => { if(b) b.disabled = !hasTree });
+    }
+    
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            const isActive = btn.id === `${tabId}-btn`;
+            btn.classList.toggle('active', isActive);
+            btn.classList.toggle('bg-white', isActive);
+            btn.classList.toggle('dark:bg-gray-700', isActive);
+        });
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.toggle('active', content.id === `${tabId}-content`);
+        });
+    }
+
+    function attachEventListeners() {
+        if (addProjectBtn) addProjectBtn.addEventListener('click', async () => {
+            const name = prompt("Enter a name for the new project:");
+            if (!name || !name.trim()) return;
+            showStatus('Opening server folder dialog...', 'info');
+            try {
+                const browseResponse = await handleApiResponse(fetch('/api/browse_server_folder', { method: 'POST' }));
+                if (browseResponse.status === 'success' && browseResponse.path) {
+                    const newProject = { name: name.trim(), path: browseResponse.path, starred: false };
+                    await handleApiResponse(fetch('/api/projects', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newProject) }));
+                    showStatus('Project added successfully!', 'success');
+                    await fetchProjects();
+                } else if (browseResponse.status === 'cancelled') {
+                    showStatus('Folder selection cancelled.', 'info');
+                }
+            } catch (error) {
+                showStatus(`Error adding project: ${error.message}`, 'error');
+            }
+        });
+
+        if (modalLlmSettingsForm) modalLlmSettingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            if(modalSaveLlmSettingsBtn) modalSaveLlmSettingsBtn.click();
+        });
+        
+        if (modalSaveLlmSettingsBtn) modalSaveLlmSettingsBtn.addEventListener('click', async () => {
+             const settings = { url: modalLlmUrlInput.value.trim(), api_key: modalLlmApiKeyInput.value.trim() };
+            try {
+                await handleApiResponse(fetch('/api/settings/llm', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(settings)}));
+                showStatus('LLM settings saved.', 'success');
+                clientState.llmSettings = settings;
+                if (settingsModal) settingsModal.classList.add('hidden');
+            } catch (error) {
+                showStatus(`Error saving LLM settings: ${error.message}`, 'error');
+            }
+        });
+        
+        if (settingsBtn) settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        if (modalCloseSettingsBtn) modalCloseSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+
+        if (setDefaultLollmsBtn) setDefaultLollmsBtn.addEventListener('click', () => {
+            if (modalLlmUrlInput) {
+                modalLlmUrlInput.value = 'http://localhost:9642/v1/chat/completions';
+                showStatus('Default Lollms URL has been set.', 'info');
+            }
+        });
+
+        if (apiKeyToggleBtn) {
+            apiKeyToggleBtn.innerHTML = icons.eye;
+            apiKeyToggleBtn.addEventListener('click', () => {
+                if (modalLlmApiKeyInput.type === 'password') {
+                    modalLlmApiKeyInput.type = 'text';
+                    apiKeyToggleBtn.innerHTML = icons.eyeSlash;
+                } else {
+                    modalLlmApiKeyInput.type = 'password';
+                    apiKeyToggleBtn.innerHTML = icons.eye;
+                }
+            });
+        }
+        
+        if (addDocsBtn) addDocsBtn.addEventListener('click', () => addDocsInput.click());
+        if (addDocsInput) addDocsInput.addEventListener('change', (e) => {
+            const newPaths = Array.from(e.target.files).map(file => file.name); // Using name for simplicity
+            clientState.loadedDocPaths = [...new Set([...clientState.loadedDocPaths, ...newPaths])].sort();
+            updateDocListUI();
+            e.target.value = ''; // Reset file input
+        });
+        if (removeDocsBtn) removeDocsBtn.addEventListener('click', () => {
+            const selected = Array.from(docList.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.closest('li').dataset.path);
+            clientState.loadedDocPaths = clientState.loadedDocPaths.filter(p => !selected.includes(p));
+            updateDocListUI();
+        });
+        if (clearDocsBtn) clearDocsBtn.addEventListener('click', () => {
+            clientState.loadedDocPaths = [];
+            updateDocListUI();
+        });
+
+        if (loadTemplateBtn) loadTemplateBtn.addEventListener('click', () => {
+            const selectedName = templateSelect.value;
+            if (!selectedName) { showStatus('No template selected.', 'warning'); return; }
+            const template = clientState.promptTemplates.find(t => t.name === selectedName);
+            if (template && customPromptTextarea) {
+                customPromptTextarea.value = template.content;
+                updateExtractorClientStateFromUI();
+                showStatus(`Loaded template: ${selectedName}`, 'success');
+            }
+        });
+
+        document.querySelectorAll('.tab-button').forEach(btn => btn.addEventListener('click', () => {
+            if (!btn.disabled) switchTab(btn.id.replace('-btn', ''));
+        }));
+        
+        [customFoldersInput, customExtensionsInput, customPatternsInput, customInclusionsInput, maxFileSizeInput, customPromptTextarea]
+            .filter(Boolean)
+            .forEach(input => {
+                input.addEventListener('input', updateExtractorClientStateFromUI);
+                input.addEventListener('change', updateExtractorClientStateFromUI);
+            });
+        
+        if(presetList) presetList.addEventListener('change', updateExtractorClientStateFromUI);
+
+        if(backToProjectsBtn) backToProjectsBtn.addEventListener('click', () => switchView('projects'));
+        if(loadTreeBtn) loadTreeBtn.addEventListener('click', () => performLoadTree(false));
+        if(refreshTreeBtn) refreshTreeBtn.addEventListener('click', () => refreshChoiceModal.classList.remove('hidden'));
+        if(refreshCancelBtn) refreshCancelBtn.addEventListener('click', () => refreshChoiceModal.classList.add('hidden'));
+        if(refreshPreserveBtn) refreshPreserveBtn.addEventListener('click', () => {
+            refreshChoiceModal.classList.add('hidden');
+            performLoadTree(false);
+        });
+        if(refreshRepopulateBtn) refreshRepopulateBtn.addEventListener('click', () => {
+            refreshChoiceModal.classList.add('hidden');
+            performLoadTree(true);
+        });
+        if(aiSelectBtn) aiSelectBtn.addEventListener('click', async () => {
+            const userGoal = customPromptTextarea.value.trim();
+            if (!userGoal) {
+                showStatus("Please describe your goal in the 'Custom Instructions' text area first.", 'warning');
+                return;
+            }
+            showStatus('AI is analyzing your goal and selecting files...', 'info');
+            try {
+                const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+                const response = await handleApiResponse(fetch('/api/llm_select_files', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ project_path: project.path, user_goal: userGoal, filters: clientState.filterSettings })
+                }));
+                if (response.files && response.files.length > 0) {
+                    let selectionCount = 0;
+                    response.files.forEach(path => { 
+                        if (!clientState.markedForRemovalPaths.has(path) && !clientState.checkedTreePathsMap.has(path)) {
+                            selectionCount++; 
+                        }
+                        clientState.checkedTreePathsMap.set(path, 'full'); 
+                    });
+                    applySelectionsToTree();
+                    showStatus(`AI selected ${selectionCount} new file(s) based on your instructions.`, 'success');
+                } else {
+                    showStatus('AI did not suggest any files.', 'warning');
+                }
+            } catch(error) { showStatus(`AI selection failed: ${error.message}`, 'error'); }
+        });
+        if(generateBtn) generateBtn.addEventListener('click', async () => {
+            const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+            const selectedFiles = Array.from(clientState.checkedTreePathsMap.entries()).map(([path, type]) => ({ path, type }));
+            if (selectedFiles.length === 0) { showStatus('No files selected.', 'warning'); return; }
+            showStatus('Generating output...', 'info');
+            switchTab('tab3');
+            rawOutputTextarea.value = 'Generating...';
+            renderedOutputDiv.innerHTML = '<p>Generating...</p>';
+            try {
+                const response = await handleApiResponse(fetch('/api/generate_structure', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        folder_path: project.path, filters: clientState.filterSettings,
+                        selected_files_info: selectedFiles, custom_prompt: customPromptTextarea.value,
+                        loaded_doc_paths: clientState.loadedDocPaths, hard_excluded_paths: Array.from(clientState.markedForRemovalPaths)
+                    })
+                }));
+                rawOutputTextarea.value = response.markdown;
+                renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(response.markdown));
+                showStatus('Output generated successfully.', 'success');
+            } catch (error) {
+                rawOutputTextarea.value = `Error: ${error.message}`;
+                renderedOutputDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+                showStatus(`Generation failed: ${error.message}`, 'error');
+            } finally { updateExtractorUIStates(); }
+        });
+        if(copyRawBtn) copyRawBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(rawOutputTextarea.value).then(() => showStatus('Copied to clipboard!', 'success'), () => showStatus('Failed to copy.', 'error'));
+        });
+        if(checkAllTextBtn) checkAllTextBtn.addEventListener('click', () => {
+            document.querySelectorAll('.tree-checkbox:not(:disabled)').forEach(cb => {
+                const li = cb.closest('li');
+                if (!li.classList.contains('marked-for-removal')) {
+                    cb.checked = true;
+                    const path = cb.closest('.item-label').dataset.path;
+                    clientState.checkedTreePathsMap.set(path, 'full');
+                }
+            });
+            applySelectionsToTree();
+        });
+        if(uncheckAllBtn) uncheckAllBtn.addEventListener('click', () => {
+            clientState.checkedTreePathsMap.clear();
+            applySelectionsToTree();
+        });
+        if(themeToggle) themeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
+            localStorage.setItem('theme', clientState.currentTheme);
+        });
+    }
+
+    // --- Initialization ---
+    function initialize() {
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            clientState.currentTheme = savedTheme;
+            document.documentElement.classList.toggle('dark', savedTheme === 'dark');
+            if (themeToggle) themeToggle.innerHTML = savedTheme === 'dark' ? '☀️' : '🌙';
+        }
+        
+        populatePresetList();
+        attachEventListeners();
+        fetchProjects();
+        fetchLlmSettings();
+        fetchPromptTemplates();
+        switchView('projects');
+    }
+
+    const presetOptions = ["Python Project", "Node.js Project", "Java Project (Maven/Gradle)", "Git Repository", "IDE/Editor Configs", "Operating System/Misc", "Log Files", "Binary/Archives", "Large Media Files"];
+    function populatePresetList() { 
+        if (!presetList) return;
+        presetList.innerHTML = '';
+        presetOptions.forEach(name => {
+            const id = `preset-${name.replace(/[\s\/]+/g, '-').replace(/[^\w-]+/g, '')}`;
+            const div = document.createElement('div');
+            div.className = 'flex items-center p-1';
+            div.innerHTML = `<input type="checkbox" id="${id}" value="${name}" class="preset-checkbox form-checkbox h-4 w-4 text-blue-600 rounded focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600">
+                             <label for="${id}" class="ml-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">${name}</label>`;
+            presetList.appendChild(div);
+        });
+    }
+
+    initialize();
 });
