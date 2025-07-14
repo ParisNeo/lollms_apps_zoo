@@ -269,6 +269,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clientState.customPrompt = savedState.customPrompt || '';
         clientState.loadedDocPaths = savedState.loadedDocPaths || [];
         clientState.chatHistory = savedState.chatHistory || [];
+        clientState.modelContextSize = savedState.modelContextSize || 0;
+        clientState.currentTokens = savedState.currentTokens || 0;
 
         folderPathInput.value = project.path;
         maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
@@ -299,7 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
             markedForRemovalPaths: Array.from(clientState.markedForRemovalPaths),
             customPrompt: customPromptTextarea.value,
             loadedDocPaths: clientState.loadedDocPaths,
-            chatHistory: clientState.chatHistory
+            chatHistory: clientState.chatHistory,
+            modelContextSize: clientState.modelContextSize,
+            currentTokens: clientState.currentTokens
         };
         localStorage.setItem(`projectState_${clientState.activeProjectId}`, JSON.stringify(stateToSave));
     }
@@ -332,10 +336,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function fetchLlmModels() {
         if (!modalLlmModelSelect) return;
+        const currentUrl = modalLlmUrlInput.value.trim();
+        if (!currentUrl) {
+            showStatus("Please enter an LLM URL first.", "warning");
+            return;
+        }
         showStatus('Fetching models...', 'info');
         modalLlmModelSelect.disabled = true;
         modalLlmModelSelect.innerHTML = '<option>Fetching...</option>';
         try {
+            // Temporarily save settings to use the URL in the modal
+            await handleApiResponse(fetch('/api/settings/llm', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ url: currentUrl, api_key: modalLlmApiKeyInput.value.trim(), model_name: clientState.llmSettings.model_name })
+            }));
+
             const models = await handleApiResponse(fetch('/api/llm_models'));
             modalLlmModelSelect.innerHTML = '<option value="">-- Select a model --</option>';
             if (models.length > 0) {
@@ -355,6 +371,8 @@ document.addEventListener('DOMContentLoaded', () => {
             modalLlmModelSelect.innerHTML = `<option>Error fetching</option>`;
             showStatus(`Error fetching models: ${error.message}`, 'error');
         } finally {
+            // Restore original settings in case user cancels
+            await fetchLlmSettings(); 
             modalLlmModelSelect.disabled = false;
         }
     }
@@ -425,13 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 sigButton.addEventListener('click', e => {
                     e.stopPropagation();
+                    e.preventDefault();
                     if (li.classList.contains('marked-for-removal')) return;
                     const currentSelection = clientState.checkedTreePathsMap.get(item.path);
                     if (currentSelection === 'signatures') {
                         clientState.checkedTreePathsMap.delete(item.path);
                     } else {
                         clientState.checkedTreePathsMap.set(item.path, 'signatures');
-                        checkbox.checked = false;
                     }
                     applySelectionsToTree();
                     saveProjectState();
@@ -508,8 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isChecked = e.target.checked;
                 if (isChecked) {
                     clientState.checkedTreePathsMap.set(item.path, 'full');
-                    const sigButton = label.querySelector('.sig-button');
-                    if (sigButton) sigButton.classList.remove('active-sig');
                 } else {
                     clientState.checkedTreePathsMap.delete(item.path);
                 }
@@ -537,8 +553,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 const path = childLi.querySelector('.item-label').dataset.path;
                 if(isChecked) {
                     clientState.checkedTreePathsMap.set(path, 'full');
-                    const sigButton = childLi.querySelector('.sig-button');
-                    if (sigButton) sigButton.classList.remove('active-sig');
                 } else {
                     clientState.checkedTreePathsMap.delete(path);
                 }
@@ -558,9 +572,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const checkbox = label.querySelector('.tree-checkbox');
             const sigButton = label.querySelector('.sig-button');
+            const selectionType = clientState.checkedTreePathsMap.get(path);
             
-            if (checkbox) checkbox.checked = clientState.checkedTreePathsMap.get(path) === 'full';
-            if (sigButton) sigButton.classList.toggle('active-sig', clientState.checkedTreePathsMap.get(path) === 'signatures');
+            if (checkbox) checkbox.checked = selectionType === 'full';
+            if (sigButton) sigButton.classList.toggle('active-sig', selectionType === 'signatures');
         });
         updateExtractorUIStates();
     }
@@ -610,6 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function updateTokenCountAndProgressBar() {
         if (clientState.chatHistory.length === 0 || !clientState.llmSettings.model_name) {
             tokenProgressContainer.classList.add('hidden');
+            tokenCountDisplay.textContent = '';
             return;
         }
 
@@ -621,13 +637,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ text: fullText })
             }));
             clientState.currentTokens = response.count;
+            saveProjectState();
 
             if (clientState.modelContextSize > 0) {
                 tokenProgressContainer.classList.remove('hidden');
                 const percentage = (clientState.currentTokens / clientState.modelContextSize) * 100;
                 tokenProgressBar.style.width = `${Math.min(percentage, 100)}%`;
                 
-                tokenProgressBar.classList.remove('progress-bar-safe', 'progress-bar-warn', 'progress-bar-danger');
+                tokenProgressBar.className = 'h-2.5 rounded-full transition-all duration-300';
                 if (percentage >= 90) {
                     tokenProgressBar.classList.add('progress-bar-danger');
                 } else if (percentage >= 75) {
@@ -635,10 +652,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     tokenProgressBar.classList.add('progress-bar-safe');
                 }
-
                 tokenCountDisplay.textContent = `${clientState.currentTokens} / ${clientState.modelContextSize} tokens`;
             } else {
-                 tokenCountDisplay.textContent = `${clientState.currentTokens} tokens`;
+                 tokenCountDisplay.textContent = `${clientState.currentTokens} tokens (context size unknown)`;
             }
 
         } catch (error) {
@@ -653,13 +669,17 @@ document.addEventListener('DOMContentLoaded', () => {
         startDiscussionPlaceholder.classList.add('hidden');
 
         const messageWrapper = document.createElement('div');
-        messageWrapper.className = `chat-message flex flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
+        messageWrapper.className = `chat-message flex w-full ${role === 'user' ? 'justify-end' : 'justify-start'}`;
+        
+        const bubbleContainer = document.createElement('div');
+        bubbleContainer.className = 'flex flex-col max-w-[85%]';
 
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble ${role} markdown-body`;
         bubble.innerHTML = DOMPurify.sanitize(marked.parse(content));
 
-        messageWrapper.appendChild(bubble);
+        bubbleContainer.appendChild(bubble)
+        messageWrapper.appendChild(bubbleContainer);
         chatMessagesContainer.appendChild(messageWrapper);
         
         addCopyButtonsToCodeBlocks(bubble);
@@ -678,13 +698,15 @@ document.addEventListener('DOMContentLoaded', () => {
             clientState.chatHistory.forEach(msg => renderChatMessage(msg.content, msg.role));
         } else {
             startDiscussionPlaceholder.classList.remove('hidden');
+            tokenProgressContainer.classList.add('hidden');
+            tokenCountDisplay.textContent = '';
         }
     }
 
     async function handleSendMessage(messageContent) {
         if (clientState.isAIGenerating || !messageContent.trim()) return;
 
-        if (clientState.currentTokens >= clientState.modelContextSize && clientState.modelContextSize > 0) {
+        if (clientState.modelContextSize > 0 && clientState.currentTokens >= clientState.modelContextSize) {
             showStatus('Context window is full. Please start a new discussion.', 'error');
             return;
         }
@@ -724,12 +746,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const dataStr = line.substring(6);
+                        if (dataStr.trim() === '[DONE]') break;
                         try {
                             const data = JSON.parse(dataStr);
                             if(data.error) {
                                 throw new Error(data.error);
                             }
-                            if (data.choices && data.choices[0].delta.content) {
+                            if (data.choices && data.choices[0].delta && data.choices[0].delta.content) {
                                 const token = data.choices[0].delta.content;
                                 fullResponse += token;
                                 aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse + '...'));
@@ -745,7 +768,6 @@ document.addEventListener('DOMContentLoaded', () => {
             aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse));
             addCopyButtonsToCodeBlocks(aiBubble);
             await updateTokenCountAndProgressBar();
-            saveProjectState();
 
         } catch (error) {
             aiBubble.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
@@ -753,6 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             clientState.isAIGenerating = false;
             updateChatUIState();
+            saveProjectState();
         }
     }
 
@@ -804,8 +827,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.tab-button').forEach(btn => {
             const isActive = btn.id === `${tabId}-btn`;
             btn.classList.toggle('active', isActive);
-            btn.classList.toggle('bg-white', isActive);
-            btn.classList.toggle('dark:bg-gray-700', isActive);
         });
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.toggle('active', content.id === `${tabId}-content`);
@@ -855,14 +876,13 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (settingsBtn) settingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('hidden');
-            fetchLlmModels();
         });
         if (modalCloseSettingsBtn) modalCloseSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
         if (refreshModelsBtn) refreshModelsBtn.addEventListener('click', fetchLlmModels);
 
         if (setDefaultLollmsBtn) setDefaultLollmsBtn.addEventListener('click', () => {
             if (modalLlmUrlInput) {
-                modalLlmUrlInput.value = 'http://localhost:9642/v1/chat/completions';
+                modalLlmUrlInput.value = 'http://localhost:9642/v1';
                 showStatus('Default Lollms URL has been set.', 'info');
             }
         });
@@ -912,6 +932,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!btn.disabled) switchTab(btn.id.replace('-btn', ''));
         }));
         
+        document.querySelectorAll('.sub-tab-button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const isRaw = btn.id === 'raw-output-btn';
+                S('raw-output-btn').classList.toggle('active', isRaw);
+                S('rendered-output-btn').classList.toggle('active', !isRaw);
+                S('raw-output-content').classList.toggle('active', isRaw);
+                S('rendered-output-content').classList.toggle('active', !isRaw);
+            });
+        });
+
         [customFoldersInput, customExtensionsInput, customPatternsInput, customInclusionsInput, maxFileSizeInput, customPromptTextarea]
             .filter(Boolean)
             .forEach(input => {
@@ -937,6 +967,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const userGoal = customPromptTextarea.value.trim();
             if (!userGoal) {
                 showStatus("Please describe your goal in the 'Custom Instructions' text area first.", 'warning');
+                return;
+            }
+            if (!clientState.llmSettings.url || !clientState.llmSettings.model_name) {
+                showStatus("Please configure LLM URL and select a model in Settings first.", "error");
                 return;
             }
             showStatus('AI is analyzing your goal and selecting files...', 'info');
@@ -994,7 +1028,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.tree-checkbox:not(:disabled)').forEach(cb => {
                 const li = cb.closest('li');
                 if (!li.classList.contains('marked-for-removal')) {
-                    cb.checked = true;
                     const path = cb.closest('.item-label').dataset.path;
                     clientState.checkedTreePathsMap.set(path, 'full');
                 }
@@ -1006,9 +1039,9 @@ document.addEventListener('DOMContentLoaded', () => {
             applySelectionsToTree();
         });
         if(themeToggle) themeToggle.addEventListener('click', () => {
-            document.documentElement.classList.toggle('dark');
-            clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-            themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
+            const isDark = document.documentElement.classList.toggle('dark');
+            clientState.currentTheme = isDark ? 'dark' : 'light';
+            themeToggle.innerHTML = isDark ? '☀️' : '🌙';
             localStorage.setItem('theme', clientState.currentTheme);
         });
 
@@ -1019,16 +1052,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 showStatus('Generate output on Tab 3 first.', 'warning');
                 return;
             }
-            if (!clientState.llmSettings.model_name) {
-                showStatus('Please select an AI model in Settings first.', 'error');
+            if (!clientState.llmSettings.url || !clientState.llmSettings.model_name) {
+                showStatus('Please configure LLM URL and select a model in Settings first.', 'error');
                 return;
             }
-
+            showStatus("Initializing discussion...", "info");
             try {
                 const sizeResponse = await handleApiResponse(fetch('/api/context_size'));
                 clientState.modelContextSize = sizeResponse.context_size;
+                showStatus("Context size loaded.", "success");
             } catch(e) {
-                showStatus('Could not fetch model context size. Tokenizer disabled.', 'warning');
+                showStatus(`Could not fetch model context size: ${e.message}`, 'warning');
                 clientState.modelContextSize = 0;
             }
 
@@ -1045,19 +1079,28 @@ document.addEventListener('DOMContentLoaded', () => {
             chatInput.style.height = 'auto';
         });
 
-        if (chatInput) chatInput.addEventListener('input', () => {
-            chatInput.style.height = 'auto';
-            chatInput.style.height = (chatInput.scrollHeight) + 'px';
-        });
+        if (chatInput) {
+            chatInput.addEventListener('input', () => {
+                chatInput.style.height = 'auto';
+                chatInput.style.height = (chatInput.scrollHeight) + 'px';
+            });
+            chatInput.addEventListener('keydown', (e) => {
+                if(e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    chatForm.requestSubmit();
+                }
+            });
+        }
     }
 
     // --- Initialization ---
     function initialize() {
         const savedTheme = localStorage.getItem('theme');
-        if (savedTheme) {
-            clientState.currentTheme = savedTheme;
-            document.documentElement.classList.toggle('dark', savedTheme === 'dark');
-            if (themeToggle) themeToggle.innerHTML = savedTheme === 'dark' ? '☀️' : '🌙';
+        if (themeToggle) {
+            const isDark = (savedTheme === 'dark') || (savedTheme === null && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', isDark);
+            clientState.currentTheme = isDark ? 'dark' : 'light';
+            themeToggle.innerHTML = isDark ? '☀️' : '🌙';
         }
         
         populatePresetList();

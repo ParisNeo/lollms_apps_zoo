@@ -388,8 +388,6 @@ async def get_projects():
 @app.post("/api/projects", response_model=Project)
 async def create_project(project: Project):
     projects = load_json_file(PROJECTS_FILE, [])
-    if any(p['path'] == project.path for p in projects):
-        raise HTTPException(status_code=409, detail="Project with this path already exists.")
     projects.append(project.model_dump())
     save_json_file(PROJECTS_FILE, projects)
     return project
@@ -427,21 +425,30 @@ async def get_llm_settings():
 async def save_llm_settings(settings: LLMSettings):
     save_json_file(LLM_SETTINGS_FILE, settings.model_dump())
 
-async def proxy_lollms_request(endpoint: str, payload: dict):
+async def proxy_lollms_request(endpoint: str, payload: dict, method: str = "POST"):
     settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
     if not settings.url:
         raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
 
     base_url = settings.url.rsplit('/v1/', 1)[0]
-    target_url = f"{base_url}/v1/{endpoint}"
-    
+    # Adjust for base URLs that might not have /v1/
+    if endpoint=="count_tokens" or endpoint=="context_size":
+        base_url = base_url + "/v1"
+    elif not base_url.endswith('/v1'):
+        base_url = settings.url.rstrip('/')
+
+    target_url = f"{base_url}/{endpoint}"
+
     headers = {"Content-Type": "application/json"}
     if settings.api_key:
         headers["Authorization"] = f"Bearer {settings.api_key}"
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(target_url, json=payload, headers=headers)
+            if method.upper() == "GET":
+                response = await client.get(target_url, headers=headers)
+            else:
+                response = await client.post(target_url, json=payload, headers=headers)
         response.raise_for_status()
         return response.json()
     except httpx.RequestError as e:
@@ -450,6 +457,7 @@ async def proxy_lollms_request(endpoint: str, payload: dict):
         raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
     except (ValueError, json.JSONDecodeError, KeyError) as e:
         raise HTTPException(status_code=500, detail=f"Could not parse LLM response for {endpoint}. Error: {e}")
+
 
 @app.get("/api/context_size")
 async def get_context_size():
@@ -465,36 +473,21 @@ async def count_tokens(request: TokenCountRequest):
     if not settings.model_name:
          raise HTTPException(status_code=400, detail="No model selected in settings.")
     response = await proxy_lollms_request("count_tokens", {"model": settings.model_name, "text": request.text})
-    return {"count": response.get("count", 0)}
+    return {"count": response.get("count", -1)}
 
 @app.get("/api/llm_models", response_model=List[str])
 async def get_llm_models():
-    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
-    if not settings.url:
-        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
-
-    base_url = settings.url.rsplit('/v1/', 1)[0]
-    models_url = f"{base_url}/v1/models"
-    
-    headers = {}
-    if settings.api_key:
-        headers["Authorization"] = f"Bearer {settings.api_key}"
-
     try:
-        async with httpx.AsyncClient(timeout=20.0) as client:
-            response = await client.get(models_url, headers=headers)
-        response.raise_for_status()
-        
-        models_data = response.json()
+        models_data = await proxy_lollms_request("models", {}, method="GET")
         model_ids = [model['id'] for model in models_data.get('data', [])]
-        
         return sorted(model_ids)
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {models_url}. Error: {e}")
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
-    except (ValueError, json.JSONDecodeError, KeyError) as e:
-        raise HTTPException(status_code=500, detail=f"Could not parse models from LLM response. Error: {e}")
+    except HTTPException as e:
+        # Re-raise the exception to be handled by FastAPI's exception handling
+        raise e
+    except Exception as e:
+        # Catch any other unexpected errors
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while fetching models: {e}")
+
 
 @app.post("/api/chat")
 async def api_chat(request: ChatRequest):
