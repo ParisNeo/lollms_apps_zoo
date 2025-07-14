@@ -23,11 +23,11 @@ pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart", "httpx"])
 
 from fastapi import FastAPI, HTTPException, Body, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 APP_TITLE = "Folder Structure Extractor Web App"
-APP_VERSION = "3.1.0"
+APP_VERSION = "3.3.0"
 CONFIG_DIR = Path.home() / ".config" / "folder_extractor_web"
 PROMPTS_FILE = CONFIG_DIR / "prompt_templates.json"
 PROJECTS_FILE = CONFIG_DIR / "projects.json"
@@ -98,6 +98,7 @@ PRESET_EXCLUSIONS = {
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION)
 
+# --- Pydantic Models ---
 class FilterSettings(BaseModel):
     selected_presets: List[str] = Field(default_factory=list)
     custom_folders: str = ""
@@ -142,6 +143,17 @@ class ProjectUpdateRequest(BaseModel):
 class LLMSettings(BaseModel):
     url: str = ""
     api_key: str = ""
+    model_name: Optional[str] = None
+
+class ChatMessage(BaseModel):
+    role: str
+    content: str
+
+class ChatRequest(BaseModel):
+    messages: List[ChatMessage]
+
+class TokenCountRequest(BaseModel):
+    text: str
 
 class LLMSelectRequest(BaseModel):
     project_path: str
@@ -366,6 +378,8 @@ def load_prompt_templates() -> List[Dict]:
 def save_prompt_templates(templates: List[Dict]):
     save_json_file(PROMPTS_FILE, templates)
 
+# --- API Endpoints ---
+
 @app.get("/api/projects", response_model=List[Project])
 async def get_projects():
     projects = load_json_file(PROJECTS_FILE, [])
@@ -413,6 +427,115 @@ async def get_llm_settings():
 async def save_llm_settings(settings: LLMSettings):
     save_json_file(LLM_SETTINGS_FILE, settings.model_dump())
 
+async def proxy_lollms_request(endpoint: str, payload: dict):
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.url:
+        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
+
+    base_url = settings.url.rsplit('/v1/', 1)[0]
+    target_url = f"{base_url}/v1/{endpoint}"
+    
+    headers = {"Content-Type": "application/json"}
+    if settings.api_key:
+        headers["Authorization"] = f"Bearer {settings.api_key}"
+
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(target_url, json=payload, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {target_url}. Error: {e}")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        raise HTTPException(status_code=500, detail=f"Could not parse LLM response for {endpoint}. Error: {e}")
+
+@app.get("/api/context_size")
+async def get_context_size():
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.model_name:
+         raise HTTPException(status_code=400, detail="No model selected in settings.")
+    response = await proxy_lollms_request("context_size", {"model": settings.model_name})
+    return {"context_size": response.get("context_size", 0)}
+
+@app.post("/api/count_tokens")
+async def count_tokens(request: TokenCountRequest):
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.model_name:
+         raise HTTPException(status_code=400, detail="No model selected in settings.")
+    response = await proxy_lollms_request("count_tokens", {"model": settings.model_name, "text": request.text})
+    return {"count": response.get("count", 0)}
+
+@app.get("/api/llm_models", response_model=List[str])
+async def get_llm_models():
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.url:
+        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
+
+    base_url = settings.url.rsplit('/v1/', 1)[0]
+    models_url = f"{base_url}/v1/models"
+    
+    headers = {}
+    if settings.api_key:
+        headers["Authorization"] = f"Bearer {settings.api_key}"
+
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            response = await client.get(models_url, headers=headers)
+        response.raise_for_status()
+        
+        models_data = response.json()
+        model_ids = [model['id'] for model in models_data.get('data', [])]
+        
+        return sorted(model_ids)
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {models_url}. Error: {e}")
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
+    except (ValueError, json.JSONDecodeError, KeyError) as e:
+        raise HTTPException(status_code=500, detail=f"Could not parse models from LLM response. Error: {e}")
+
+@app.post("/api/chat")
+async def api_chat(request: ChatRequest):
+    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+    if not settings.url:
+        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
+
+    headers = {"Content-Type": "application/json"}
+    if settings.api_key:
+        headers["Authorization"] = f"Bearer {settings.api_key}"
+
+    payload = {
+        "model": settings.model_name or "lollms-chat",
+        "messages": [msg.model_dump() for msg in request.messages],
+        "temperature": 0.1,
+        "max_tokens": 4096,
+        "stream": True
+    }
+
+    async def stream_generator():
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", settings.url, json=payload, headers=headers) as response:
+                    response.raise_for_status()
+                    async for chunk in response.aiter_bytes():
+                        yield chunk
+        except httpx.RequestError as e:
+            error_message = f"Error connecting to LLM service: {e}"
+            print(error_message)
+            yield f"data: {json.dumps({'error': error_message})}\n\n"
+        except httpx.HTTPStatusError as e:
+            error_message = f"LLM service returned error: {e.response.status_code} - {e.response.text}"
+            print(error_message)
+            yield f"data: {json.dumps({'error': error_message})}\n\n"
+        except Exception as e:
+            error_message = f"An unexpected error occurred: {e}"
+            print(error_message)
+            yield f"data: {json.dumps({'error': error_message})}\n\n"
+
+    return StreamingResponse(stream_generator(), media_type="text/event-stream")
+
 @app.post("/api/llm_select_files")
 async def llm_select_files(request: LLMSelectRequest):
     settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
@@ -456,7 +579,7 @@ async def llm_select_files(request: LLMSelectRequest):
         headers["Authorization"] = f"Bearer {settings.api_key}"
 
     payload = {
-        "model": "lollms-chat",
+        "model": settings.model_name or "lollms-chat",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}

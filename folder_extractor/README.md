@@ -1,4 +1,4 @@
-# Folder Structure to Text (Folder Extractor) v3.0
+# Folder Structure to Text (Folder Extractor) v3.3
 
 **Author:** ParisNeo with Gemini
 **Category:** Developer Tools, Utilities, AI Tools
@@ -8,7 +8,7 @@
 
 Folder Structure to Text is a powerful web-based utility designed to help developers, technical writers, and AI prompt engineers analyze and document software projects. It generates a comprehensive Markdown representation of a folder's structure, including optional file contents or code signatures.
 
-The application now features a full **Project Management Dashboard**, allowing you to save, manage, and quickly access multiple projects. A key enhancement is the integration with **AI language models** (like Lollms or any OpenAI-compatible service) to intelligently suggest which files are relevant to a specific development task, streamlining the process of building context for feature development or bug fixing.
+The application now features a full **Project Management Dashboard**, integration with **AI language models** for intelligent file selection, and a new **Context-Aware Discussion Tab**. This allows you to chat directly with an AI to carry out development tasks, using your project's context as a foundation, while keeping track of the model's context window size to prevent errors.
 
 ## Core Features
 
@@ -16,25 +16,23 @@ The application now features a full **Project Management Dashboard**, allowing y
     *   Save and manage a list of your projects.
     *   "Star" important projects for easy access.
     *   CRUD (Create, Read, Update, Delete) functionality for your project list.
-*   **AI-Powered File Selection:**
-    *   Connect to any OpenAI-compatible LLM service (e.g., `lollms-chat`).
-    *   Provide a natural language goal (e.g., "implement user authentication").
-    *   The AI will analyze your project's file list and automatically select the most relevant files for the task.
+*   **Interactive & Context-Aware AI Development:**
+    *   **AI-Powered File Selection:** Connect to any OpenAI-compatible LLM service (e.g., `lollms-chat`) and have the AI automatically select the most relevant files for a given task.
+    *   **Model Selection:** Fetch and choose from the list of available models hosted by your LLM server.
+    *   **Context-Aware Discussion Tab:** After generating the project context, chat with the AI to generate code, write documentation, or suggest refactors.
+    *   **Tokenizer Integration:** A progress bar shows you how much of the AI's context window is filled, turning from green to yellow to red as you approach the limit, helping you manage the conversation effectively.
 *   **Advanced Tree Generation & Filtering:**
     *   Generates a visual, text-based tree of your project's folder structure.
-    *   Includes full file content or, for Python/JavaScript, extracts high-level code signatures (classes and functions).
+    *   Includes full file content or, for Python/JavaScript, extracts high-level code signatures.
     *   **Smart Refresh Options:** When reloading a project tree, choose to either preserve your manually selected files or have the app automatically re-select files based on presets.
-    *   Extensive filtering capabilities:
-        *   **Exclusion Presets:** Quickly ignore common files and folders for Python, Node.js, Java, and more.
-        *   **Custom Rules:** Exclude specific folders, extensions, or glob patterns.
-        *   **Inclusion Rules:** Ensure specific files or folders are always included, overriding any exclusion rules.
+    *   Extensive filtering capabilities with presets and custom rules.
 *   **Customizable AI Prompting Workflow:**
-    *   **Prompt Templates:** Create, save, and manage reusable prompt templates with dynamic placeholders (`{FOLDER_NAME}`, `{DATE}`, etc.).
+    *   **Prompt Templates:** Create and manage reusable prompt templates with dynamic placeholders.
     *   **Documentation Integration:** Append external documentation files directly into your prompt context.
 *   **Modern Web Interface:**
-    *   A clean, responsive UI built with FastAPI and TailwindCSS.
-    *   Full support for light and dark themes.
-    *   All settings are saved in your browser's local storage for persistence.
+    *   A clean, responsive UI with light and dark themes.
+    *   All settings, including chat history, are saved in your browser's local storage for persistence across sessions.
+    *   Rendered markdown in the chat includes copy buttons on code blocks for convenience.
 
 ## Installation
 
@@ -48,7 +46,7 @@ The application now features a full **Project Management Dashboard**, allowing y
 The application uses `pipmaster` to automatically install its dependencies on the first run.
 
 1.  Save the `server.py` script.
-2.  Create a `static` folder in the same directory and place `index.html`, `main.js`, and `style.css` inside it (if they are provided as separate files).
+2.  Create a `static` folder in the same directory and place `index.html`, `main.js`, and `style.css` inside it.
 3.  Navigate to the directory in your terminal.
 4.  Run the server:
     ```bash
@@ -58,29 +56,13 @@ The application uses `pipmaster` to automatically install its dependencies on th
 
 ## How to Use
 
-### 1. Project Dashboard
-
-*   When you first launch the app, you'll see the project dashboard.
-*   Click **"Add New Project"** to add your first project by providing a name and browsing to its folder path on the server.
-*   Your projects will appear as cards. You can **star**, **edit**, or **delete** them.
-*   Click on a project card to open the main **Extractor View**.
-
-### 2. Extractor View (Loading a Project)
-
-*   **Tab 1: Project & Filters:**
-    *   Your project path is pre-filled.
-    *   Configure exclusion/inclusion filters and set the max file size for content extraction.
-    *   **(New) LLM Settings:** Enter the URL and API Key for your OpenAI-compatible LLM service.
-    *   Click **"Load Project Tree"**.
-*   **Tab 2: Explorer & Prompt:**
-    *   The file tree for your project is displayed. You can manually check files for **full content** or click the **'S'** button for **signatures** (for `.py`/`.js` files).
-    *   **(New) Refreshing:** The "Refresh" button will now ask if you want to **Preserve** your current selections or **Repopulate** them based on project presets.
-    *   **(New) AI Select:** Click **"AI Select..."**, enter your goal (e.g., "fix login bug"), and let the configured LLM check the most relevant files for you.
-    *   Select and load an AI prompt template, or write your own custom instructions.
-*   **Tab 3: Output:**
-    *   Click **"Generate Structure Text"**.
-    *   The final Markdown output, combining your instructions, the folder tree, and selected file contents/signatures, will be generated.
-    *   You can view the raw Markdown, see a rendered preview, and copy it to your clipboard.
+1.  **Configure LLM:** Before you start, click the gear icon in the header to open Global Settings. Enter your lollms-compatible server URL and select an AI model. This is required for the Discussion tab to work.
+2.  **Add & Load Project:** From the dashboard, add a project. In the main view, configure filters and click **"Load Project Tree"**.
+3.  **Generate Context:** In the "Explorer & Prompt" tab, select files and click **"Generate Structure Text"**.
+4.  **Discuss with AI:** Switch to the new **"Discussion"** tab.
+    *   Click **"Start Discussion"**. This sends the context to the AI and fetches the model's context size.
+    *   A progress bar will appear below the chat, showing you the token usage.
+    *   Use the chat input to ask questions. The progress bar will update with each message, ensuring you don't exceed the context limit.
 
 ## License
 

@@ -41,6 +41,16 @@ document.addEventListener('DOMContentLoaded', () => {
         rawOutputTextarea = S('raw-output-textarea'),
         renderedOutputDiv = S('rendered-output-div'),
         copyRawBtn = S('copy-raw-btn'),
+        // Tab 4 (Discussion)
+        startDiscussionBtn = S('start-discussion-btn'),
+        startDiscussionPlaceholder = S('start-discussion-placeholder'),
+        chatMessagesContainer = S('chat-messages-container'),
+        chatForm = S('chat-form'),
+        chatInput = S('chat-input'),
+        chatSendBtn = S('chat-send-btn'),
+        tokenProgressContainer = S('token-progress-container'),
+        tokenProgressBar = S('token-progress-bar'),
+        tokenCountDisplay = S('token-count-display'),
         // Modals
         refreshChoiceModal = S('refresh-choice-modal'),
         refreshPreserveBtn = S('refresh-preserve-btn'),
@@ -50,6 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modalLlmSettingsForm = S('modal-llm-settings-form'),
         modalLlmUrlInput = S('modal-llm-url-input'),
         modalLlmApiKeyInput = S('modal-llm-api-key-input'),
+        modalLlmModelSelect = S('modal-llm-model-select'),
+        refreshModelsBtn = S('refresh-models-btn'),
         modalSaveLlmSettingsBtn = S('modal-save-llm-settings-btn'),
         modalCloseSettingsBtn = S('modal-close-settings-btn'),
         setDefaultLollmsBtn = S('set-default-lollms-btn'),
@@ -61,14 +73,18 @@ document.addEventListener('DOMContentLoaded', () => {
         activeProjectId: null,
         projects: [],
         promptTemplates: [],
-        llmSettings: { url: '', api_key: '' },
+        llmSettings: { url: '', api_key: '', model_name: '' },
         filterSettings: {}, 
         checkedTreePathsMap: new Map(),
         markedForRemovalPaths: new Set(),
         customPrompt: '',
         loadedDocPaths: [],
+        chatHistory: [],
+        isAIGenerating: false,
+        modelContextSize: 0,
+        currentTokens: 0,
         currentTheme: 'light',
-        appVersion: '3.1.2'
+        appVersion: '3.3.0'
     };
     
     const icons = {
@@ -200,6 +216,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     // --- Extractor Logic ---
+    function updateDocListUI() {
+        if (!docList) return;
+        docList.innerHTML = '';
+        if (clientState.loadedDocPaths.length === 0) {
+            const li = document.createElement('li');
+            li.className = 'text-gray-500 dark:text-gray-400 text-center p-2';
+            li.textContent = 'No documents added.';
+            docList.appendChild(li);
+        } else {
+            clientState.loadedDocPaths.forEach(path => {
+                const li = document.createElement('li');
+                li.className = 'flex items-center justify-between p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded';
+                li.dataset.path = path;
+                
+                const label = document.createElement('label');
+                label.className = 'flex items-center text-xs flex-grow cursor-pointer';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'doc-checkbox form-checkbox h-3.5 w-3.5 text-blue-600 border-gray-300 rounded mr-2';
+                label.appendChild(checkbox);
+
+                const span = document.createElement('span');
+                span.textContent = path;
+                span.title = path;
+                span.className = 'truncate';
+                label.appendChild(span);
+
+                li.appendChild(label);
+                docList.appendChild(li);
+            });
+        }
+    }
+    
     function loadProjectIntoExtractor(projectId) {
         const project = clientState.projects.find(p => p.id === projectId);
         if (!project) {
@@ -218,6 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clientState.markedForRemovalPaths = new Set(savedState.markedForRemovalPaths || []);
         clientState.customPrompt = savedState.customPrompt || '';
         clientState.loadedDocPaths = savedState.loadedDocPaths || [];
+        clientState.chatHistory = savedState.chatHistory || [];
 
         folderPathInput.value = project.path;
         maxFileSizeInput.value = clientState.filterSettings.max_file_size_mb;
@@ -232,10 +283,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         updateDocListUI();
+        renderChatHistory();
         fileTreeContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 p-4 text-center">Click "Load Project Tree" to begin.</p>';
         rawOutputTextarea.value = '';
         renderedOutputDiv.innerHTML = 'A rendered preview will appear here.';
         updateExtractorUIStates();
+        updateTokenCountAndProgressBar();
     }
     
     function saveProjectState() {
@@ -246,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
             markedForRemovalPaths: Array.from(clientState.markedForRemovalPaths),
             customPrompt: customPromptTextarea.value,
             loadedDocPaths: clientState.loadedDocPaths,
+            chatHistory: clientState.chatHistory
         };
         localStorage.setItem(`projectState_${clientState.activeProjectId}`, JSON.stringify(stateToSave));
     }
@@ -270,11 +324,41 @@ document.addEventListener('DOMContentLoaded', () => {
             clientState.llmSettings = await handleApiResponse(fetch('/api/settings/llm'));
             if(modalLlmUrlInput) modalLlmUrlInput.value = clientState.llmSettings.url;
             if(modalLlmApiKeyInput) modalLlmApiKeyInput.value = clientState.llmSettings.api_key;
+            if(modalLlmModelSelect) modalLlmModelSelect.value = clientState.llmSettings.model_name || '';
         } catch(error) {
             showStatus('Could not load LLM settings.', 'warning');
         }
     }
 
+    async function fetchLlmModels() {
+        if (!modalLlmModelSelect) return;
+        showStatus('Fetching models...', 'info');
+        modalLlmModelSelect.disabled = true;
+        modalLlmModelSelect.innerHTML = '<option>Fetching...</option>';
+        try {
+            const models = await handleApiResponse(fetch('/api/llm_models'));
+            modalLlmModelSelect.innerHTML = '<option value="">-- Select a model --</option>';
+            if (models.length > 0) {
+                models.forEach(modelId => {
+                    const option = document.createElement('option');
+                    option.value = modelId;
+                    option.textContent = modelId;
+                    modalLlmModelSelect.appendChild(option);
+                });
+                modalLlmModelSelect.value = clientState.llmSettings.model_name || '';
+                showStatus('Models loaded successfully.', 'success');
+            } else {
+                modalLlmModelSelect.innerHTML = '<option>No models found</option>';
+                showStatus('No models found at the specified URL.', 'warning');
+            }
+        } catch (error) {
+            modalLlmModelSelect.innerHTML = `<option>Error fetching</option>`;
+            showStatus(`Error fetching models: ${error.message}`, 'error');
+        } finally {
+            modalLlmModelSelect.disabled = false;
+        }
+    }
+    
     async function fetchPromptTemplates() {
         try {
             clientState.promptTemplates = await handleApiResponse(fetch('/api/prompt_templates'));
@@ -522,18 +606,197 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // --- Chat & Tokenizer Logic ---
+    async function updateTokenCountAndProgressBar() {
+        if (clientState.chatHistory.length === 0 || !clientState.llmSettings.model_name) {
+            tokenProgressContainer.classList.add('hidden');
+            return;
+        }
+
+        const fullText = clientState.chatHistory.map(m => m.content).join('\n');
+        
+        try {
+            const response = await handleApiResponse(fetch('/api/count_tokens', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ text: fullText })
+            }));
+            clientState.currentTokens = response.count;
+
+            if (clientState.modelContextSize > 0) {
+                tokenProgressContainer.classList.remove('hidden');
+                const percentage = (clientState.currentTokens / clientState.modelContextSize) * 100;
+                tokenProgressBar.style.width = `${Math.min(percentage, 100)}%`;
+                
+                tokenProgressBar.classList.remove('progress-bar-safe', 'progress-bar-warn', 'progress-bar-danger');
+                if (percentage >= 90) {
+                    tokenProgressBar.classList.add('progress-bar-danger');
+                } else if (percentage >= 75) {
+                    tokenProgressBar.classList.add('progress-bar-warn');
+                } else {
+                    tokenProgressBar.classList.add('progress-bar-safe');
+                }
+
+                tokenCountDisplay.textContent = `${clientState.currentTokens} / ${clientState.modelContextSize} tokens`;
+            } else {
+                 tokenCountDisplay.textContent = `${clientState.currentTokens} tokens`;
+            }
+
+        } catch (error) {
+            console.error('Could not count tokens:', error);
+            tokenCountDisplay.textContent = 'Token count unavailable';
+        }
+    }
+
+    function renderChatMessage(content, role) {
+        if (!chatMessagesContainer) return;
+        
+        startDiscussionPlaceholder.classList.add('hidden');
+
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = `chat-message flex flex-col ${role === 'user' ? 'items-end' : 'items-start'}`;
+
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble ${role} markdown-body`;
+        bubble.innerHTML = DOMPurify.sanitize(marked.parse(content));
+
+        messageWrapper.appendChild(bubble);
+        chatMessagesContainer.appendChild(messageWrapper);
+        
+        addCopyButtonsToCodeBlocks(bubble);
+
+        chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+        return bubble;
+    }
+
+    function renderChatHistory() {
+        if (!chatMessagesContainer) return;
+        chatMessagesContainer.innerHTML = '';
+        chatMessagesContainer.appendChild(startDiscussionPlaceholder);
+
+        if (clientState.chatHistory.length > 0) {
+            startDiscussionPlaceholder.classList.add('hidden');
+            clientState.chatHistory.forEach(msg => renderChatMessage(msg.content, msg.role));
+        } else {
+            startDiscussionPlaceholder.classList.remove('hidden');
+        }
+    }
+
+    async function handleSendMessage(messageContent) {
+        if (clientState.isAIGenerating || !messageContent.trim()) return;
+
+        if (clientState.currentTokens >= clientState.modelContextSize && clientState.modelContextSize > 0) {
+            showStatus('Context window is full. Please start a new discussion.', 'error');
+            return;
+        }
+
+        clientState.isAIGenerating = true;
+        updateChatUIState();
+        
+        const userMessage = { role: 'user', content: messageContent };
+        clientState.chatHistory.push(userMessage);
+        renderChatMessage(userMessage.content, userMessage.role);
+        await updateTokenCountAndProgressBar();
+
+        const aiMessage = { role: 'assistant', content: '' };
+        clientState.chatHistory.push(aiMessage);
+        const aiBubble = renderChatMessage('<span class="thinking-indicator">...</span>', 'assistant');
+
+        try {
+            const response = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: clientState.chatHistory.slice(0, -1) }) // Send all but the empty AI message
+            });
+
+            if (!response.ok) throw new Error(`Server error: ${response.statusText}`);
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n\n');
+
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        const dataStr = line.substring(6);
+                        try {
+                            const data = JSON.parse(dataStr);
+                            if(data.error) {
+                                throw new Error(data.error);
+                            }
+                            if (data.choices && data.choices[0].delta.content) {
+                                const token = data.choices[0].delta.content;
+                                fullResponse += token;
+                                aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse + '...'));
+                            }
+                        } catch (e) {
+                            // Might be an incomplete JSON object, ignore for now
+                        }
+                    }
+                }
+            }
+            
+            aiMessage.content = fullResponse;
+            aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse));
+            addCopyButtonsToCodeBlocks(aiBubble);
+            await updateTokenCountAndProgressBar();
+            saveProjectState();
+
+        } catch (error) {
+            aiBubble.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
+            clientState.chatHistory.pop(); // Remove the failed AI message
+        } finally {
+            clientState.isAIGenerating = false;
+            updateChatUIState();
+        }
+    }
+
+    function addCopyButtonsToCodeBlocks(parentElement) {
+        const codeBlocks = parentElement.querySelectorAll('pre');
+        codeBlocks.forEach(block => {
+            const btn = document.createElement('button');
+            btn.textContent = 'Copy';
+            btn.className = 'code-block-copy-btn';
+            btn.addEventListener('click', () => {
+                const code = block.querySelector('code').innerText;
+                navigator.clipboard.writeText(code).then(
+                    () => showStatus('Code copied!', 'success'),
+                    () => showStatus('Failed to copy code.', 'error')
+                );
+            });
+            block.appendChild(btn);
+        });
+    }
+
+    function updateChatUIState() {
+        chatSendBtn.disabled = clientState.isAIGenerating;
+        chatInput.disabled = clientState.isAIGenerating;
+        if(clientState.isAIGenerating) {
+            chatInput.placeholder = 'AI is responding...';
+        } else {
+            chatInput.placeholder = "Type your message, or 'next' to continue a phased response...";
+        }
+    }
+
     // --- Event Listeners & UI Updates ---
     function updateExtractorUIStates() {
         const hasTree = fileTreeContainer && fileTreeContainer.querySelector('ul');
         const hasSelections = clientState.checkedTreePathsMap.size > 0;
+        const hasOutput = rawOutputTextarea && rawOutputTextarea.value.length > 0;
         
-        const tab2Btn = document.getElementById('tab2-btn');
-        const tab3Btn = document.getElementById('tab3-btn');
+        const tab2Btn = S('tab2-btn'), tab3Btn = S('tab3-btn'), tab4Btn = S('tab4-btn');
 
         if(tab2Btn) tab2Btn.disabled = !hasTree;
         if(tab3Btn) tab3Btn.disabled = !hasTree;
+        if(tab4Btn) tab4Btn.disabled = !hasOutput;
+
         if(generateBtn) generateBtn.disabled = !hasTree || !hasSelections;
-        if(copyRawBtn) copyRawBtn.disabled = !rawOutputTextarea || rawOutputTextarea.value.length === 0;
+        if(copyRawBtn) copyRawBtn.disabled = !hasOutput;
         [refreshTreeBtn, aiSelectBtn, checkAllTextBtn, uncheckAllBtn].forEach(b => { if(b) b.disabled = !hasTree });
     }
     
@@ -575,7 +838,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         
         if (modalSaveLlmSettingsBtn) modalSaveLlmSettingsBtn.addEventListener('click', async () => {
-             const settings = { url: modalLlmUrlInput.value.trim(), api_key: modalLlmApiKeyInput.value.trim() };
+             const settings = { 
+                url: modalLlmUrlInput.value.trim(), 
+                api_key: modalLlmApiKeyInput.value.trim(),
+                model_name: modalLlmModelSelect.value
+             };
             try {
                 await handleApiResponse(fetch('/api/settings/llm', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(settings)}));
                 showStatus('LLM settings saved.', 'success');
@@ -586,8 +853,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         
-        if (settingsBtn) settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        if (settingsBtn) settingsBtn.addEventListener('click', () => {
+            settingsModal.classList.remove('hidden');
+            fetchLlmModels();
+        });
         if (modalCloseSettingsBtn) modalCloseSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        if (refreshModelsBtn) refreshModelsBtn.addEventListener('click', fetchLlmModels);
 
         if (setDefaultLollmsBtn) setDefaultLollmsBtn.addEventListener('click', () => {
             if (modalLlmUrlInput) {
@@ -739,6 +1010,44 @@ document.addEventListener('DOMContentLoaded', () => {
             clientState.currentTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
             themeToggle.innerHTML = clientState.currentTheme === 'dark' ? '☀️' : '🌙';
             localStorage.setItem('theme', clientState.currentTheme);
+        });
+
+        // Chat Event Listeners
+        if (startDiscussionBtn) startDiscussionBtn.addEventListener('click', async () => {
+            const context = rawOutputTextarea.value;
+            if (!context) {
+                showStatus('Generate output on Tab 3 first.', 'warning');
+                return;
+            }
+            if (!clientState.llmSettings.model_name) {
+                showStatus('Please select an AI model in Settings first.', 'error');
+                return;
+            }
+
+            try {
+                const sizeResponse = await handleApiResponse(fetch('/api/context_size'));
+                clientState.modelContextSize = sizeResponse.context_size;
+            } catch(e) {
+                showStatus('Could not fetch model context size. Tokenizer disabled.', 'warning');
+                clientState.modelContextSize = 0;
+            }
+
+            clientState.chatHistory = [{ role: 'system', content: `The user has provided the following project context. Your task is to act as an expert software developer and assist them with their requests based on this context.\n\n---\n\n${context}` }];
+            renderChatHistory(); // Clear placeholder
+            handleSendMessage("Based on the context provided, analyze the project and propose a plan for the user's request as outlined in the initial instructions. If no specific request was made, provide a high-level overview and ask how you can help.");
+        });
+
+        if (chatForm) chatForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const message = chatInput.value;
+            handleSendMessage(message);
+            chatInput.value = '';
+            chatInput.style.height = 'auto';
+        });
+
+        if (chatInput) chatInput.addEventListener('input', () => {
+            chatInput.style.height = 'auto';
+            chatInput.style.height = (chatInput.scrollHeight) + 'px';
         });
     }
 
