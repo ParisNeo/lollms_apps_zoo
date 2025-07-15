@@ -700,23 +700,27 @@ async def api_generate_structure(request: GenerateStructureRequest):
     
     return {"status": "success", "markdown": final_md}
 
+def browse_folder():
+    from PyQt5.QtWidgets import QApplication, QFileDialog
+    import sys
+    app = QApplication(sys.argv)
+    folder_path = QFileDialog.getExistingDirectory(None, "Select a Project Folder")
+    app.quit()
+    return folder_path
+
 @app.post("/api/browse_server_folder")
 async def api_browse_server_folder():
     try:
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
-        folder_path = filedialog.askdirectory(title="Select a Project Folder")
-        root.destroy()
+        import asyncio
+        # Run the PyQt5 application in a separate thread to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        folder_path = await loop.run_in_executor(None, browse_folder)
         if folder_path:
             return {"status": "success", "path": folder_path}
         else:
             return {"status": "cancelled"}
     except Exception as e:
-        raise HTTPException(status_code=501, detail=f"Server GUI (Tkinter) not available: {e}")
-
+        raise HTTPException(status_code=501, detail=f"Server GUI (PyQt5) not available: {e}")
 @app.get("/api/prompt_templates", response_model=List[Template])
 async def get_prompt_templates():
     return load_prompt_templates()
