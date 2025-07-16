@@ -12,6 +12,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Project List View
         projectCardsContainer = S('project-cards-container'),
         addProjectBtn = S('add-project-btn'),
+        importProjectsBtn = S('import-projects-btn'),
+        exportProjectsBtn = S('export-projects-btn'),
+        importFileInput = S('import-file-input'),
         // Extractor View
         backToProjectsBtn = S('back-to-projects-btn'),
         folderPathInput = S('folder-path-input'),
@@ -35,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
         uncheckAllBtn = S('uncheck-all-btn'),
         templateSelect = S('template-select'),
         loadTemplateBtn = S('load-template-btn'),
+        savePromptBtn = S('save-prompt-btn'),
         customPromptTextarea = S('custom-prompt-textarea'),
         generateBtn = S('generate-btn'),
         // Tab 3
@@ -65,7 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
         modalSaveLlmSettingsBtn = S('modal-save-llm-settings-btn'),
         modalCloseSettingsBtn = S('modal-close-settings-btn'),
         setDefaultLollmsBtn = S('set-default-lollms-btn'),
-        apiKeyToggleBtn = S('api-key-toggle-btn');
+        apiKeyToggleBtn = S('api-key-toggle-btn'),
+        importPromptsBtn = S('import-prompts-btn'),
+        exportPromptsBtn = S('export-prompts-btn'),
+        importPromptsInput = S('import-prompts-input');
 
 
     const clientState = {
@@ -84,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modelContextSize: 0,
         currentTokens: 0,
         currentTheme: 'light',
-        appVersion: '3.3.0'
+        appVersion: '3.5.0'
     };
     
     const icons = {
@@ -93,7 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Utility Functions ---
-    function showStatus(message, type = 'info') {
+    function showStatus(message, type = 'info', duration = 3000) {
         if (!statusMessage) return;
         statusMessage.textContent = message;
         statusMessage.className = 'text-sm px-3 py-1.5 rounded-lg min-w-[220px] text-center truncate transition-all';
@@ -104,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
             info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
         };
         statusMessage.classList.add(...(typeClasses[type] || typeClasses.info).split(' '));
+        setTimeout(() => { if (statusMessage.textContent === message) statusMessage.textContent = 'Ready.'; }, duration)
     }
 
     async function handleApiResponse(responsePromise) {
@@ -130,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             appTitle.textContent = "Folder Extractor";
             clientState.activeProjectId = null;
+            fetchProjects();
         }
     }
 
@@ -155,28 +164,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         clientState.projects.forEach(p => {
             const card = document.createElement('div');
-            card.className = 'project-card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col cursor-pointer border dark:border-gray-700';
+            card.className = 'project-card bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 flex flex-col border dark:border-gray-700';
             card.dataset.id = p.id;
+            
             card.innerHTML = `
-                <div class="flex-grow">
-                    <h3 class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate">${p.name}</h3>
-                    <p class="text-xs text-gray-500 dark:text-gray-400 break-all" title="${p.path}">${p.path}</p>
+                <div class="flex items-start justify-between">
+                     <div class="flex-grow min-w-0">
+                        <h3 class="font-bold text-lg text-gray-800 dark:text-gray-100 truncate cursor-pointer" title="Open project">${p.name}</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 break-all" title="${p.path}">${p.path}</p>
+                     </div>
+                     <input type="checkbox" class="project-export-checkbox form-checkbox h-4 w-4 text-blue-600 border-gray-300 rounded ml-2 flex-shrink-0" title="Select for export">
                 </div>
+                <div class="flex-grow"></div>
                 <div class="flex justify-between items-center mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                     <button class="star-btn p-2 text-gray-400 hover:text-yellow-400 ${p.starred ? 'starred' : ''}" data-action="star" title="Star project">
                         <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
                     </button>
-                    <div class="space-x-2">
-                        <button class="p-2 text-gray-400 hover:text-blue-500" data-action="edit" title="Edit project"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z"></path><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd"></path></svg></button>
-                        <button class="p-2 text-gray-400 hover:text-red-500" data-action="delete" title="Delete project"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm4 0a1 1 0 012 0v6a1 1 0 11-2 0V8z" clip-rule="evenodd"></path></svg></button>
+                    <div class="space-x-1">
+                        <button class="card-action-btn" data-action="clone" title="Clone project"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 01-1.125-1.125V7.5a1.125 1.125 0 011.125-1.125h7.5a.75.75 0 010 1.5h-7.5a.375.375 0 00-.375.375v11.25c0 .207.168.375.375.375h9.75a.375.375 0 00.375-.375V17.25a.75.75 0 011.5 0z" /><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 8.25v-1.5a2.25 2.25 0 00-2.25-2.25H6.375a2.25 2.25 0 00-2.25 2.25v8.25a2.25 2.25 0 002.25 2.25h2.25m4.5-1.5H18a2.25 2.25 0 002.25-2.25V6a2.25 2.25 0 00-2.25-2.25H18m-4.5 3.75h.008v.008h-.008v-.008z" /></svg></button>
+                        <button class="card-action-btn" data-action="edit" title="Edit project"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Zm0 0L19.5 7.125" /></svg></button>
+                        <button class="card-action-btn" data-action="delete" title="Delete project"><svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg></button>
                     </div>
                 </div>`;
+
             card.addEventListener('click', (e) => {
                 const action = e.target.closest('button')?.dataset.action;
+                const isCheckbox = e.target.matches('.project-export-checkbox');
+                
                 if (action) {
                     e.stopPropagation();
                     handleProjectAction(action, p.id);
-                } else {
+                } else if (!isCheckbox) {
                     switchView('extractor', p.id);
                 }
             });
@@ -195,6 +213,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     await fetchProjects();
                 } catch (error) { showStatus(`Error starring project: ${error.message}`, 'error'); }
                 break;
+            case 'clone':
+                 try {
+                    const clonedProject = await handleApiResponse(fetch(`/api/projects/${projectId}/clone`, { method: 'POST' }));
+                    const originalState = localStorage.getItem(`projectState_${projectId}`);
+                    if (originalState) {
+                        localStorage.setItem(`projectState_${clonedProject.id}`, originalState);
+                    }
+                    showStatus(`Cloned "${project.name}". Settings and selections copied.`, 'success');
+                    await fetchProjects();
+                } catch (error) { showStatus(`Error cloning project: ${error.message}`, 'error'); }
+                break;
             case 'edit':
                 const newName = prompt("Enter new project name:", project.name);
                 if (newName && newName.trim() !== project.name) {
@@ -208,6 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (confirm(`Are you sure you want to delete project "${project.name}"?`)) {
                     try {
                         await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'DELETE' }));
+                        localStorage.removeItem(`projectState_${projectId}`);
                         await fetchProjects();
                     } catch (error) { showStatus(`Error deleting project: ${error.message}`, 'error'); }
                 }
@@ -853,6 +883,60 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        if (importProjectsBtn) importProjectsBtn.addEventListener('click', () => importFileInput.click());
+        if (importFileInput) importFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const projects = JSON.parse(event.target.result);
+                    if (!Array.isArray(projects)) throw new Error('JSON file is not an array.');
+                    
+                    const response = await handleApiResponse(fetch('/api/projects/import', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(projects)
+                    }));
+
+                    showStatus(`Successfully imported ${response.length} new project(s).`, 'success');
+                    await fetchProjects();
+                } catch (error) {
+                    showStatus(`Import failed: ${error.message}`, 'error');
+                } finally {
+                    e.target.value = ''; // Reset file input
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        if (exportProjectsBtn) exportProjectsBtn.addEventListener('click', async () => {
+            const selectedIds = Array.from(document.querySelectorAll('.project-export-checkbox:checked'))
+                                     .map(cb => cb.closest('.project-card').dataset.id);
+            if (selectedIds.length === 0) {
+                showStatus('Please select at least one project to export.', 'warning');
+                return;
+            }
+            try {
+                const projectsToExport = await handleApiResponse(fetch('/api/projects/export', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ project_ids: selectedIds })
+                }));
+
+                const blob = new Blob([JSON.stringify(projectsToExport, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `folder_extractor_projects_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showStatus('Projects exported successfully.', 'success');
+            } catch (error) {
+                showStatus(`Export failed: ${error.message}`, 'error');
+            }
+        });
+
         if (modalLlmSettingsForm) modalLlmSettingsForm.addEventListener('submit', (e) => {
             e.preventDefault();
             if(modalSaveLlmSettingsBtn) modalSaveLlmSettingsBtn.click();
@@ -925,6 +1009,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 customPromptTextarea.value = template.content;
                 updateExtractorClientStateFromUI();
                 showStatus(`Loaded template: ${selectedName}`, 'success');
+            }
+        });
+
+        if(savePromptBtn) savePromptBtn.addEventListener('click', async () => {
+            const content = customPromptTextarea.value.trim();
+            if (!content) {
+                showStatus('Prompt is empty, cannot save.', 'warning');
+                return;
+            }
+            const name = prompt('Enter a name for this new prompt template:');
+            if (!name || !name.trim()) return;
+
+            try {
+                await handleApiResponse(fetch('/api/save_template', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name.trim(), content: content })
+                }));
+                showStatus(`Template "${name.trim()}" saved.`, 'success');
+                await fetchPromptTemplates();
+                templateSelect.value = name.trim();
+            } catch (error) {
+                showStatus(`Error saving template: ${error.message}`, 'error');
             }
         });
 
@@ -1091,6 +1197,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
         }
+        
+        // Prompt Management in Settings
+        if (importPromptsBtn) importPromptsBtn.addEventListener('click', () => importPromptsInput.click());
+        if (importPromptsInput) importPromptsInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const prompts = JSON.parse(event.target.result);
+                    const { added, updated } = await handleApiResponse(fetch('/api/prompts/import', {
+                        method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(prompts)
+                    }));
+                    showStatus(`Imported ${added} new & updated ${updated} prompts.`, 'success');
+                    await fetchPromptTemplates();
+                } catch(error) {
+                    showStatus(`Prompt import failed: ${error.message}`, 'error');
+                } finally {
+                    e.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        if (exportPromptsBtn) exportPromptsBtn.addEventListener('click', async () => {
+            try {
+                const promptsToExport = await handleApiResponse(fetch('/api/prompts/export'));
+                if (promptsToExport.length === 0) {
+                    showStatus('No custom prompts to export.', 'warning');
+                    return;
+                }
+                const blob = new Blob([JSON.stringify(promptsToExport, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'folder_extractor_prompts.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                showStatus('Custom prompts exported.', 'success');
+            } catch(error) {
+                showStatus(`Export failed: ${error.message}`, 'error');
+            }
+        });
     }
 
     // --- Initialization ---

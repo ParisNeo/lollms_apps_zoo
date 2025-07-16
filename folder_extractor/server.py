@@ -21,13 +21,13 @@ except ImportError:
 
 pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart", "httpx"])
 
-from fastapi import FastAPI, HTTPException, Body, Request
+from fastapi import FastAPI, HTTPException, Body, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 APP_TITLE = "Folder Structure Extractor Web App"
-APP_VERSION = "3.3.0"
+APP_VERSION = "3.5.0"
 CONFIG_DIR = Path.home() / ".config" / "folder_extractor_web"
 PROMPTS_FILE = CONFIG_DIR / "prompt_templates.json"
 PROJECTS_FILE = CONFIG_DIR / "projects.json"
@@ -139,6 +139,9 @@ class ProjectUpdateRequest(BaseModel):
     name: Optional[str] = None
     path: Optional[str] = None
     starred: Optional[bool] = None
+
+class ProjectExportRequest(BaseModel):
+    project_ids: List[str]
 
 class LLMSettings(BaseModel):
     url: str = ""
@@ -416,6 +419,52 @@ async def delete_project(project_id: str):
     if len(projects) == initial_len:
         raise HTTPException(status_code=404, detail="Project not found.")
     save_json_file(PROJECTS_FILE, projects)
+
+@app.post("/api/projects/{project_id}/clone", response_model=Project)
+async def clone_project(project_id: str):
+    projects = load_json_file(PROJECTS_FILE, [])
+    project_to_clone = next((p for p in projects if p['id'] == project_id), None)
+    if project_to_clone is None:
+        raise HTTPException(status_code=404, detail="Project not found.")
+
+    cloned_project_dict = project_to_clone.copy()
+    cloned_project_dict['id'] = str(uuid.uuid4())
+    cloned_project_dict['name'] = f"{cloned_project_dict['name']} (copy)"
+    cloned_project_dict['last_accessed'] = datetime.utcnow().isoformat()
+    cloned_project_dict['starred'] = False
+
+    projects.append(cloned_project_dict)
+    save_json_file(PROJECTS_FILE, projects)
+    return Project(**cloned_project_dict)
+
+@app.post("/api/projects/export", response_model=List[Project])
+async def export_projects(request: ProjectExportRequest):
+    projects = load_json_file(PROJECTS_FILE, [])
+    projects_to_export = [p for p in projects if p['id'] in request.project_ids]
+    return projects_to_export
+
+@app.post("/api/projects/import", response_model=List[Project])
+async def import_projects(imported_projects: List[Project]):
+    if not imported_projects:
+        raise HTTPException(status_code=400, detail="No projects provided for import.")
+
+    projects = load_json_file(PROJECTS_FILE, [])
+    existing_paths = {p['path'] for p in projects}
+    
+    newly_added_projects = []
+    for proj in imported_projects:
+        if proj.path in existing_paths:
+            # Skip projects with the same path to avoid duplicates
+            continue
+        
+        new_proj = proj.model_dump()
+        new_proj['id'] = str(uuid.uuid4()) # Assign a new ID to avoid conflicts
+        new_proj['last_accessed'] = datetime.utcnow().isoformat()
+        projects.append(new_proj)
+        newly_added_projects.append(Project(**new_proj))
+
+    save_json_file(PROJECTS_FILE, projects)
+    return newly_added_projects
 
 @app.get("/api/settings/llm", response_model=LLMSettings)
 async def get_llm_settings():
@@ -700,22 +749,27 @@ async def api_generate_structure(request: GenerateStructureRequest):
     
     return {"status": "success", "markdown": final_md}
 
+def browse_folder():
+    from PyQt5.QtWidgets import QApplication, QFileDialog
+    import sys
+    app = QApplication(sys.argv)
+    folder_path = QFileDialog.getExistingDirectory(None, "Select a Project Folder")
+    app.quit()
+    return folder_path
+
 @app.post("/api/browse_server_folder")
 async def api_browse_server_folder():
     try:
-        import tkinter as tk
-        from tkinter import filedialog
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes('-topmost', True)
-        folder_path = filedialog.askdirectory(title="Select a Project Folder")
-        root.destroy()
+        import asyncio
+        # Run the PyQt5 application in a separate thread to avoid blocking the event loop
+        loop = asyncio.get_event_loop()
+        folder_path = await loop.run_in_executor(None, browse_folder)
         if folder_path:
             return {"status": "success", "path": folder_path}
         else:
             return {"status": "cancelled"}
     except Exception as e:
-        raise HTTPException(status_code=501, detail=f"Server GUI (Tkinter) not available: {e}")
+        raise HTTPException(status_code=501, detail=f"Server GUI (PyQt5) not available: {e}")
 
 @app.get("/api/prompt_templates", response_model=List[Template])
 async def get_prompt_templates():
@@ -758,6 +812,38 @@ async def delete_template(request: DeleteTemplateRequest):
         return {"status": "deleted", "message": f"Template '{request.name}' deleted."}
     else:
         return {"status": "not_found", "message": f"Template '{request.name}' not found."}
+
+@app.get("/api/prompts/export", response_model=List[Template])
+async def export_prompts():
+    """Exports all custom (non-default) prompt templates."""
+    all_templates = load_prompt_templates()
+    default_template_names = {t['name'] for t in get_default_templates()}
+    custom_templates = [t for t in all_templates if t['name'] not in default_template_names]
+    return custom_templates
+
+@app.post("/api/prompts/import", response_model=Dict[str, int])
+async def import_prompts(imported_templates: List[Template]):
+    """Imports new prompt templates, overwriting existing ones with the same name."""
+    if not imported_templates:
+        raise HTTPException(status_code=400, detail="No prompt templates provided for import.")
+    
+    current_templates = load_prompt_templates()
+    current_templates_map = {t['name']: t for t in current_templates}
+    
+    added_count = 0
+    updated_count = 0
+
+    for imp_template in imported_templates:
+        if imp_template.name in current_templates_map:
+            current_templates_map[imp_template.name] = imp_template.model_dump()
+            updated_count += 1
+        else:
+            current_templates_map[imp_template.name] = imp_template.model_dump()
+            added_count += 1
+            
+    save_prompt_templates(list(current_templates_map.values()))
+    
+    return {"added": added_count, "updated": updated_count}
 
 static_dir = Path(__file__).parent / "static"
 if not static_dir.exists():

@@ -110,11 +110,14 @@
         
         <!-- View: Project Dashboard -->
         <div id="project-list-view" class="view">
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                 <h2 class="text-2xl font-bold text-gray-800 dark:text-gray-100">Projects</h2>
-                <button id="add-project-btn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-sm font-semibold whitespace-nowrap transition-colors flex items-center justify-center space-x-2">
-                    <span>Add New Project</span>
-                </button>
+                <div class="flex items-center space-x-2">
+                    <input type="file" id="import-file-input" class="hidden" accept=".json,application/json">
+                    <button id="import-projects-btn" class="dashboard-action-btn bg-green-600 hover:bg-green-700">Import</button>
+                    <button id="export-projects-btn" class="dashboard-action-btn bg-yellow-600 hover:bg-yellow-700">Export Selected</button>
+                    <button id="add-project-btn" class="dashboard-action-btn bg-blue-600 hover:bg-blue-700">Add New Project</button>
+                </div>
             </div>
             <div id="project-cards-container" class="flex-grow overflow-y-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
                 <!-- Project cards will be injected here -->
@@ -226,13 +229,14 @@
                         </div>
                     </div>
 
-                    <!-- Custom Instructions Prompt Panel (unchanged) -->
+                    <!-- Custom Instructions Prompt Panel -->
                     <div class="flex-1 flex flex-col border border-gray-200/80 dark:border-gray-700/80 rounded-xl p-3 bg-white dark:bg-gray-850 shadow-lg min-h-0 overflow-hidden">
                         <h2 class="text-md font-semibold mb-2 text-gray-800 dark:text-gray-200">Custom Instructions Prompt</h2>
                         <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2">
                             <label for="template-select" class="text-xs font-medium text-gray-700 dark:text-gray-300 self-center sm:self-auto whitespace-nowrap">Template:</label>
                             <select id="template-select" class="flex-grow p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 text-xs"></select>
                             <button id="load-template-btn" class="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold" data-tooltip="Load selected template">Load</button>
+                            <button id="save-prompt-btn" class="px-3 py-1.5 text-xs bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold" data-tooltip="Save current text as a new template">Save</button>
                         </div>
                         <textarea id="custom-prompt-textarea" placeholder="Enter instructions for an AI, or load a template. Placeholders like {FOLDER_NAME} will be substituted. Imported documentation will be added after this."
                                 class="flex-grow p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 min-h-[150px] focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
@@ -316,38 +320,51 @@
     
     <!-- Modal for Global LLM Settings -->
     <div id="settings-modal" class="fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 hidden">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4">
-            <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Global LLM Settings</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg mx-4 overflow-y-auto max-h-full">
+            <h3 class="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">Global Settings</h3>
             <form id="modal-llm-settings-form" class="space-y-4">
-                <div>
-                    <div class="flex justify-between items-center mb-1">
-                         <label for="modal-llm-url-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">lollms_chat / OpenAI-compatible URL:</label>
-                         <button type="button" id="set-default-lollms-btn" class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md">Use Default Lollms</button>
+                <fieldset class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <legend class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">LLM Configuration</legend>
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="modal-llm-url-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300">lollms_chat / OpenAI-compatible URL:</label>
+                            <button type="button" id="set-default-lollms-btn" class="text-xs px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-md">Use Default Lollms</button>
+                        </div>
+                        <input type="url" id="modal-llm-url-input" placeholder="e.g., http://localhost:9642/v1/chat/completions" class="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <input type="url" id="modal-llm-url-input" placeholder="e.g., http://localhost:9642/v1/chat/completions" class="w-full p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500">
-                </div>
-                 <div>
-                    <label for="modal-llm-api-key-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key (Optional):</label>
-                    <div class="relative">
-                        <input type="password" id="modal-llm-api-key-input" placeholder="Enter your API key if required" class="w-full p-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500">
-                        <button type="button" id="api-key-toggle-btn" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
-                            <!-- SVG icon will be injected by JS -->
-                        </button>
+                    <div>
+                        <label for="modal-llm-api-key-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key (Optional):</label>
+                        <div class="relative">
+                            <input type="password" id="modal-llm-api-key-input" placeholder="Enter your API key if required" class="w-full p-2 pr-10 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500">
+                            <button type="button" id="api-key-toggle-btn" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
+                                <!-- SVG icon will be injected by JS -->
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <label for="modal-llm-model-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Select Model:</label>
+                    <div>
+                        <label for="modal-llm-model-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">AI Select Model:</label>
+                        <div class="flex items-center space-x-2">
+                            <select id="modal-llm-model-select" class="flex-grow p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <option value="">-- Fetch models first --</option>
+                            </select>
+                            <button type="button" id="refresh-models-btn" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg" title="Refresh Model List">
+                                <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-17.844 0L7.07 12.072a8.25 8.25 0 0111.664 0l3.181 3.183" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <legend class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-2">Prompt Management</legend>
+                    <input type="file" id="import-prompts-input" class="hidden" accept=".json,application/json">
                     <div class="flex items-center space-x-2">
-                        <select id="modal-llm-model-select" class="flex-grow p-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <option value="">-- Fetch models first --</option>
-                        </select>
-                        <button type="button" id="refresh-models-btn" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg" title="Refresh Model List">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0011.664 0l3.181-3.183m-17.844 0L7.07 12.072a8.25 8.25 0 0111.664 0l3.181 3.183" />
-                            </svg>
-                        </button>
+                        <button type="button" id="import-prompts-btn" class="dashboard-action-btn bg-green-600 hover:bg-green-700 flex-1">Import Prompts</button>
+                        <button type="button" id="export-prompts-btn" class="dashboard-action-btn bg-yellow-600 hover:bg-yellow-700 flex-1">Export Prompts</button>
                     </div>
-                </div>
+                </fieldset>
+                
                 <div class="flex justify-end space-x-4 pt-4">
                     <button id="modal-save-llm-settings-btn" type="submit" class="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold">Save Settings</button>
                     <button id="modal-close-settings-btn" type="button" class="px-6 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-100 rounded-lg text-sm">Close</button>
