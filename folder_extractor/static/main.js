@@ -1121,11 +1121,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 rawOutputTextarea.value = response.markdown;
                 renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(response.markdown));
                 showStatus('Output generated successfully.', 'success');
+
+                clientState.currentTokens = response.token_count;
+                clientState.modelContextSize = 0;
+                if (tokenCountDisplay) {
+                    tokenCountDisplay.textContent = response.token_count > -1 ? `${response.token_count} tokens (context size unknown)` : '';
+                }
+                if (tokenProgressContainer) tokenProgressContainer.classList.add('hidden');
+                
             } catch (error) {
                 rawOutputTextarea.value = `Error: ${error.message}`;
                 renderedOutputDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
                 showStatus(`Generation failed: ${error.message}`, 'error');
-            } finally { updateExtractorUIStates(); }
+            } finally { 
+                updateExtractorUIStates(); 
+                saveProjectState();
+            }
         });
         if(copyRawBtn) copyRawBtn.addEventListener('click', () => {
             navigator.clipboard.writeText(rawOutputTextarea.value).then(() => showStatus('Copied to clipboard!', 'success'), () => showStatus('Failed to copy.', 'error'));

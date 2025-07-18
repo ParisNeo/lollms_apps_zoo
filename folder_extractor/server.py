@@ -481,7 +481,7 @@ async def proxy_lollms_request(endpoint: str, payload: dict, method: str = "POST
 
     base_url = settings.url.rsplit('/v1/', 1)[0]
     # Adjust for base URLs that might not have /v1/
-    if endpoint=="count_tokens" or endpoint=="context_size":
+    if endpoint=="count_tokens" or endpoint=="context_size" or endpoint=="models":
         base_url = base_url + "/v1"
     elif not base_url.endswith('/v1'):
         base_url = settings.url.rstrip('/')
@@ -747,7 +747,16 @@ async def api_generate_structure(request: GenerateStructureRequest):
     
     final_md = "\n\n".join(final_md_parts)
     
-    return {"status": "success", "markdown": final_md}
+    token_count = -1
+    try:
+        settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+        if settings.url and settings.model_name:
+            response = await proxy_lollms_request("count_tokens", {"model": settings.model_name, "text": final_md})
+            token_count = response.get("count", -1)
+    except Exception:
+        token_count = -1
+
+    return {"status": "success", "markdown": final_md, "token_count": token_count}
 
 def browse_folder():
     from PyQt5.QtWidgets import QApplication, QFileDialog
