@@ -11,6 +11,7 @@ import webbrowser
 import threading
 import uuid
 import httpx
+import argparse
 
 try:
     import pipmaster
@@ -869,9 +870,35 @@ async def get_index():
 
 if __name__ == "__main__":
     import uvicorn
-    
-    HOST = "127.0.0.1"
-    PORT = 8765
+    parser = argparse.ArgumentParser(
+        description="A simple script to demonstrate parsing host and port."
+    )
+
+    # 2. Add arguments
+    #    - '--host': The name of the argument on the command line.
+    #    - type=str: The type of the value (string is the default, but it's good to be explicit).
+    #    - default='0.0.0.0': The value to use if the user doesn't provide this argument.
+    #    - help='...': A helpful message shown when the user runs with -h or --help.
+    parser.add_argument('--host', 
+                        type=str, 
+                        default='0.0.0.0', 
+                        help='The host to bind the server to (default: 0.0.0.0)')
+
+    #    - '--port': The name for the port argument.
+    #    - type=int: Crucial! argparse will automatically convert the value to an integer
+    #                and raise an error if it's not a valid number.
+    #    - default=9601: The default port number.
+    parser.add_argument('--port', 
+                        type=int, 
+                        default=9601, 
+                        help='The port to listen on (default: 9601)')
+
+    # 3. Parse the arguments from the command line
+    args = parser.parse_args()
+
+    # 4. Use the parsed arguments
+    HOST = args.host
+    PORT = args.port
     
     def run_server():
         uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
