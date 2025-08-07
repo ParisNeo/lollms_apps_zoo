@@ -101,7 +101,6 @@
                                 <div id="analysis-spinner" class="spinner hidden mt-4"></div>
                                 <div id="analysis-result"></div>
                             </div>
-                            <!-- FIX: The graph content is now the default visible tab -->
                             <div id="graphContent" class="mt-2">
                                 <h3 class="text-xl font-semibold mb-2 neon-text">Interactive Bitcoin Price Chart</h3>
                                 <div class="mb-4">
@@ -125,7 +124,6 @@
             </div>
         </main>
     </div>
-    <!-- FIX: The 'hidden' class is crucial to ensure the modal is not visible on startup -->
     <div id="settingsOverlay" class="settings-overlay hidden">
         <div class="settings-content">
             <h2 class="text-2xl font-semibold mb-2 neon-text">Settings</h2>
@@ -150,7 +148,6 @@
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700">Update Settings</button>
-                <!-- FIX: Ensure this button has type="button" to prevent form submission -->
                 <button type="button" id="closeSettingsBtn" class="w-full bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 mt-2">Close</button>
             </form>
         </div>
@@ -159,8 +156,7 @@
         let bitcoinChart;
         let currentBitcoinData;
         let selectedCurrency = 'USD';
-        let selectedTimeRange = '30d'; // Default to 30 days
-        let isChartInitialized = false;
+        let selectedTimeRange = '30d';
 
         async function fetchBitcoinData() {
             const url = `https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
@@ -282,9 +278,7 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 updateBitcoinPrice(bitcoinData);
                 const threshold = parseFloat(document.getElementById('alertThreshold').value);
                 checkAlerts(bitcoinData, threshold);
-            } catch (error) {
-                // Error is logged in fetchBitcoinData
-            }
+            } catch (error) { /* Error is logged in fetchBitcoinData */ }
         }
 
         function updateBitcoinPrice(bitcoinData) {
@@ -307,35 +301,44 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Element Variables ---
             const settingsOverlay = document.getElementById('settingsOverlay');
-
-            initBitcoinChart();
-            updateBitcoinChart(); // Load the chart with default values on startup
-
-            document.getElementById('settingsForm').addEventListener('submit', (e) => {
-                e.preventDefault();
-                selectedCurrency = document.getElementById('currency').value;
-                const selectedTheme = document.getElementById('themeSelect').value;
-                applyTheme(selectedTheme);
-                updateCurrentBitcoinInfo();
-                updateBitcoinChart();
-                settingsOverlay.classList.add('hidden'); // Hide after submitting
-            });
-
-            document.getElementById('settingsBtn').addEventListener('click', () => {
-                settingsOverlay.classList.remove('hidden');
-            });
-
-            // FIX: This event listener now correctly closes the modal
-            document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-                settingsOverlay.classList.add('hidden');
-            });
-            
+            const settingsBtn = document.getElementById('settingsBtn');
+            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+            const settingsForm = document.getElementById('settingsForm');
             const aiTab = document.getElementById('aiAnalysisTab');
             const graphTab = document.getElementById('graphTab');
             const aiContent = document.getElementById('aiAnalysisContent');
             const graphContent = document.getElementById('graphContent');
 
+            // --- Modal Handling ---
+            settingsBtn.addEventListener('click', () => {
+                settingsOverlay.classList.remove('hidden');
+            });
+
+            // FIX: This now correctly handles the close button click
+            closeSettingsBtn.addEventListener('click', () => {
+                settingsOverlay.classList.add('hidden');
+            });
+
+            // FIX: This adds "click outside to close" functionality
+            settingsOverlay.addEventListener('click', (event) => {
+                // If the click is on the overlay itself (the background) and not the content inside
+                if (event.target === settingsOverlay) {
+                    settingsOverlay.classList.add('hidden');
+                }
+            });
+
+            settingsForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                selectedCurrency = document.getElementById('currency').value;
+                applyTheme(document.getElementById('themeSelect').value);
+                updateCurrentBitcoinInfo();
+                updateBitcoinChart();
+                settingsOverlay.classList.add('hidden');
+            });
+
+            // --- Tab Switching ---
             aiTab.addEventListener('click', () => {
                 aiContent.classList.remove('hidden');
                 graphContent.classList.add('hidden');
@@ -350,6 +353,7 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 graphTab.classList.replace('bg-gray-600', 'bg-purple-600');
             });
 
+            // --- Other Event Listeners ---
             document.getElementById('generateAnalysisBtn').addEventListener('click', () => {
                 if (currentBitcoinData) {
                     analyzeBitcoinData(currentBitcoinData);
@@ -363,9 +367,11 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 updateBitcoinChart();
             });
 
-            // Initial setup
+            // --- Initial App Load ---
+            initBitcoinChart();
             applyTheme(document.getElementById('themeSelect').value);
             updateCurrentBitcoinInfo();
+            updateBitcoinChart(); // Load the chart on startup
             setInterval(updateCurrentBitcoinInfo, 60000);
         });
     </script>
