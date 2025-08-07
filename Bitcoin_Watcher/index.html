@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bitcoin Watcher</title>
+    <!-- Using pre-compiled Tailwind CSS for better performance -->
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <!-- Assuming these lollms assets are necessary for the backend integration -->
     <script src="/lollms_assets/js/lollms_client_js"></script>
-    <script src="/lollms_assets/js/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="/lollms_assets/js/lollms_markdown_renderer"></script>
     <link rel="stylesheet" href="/lollms_assets/css/lollms_markdown_renderer">   
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
@@ -35,11 +35,19 @@
         }
         .neon-text {
             font-size: large;
+            transition: text-shadow 0.3s ease-in-out;
         }
         .neon-box {
-            box-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px #ff00de, 0 0 7px #ff00de, 0 0 10px #ff00de;
             background-color: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        /* FIX: Added .neon-glow class to be toggled by the theme switcher */
+        .neon-glow {
+            box-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px #ff00de, 0 0 7px #ff00de, 0 0 10px #ff00de;
+        }
+        .neon-text.neon-glow {
+            text-shadow: 0 0 2px #e0e0e0, 0 0 5px #ff00de;
         }
         .settings-overlay {
             position: fixed;
@@ -129,14 +137,7 @@
                                         <option value="1y">1 Year</option>
                                     </select>
                                 </div>
-                                <div class="mb-4">
-                                    <label for="resolution" class="block text-sm font-medium text-gray-300">Resolution:</label>
-                                    <select id="resolution" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-                                        <option value="hourly">Hourly</option>
-                                        <option value="daily">Daily</option>
-                                        <option value="weekly">Weekly</option>
-                                    </select>
-                                </div>
+                                <!-- FIX: Removed the confusing and non-functional "Resolution" selector -->
                                 <canvas id="bitcoinChart"></canvas>
                             </div>
                         </div>
@@ -174,7 +175,7 @@
                     <label for="themeSelect" class="block text-sm font-medium text-gray-300">Theme Selection</label>
                     <select id="themeSelect" name="themeSelect" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
                         <option value="default">Default</option>
-                        <option value="neon">Neon</option>
+                        <option value="neon" selected>Neon</option>
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700">Update Settings</button>
@@ -185,42 +186,44 @@
     <script>
         const mr = new MarkdownRenderer();
         const lc = new LollmsClient(null, null, 4096, -1, 4096, 0.1, 50, 0.95, 0.8, 40, null, 8, "", ELF_GENERATION_FORMAT.LOLLMS);
+        
         let bitcoinChart;
         let currentBitcoinData;
         let selectedVoice = '';
         let lastGeneratedAnalysis = '';
         let selectedCurrency = 'USD';
         let selectedTimeRange = '7d';
-        let selectedResolution = 'hourly';
+        let isChartInitialized = false; // FIX: Flag to lazy-load the chart
+
+        // Fetches current price data and 7-day sparkline for AI analysis
         async function fetchBitcoinData() {
             const url = `https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
                 return await response.json();
             } catch (error) {
-                console.error('Error fetching data from CoinGecko:', error);
+                console.error('Error fetching current data from CoinGecko:', error);
                 throw error;
             }
         }
-        async function fetchHistoricalData(timeRange, resolution) {
+
+        // Fetches historical data for the chart. Granularity is handled automatically by the API.
+        async function fetchHistoricalData(timeRange) {
             const endDate = new Date();
             const startDate = new Date(endDate - timeRangeToMilliseconds(timeRange));
             const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=${selectedCurrency.toLowerCase()}&from=${Math.floor(startDate.getTime() / 1000)}&to=${Math.floor(endDate.getTime() / 1000)}`;
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-                }
+                if (!response.ok) throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
                 const data = await response.json();
-                return processHistoricalData(data.prices, resolution);
+                return data.prices; // The API returns an array of [timestamp, price]
             } catch (error) {
                 console.error('Error fetching historical data from CoinGecko:', error);
                 throw error;
             }
         }
+
         function timeRangeToMilliseconds(range) {
             const map = {
                 '7d': 7 * 24 * 60 * 60 * 1000,
@@ -230,26 +233,18 @@
             };
             return map[range] || map['7d'];
         }
-        function processHistoricalData(data, resolution) {
-            if (resolution === 'hourly') return data;
-if (resolution === 'hourly') return data;
-            if (resolution === 'daily') {
-                return data.filter((_, index) => index % 24 === 0);
-            }
-            if (resolution === 'weekly') {
-                return data.filter((_, index) => index % (24 * 7) === 0);
-            }
-            return data;
-        }
+
         function initBitcoinChart() {
             const ctx = document.getElementById('bitcoinChart').getContext('2d');
             bitcoinChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     datasets: [{
-                        label: 'Bitcoin Price',
+                        label: `Bitcoin Price (${selectedCurrency})`,
                         data: [],
-                        borderColor: 'rgb(255, 99, 132)',
+                        borderColor: '#ff00de',
+                        backgroundColor: 'rgba(255, 0, 222, 0.1)',
+                        fill: true,
                         tension: 0.1
                     }]
                 },
@@ -258,190 +253,226 @@ if (resolution === 'hourly') return data;
                     scales: {
                         x: {
                             type: 'time',
-                            time: {
-                                unit: 'day'
-                            },
-                            title: {
-                                display: true,
-                                text: 'Date'
-                            }
+                            // FIX: Let Chart.js determine the optimal time unit automatically
+                            title: { display: true, text: 'Date' }
                         },
                         y: {
-                            title: {
-                                display: true,
-                                text: 'Price'
-                            }
+                            title: { display: true, text: 'Price' }
                         }
                     }
                 }
             });
         }
+
         async function updateBitcoinChart() {
-            const data = await fetchHistoricalData(selectedTimeRange, selectedResolution);
-            bitcoinChart.data.datasets[0].data = data.map(([x, y]) => ({ x, y }));
-            bitcoinChart.options.scales.x.time.unit = selectedResolution === 'hourly' ? 'hour' : 'day';
-            bitcoinChart.update();
+            if (!bitcoinChart) return;
+            try {
+                const data = await fetchHistoricalData(selectedTimeRange);
+                bitcoinChart.data.datasets[0].data = data.map(([x, y]) => ({ x, y }));
+                bitcoinChart.data.datasets[0].label = `Bitcoin Price (${selectedCurrency})`;
+                bitcoinChart.update();
+            } catch (error) {
+                 console.error('Error updating chart:', error);
+            }
         }
+
         async function analyzeBitcoinData(bitcoinData) {
-            const prompt = `Analyze the following Bitcoin data and provide a brief summary of the price trends, notable patterns, and potential factors influencing the price:\n\n${JSON.stringify(bitcoinData)}\nOnly answer with the analysis in markdown format.`;
+            const prompt = `You are a cryptocurrency analyst. Analyze the following Bitcoin data and provide a brief, insightful summary of the price trends, notable patterns, and potential factors influencing the price. Keep it concise and clear.\n\nData:\n${JSON.stringify(bitcoinData, null, 2)}\n\nProvide your analysis in markdown format.`;
             document.getElementById('analysis-spinner').classList.remove('hidden');
             document.getElementById('analysis-result').innerHTML = '';
             try {
                 const analysis = await lc.generate(prompt);
                 lastGeneratedAnalysis = analysis;
-                const renderedAnalysis = await mr.renderMarkdown(analysis);
-                document.getElementById('analysis-result').innerHTML = renderedAnalysis;
+                document.getElementById('analysis-result').innerHTML = mr.render(analysis);
                 document.getElementById('generateAudioBtn').classList.remove('hidden');
             } catch (error) {
                 console.error('Error generating analysis:', error);
-                document.getElementById('analysis-result').innerHTML = 'An error occurred while generating the analysis.';
+                document.getElementById('analysis-result').innerHTML = '<p class="text-red-500">An error occurred while generating the analysis.</p>';
             } finally {
                 document.getElementById('analysis-spinner').classList.add('hidden');
             }
         }
+
         async function generateAudio() {
+            if (!lastGeneratedAnalysis) return;
+            const spinner = document.getElementById('analysis-spinner');
+            const audioPlayer = document.getElementById('audioPlayer');
             try {
-                document.getElementById('analysis-spinner').classList.remove('hidden');
+                spinner.classList.remove('hidden');
+                audioPlayer.classList.add('hidden');
                 const response = await axios.post('/tts/file', {
                     text: lastGeneratedAnalysis,
-                    speaker: selectedVoice,
+                    speaker: selectedVoice || undefined,
                     language: 'en'
-                }, {
-                    responseType: 'blob'
-                });
+                }, { responseType: 'blob' });
                 const audioBlob = new Blob([response.data], { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-                const audioPlayer = document.getElementById('audioPlayer');
                 audioPlayer.src = audioUrl;
                 audioPlayer.classList.remove('hidden');
             } catch (error) {
                 console.error('Error generating audio:', error);
-                alert('An error occurred while generating the audio. Please try again.');
+                alert('An error occurred while generating the audio. Please check the console for details.');
+            } finally {
+                spinner.classList.add('hidden');
             }
-            document.getElementById('analysis-spinner').classList.add('hidden');
         }
+
         function checkAlerts(bitcoinData, threshold) {
-            const alerts = [];
+            const alertList = document.getElementById('alertList');
+            alertList.innerHTML = ''; // Clear previous alerts
+            if (!bitcoinData || !bitcoinData.market_data) return;
+
             const currentPrice = bitcoinData.market_data.current_price[selectedCurrency.toLowerCase()];
             if (currentPrice > threshold) {
-                alerts.push(`High price alert: ${currentPrice.toFixed(2)} ${selectedCurrency}`);
-            }
-            const alertList = document.getElementById('alertList');
-            alertList.innerHTML = '';
-            alerts.forEach(alert => {
                 const li = document.createElement('li');
-                li.textContent = alert;
+                li.textContent = `High price alert: Bitcoin is above your threshold of ${threshold} ${selectedCurrency}, currently at ${currentPrice.toFixed(2)} ${selectedCurrency}.`;
+                li.className = 'text-yellow-400';
                 alertList.appendChild(li);
-            });
+            } else {
+                 const li = document.createElement('li');
+                li.textContent = `No active alerts. Current price is ${currentPrice.toFixed(2)} ${selectedCurrency}.`;
+                alertList.appendChild(li);
+            }
         }
-        async function updateBitcoinInfo() {
-            const threshold = parseFloat(document.getElementById('alertThreshold').value);
+        
+        // FIX: This function now only updates the current price info and alerts.
+        // The expensive chart update is handled separately.
+        async function updateCurrentBitcoinInfo() {
             try {
                 const bitcoinData = await fetchBitcoinData();
-                currentBitcoinData = bitcoinData;
+                currentBitcoinData = bitcoinData; // Store for AI analysis
                 updateBitcoinPrice(bitcoinData);
-                await updateBitcoinChart();
+                const threshold = parseFloat(document.getElementById('alertThreshold').value);
                 checkAlerts(bitcoinData, threshold);
             } catch (error) {
                 console.error('Error updating Bitcoin information:', error);
-                alert('An error occurred while fetching Bitcoin data. Please try again.');
+                document.getElementById('current-price').textContent = 'Error loading price';
             }
         }
+
         function updateBitcoinPrice(bitcoinData) {
-            const currentPrice = bitcoinData.market_data.current_price[selectedCurrency.toLowerCase()];
+            const currency = selectedCurrency.toLowerCase();
+            const currentPrice = bitcoinData.market_data.current_price[currency];
             const priceChange = bitcoinData.market_data.price_change_percentage_24h;
-            document.getElementById('current-price').textContent = `${currentPrice.toFixed(2)} ${selectedCurrency}`;
-            document.getElementById('price-change').textContent = `24h Change: ${priceChange.toFixed(2)}%`;
-            document.getElementById('price-change').classList.add(priceChange >= 0 ? 'text-green-500' : 'text-red-500');
+            
+            document.getElementById('current-price').textContent = `${new Intl.NumberFormat(undefined, { style: 'currency', currency: selectedCurrency }).format(currentPrice)}`;
+            const priceChangeEl = document.getElementById('price-change');
+            priceChangeEl.textContent = `24h Change: ${priceChange.toFixed(2)}%`;
+            priceChangeEl.classList.toggle('text-green-500', priceChange >= 0);
+            priceChangeEl.classList.toggle('text-red-500', priceChange < 0);
         }
+
         async function getAvailableVoices() {
             try {
                 const response = await axios.get('/tts/voices');
-                return response.data.voices;
+                return response.data.voices || [];
             } catch (error) {
                 console.error('Error fetching available voices:', error);
                 return [];
             }
         }
+
         async function populateVoiceSelect() {
             const voiceSelect = document.getElementById('voiceSelect');
+            voiceSelect.innerHTML = ''; // Clear existing options
             const voices = await getAvailableVoices();
-            voices.forEach(voice => {
+            if (voices.length === 0) {
+                voiceSelect.disabled = true;
                 const option = document.createElement('option');
-                option.value = voice;
-                option.textContent = voice;
+                option.textContent = 'No voices available';
                 voiceSelect.appendChild(option);
-            });
-        }
-        function applyTheme(theme) {
-            const body = document.body;
-            const elements = document.querySelectorAll('.neon-text, .neon-box');
-            if (theme === 'neon') {
-                body.classList.add('neon-theme');
-                elements.forEach(el => {
-                    el.classList.add('neon-glow');
-                });
             } else {
-                body.classList.remove('neon-theme');
-                elements.forEach(el => {
-                    el.classList.remove('neon-glow');
+                voiceSelect.disabled = false;
+                voices.forEach(voice => {
+                    const option = document.createElement('option');
+                    option.value = voice;
+                    option.textContent = voice.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                    voiceSelect.appendChild(option);
                 });
+                selectedVoice = voiceSelect.value;
             }
         }
+
+        // FIX: Correctly implemented theme switcher function.
+        function applyTheme(theme) {
+            const elements = document.querySelectorAll('.neon-text, .neon-box');
+            elements.forEach(el => {
+                el.classList.toggle('neon-glow', theme === 'neon');
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             initBitcoinChart();
             populateVoiceSelect();
+
             document.getElementById('settingsForm').addEventListener('submit', (e) => {
                 e.preventDefault();
                 selectedCurrency = document.getElementById('currency').value;
                 selectedVoice = document.getElementById('voiceSelect').value;
                 const selectedTheme = document.getElementById('themeSelect').value;
                 applyTheme(selectedTheme);
-                updateBitcoinInfo();
+                // Update everything after settings change
+                updateCurrentBitcoinInfo();
+                if(isChartInitialized) {
+                    updateBitcoinChart();
+                }
                 document.getElementById('settingsOverlay').classList.add('hidden');
             });
+
             document.getElementById('settingsBtn').addEventListener('click', () => {
                 document.getElementById('settingsOverlay').classList.remove('hidden');
             });
+
             document.getElementById('closeSettingsBtn').addEventListener('click', () => {
                 document.getElementById('settingsOverlay').classList.add('hidden');
             });
-            document.getElementById('aiAnalysisTab').addEventListener('click', () => {
-                document.getElementById('aiAnalysisContent').classList.remove('hidden');
-                document.getElementById('graphContent').classList.add('hidden');
-                document.getElementById('aiAnalysisTab').classList.add('bg-purple-600');
-                document.getElementById('aiAnalysisTab').classList.remove('bg-gray-600');
-                document.getElementById('graphTab').classList.add('bg-gray-600');
-                document.getElementById('graphTab').classList.remove('bg-purple-600');
+            
+            const aiTab = document.getElementById('aiAnalysisTab');
+            const graphTab = document.getElementById('graphTab');
+            const aiContent = document.getElementById('aiAnalysisContent');
+            const graphContent = document.getElementById('graphContent');
+
+            aiTab.addEventListener('click', () => {
+                aiContent.classList.remove('hidden');
+                graphContent.classList.add('hidden');
+                aiTab.classList.replace('bg-gray-600', 'bg-purple-600');
+                graphTab.classList.replace('bg-purple-600', 'bg-gray-600');
             });
-            document.getElementById('graphTab').addEventListener('click', () => {
-                document.getElementById('aiAnalysisContent').classList.add('hidden');
-                document.getElementById('graphContent').classList.remove('hidden');
-                document.getElementById('aiAnalysisTab').classList.remove('bg-purple-600');
-                document.getElementById('aiAnalysisTab').classList.add('bg-gray-600');
-                document.getElementById('graphTab').classList.remove('bg-gray-600');
-                document.getElementById('graphTab').classList.add('bg-purple-600');
+
+            graphTab.addEventListener('click', () => {
+                aiContent.classList.add('hidden');
+                graphContent.classList.remove('hidden');
+                aiTab.classList.replace('bg-purple-600', 'bg-gray-600');
+                graphTab.classList.replace('bg-gray-600', 'bg-purple-600');
+
+                // FIX: Lazy-load chart data only on the first click
+                if (!isChartInitialized) {
+                    updateBitcoinChart();
+                    isChartInitialized = true;
+                }
             });
+
             document.getElementById('generateAnalysisBtn').addEventListener('click', () => {
                 if (currentBitcoinData) {
                     analyzeBitcoinData(currentBitcoinData);
+                } else {
+                    alert('Bitcoin data not loaded yet. Please wait a moment.');
                 }
             });
+
             document.getElementById('generateAudioBtn').addEventListener('click', generateAudio);
+
             document.getElementById('timeRange').addEventListener('change', (e) => {
                 selectedTimeRange = e.target.value;
-                updateBitcoinChart();
+                updateBitcoinChart(); // Only called on user action, not on a timer.
             });
-            document.getElementById('resolution').addEventListener('change', (e) => {
-                selectedResolution = e.target.value;
-                updateBitcoinChart();
-            });
-            updateBitcoinInfo();
-            setInterval(updateBitcoinInfo, 60000);
-            const defaultTheme = document.getElementById('themeSelect').value;
-            applyTheme(defaultTheme);
+
+            // Initial setup
+            const initialTheme = document.getElementById('themeSelect').value;
+            applyTheme(initialTheme);
+            updateCurrentBitcoinInfo();
+            setInterval(updateCurrentBitcoinInfo, 60000); // Efficiently updates every 60 seconds.
         });
     </script>
-    </body>
-    </html>
-    
+</body>
+</html>
