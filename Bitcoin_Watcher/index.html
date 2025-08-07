@@ -8,11 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <!-- FIX: Added marked.js for markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <!-- Other assets for styling -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/styles/default.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.5.1/highlight.min.js"></script>
 
     <style>
         body {
@@ -91,29 +87,28 @@
                         </div>
                         <div class="neon-box p-4 rounded shadow">
                             <div class="flex">
-                                <button id="aiAnalysisTab" class="px-4 py-2 bg-purple-600 text-white rounded-t-lg">AI Analysis</button>
-                                <button id="graphTab" class="px-4 py-2 bg-gray-600 text-white rounded-t-lg ml-2">Graph</button>
+                                <button id="graphTab" class="px-4 py-2 bg-purple-600 text-white rounded-t-lg">Graph</button>
+                                <button id="aiAnalysisTab" class="px-4 py-2 bg-gray-600 text-white rounded-t-lg ml-2">Analysis</button>
                             </div>
-                            <div id="aiAnalysisContent" class="mt-2">
-                                <h3 class="text-xl font-semibold mb-2 neon-text">AI Bitcoin Analysis</h3>
+                            <div id="aiAnalysisContent" class="mt-2 hidden">
+                                <h3 class="text-xl font-semibold mb-2 neon-text">Mock AI Analysis</h3>
                                 <button id="generateAnalysisBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                                     <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                                     </svg>
                                     Generate Analysis
                                 </button>
-                                <!-- FIX: Removed Audio Generation button -->
                                 <div id="analysis-spinner" class="spinner hidden mt-4"></div>
                                 <div id="analysis-result"></div>
-                                <!-- FIX: Removed audio player -->
                             </div>
-                            <div id="graphContent" class="mt-2 hidden">
-                                <h3 class="text-xl font-semibold mb-2 neon-text">Bitcoin Price Graph</h3>
+                            <!-- FIX: The graph content is now the default visible tab -->
+                            <div id="graphContent" class="mt-2">
+                                <h3 class="text-xl font-semibold mb-2 neon-text">Interactive Bitcoin Price Chart</h3>
                                 <div class="mb-4">
                                     <label for="timeRange" class="block text-sm font-medium text-gray-300">Time Range:</label>
                                     <select id="timeRange" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
                                         <option value="7d">7 Days</option>
-                                        <option value="30d">30 Days</option>
+                                        <option value="30d" selected>30 Days</option>
                                         <option value="90d">90 Days</option>
                                         <option value="1y">1 Year</option>
                                     </select>
@@ -130,6 +125,7 @@
             </div>
         </main>
     </div>
+    <!-- FIX: The 'hidden' class is crucial to ensure the modal is not visible on startup -->
     <div id="settingsOverlay" class="settings-overlay hidden">
         <div class="settings-content">
             <h2 class="text-2xl font-semibold mb-2 neon-text">Settings</h2>
@@ -146,7 +142,6 @@
                     <label for="alertThreshold" class="block text-sm font-medium text-gray-300">Alert Price Threshold</label>
                     <input type="number" id="alertThreshold" name="alertThreshold" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white" value="50000">
                 </div>
-                <!-- FIX: Removed Voice Selection setting -->
                 <div>
                     <label for="themeSelect" class="block text-sm font-medium text-gray-300">Theme Selection</label>
                     <select id="themeSelect" name="themeSelect" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
@@ -155,16 +150,16 @@
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700">Update Settings</button>
+                <!-- FIX: Ensure this button has type="button" to prevent form submission -->
                 <button type="button" id="closeSettingsBtn" class="w-full bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 mt-2">Close</button>
             </form>
         </div>
     </div>
     <script>
-        // FIX: Removed LollmsClient and MarkdownRenderer initializations
         let bitcoinChart;
         let currentBitcoinData;
         let selectedCurrency = 'USD';
-        let selectedTimeRange = '7d';
+        let selectedTimeRange = '30d'; // Default to 30 days
         let isChartInitialized = false;
 
         async function fetchBitcoinData() {
@@ -175,14 +170,15 @@
                 return await response.json();
             } catch (error) {
                 console.error('Error fetching current data from CoinGecko:', error);
+                document.getElementById('current-price').textContent = 'Error loading price';
                 throw error;
             }
         }
 
         async function fetchHistoricalData(timeRange) {
-            const endDate = new Date();
-            const startDate = new Date(endDate - timeRangeToMilliseconds(timeRange));
-            const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart/range?vs_currency=${selectedCurrency.toLowerCase()}&from=${Math.floor(startDate.getTime() / 1000)}&to=${Math.floor(endDate.getTime() / 1000)}`;
+            const daysMap = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
+            const days = daysMap[timeRange] || 30;
+            const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=${selectedCurrency.toLowerCase()}&days=${days}&interval=daily`;
             try {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
@@ -192,16 +188,6 @@
                 console.error('Error fetching historical data from CoinGecko:', error);
                 throw error;
             }
-        }
-
-        function timeRangeToMilliseconds(range) {
-            const map = {
-                '7d': 7 * 24 * 60 * 60 * 1000,
-                '30d': 30 * 24 * 60 * 60 * 1000,
-                '90d': 90 * 24 * 60 * 60 * 1000,
-                '1y': 365 * 24 * 60 * 60 * 1000
-            };
-            return map[range] || map['7d'];
         }
 
         function initBitcoinChart() {
@@ -240,7 +226,6 @@
             }
         }
 
-        // FIX: Replaced AI generation with a mock analysis function using marked.js
         async function analyzeBitcoinData(bitcoinData) {
             const spinner = document.getElementById('analysis-spinner');
             const resultDiv = document.getElementById('analysis-result');
@@ -248,17 +233,12 @@
             spinner.classList.remove('hidden');
             resultDiv.innerHTML = '';
             
-            // Simulate network delay for a more realistic feel
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const currency = selectedCurrency.toLowerCase();
             const currentPrice = bitcoinData.market_data.current_price[currency];
             const priceChange24h = bitcoinData.market_data.price_change_percentage_24h;
-            const sparkline = bitcoinData.market_data.sparkline_7d.price;
-            const week_low = Math.min(...sparkline);
-            const week_high = Math.max(...sparkline);
 
-            // Create a mock analysis string using template literals
             const mockAnalysis = `
 ### Mock AI Analysis
 
@@ -266,15 +246,13 @@ Based on the latest data, here is a summary of Bitcoin's performance:
 
 *   **Current Price:** **${new Intl.NumberFormat(undefined, { style: 'currency', currency: selectedCurrency }).format(currentPrice)}**
 *   **24-Hour Change:** The price has changed by **${priceChange24h.toFixed(2)}%** in the last 24 hours.
-*   **7-Day Trend:** The price has fluctuated between a low of ~${Math.round(week_low).toLocaleString()} and a high of ~${Math.round(week_high).toLocaleString()} ${selectedCurrency} over the past week.
 
 **Outlook:**
-The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight downturn'}. Watch for key resistance and support levels around the 7-day high and low points.
+The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight downturn'}. 
 
-*(Note: This is a simulated analysis. The original AI backend has been removed.)*
+*(Note: This is a simulated analysis.)*
             `;
             
-            // Use marked.parse to render the markdown string to HTML
             resultDiv.innerHTML = marked.parse(mockAnalysis);
             spinner.classList.add('hidden');
         }
@@ -305,8 +283,7 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 const threshold = parseFloat(document.getElementById('alertThreshold').value);
                 checkAlerts(bitcoinData, threshold);
             } catch (error) {
-                console.error('Error updating Bitcoin information:', error);
-                document.getElementById('current-price').textContent = 'Error loading price';
+                // Error is logged in fetchBitcoinData
             }
         }
 
@@ -330,7 +307,10 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const settingsOverlay = document.getElementById('settingsOverlay');
+
             initBitcoinChart();
+            updateBitcoinChart(); // Load the chart with default values on startup
 
             document.getElementById('settingsForm').addEventListener('submit', (e) => {
                 e.preventDefault();
@@ -338,18 +318,17 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 const selectedTheme = document.getElementById('themeSelect').value;
                 applyTheme(selectedTheme);
                 updateCurrentBitcoinInfo();
-                if(isChartInitialized) {
-                    updateBitcoinChart();
-                }
-                document.getElementById('settingsOverlay').classList.add('hidden');
+                updateBitcoinChart();
+                settingsOverlay.classList.add('hidden'); // Hide after submitting
             });
 
             document.getElementById('settingsBtn').addEventListener('click', () => {
-                document.getElementById('settingsOverlay').classList.remove('hidden');
+                settingsOverlay.classList.remove('hidden');
             });
 
+            // FIX: This event listener now correctly closes the modal
             document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-                document.getElementById('settingsOverlay').classList.add('hidden');
+                settingsOverlay.classList.add('hidden');
             });
             
             const aiTab = document.getElementById('aiAnalysisTab');
@@ -369,10 +348,6 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
                 graphContent.classList.remove('hidden');
                 aiTab.classList.replace('bg-purple-600', 'bg-gray-600');
                 graphTab.classList.replace('bg-gray-600', 'bg-purple-600');
-                if (!isChartInitialized) {
-                    updateBitcoinChart();
-                    isChartInitialized = true;
-                }
             });
 
             document.getElementById('generateAnalysisBtn').addEventListener('click', () => {
@@ -389,8 +364,7 @@ The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight 
             });
 
             // Initial setup
-            const initialTheme = document.getElementById('themeSelect').value;
-            applyTheme(initialTheme);
+            applyTheme(document.getElementById('themeSelect').value);
             updateCurrentBitcoinInfo();
             setInterval(updateCurrentBitcoinInfo, 60000);
         });
