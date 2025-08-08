@@ -3,376 +3,582 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin Watcher</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <title>Bitcoin AI Analyzer</title>
+    
+    <!-- Dependencies from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
+        /* --- General Styling --- */
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #f7931a; /* Bitcoin Orange */
+            --text-color: #e0e0e0;
+            --text-secondary-color: #a0a0a0;
+            --green: #26a69a;
+            --red: #ef5350;
+            --border-color: #333;
+        }
+
         body {
-            background-color: #1a1a1a;
-            color: #e0e0e0;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
         }
-        .neon-text {
-            font-size: large;
-            transition: text-shadow 0.3s ease-in-out;
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
         }
-        .neon-box {
-            background-color: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            transition: box-shadow 0.3s ease-in-out;
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
         }
-        .neon-glow {
-            box-shadow: 0 0 2px #fff, 0 0 3px #fff, 0 0 5px #ff00de, 0 0 7px #ff00de, 0 0 10px #ff00de;
+
+        header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.8em;
         }
-        .neon-text.neon-glow {
-            text-shadow: 0 0 2px #e0e0e0, 0 0 5px #ff00de;
+
+        /* --- Main Content Layout --- */
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
         }
-        .settings-overlay {
+
+        /* --- Cards --- */
+        .card {
+            background-color: var(--surface-color);
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .info-card h2 {
+            margin-top: 0;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+        
+        .info-item .label {
+            color: var(--text-secondary-color);
+        }
+
+        .info-item .value {
+            font-weight: bold;
+        }
+
+        #current-price {
+            font-size: 2em;
+            color: var(--primary-color);
+        }
+
+        .positive { color: var(--green); }
+        .negative { color: var(--red); }
+
+        /* --- Chart --- */
+        .chart-container {
+            position: relative;
+            height: 40vh;
+            min-height: 300px;
+        }
+
+        /* --- AI Analysis Section --- */
+        .ai-analysis {
+            grid-column: 1 / -1; /* Span both columns */
+            margin-top: 20px;
+        }
+
+        #ai-result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: rgba(0,0,0,0.2);
+            border-radius: 5px;
+            min-height: 100px;
+            line-height: 1.6;
+            white-space: pre-wrap; /* Preserve whitespace but wrap text */
+        }
+        
+        #ai-result h3, #ai-result h4 {
+            color: var(--primary-color);
+        }
+        #ai-result ul {
+            padding-left: 20px;
+        }
+
+        /* --- Buttons --- */
+        .btn {
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: #d87e0a;
+        }
+        
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        #settings-btn {
+            background: none;
+            border: 1px solid var(--text-secondary-color);
+            color: var(--text-secondary-color);
+        }
+        #settings-btn:hover {
+            background-color: var(--surface-color);
+            color: var(--text-color);
+        }
+        
+        /* --- Loader --- */
+        .loader {
+            border: 4px solid var(--surface-color);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        .hidden { display: none !important; }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* --- Modal --- */
+        .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+            background-color: rgba(0, 0, 0, 0.7);
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 1000;
         }
-        .settings-content {
-            background-color: #2a2a2a;
-            padding: 2rem;
-            border-radius: 10px;
-            max-width: 500px;
+
+        .modal-content {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 8px;
             width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top: 4px solid #fff;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+        
+        .modal-content h2 {
+            margin-top: 0;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary-color);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        
+        .modal-actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .modal-actions .btn {
+            margin-left: 10px;
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            header h1 {
+                font-size: 1.5em;
+            }
+            .main-content {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200">
-    <div class="container mx-auto p-4">
-        <header class="mb-4 flex justify-between items-center">
-            <h1 class="text-3xl font-bold neon-text">Bitcoin Watcher</h1>
-            <button id="settingsBtn" class="p-2 bg-gray-800 rounded-full">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            </button>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Bitcoin AI Analyzer</h1>
+            <button id="settings-btn" class="btn">Settings</button>
         </header>
-        <main>
-            <div class="gap-4">
-                <section class="p-4 w-full">
-                    <h2 class="text-2xl font-semibold mb-2 neon-text">Dashboard</h2>
-                    <div id="dashboard" class="space-y-4">
-                        <div id="bitcoin-price" class="neon-box p-4 rounded shadow">
-                            <h3 class="text-xl font-semibold mb-2 neon-text">Current Bitcoin Price</h3>
-                            <p id="current-price" class="text-center text-4xl mb-2 neon-text"></p>
-                            <p id="price-change"></p>
-                        </div>
-                        <div class="neon-box p-4 rounded shadow">
-                            <div class="flex">
-                                <button id="graphTab" class="px-4 py-2 bg-purple-600 text-white rounded-t-lg">Graph</button>
-                                <button id="aiAnalysisTab" class="px-4 py-2 bg-gray-600 text-white rounded-t-lg ml-2">Analysis</button>
-                            </div>
-                            <div id="aiAnalysisContent" class="mt-2 hidden">
-                                <h3 class="text-xl font-semibold mb-2 neon-text">Mock AI Analysis</h3>
-                                <button id="generateAnalysisBtn" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                    <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                                    </svg>
-                                    Generate Analysis
-                                </button>
-                                <div id="analysis-spinner" class="spinner hidden mt-4"></div>
-                                <div id="analysis-result"></div>
-                            </div>
-                            <div id="graphContent" class="mt-2">
-                                <h3 class="text-xl font-semibold mb-2 neon-text">Interactive Bitcoin Price Chart</h3>
-                                <div class="mb-4">
-                                    <label for="timeRange" class="block text-sm font-medium text-gray-300">Time Range:</label>
-                                    <select id="timeRange" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-                                        <option value="7d">7 Days</option>
-                                        <option value="30d" selected>30 Days</option>
-                                        <option value="90d">90 Days</option>
-                                        <option value="1y">1 Year</option>
-                                    </select>
-                                </div>
-                                <canvas id="bitcoinChart"></canvas>
-                            </div>
-                        </div>
-                        <div id="alerts" class="neon-box p-4 rounded shadow">
-                            <h3 class="text-xl font-semibold mb-2 neon-text">Alerts and Notifications</h3>
-                            <ul id="alertList" class="list-disc pl-5"></ul>
-                        </div>
-                    </div>
-                </section>
+
+        <main class="main-content">
+            <div class="card info-card">
+                <h2>Live Data</h2>
+                <div class="info-item">
+                    <span class="label">Price (USD)</span>
+                    <span class="value" id="current-price">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">24h Change</span>
+                    <span class="value" id="price-change-24h">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">24h High</span>
+                    <span class="value" id="high-24h">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">24h Low</span>
+                    <span class="value" id="low-24h">Loading...</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Market Cap</span>
+                    <span class="value" id="market-cap">Loading...</span>
+                </div>
+            </div>
+
+            <div class="card chart-card">
+                <div class="chart-container">
+                    <canvas id="btcChart"></canvas>
+                </div>
+            </div>
+
+            <div class="card ai-analysis">
+                <h2>Lollms AI Analysis</h2>
+                <p>Get an AI-powered analysis of the current market situation based on recent price data.</p>
+                <button id="get-analysis-btn" class="btn">
+                    Get AI Analysis
+                    <div id="ai-loader" class="loader hidden"></div>
+                </button>
+                <div id="ai-result">Click the button above to generate an analysis...</div>
             </div>
         </main>
     </div>
-    <div id="settingsOverlay" class="settings-overlay hidden">
-        <div class="settings-content">
-            <h2 class="text-2xl font-semibold mb-2 neon-text">Settings</h2>
-            <form id="settingsForm" class="space-y-4">
-                <div>
-                    <label for="currency" class="block text-sm font-medium text-gray-300">Currency</label>
-                    <select id="currency" name="currency" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-                        <option value="USD">USD</option>
-                        <option value="EUR">EUR</option>
-                        <option value="GBP">GBP</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="alertThreshold" class="block text-sm font-medium text-gray-300">Alert Price Threshold</label>
-                    <input type="number" id="alertThreshold" name="alertThreshold" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white" value="50000">
-                </div>
-                <div>
-                    <label for="themeSelect" class="block text-sm font-medium text-gray-300">Theme Selection</label>
-                    <select id="themeSelect" name="themeSelect" class="mt-1 block w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-white">
-                        <option value="default">Default</option>
-                        <option value="neon" selected>Neon</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full bg-purple-600 text-white p-2 rounded-md hover:bg-purple-700">Update Settings</button>
-                <button type="button" id="closeSettingsBtn" class="w-full bg-gray-600 text-white p-2 rounded-md hover:bg-gray-700 mt-2">Close</button>
-            </form>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>Lollms Settings</h2>
+            <div class="form-group">
+                <label for="lollms-url">Lollms Server URL</label>
+                <input type="text" id="lollms-url" placeholder="http://localhost:9642">
+            </div>
+            <div class="form-group">
+                <label for="lollms-key">API Key (optional)</label>
+                <input type="password" id="lollms-key" placeholder="Enter your key if required">
+            </div>
+            <div class="modal-actions">
+                <button id="close-modal-btn" class="btn" style="background: #555;">Close</button>
+                <button id="save-settings-btn" class="btn">Save</button>
+            </div>
         </div>
     </div>
+
+
     <script>
-        let bitcoinChart;
-        let currentBitcoinData;
-        let selectedCurrency = 'USD';
-        let selectedTimeRange = '30d';
-
-        async function fetchBitcoinData() {
-            const url = `https://api.coingecko.com/api/v3/coins/bitcoin?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=true`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-                return await response.json();
-            } catch (error) {
-                console.error('Error fetching current data from CoinGecko:', error);
-                document.getElementById('current-price').textContent = 'Error loading price';
-                throw error;
-            }
-        }
-
-        async function fetchHistoricalData(timeRange) {
-            const daysMap = { '7d': 7, '30d': 30, '90d': 90, '1y': 365 };
-            const days = daysMap[timeRange] || 30;
-            const url = `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=${selectedCurrency.toLowerCase()}&days=${days}&interval=daily`;
-            try {
-                const response = await fetch(url);
-                if (!response.ok) throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
-                const data = await response.json();
-                return data.prices;
-            } catch (error) {
-                console.error('Error fetching historical data from CoinGecko:', error);
-                throw error;
-            }
-        }
-
-        function initBitcoinChart() {
-            const ctx = document.getElementById('bitcoinChart').getContext('2d');
-            bitcoinChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    datasets: [{
-                        label: `Bitcoin Price (${selectedCurrency})`,
-                        data: [],
-                        borderColor: '#ff00de',
-                        backgroundColor: 'rgba(255, 0, 222, 0.1)',
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    scales: {
-                        x: { type: 'time', title: { display: true, text: 'Date' } },
-                        y: { title: { display: true, text: 'Price' } }
-                    }
-                }
-            });
-        }
-
-        async function updateBitcoinChart() {
-            if (!bitcoinChart) return;
-            try {
-                const data = await fetchHistoricalData(selectedTimeRange);
-                bitcoinChart.data.datasets[0].data = data.map(([x, y]) => ({ x, y }));
-                bitcoinChart.data.datasets[0].label = `Bitcoin Price (${selectedCurrency})`;
-                bitcoinChart.update();
-            } catch (error) {
-                 console.error('Error updating chart:', error);
-            }
-        }
-
-        async function analyzeBitcoinData(bitcoinData) {
-            const spinner = document.getElementById('analysis-spinner');
-            const resultDiv = document.getElementById('analysis-result');
-            
-            spinner.classList.remove('hidden');
-            resultDiv.innerHTML = '';
-            
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            const currency = selectedCurrency.toLowerCase();
-            const currentPrice = bitcoinData.market_data.current_price[currency];
-            const priceChange24h = bitcoinData.market_data.price_change_percentage_24h;
-
-            const mockAnalysis = `
-### Mock AI Analysis
-
-Based on the latest data, here is a summary of Bitcoin's performance:
-
-*   **Current Price:** **${new Intl.NumberFormat(undefined, { style: 'currency', currency: selectedCurrency }).format(currentPrice)}**
-*   **24-Hour Change:** The price has changed by **${priceChange24h.toFixed(2)}%** in the last 24 hours.
-
-**Outlook:**
-The current trend shows ${priceChange24h >= 0 ? 'positive momentum' : 'a slight downturn'}. 
-
-*(Note: This is a simulated analysis.)*
-            `;
-            
-            resultDiv.innerHTML = marked.parse(mockAnalysis);
-            spinner.classList.add('hidden');
-        }
-        
-        function checkAlerts(bitcoinData, threshold) {
-            const alertList = document.getElementById('alertList');
-            alertList.innerHTML = ''; 
-            if (!bitcoinData || !bitcoinData.market_data) return;
-
-            const currentPrice = bitcoinData.market_data.current_price[selectedCurrency.toLowerCase()];
-            if (currentPrice > threshold) {
-                const li = document.createElement('li');
-                li.textContent = `High price alert: Bitcoin is above your threshold of ${threshold.toLocaleString()} ${selectedCurrency}, currently at ${currentPrice.toFixed(2)} ${selectedCurrency}.`;
-                li.className = 'text-yellow-400';
-                alertList.appendChild(li);
-            } else {
-                 const li = document.createElement('li');
-                li.textContent = `No active alerts. Current price is ${currentPrice.toFixed(2)} ${selectedCurrency}.`;
-                alertList.appendChild(li);
-            }
-        }
-        
-        async function updateCurrentBitcoinInfo() {
-            try {
-                const bitcoinData = await fetchBitcoinData();
-                currentBitcoinData = bitcoinData;
-                updateBitcoinPrice(bitcoinData);
-                const threshold = parseFloat(document.getElementById('alertThreshold').value);
-                checkAlerts(bitcoinData, threshold);
-            } catch (error) { /* Error is logged in fetchBitcoinData */ }
-        }
-
-        function updateBitcoinPrice(bitcoinData) {
-            const currency = selectedCurrency.toLowerCase();
-            const currentPrice = bitcoinData.market_data.current_price[currency];
-            const priceChange = bitcoinData.market_data.price_change_percentage_24h;
-            
-            document.getElementById('current-price').textContent = `${new Intl.NumberFormat(undefined, { style: 'currency', currency: selectedCurrency }).format(currentPrice)}`;
-            const priceChangeEl = document.getElementById('price-change');
-            priceChangeEl.textContent = `24h Change: ${priceChange.toFixed(2)}%`;
-            priceChangeEl.classList.toggle('text-green-500', priceChange >= 0);
-            priceChangeEl.classList.toggle('text-red-500', priceChange < 0);
-        }
-
-        function applyTheme(theme) {
-            const elements = document.querySelectorAll('.neon-text, .neon-box');
-            elements.forEach(el => {
-                el.classList.toggle('neon-glow', theme === 'neon');
-            });
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
-            // --- DOM Element Variables ---
-            const settingsOverlay = document.getElementById('settingsOverlay');
-            const settingsBtn = document.getElementById('settingsBtn');
-            const closeSettingsBtn = document.getElementById('closeSettingsBtn');
-            const settingsForm = document.getElementById('settingsForm');
-            const aiTab = document.getElementById('aiAnalysisTab');
-            const graphTab = document.getElementById('graphTab');
-            const aiContent = document.getElementById('aiAnalysisContent');
-            const graphContent = document.getElementById('graphContent');
+            // --- DOM Elements ---
+            const currentPriceEl = document.getElementById('current-price');
+            const priceChange24hEl = document.getElementById('price-change-24h');
+            const high24hEl = document.getElementById('high-24h');
+            const low24hEl = document.getElementById('low-24h');
+            const marketCapEl = document.getElementById('market-cap');
+            const getAnalysisBtn = document.getElementById('get-analysis-btn');
+            const aiResultEl = document.getElementById('ai-result');
+            const aiLoaderEl = document.getElementById('ai-loader');
+            const chartCanvas = document.getElementById('btcChart');
 
-            // --- Modal Handling ---
-            settingsBtn.addEventListener('click', () => {
-                settingsOverlay.classList.remove('hidden');
-            });
+            // --- Settings Modal Elements ---
+            const settingsBtn = document.getElementById('settings-btn');
+            const settingsModal = document.getElementById('settings-modal');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const saveSettingsBtn = document.getElementById('save-settings-btn');
+            const lollmsUrlInput = document.getElementById('lollms-url');
+            const lollmsKeyInput = document.getElementById('lollms-key');
 
-            // FIX: This now correctly handles the close button click
-            closeSettingsBtn.addEventListener('click', () => {
-                settingsOverlay.classList.add('hidden');
-            });
+            // --- State ---
+            let chart;
+            let btcData = null; // To store fetched Bitcoin data
+            let settings = {
+                lollmsUrl: 'http://localhost:9642',
+                apiKey: ''
+            };
 
-            // FIX: This adds "click outside to close" functionality
-            settingsOverlay.addEventListener('click', (event) => {
-                // If the click is on the overlay itself (the background) and not the content inside
-                if (event.target === settingsOverlay) {
-                    settingsOverlay.classList.add('hidden');
+            // --- Functions ---
+
+            // Format numbers for display
+            const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+            const formatLargeNumber = (num) => {
+                if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
+                if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
+                if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
+                return num.toLocaleString();
+            }
+
+            // Load settings from localStorage
+            const loadSettings = () => {
+                const savedSettings = JSON.parse(localStorage.getItem('btcAnalyzerSettings'));
+                if (savedSettings) {
+                    settings = savedSettings;
+                }
+                lollmsUrlInput.value = settings.lollmsUrl;
+                lollmsKeyInput.value = settings.apiKey;
+            };
+
+            // Save settings to localStorage
+            const saveSettings = () => {
+                settings.lollmsUrl = lollmsUrlInput.value.trim() || 'http://localhost:9642';
+                settings.apiKey = lollmsKeyInput.value.trim();
+                localStorage.setItem('btcAnalyzerSettings', JSON.stringify(settings));
+                toggleModal(false);
+                alert('Settings saved!');
+            };
+
+            // Show/hide the settings modal
+            const toggleModal = (show) => {
+                settingsModal.classList.toggle('hidden', !show);
+            };
+            
+            // Fetch Bitcoin data from CoinGecko
+            const fetchBitcoinData = async () => {
+                try {
+                    // Fetch both current market data and 90-day historical data in one go
+                    const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
+                    if (!marketResponse.ok) throw new Error('Failed to fetch market data');
+                    const marketData = await marketResponse.json();
+
+                    const historyResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily');
+                    if (!historyResponse.ok) throw new Error('Failed to fetch historical data');
+                    const historyData = await historyResponse.json();
+
+                    btcData = {
+                        market: marketData[0],
+                        history: historyData.prices
+                    };
+
+                    updateUI();
+                    renderChart();
+
+                } catch (error) {
+                    console.error("Error fetching Bitcoin data:", error);
+                    currentPriceEl.textContent = 'Error';
+                    // Show error in other fields too
+                    [priceChange24hEl, high24hEl, low24hEl, marketCapEl].forEach(el => el.textContent = 'Error');
+                }
+            };
+
+            // Update the UI with fetched data
+            const updateUI = () => {
+                if (!btcData) return;
+
+                const data = btcData.market;
+                currentPriceEl.textContent = formatCurrency(data.current_price);
+                
+                const change = data.price_change_percentage_24h;
+                priceChange24hEl.textContent = `${change.toFixed(2)}%`;
+                priceChange24hEl.className = `value ${change >= 0 ? 'positive' : 'negative'}`;
+
+                high24hEl.textContent = formatCurrency(data.high_24h);
+                low24hEl.textContent = formatCurrency(data.low_24h);
+                marketCapEl.textContent = `$${formatLargeNumber(data.market_cap)}`;
+            };
+            
+            // Render the price chart
+            const renderChart = () => {
+                if (!btcData || !chartCanvas) return;
+                
+                const labels = btcData.history.map(item => new Date(item[0]).toLocaleDateString());
+                const dataPoints = btcData.history.map(item => item[1]);
+
+                if (chart) {
+                    chart.destroy();
+                }
+
+                const ctx = chartCanvas.getContext('2d');
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Bitcoin Price (USD)',
+                            data: dataPoints,
+                            borderColor: 'rgba(247, 147, 26, 1)',
+                            backgroundColor: 'rgba(247, 147, 26, 0.2)',
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                ticks: {
+                                    color: 'var(--text-secondary-color)',
+                                    callback: function(value, index, values) {
+                                        return formatCurrency(value);
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'var(--text-secondary-color)',
+                                    maxTicksLimit: 10
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+            };
+            
+            // Get analysis from Lollms
+            const getAIAnalysis = async () => {
+                if (!btcData) {
+                    aiResultEl.textContent = 'Please wait for Bitcoin data to load before getting an analysis.';
+                    return;
+                }
+
+                getAnalysisBtn.disabled = true;
+                aiLoaderEl.classList.remove('hidden');
+                aiResultEl.innerHTML = 'Thinking... The AI is analyzing the data.';
+
+                // Prepare the data for the prompt
+                const last7days = btcData.history.slice(-7);
+                const recentPrices = last7days.map(d => 
+                    `On ${new Date(d[0]).toLocaleDateString()}, the price was ${formatCurrency(d[1])}`
+                ).join('\n');
+
+                const promptData = `
+Current Bitcoin Price: ${formatCurrency(btcData.market.current_price)}
+24-hour Price Change: ${btcData.market.price_change_percentage_24h.toFixed(2)}%
+24-hour High: ${formatCurrency(btcData.market.high_24h)}
+24-hour Low: ${formatCurrency(btcData.market.low_24h)}
+Market Cap: $${formatLargeNumber(btcData.market.market_cap)}
+
+Recent 7-day closing prices:
+${recentPrices}
+
+The full dataset spans the last 90 days.
+                `;
+
+                const systemPrompt = "You are a crypto market analyst. Your goal is to provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Instead, focus on describing the current market sentiment, identifying potential short-term support and resistance levels based *only* on the data provided, and highlighting any notable patterns (e.g., volatility, trends). Format your response using Markdown.";
+                
+                try {
+                    const response = await fetch(`${settings.lollmsUrl}/v1/chat/completions`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${settings.apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: 'lollms', // model name can often be generic for local LLMs
+                            messages: [
+                                { role: "system", content: systemPrompt },
+                                { role: "user", content: `Please analyze the following Bitcoin data:\n${promptData}` }
+                            ],
+                            temperature: 0.7,
+                            max_tokens: 500
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                    }
+
+                    const result = await response.json();
+                    const analysisText = result.choices[0].message.content;
+                    
+                    // Use Marked.js to parse markdown into HTML
+                    aiResultEl.innerHTML = marked.parse(analysisText);
+
+                } catch (error) {
+                    console.error("Error calling Lollms API:", error);
+                    aiResultEl.innerHTML = `<span class="negative">Error:</span> Could not get analysis. Please check your Lollms server URL in Settings and ensure the server is running. <br><br> <small>${error.message}</small>`;
+                } finally {
+                    getAnalysisBtn.disabled = false;
+                    aiLoaderEl.classList.add('hidden');
+                }
+            };
+
+            // --- Event Listeners ---
+            getAnalysisBtn.addEventListener('click', getAIAnalysis);
+            settingsBtn.addEventListener('click', () => toggleModal(true));
+            closeModalBtn.addEventListener('click', () => toggleModal(false));
+            saveSettingsBtn.addEventListener('click', saveSettings);
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    toggleModal(false);
                 }
             });
 
-            settingsForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                selectedCurrency = document.getElementById('currency').value;
-                applyTheme(document.getElementById('themeSelect').value);
-                updateCurrentBitcoinInfo();
-                updateBitcoinChart();
-                settingsOverlay.classList.add('hidden');
-            });
+            // --- Initialization ---
+            const init = () => {
+                loadSettings();
+                fetchBitcoinData();
+            };
 
-            // --- Tab Switching ---
-            aiTab.addEventListener('click', () => {
-                aiContent.classList.remove('hidden');
-                graphContent.classList.add('hidden');
-                aiTab.classList.replace('bg-gray-600', 'bg-purple-600');
-                graphTab.classList.replace('bg-purple-600', 'bg-gray-600');
-            });
-
-            graphTab.addEventListener('click', () => {
-                aiContent.classList.add('hidden');
-                graphContent.classList.remove('hidden');
-                aiTab.classList.replace('bg-purple-600', 'bg-gray-600');
-                graphTab.classList.replace('bg-gray-600', 'bg-purple-600');
-            });
-
-            // --- Other Event Listeners ---
-            document.getElementById('generateAnalysisBtn').addEventListener('click', () => {
-                if (currentBitcoinData) {
-                    analyzeBitcoinData(currentBitcoinData);
-                } else {
-                    alert('Bitcoin data not loaded yet. Please wait a moment.');
-                }
-            });
-
-            document.getElementById('timeRange').addEventListener('change', (e) => {
-                selectedTimeRange = e.target.value;
-                updateBitcoinChart();
-            });
-
-            // --- Initial App Load ---
-            initBitcoinChart();
-            applyTheme(document.getElementById('themeSelect').value);
-            updateCurrentBitcoinInfo();
-            updateBitcoinChart(); // Load the chart on startup
-            setInterval(updateCurrentBitcoinInfo, 60000);
+            init();
         });
     </script>
 </body>
