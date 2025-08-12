@@ -3,20 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin AI Analyzer Pro</title>
+    <title>Bitcoin AI Analyzer</title>
     
     <!-- Dependencies from CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <style>
+        /* --- General Styling --- */
         :root {
             --bg-color: #121212;
             --surface-color: #1e1e1e;
-            --primary-color: #f7931a;
+            --primary-color: #f7931a; /* Bitcoin Orange */
             --text-color: #e0e0e0;
             --text-secondary-color: #a0a0a0;
             --green: #26a69a;
@@ -30,11 +28,13 @@
             color: var(--text-color);
             margin: 0;
             padding: 20px;
+            display: flex;
+            justify-content: center;
         }
 
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 1200px;
         }
 
         /* --- Header --- */
@@ -47,18 +47,17 @@
             padding-bottom: 15px;
         }
 
-        header h1 { color: var(--primary-color); margin: 0; font-size: 1.8em; }
+        header h1 {
+            color: var(--primary-color);
+            margin: 0;
+            font-size: 1.8em;
+        }
 
-        /* --- Main Layout --- */
-        .main-layout {
+        /* --- Main Content Layout --- */
+        .main-content {
             display: grid;
-            grid-template-columns: 300px 1fr;
-            grid-template-rows: auto auto;
+            grid-template-columns: 1fr 2fr;
             gap: 20px;
-            grid-template-areas:
-                "info chart"
-                "news chart"
-                "ai ai";
         }
 
         /* --- Cards --- */
@@ -69,63 +68,49 @@
             border: 1px solid var(--border-color);
         }
         
-        .info-card { grid-area: info; }
-        .chart-card { grid-area: chart; }
-        .news-card { grid-area: news; }
-        .ai-analysis { grid-area: ai; margin-top: 20px; }
-
-        .card h2 {
+        .info-card h2 {
             margin-top: 0;
+            color: var(--text-color);
             border-bottom: 1px solid var(--border-color);
             padding-bottom: 10px;
         }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
         
-        .info-item { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1.1em; }
-        .info-item .label { color: var(--text-secondary-color); }
-        .info-item .value { font-weight: bold; }
-        #current-price { font-size: 2em; color: var(--primary-color); }
+        .info-item .label {
+            color: var(--text-secondary-color);
+        }
+
+        .info-item .value {
+            font-weight: bold;
+        }
+
+        #current-price {
+            font-size: 2em;
+            color: var(--primary-color);
+        }
+
         .positive { color: var(--green); }
         .negative { color: var(--red); }
 
-        /* --- Chart Section --- */
-        .chart-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .chart-controls .btn { padding: 5px 15px; background-color: #333; }
-        .chart-controls .btn.active { background-color: var(--primary-color); }
-        .chart-container { position: relative; height: 50vh; min-height: 400px; }
-        .chart-card p { font-size: 0.9em; color: var(--text-secondary-color); margin: 0; }
-
-
-        /* --- News Feed --- */
-        .news-feed-content {
-            max-height: 40vh;
+        /* --- Chart --- */
+        .chart-container {
+            position: relative;
+            height: 40vh;
             min-height: 300px;
-            overflow-y: auto;
-            padding-right: 10px;
-        }
-        .news-item {
-            margin-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-        }
-        .news-item:last-child { border-bottom: none; }
-        .news-item a {
-            color: var(--text-color);
-            text-decoration: none;
-            font-weight: bold;
-            display: block;
-        }
-        .news-item a:hover { color: var(--primary-color); }
-        .news-item .meta {
-            font-size: 0.8em;
-            color: var(--text-secondary-color);
-            margin-top: 5px;
         }
 
         /* --- AI Analysis Section --- */
+        .ai-analysis {
+            grid-column: 1 / -1; /* Span both columns */
+            margin-top: 20px;
+        }
+
         #ai-result {
             margin-top: 20px;
             padding: 15px;
@@ -133,44 +118,136 @@
             border-radius: 5px;
             min-height: 100px;
             line-height: 1.6;
-            white-space: pre-wrap;
+            white-space: pre-wrap; /* Preserve whitespace but wrap text */
         }
-        #ai-result h3, #ai-result h4 { color: var(--primary-color); }
-        #ai-result ul { padding-left: 20px; }
+        
+        #ai-result h3, #ai-result h4 {
+            color: var(--primary-color);
+        }
+        #ai-result ul {
+            padding-left: 20px;
+        }
 
-        /* --- General Components (Buttons, Loaders, Modal) --- */
-        .btn { background-color: var(--primary-color); color: #fff; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: bold; transition: background-color 0.3s, transform 0.1s; }
-        .btn:hover { background-color: #d87e0a; }
-        .btn:active { transform: scale(0.98); }
-        .btn:disabled { background-color: #555; cursor: not-allowed; }
-        #settings-btn { background: none; border: 1px solid var(--text-secondary-color); color: var(--text-secondary-color); }
-        #settings-btn:hover { background-color: var(--surface-color); color: var(--text-color); }
+        /* --- Buttons --- */
+        .btn {
+            background-color: var(--primary-color);
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: bold;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .btn:hover {
+            background-color: #d87e0a;
+        }
         
-        .loader { border: 4px solid var(--surface-color); border-radius: 50%; border-top: 4px solid var(--primary-color); width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        #settings-btn {
+            background: none;
+            border: 1px solid var(--text-secondary-color);
+            color: var(--text-secondary-color);
+        }
+        #settings-btn:hover {
+            background-color: var(--surface-color);
+            color: var(--text-color);
+        }
+        
+        /* --- Loader --- */
+        .loader {
+            border: 4px solid var(--surface-color);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
         .hidden { display: none !important; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .modal-content { background-color: var(--surface-color); padding: 30px; border-radius: 8px; width: 90%; max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-        .modal-content h2 { margin-top: 0; }
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; margin-bottom: 8px; color: var(--text-secondary-color); }
-        .form-group input { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--border-color); background-color: var(--bg-color); color: var(--text-color); font-size: 1em; box-sizing: border-box; }
-        .modal-actions { text-align: right; margin-top: 20px; }
-        .modal-actions .btn { margin-left: 10px; }
+        /* --- Modal --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: var(--surface-color);
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        
+        .modal-content h2 {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-secondary-color);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 1em;
+            box-sizing: border-box;
+        }
+        
+        .modal-actions {
+            text-align: right;
+            margin-top: 20px;
+        }
+
+        .modal-actions .btn {
+            margin-left: 10px;
+        }
 
         /* --- Responsive Design --- */
-        @media (max-width: 900px) {
-            .main-layout {
-                grid-template-columns: 1fr;
-                grid-template-areas:
-                    "info"
-                    "chart"
-                    "news"
-                    "ai";
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
             }
-            .news-feed-content, .chart-container {
-                max-height: 50vh;
+            header h1 {
+                font-size: 1.5em;
+            }
+            .main-content {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -179,11 +256,11 @@
 
     <div class="container">
         <header>
-            <h1>Bitcoin AI Analyzer Pro</h1>
+            <h1>Bitcoin AI Analyzer</h1>
             <button id="settings-btn" class="btn">Settings</button>
         </header>
 
-        <div class="main-layout">
+        <main class="main-content">
             <div class="card info-card">
                 <h2>Live Data</h2>
                 <div class="info-item">
@@ -209,34 +286,21 @@
             </div>
 
             <div class="card chart-card">
-                <div class="chart-controls" id="chart-controls">
-                    <button class="btn" data-days="7">7D</button>
-                    <button class="btn" data-days="30">30D</button>
-                    <button class="btn active" data-days="90">90D</button>
-                </div>
                 <div class="chart-container">
                     <canvas id="btcChart"></canvas>
-                </div>
-                 <p>Click & drag to zoom. Double-click to reset.</p>
-            </div>
-            
-            <div class="card news-card">
-                <h2>Latest News</h2>
-                <div class="news-feed-content" id="news-feed-content">
-                    <div class="loader" style="margin: 20px auto; display: block;"></div>
                 </div>
             </div>
 
             <div class="card ai-analysis">
                 <h2>Lollms AI Analysis</h2>
-                <p>Get an AI-powered analysis of the current market situation based on price data and recent news headlines.</p>
+                <p>Get an AI-powered analysis of the current market situation based on recent price data.</p>
                 <button id="get-analysis-btn" class="btn">
                     Get AI Analysis
                     <div id="ai-loader" class="loader hidden"></div>
                 </button>
                 <div id="ai-result">Click the button above to generate an analysis...</div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Settings Modal -->
@@ -248,8 +312,8 @@
                 <input type="text" id="lollms-url" placeholder="http://localhost:9642">
             </div>
             <div class="form-group">
-                <label for="lollms-endpoint">API Endpoint Path</label>
-                <input type="text" id="lollms-endpoint" placeholder="/v1/chat/completions">
+                <label for="lollms-model">Model Name</label>
+                <input type="text" id="lollms-model" placeholder="e.g., open_llama_3b_v2, lollms">
             </div>
             <div class="form-group">
                 <label for="lollms-key">API Key (optional)</label>
@@ -275,8 +339,6 @@
             const aiResultEl = document.getElementById('ai-result');
             const aiLoaderEl = document.getElementById('ai-loader');
             const chartCanvas = document.getElementById('btcChart');
-            const chartControls = document.getElementById('chart-controls');
-            const newsFeedContent = document.getElementById('news-feed-content');
 
             // --- Settings Modal Elements ---
             const settingsBtn = document.getElementById('settings-btn');
@@ -284,65 +346,65 @@
             const closeModalBtn = document.getElementById('close-modal-btn');
             const saveSettingsBtn = document.getElementById('save-settings-btn');
             const lollmsUrlInput = document.getElementById('lollms-url');
-            const lollmsEndpointInput = document.getElementById('lollms-endpoint');
+            const lollmsModelInput = document.getElementById('lollms-model'); // New element
             const lollmsKeyInput = document.getElementById('lollms-key');
 
             // --- State ---
             let chart;
-            let btcData = null;
-            let newsItems = [];
+            let btcData = null; // To store fetched Bitcoin data
             let settings = {
                 lollmsUrl: 'http://localhost:9642',
-                endpointPath: '/v1/chat/completions',
-                apiKey: ''
+                apiKey: '',
+                modelName: 'lollms' // New setting with default
             };
-            const rssFeeds = [
-                'https://cointelegraph.com/rss',
-                'https://www.coindesk.com/arc/outboundfeeds/rss/',
-                'https://bitcoinmagazine.com/.rss/full/',
-                'https://news.bitcoin.com/feed/'
-            ];
 
+            // --- Functions ---
 
-            // --- Utility Functions ---
+            // Format numbers for display
             const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
             const formatLargeNumber = (num) => {
                 if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
                 if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
                 if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
                 return num.toLocaleString();
-            };
+            }
 
-            // --- Settings Management ---
+            // Load settings from localStorage
             const loadSettings = () => {
-                const savedSettings = JSON.parse(localStorage.getItem('btcAnalyzerSettingsV2'));
+                const savedSettings = JSON.parse(localStorage.getItem('btcAnalyzerSettings'));
                 if (savedSettings) {
-                    settings = { ...settings, ...savedSettings };
+                    // Use Object.assign to gracefully handle old settings without the new key
+                    settings = Object.assign({}, settings, savedSettings);
                 }
                 lollmsUrlInput.value = settings.lollmsUrl;
-                lollmsEndpointInput.value = settings.endpointPath;
+                lollmsModelInput.value = settings.modelName; // Update new input
                 lollmsKeyInput.value = settings.apiKey;
             };
 
+            // Save settings to localStorage
             const saveSettings = () => {
                 settings.lollmsUrl = lollmsUrlInput.value.trim() || 'http://localhost:9642';
-                settings.endpointPath = lollmsEndpointInput.value.trim() || '/v1/chat/completions';
+                settings.modelName = lollmsModelInput.value.trim() || 'lollms'; // Save new input
                 settings.apiKey = lollmsKeyInput.value.trim();
-                localStorage.setItem('btcAnalyzerSettingsV2', JSON.stringify(settings));
+                localStorage.setItem('btcAnalyzerSettings', JSON.stringify(settings));
                 toggleModal(false);
                 alert('Settings saved!');
             };
 
-            const toggleModal = (show) => settingsModal.classList.toggle('hidden', !show);
-
-            // --- Data Fetching ---
-            const fetchBitcoinData = async (days = 90) => {
+            // Show/hide the settings modal
+            const toggleModal = (show) => {
+                settingsModal.classList.toggle('hidden', !show);
+            };
+            
+            // Fetch Bitcoin data from CoinGecko
+            const fetchBitcoinData = async () => {
                 try {
+                    // Fetch both current market data and 90-day historical data in one go
                     const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
                     if (!marketResponse.ok) throw new Error('Failed to fetch market data');
                     const marketData = await marketResponse.json();
 
-                    const historyResponse = await fetch(`https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}&interval=daily`);
+                    const historyResponse = await fetch('https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=90&interval=daily');
                     if (!historyResponse.ok) throw new Error('Failed to fetch historical data');
                     const historyData = await historyResponse.json();
 
@@ -350,162 +412,162 @@
                         market: marketData[0],
                         history: historyData.prices
                     };
+
                     updateUI();
                     renderChart();
+
                 } catch (error) {
                     console.error("Error fetching Bitcoin data:", error);
                     currentPriceEl.textContent = 'Error';
+                    // Show error in other fields too
                     [priceChange24hEl, high24hEl, low24hEl, marketCapEl].forEach(el => el.textContent = 'Error');
                 }
             };
-            
-            const fetchNews = async () => {
-                newsFeedContent.innerHTML = '<div class="loader" style="margin: 20px auto; display: block;"></div>';
-                try {
-                    const requests = rssFeeds.map(feedUrl => 
-                        fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`)
-                    );
-                    const responses = await Promise.allSettled(requests);
-                    
-                    let allItems = [];
-                    for (const response of responses) {
-                        if (response.status === 'fulfilled') {
-                            const data = await response.value.json();
-                            if (data.status === 'ok' && data.items) {
-                                allItems.push(...data.items.map(item => ({...item, source: data.feed.title})));
-                            }
-                        }
-                    }
 
-                    // Sort all items by date and store them
-                    newsItems = allItems.sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate));
-                    renderNews();
-
-                } catch (error) {
-                    console.error("Error fetching news:", error);
-                    newsFeedContent.innerHTML = `<span class="negative">Could not load news feed.</span>`;
-                }
-            };
-
-            // --- UI Rendering ---
+            // Update the UI with fetched data
             const updateUI = () => {
                 if (!btcData) return;
+
                 const data = btcData.market;
                 currentPriceEl.textContent = formatCurrency(data.current_price);
+                
                 const change = data.price_change_percentage_24h;
                 priceChange24hEl.textContent = `${change.toFixed(2)}%`;
                 priceChange24hEl.className = `value ${change >= 0 ? 'positive' : 'negative'}`;
+
                 high24hEl.textContent = formatCurrency(data.high_24h);
                 low24hEl.textContent = formatCurrency(data.low_24h);
                 marketCapEl.textContent = `$${formatLargeNumber(data.market_cap)}`;
             };
-
+            
+            // Render the price chart
             const renderChart = () => {
                 if (!btcData || !chartCanvas) return;
                 
-                const dataPoints = btcData.history.map(item => ({ x: item[0], y: item[1] }));
-                if (chart) chart.destroy();
+                const labels = btcData.history.map(item => new Date(item[0]).toLocaleDateString());
+                const dataPoints = btcData.history.map(item => item[1]);
 
-                chart = new Chart(chartCanvas.getContext('2d'), {
+                if (chart) {
+                    chart.destroy();
+                }
+
+                const ctx = chartCanvas.getContext('2d');
+                chart = new Chart(ctx, {
                     type: 'line',
                     data: {
+                        labels: labels,
                         datasets: [{
                             label: 'Bitcoin Price (USD)',
                             data: dataPoints,
                             borderColor: 'rgba(247, 147, 26, 1)',
                             backgroundColor: 'rgba(247, 147, 26, 0.2)',
-                            fill: true, tension: 0.1, pointRadius: 1, pointHoverRadius: 5
+                            fill: true,
+                            tension: 0.1,
+                            pointRadius: 0
                         }]
                     },
                     options: {
-                        responsive: true, maintainAspectRatio: false,
+                        responsive: true,
+                        maintainAspectRatio: false,
                         scales: {
-                            x: { type: 'time', time: { unit: 'day' }, ticks: { color: 'var(--text-secondary-color)' } },
-                            y: { ticks: { color: 'var(--text-secondary-color)', callback: (value) => formatCurrency(value) } }
+                            y: {
+                                ticks: {
+                                    color: 'var(--text-secondary-color)',
+                                    callback: function(value, index, values) {
+                                        return formatCurrency(value);
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.1)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'var(--text-secondary-color)',
+                                    maxTicksLimit: 10
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
                         },
                         plugins: {
-                            legend: { display: false },
-                            zoom: {
-                                zoom: { wheel: { enabled: true }, drag: { enabled: true }, mode: 'x' },
-                                pan: { enabled: true, mode: 'x' },
+                            legend: {
+                                display: false
                             }
                         }
                     }
                 });
-                chart.canvas.ondblclick = () => chart.resetZoom();
             };
-
-            const renderNews = () => {
-                if (newsItems.length === 0) {
-                    newsFeedContent.innerHTML = 'No news found.';
-                    return;
-                }
-                newsFeedContent.innerHTML = newsItems.slice(0, 50).map(item => `
-                    <div class="news-item">
-                        <a href="${item.link}" target="_blank" rel="noopener noreferrer">${item.title}</a>
-                        <div class="meta">
-                            <span>${item.source}</span> &middot; <span>${new Date(item.pubDate).toLocaleString()}</span>
-                        </div>
-                    </div>
-                `).join('');
-            };
-
-            // --- Core AI Function ---
+            
+            // Get analysis from Lollms
             const getAIAnalysis = async () => {
                 if (!btcData) {
-                    aiResultEl.textContent = 'Please wait for Bitcoin data to load.'; return;
+                    aiResultEl.textContent = 'Please wait for Bitcoin data to load before getting an analysis.';
+                    return;
+                }
+                if (!settings.modelName) {
+                    aiResultEl.innerHTML = `<span class="negative">Error:</span> No model name specified. Please set a model name in Settings.`;
+                    return;
                 }
 
                 getAnalysisBtn.disabled = true;
                 aiLoaderEl.classList.remove('hidden');
                 aiResultEl.innerHTML = 'Thinking... The AI is analyzing the data.';
 
-                const recentPrices = btcData.history.slice(-7).map(d => `On ${new Date(d[0]).toLocaleDateString()}, price was ${formatCurrency(d[1])}`).join('\n');
-                
-                const newsHeadlines = newsItems.slice(0, 5).map(item => `- ${item.title}`).join('\n');
+                // Prepare the data for the prompt
+                const last7days = btcData.history.slice(-7);
+                const recentPrices = last7days.map(d => 
+                    `On ${new Date(d[0]).toLocaleDateString()}, the price was ${formatCurrency(d[1])}`
+                ).join('\n');
 
                 const promptData = `
-### Current Bitcoin Data:
-- Price: ${formatCurrency(btcData.market.current_price)}
-- 24h Change: ${btcData.market.price_change_percentage_24h.toFixed(2)}%
-- 24h High: ${formatCurrency(btcData.market.high_24h)}
-- 24h Low: ${formatCurrency(btcData.market.low_24h)}
-- Market Cap: $${formatLargeNumber(btcData.market.market_cap)}
+Current Bitcoin Price: ${formatCurrency(btcData.market.current_price)}
+24-hour Price Change: ${btcData.market.price_change_percentage_24h.toFixed(2)}%
+24-hour High: ${formatCurrency(btcData.market.high_24h)}
+24-hour Low: ${formatCurrency(btcData.market.low_24h)}
+Market Cap: $${formatLargeNumber(btcData.market.market_cap)}
 
-### Recent 7-Day Prices:
+Recent 7-day closing prices:
 ${recentPrices}
 
-### Recent Top 5 News Headlines:
-${newsHeadlines || 'No recent news available.'}
+The full dataset spans the last 90 days.
                 `;
 
-                const systemPrompt = "You are a crypto market analyst. Your goal is to provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Your analysis should: 1. Describe the current market situation based on the quantitative data. 2. Use the provided news headlines to gauge market sentiment (e.g., bullish, bearish, uncertain). 3. Identify potential short-term support/resistance based *only* on the provided 24h high/low. 4. Highlight notable patterns from the 7-day data. Format your response using Markdown.";
+                const systemPrompt = "You are a crypto market analyst. Your goal is to provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Instead, focus on describing the current market sentiment, identifying potential short-term support and resistance levels based *only* on the data provided, and highlighting any notable patterns (e.g., volatility, trends). Format your response using Markdown.";
                 
                 try {
-                    const fullApiUrl = new URL(settings.endpointPath, settings.lollmsUrl).href;
-                    const response = await fetch(fullApiUrl, {
+                    const response = await fetch(`${settings.lollmsUrl}/v1/chat/completions`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${settings.apiKey}`
+                        },
                         body: JSON.stringify({
-                            model: 'lollms',
+                            model: settings.modelName, // Use the model from settings
                             messages: [
                                 { role: "system", content: systemPrompt },
-                                { role: "user", content: `Please analyze the following Bitcoin market snapshot:\n${promptData}` }
+                                { role: "user", content: `Please analyze the following Bitcoin data:\n${promptData}` }
                             ],
-                            temperature: 0.7, max_tokens: 600
+                            temperature: 0.7,
+                            max_tokens: 500
                         })
                     });
 
                     if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`API Error: ${response.status} - ${errorText}`);
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
                     }
+
                     const result = await response.json();
-                    aiResultEl.innerHTML = marked.parse(result.choices[0].message.content);
+                    const analysisText = result.choices[0].message.content;
+                    
+                    // Use Marked.js to parse markdown into HTML
+                    aiResultEl.innerHTML = marked.parse(analysisText);
 
                 } catch (error) {
                     console.error("Error calling Lollms API:", error);
-                    aiResultEl.innerHTML = `<span class="negative">Error:</span> Could not get analysis. Check Lollms settings and server status.<br><small>${error.message}</small>`;
+                    aiResultEl.innerHTML = `<span class="negative">Error:</span> Could not get analysis. Please check your Lollms server URL and model name in Settings and ensure the server is running. <br><br> <small>${error.message}</small>`;
                 } finally {
                     getAnalysisBtn.disabled = false;
                     aiLoaderEl.classList.add('hidden');
@@ -517,26 +579,16 @@ ${newsHeadlines || 'No recent news available.'}
             settingsBtn.addEventListener('click', () => toggleModal(true));
             closeModalBtn.addEventListener('click', () => toggleModal(false));
             saveSettingsBtn.addEventListener('click', saveSettings);
-            settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) toggleModal(false); });
-
-            chartControls.addEventListener('click', (e) => {
-                if (e.target.tagName === 'BUTTON') {
-                    const days = e.target.dataset.days;
-                    if (days) {
-                        // Update active button
-                        chartControls.querySelector('.active').classList.remove('active');
-                        e.target.classList.add('active');
-                        // Fetch new data
-                        fetchBitcoinData(days);
-                    }
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target === settingsModal) {
+                    toggleModal(false);
                 }
             });
 
             // --- Initialization ---
             const init = () => {
                 loadSettings();
-                fetchBitcoinData(90); // Initial load for 90 days
-                fetchNews();
+                fetchBitcoinData();
             };
 
             init();
