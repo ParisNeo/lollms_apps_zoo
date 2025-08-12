@@ -68,7 +68,7 @@
             border: 1px solid var(--border-color);
         }
         
-        .info-card h2 {
+        .info-card h2, .news-card h2 {
             margin-top: 0;
             color: var(--text-color);
             border-bottom: 1px solid var(--border-color);
@@ -104,13 +104,13 @@
             height: 40vh;
             min-height: 300px;
         }
-
-        /* --- AI Analysis Section --- */
-        .ai-analysis {
-            grid-column: 1 / -1; /* Span both columns */
-            margin-top: 20px;
+        
+        .full-width-card {
+             grid-column: 1 / -1; /* Span both columns */
+             margin-top: 20px;
         }
 
+        /* --- AI Analysis Section --- */
         #ai-result {
             margin-top: 20px;
             padding: 15px;
@@ -118,14 +118,29 @@
             border-radius: 5px;
             min-height: 100px;
             line-height: 1.6;
-            white-space: pre-wrap; /* Preserve whitespace but wrap text */
+            white-space: pre-wrap;
         }
         
-        #ai-result h3, #ai-result h4 {
-            color: var(--primary-color);
+        #ai-result h3, #ai-result h4 { color: var(--primary-color); }
+        #ai-result ul { padding-left: 20px; }
+
+        /* --- News Feed Section --- */
+        .news-item {
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
         }
-        #ai-result ul {
-            padding-left: 20px;
+        .news-item:last-child { border-bottom: none; }
+        .news-title {
+            color: var(--text-color);
+            text-decoration: none;
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+        .news-title:hover { color: var(--primary-color); }
+        .news-meta {
+            font-size: 0.9em;
+            color: var(--text-secondary-color);
+            margin-top: 5px;
         }
 
         /* --- Buttons --- */
@@ -141,18 +156,9 @@
             transition: background-color 0.3s, transform 0.1s;
         }
 
-        .btn:hover {
-            background-color: #d87e0a;
-        }
-        
-        .btn:active {
-            transform: scale(0.98);
-        }
-
-        .btn:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
+        .btn:hover { background-color: #d87e0a; }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { background-color: #555; cursor: not-allowed; }
 
         #settings-btn {
             background: none;
@@ -173,7 +179,6 @@
             height: 20px;
             animation: spin 1s linear infinite;
             display: inline-block;
-            margin-left: 10px;
             vertical-align: middle;
         }
         .hidden { display: none !important; }
@@ -185,70 +190,40 @@
         
         /* --- Modal --- */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: flex; justify-content: center; align-items: center;
             z-index: 1000;
         }
 
         .modal-content {
             background-color: var(--surface-color);
-            padding: 30px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            padding: 30px; border-radius: 8px; width: 90%;
+            max-width: 500px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         
-        .modal-content h2 {
-            margin-top: 0;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            color: var(--text-secondary-color);
-        }
-        .form-group input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-size: 1em;
-            box-sizing: border-box;
+        .modal-content h2 { margin-top: 0; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: var(--text-secondary-color); }
+        .form-group input, .form-group select {
+            width: 100%; padding: 10px; border-radius: 4px;
+            border: 1px solid var(--border-color); background-color: var(--bg-color);
+            color: var(--text-color); font-size: 1em; box-sizing: border-box;
         }
         
-        .modal-actions {
-            text-align: right;
-            margin-top: 20px;
-        }
+        .model-selection-group { display: flex; align-items: center; gap: 10px; }
+        #lollms-model-select { flex-grow: 1; }
+        #refresh-models-btn { padding: 10px; font-size: 0.9em; flex-shrink: 0; }
+        #models-status { font-size: 0.8em; color: var(--text-secondary-color); margin-top: 5px; height: 1em; }
 
-        .modal-actions .btn {
-            margin-left: 10px;
-        }
+        .modal-actions { text-align: right; margin-top: 20px; }
+        .modal-actions .btn { margin-left: 10px; }
 
         /* --- Responsive Design --- */
         @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            header h1 {
-                font-size: 1.5em;
-            }
-            .main-content {
-                grid-template-columns: 1fr;
-            }
+            body { padding: 10px; }
+            header h1 { font-size: 1.5em; }
+            .main-content { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -291,7 +266,7 @@
                 </div>
             </div>
 
-            <div class="card ai-analysis">
+            <div class="card ai-analysis full-width-card">
                 <h2>Lollms AI Analysis</h2>
                 <p>Get an AI-powered analysis of the current market situation based on recent price data.</p>
                 <button id="get-analysis-btn" class="btn">
@@ -300,6 +275,12 @@
                 </button>
                 <div id="ai-result">Click the button above to generate an analysis...</div>
             </div>
+
+            <div class="card news-card full-width-card">
+                <h2>Latest News</h2>
+                <div id="news-feed">Loading news feed...</div>
+            </div>
+
         </main>
     </div>
 
@@ -312,8 +293,12 @@
                 <input type="text" id="lollms-url" placeholder="http://localhost:9642">
             </div>
             <div class="form-group">
-                <label for="lollms-model">Model Name</label>
-                <input type="text" id="lollms-model" placeholder="e.g., open_llama_3b_v2, lollms">
+                <label for="lollms-model-select">Model</label>
+                <div class="model-selection-group">
+                    <select id="lollms-model-select"></select>
+                    <button id="refresh-models-btn" class="btn">Refresh List</button>
+                </div>
+                 <div id="models-status"></div>
             </div>
             <div class="form-group">
                 <label for="lollms-key">API Key (optional)</label>
@@ -339,6 +324,7 @@
             const aiResultEl = document.getElementById('ai-result');
             const aiLoaderEl = document.getElementById('ai-loader');
             const chartCanvas = document.getElementById('btcChart');
+            const newsFeedEl = document.getElementById('news-feed');
 
             // --- Settings Modal Elements ---
             const settingsBtn = document.getElementById('settings-btn');
@@ -346,60 +332,96 @@
             const closeModalBtn = document.getElementById('close-modal-btn');
             const saveSettingsBtn = document.getElementById('save-settings-btn');
             const lollmsUrlInput = document.getElementById('lollms-url');
-            const lollmsModelInput = document.getElementById('lollms-model'); // New element
+            const lollmsModelSelect = document.getElementById('lollms-model-select');
             const lollmsKeyInput = document.getElementById('lollms-key');
+            const refreshModelsBtn = document.getElementById('refresh-models-btn');
+            const modelsStatusEl = document.getElementById('models-status');
 
             // --- State ---
             let chart;
-            let btcData = null; // To store fetched Bitcoin data
+            let btcData = null;
             let settings = {
                 lollmsUrl: 'http://localhost:9642',
                 apiKey: '',
-                modelName: 'lollms' // New setting with default
+                modelName: ''
             };
 
             // --- Functions ---
-
-            // Format numbers for display
             const formatCurrency = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
             const formatLargeNumber = (num) => {
                 if (num >= 1e12) return `${(num / 1e12).toFixed(2)}T`;
                 if (num >= 1e9) return `${(num / 1e9).toFixed(2)}B`;
                 if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
                 return num.toLocaleString();
-            }
+            };
 
-            // Load settings from localStorage
             const loadSettings = () => {
                 const savedSettings = JSON.parse(localStorage.getItem('btcAnalyzerSettings'));
                 if (savedSettings) {
-                    // Use Object.assign to gracefully handle old settings without the new key
                     settings = Object.assign({}, settings, savedSettings);
                 }
                 lollmsUrlInput.value = settings.lollmsUrl;
-                lollmsModelInput.value = settings.modelName; // Update new input
                 lollmsKeyInput.value = settings.apiKey;
+                // Model dropdown will be populated later, but we store the name
             };
 
-            // Save settings to localStorage
             const saveSettings = () => {
                 settings.lollmsUrl = lollmsUrlInput.value.trim() || 'http://localhost:9642';
-                settings.modelName = lollmsModelInput.value.trim() || 'lollms'; // Save new input
+                settings.modelName = lollmsModelSelect.value; // Get value from select
                 settings.apiKey = lollmsKeyInput.value.trim();
                 localStorage.setItem('btcAnalyzerSettings', JSON.stringify(settings));
                 toggleModal(false);
                 alert('Settings saved!');
             };
 
-            // Show/hide the settings modal
             const toggleModal = (show) => {
                 settingsModal.classList.toggle('hidden', !show);
+                if(show) {
+                    fetchLollmsModels(); // Fetch models every time the modal is opened
+                }
+            };
+
+            const fetchLollmsModels = async () => {
+                const url = lollmsUrlInput.value.trim() || settings.lollmsUrl;
+                modelsStatusEl.textContent = 'Fetching models...';
+                lollmsModelSelect.innerHTML = '<option>Loading...</option>';
+                lollmsModelSelect.disabled = true;
+                refreshModelsBtn.disabled = true;
+
+                try {
+                    const response = await fetch(`${url}/v1/models`, {
+                        headers: { 'Authorization': `Bearer ${lollmsKeyInput.value.trim()}` }
+                    });
+                    if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                    const data = await response.json();
+                    
+                    lollmsModelSelect.innerHTML = ''; // Clear loading option
+                    if (data.data && data.data.length > 0) {
+                        data.data.forEach(model => {
+                            const option = document.createElement('option');
+                            option.value = model.id;
+                            option.textContent = model.id;
+                            if (model.id === settings.modelName) {
+                                option.selected = true; // Pre-select saved model
+                            }
+                            lollmsModelSelect.appendChild(option);
+                        });
+                        modelsStatusEl.textContent = 'Models loaded successfully.';
+                    } else {
+                        modelsStatusEl.textContent = 'No models found.';
+                    }
+                } catch (error) {
+                    console.error("Error fetching Lollms models:", error);
+                    lollmsModelSelect.innerHTML = '<option>Could not load models</option>';
+                    modelsStatusEl.textContent = `Error: ${error.message}. Check URL.`;
+                } finally {
+                    lollmsModelSelect.disabled = false;
+                    refreshModelsBtn.disabled = false;
+                }
             };
             
-            // Fetch Bitcoin data from CoinGecko
             const fetchBitcoinData = async () => {
                 try {
-                    // Fetch both current market data and 90-day historical data in one go
                     const marketResponse = await fetch('https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=bitcoin');
                     if (!marketResponse.ok) throw new Error('Failed to fetch market data');
                     const marketData = await marketResponse.json();
@@ -408,166 +430,121 @@
                     if (!historyResponse.ok) throw new Error('Failed to fetch historical data');
                     const historyData = await historyResponse.json();
 
-                    btcData = {
-                        market: marketData[0],
-                        history: historyData.prices
-                    };
-
+                    btcData = { market: marketData[0], history: historyData.prices };
                     updateUI();
                     renderChart();
-
                 } catch (error) {
                     console.error("Error fetching Bitcoin data:", error);
                     currentPriceEl.textContent = 'Error';
-                    // Show error in other fields too
                     [priceChange24hEl, high24hEl, low24hEl, marketCapEl].forEach(el => el.textContent = 'Error');
                 }
             };
 
-            // Update the UI with fetched data
+            const fetchNewsFeed = async () => {
+                const rssUrl = 'https://cointelegraph.com/rss/tag/bitcoin';
+                const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+                try {
+                    const response = await fetch(proxyUrl);
+                    if (!response.ok) throw new Error('Failed to fetch news feed');
+                    const data = await response.json();
+                    if (data.status === 'ok' && data.items) {
+                        newsFeedEl.innerHTML = '';
+                        data.items.slice(0, 5).forEach(item => {
+                            const pubDate = new Date(item.pubDate).toLocaleString();
+                            newsFeedEl.innerHTML += `
+                                <div class="news-item">
+                                    <a href="${item.link}" target="_blank" rel="noopener noreferrer" class="news-title">${item.title}</a>
+                                    <div class="news-meta">By ${item.author || 'N/A'} | ${pubDate}</div>
+                                </div>
+                            `;
+                        });
+                    } else { throw new Error(data.message || 'Invalid feed data'); }
+                } catch(error) {
+                    console.error("Error fetching news feed:", error);
+                    newsFeedEl.innerHTML = `<span class="negative">Could not load news feed.</span>`;
+                }
+            };
+
             const updateUI = () => {
                 if (!btcData) return;
-
                 const data = btcData.market;
                 currentPriceEl.textContent = formatCurrency(data.current_price);
-                
                 const change = data.price_change_percentage_24h;
                 priceChange24hEl.textContent = `${change.toFixed(2)}%`;
                 priceChange24hEl.className = `value ${change >= 0 ? 'positive' : 'negative'}`;
-
                 high24hEl.textContent = formatCurrency(data.high_24h);
                 low24hEl.textContent = formatCurrency(data.low_24h);
                 marketCapEl.textContent = `$${formatLargeNumber(data.market_cap)}`;
             };
             
-            // Render the price chart
             const renderChart = () => {
                 if (!btcData || !chartCanvas) return;
-                
                 const labels = btcData.history.map(item => new Date(item[0]).toLocaleDateString());
                 const dataPoints = btcData.history.map(item => item[1]);
-
-                if (chart) {
-                    chart.destroy();
-                }
-
+                if (chart) chart.destroy();
                 const ctx = chartCanvas.getContext('2d');
                 chart = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: labels,
+                        labels,
                         datasets: [{
-                            label: 'Bitcoin Price (USD)',
-                            data: dataPoints,
-                            borderColor: 'rgba(247, 147, 26, 1)',
-                            backgroundColor: 'rgba(247, 147, 26, 0.2)',
-                            fill: true,
-                            tension: 0.1,
-                            pointRadius: 0
+                            label: 'Bitcoin Price (USD)', data: dataPoints,
+                            borderColor: 'rgba(247, 147, 26, 1)', backgroundColor: 'rgba(247, 147, 26, 0.2)',
+                            fill: true, tension: 0.1, pointRadius: 0
                         }]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         scales: {
-                            y: {
-                                ticks: {
-                                    color: 'var(--text-secondary-color)',
-                                    callback: function(value, index, values) {
-                                        return formatCurrency(value);
-                                    }
-                                },
-                                grid: {
-                                    color: 'rgba(255, 255, 255, 0.1)'
-                                }
-                            },
-                            x: {
-                                ticks: {
-                                    color: 'var(--text-secondary-color)',
-                                    maxTicksLimit: 10
-                                },
-                                grid: {
-                                    display: false
-                                }
-                            }
+                            y: { ticks: { color: 'var(--text-secondary-color)', callback: (value) => formatCurrency(value) }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                            x: { ticks: { color: 'var(--text-secondary-color)', maxTicksLimit: 10 }, grid: { display: false } }
                         },
-                        plugins: {
-                            legend: {
-                                display: false
-                            }
-                        }
+                        plugins: { legend: { display: false } }
                     }
                 });
             };
             
-            // Get analysis from Lollms
             const getAIAnalysis = async () => {
-                if (!btcData) {
-                    aiResultEl.textContent = 'Please wait for Bitcoin data to load before getting an analysis.';
-                    return;
-                }
-                if (!settings.modelName) {
-                    aiResultEl.innerHTML = `<span class="negative">Error:</span> No model name specified. Please set a model name in Settings.`;
-                    return;
-                }
+                if (!btcData) { aiResultEl.textContent = 'Please wait for Bitcoin data to load.'; return; }
+                if (!settings.modelName) { aiResultEl.innerHTML = `<span class="negative">Error:</span> No model selected. Please choose a model in Settings.`; return; }
 
                 getAnalysisBtn.disabled = true;
                 aiLoaderEl.classList.remove('hidden');
                 aiResultEl.innerHTML = 'Thinking... The AI is analyzing the data.';
 
-                // Prepare the data for the prompt
                 const last7days = btcData.history.slice(-7);
-                const recentPrices = last7days.map(d => 
-                    `On ${new Date(d[0]).toLocaleDateString()}, the price was ${formatCurrency(d[1])}`
-                ).join('\n');
-
+                const recentPrices = last7days.map(d => `On ${new Date(d[0]).toLocaleDateString()}, the price was ${formatCurrency(d[1])}`).join('\n');
                 const promptData = `
 Current Bitcoin Price: ${formatCurrency(btcData.market.current_price)}
 24-hour Price Change: ${btcData.market.price_change_percentage_24h.toFixed(2)}%
 24-hour High: ${formatCurrency(btcData.market.high_24h)}
 24-hour Low: ${formatCurrency(btcData.market.low_24h)}
 Market Cap: $${formatLargeNumber(btcData.market.market_cap)}
-
-Recent 7-day closing prices:
-${recentPrices}
-
-The full dataset spans the last 90 days.
-                `;
-
-                const systemPrompt = "You are a crypto market analyst. Your goal is to provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Instead, focus on describing the current market sentiment, identifying potential short-term support and resistance levels based *only* on the data provided, and highlighting any notable patterns (e.g., volatility, trends). Format your response using Markdown.";
+Recent 7-day closing prices:\n${recentPrices}`;
+                const systemPrompt = "You are a crypto market analyst. Provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Focus on describing current market sentiment, identifying potential short-term support and resistance levels based *only* on the provided data, and highlighting notable patterns (e.g., volatility, trends). Format your response using Markdown.";
                 
                 try {
                     const response = await fetch(`${settings.lollmsUrl}/v1/chat/completions`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${settings.apiKey}`
-                        },
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
                         body: JSON.stringify({
-                            model: settings.modelName, // Use the model from settings
+                            model: settings.modelName,
                             messages: [
                                 { role: "system", content: systemPrompt },
                                 { role: "user", content: `Please analyze the following Bitcoin data:\n${promptData}` }
                             ],
-                            temperature: 0.7,
-                            max_tokens: 500
+                            temperature: 0.7, max_tokens: 500
                         })
                     });
-
                     if (!response.ok) {
                         const errorData = await response.json();
                         throw new Error(`API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
                     }
-
                     const result = await response.json();
-                    const analysisText = result.choices[0].message.content;
-                    
-                    // Use Marked.js to parse markdown into HTML
-                    aiResultEl.innerHTML = marked.parse(analysisText);
-
+                    aiResultEl.innerHTML = marked.parse(result.choices[0].message.content);
                 } catch (error) {
                     console.error("Error calling Lollms API:", error);
-                    aiResultEl.innerHTML = `<span class="negative">Error:</span> Could not get analysis. Please check your Lollms server URL and model name in Settings and ensure the server is running. <br><br> <small>${error.message}</small>`;
+                    aiResultEl.innerHTML = `<span class="negative">Error:</span> Could not get analysis. Please check your Lollms settings and ensure the server is running. <br><br> <small>${error.message}</small>`;
                 } finally {
                     getAnalysisBtn.disabled = false;
                     aiLoaderEl.classList.add('hidden');
@@ -579,18 +556,15 @@ The full dataset spans the last 90 days.
             settingsBtn.addEventListener('click', () => toggleModal(true));
             closeModalBtn.addEventListener('click', () => toggleModal(false));
             saveSettingsBtn.addEventListener('click', saveSettings);
-            settingsModal.addEventListener('click', (e) => {
-                if (e.target === settingsModal) {
-                    toggleModal(false);
-                }
-            });
+            refreshModelsBtn.addEventListener('click', fetchLollmsModels);
+            settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal) toggleModal(false); });
 
             // --- Initialization ---
             const init = () => {
                 loadSettings();
                 fetchBitcoinData();
+                fetchNewsFeed();
             };
-
             init();
         });
     </script>
