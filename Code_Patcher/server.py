@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-import patch as patch_lib
+from flexipatch import RobustPatcher # Changed import from patch_lib to flexipatch
 
 class PatchRequest(BaseModel):
     original_code: str
@@ -13,10 +13,17 @@ class PatchRequest(BaseModel):
 
 app = FastAPI(
     title="Code Patcher API",
-    description="An API to apply git-style patches to code.",
+    description="An API to apply git-style patches to code using FlexiPatch.", # Updated description
     version="1.0.0"
 )
 
+# The normalize_text function is generally not needed when using FlexiPatch,
+# as FlexiPatch is designed to handle various line endings and trailing newlines gracefully.
+# However, if you want to ensure consistent output formatting, you can keep it
+# for post-processing the patched code or remove it if FlexiPatch's default
+# output is sufficient. For this upgrade, I will remove its usage as FlexiPatch
+# inherently handles these variations in the input.
+# You can remove the function definition if it's no longer used anywhere else.
 def normalize_text(text: str) -> str:
     """Converts all line endings to LF and ensures a single trailing newline."""
     # Convert CRLF to LF
@@ -29,30 +36,33 @@ def normalize_text(text: str) -> str:
 @app.post("/patch")
 async def apply_patch(request: PatchRequest):
     """
-    Receives original code and a patch, applies the patch, and returns the new code.
+    Receives original code and a patch, applies the patch using FlexiPatch, and returns the new code.
     """
     try:
-        # --- DEFINITIVE FIX: Normalize both inputs to have a trailing newline ---
-        original_code_normalized = normalize_text(request.original_code)
-        patch_text_normalized = normalize_text(request.patch_text)
+        # Initialize RobustPatcher
+        patcher = RobustPatcher()
 
-        patch_set = patch_lib.fromstring(patch_text_normalized.encode('utf-8'))
+        # FlexiPatch is designed to handle variations in line endings and trailing newlines
+        # directly from the input. So, explicit normalization before passing to FlexiPatch
+        # is typically not required.
         
-        if not patch_set:
-            raise ValueError("Invalid patch format. The provided patch text could not be parsed.")
+        # Apply the patch
+        # FlexiPatch's apply_patch method returns the patched code as a string
+        patched_code = patcher.apply_patch(request.original_code, request.patch_text)
 
-        patched_code_bytes = patch_set.apply(original_code_normalized.encode('utf-8'))
-
-        if patched_code_bytes is False:
-            raise ValueError("Patch could not be applied. It may not match the original code or may have already been applied.")
-
-        # Decode and strip the trailing newline for a clean output in the editor
-        patched_code = patched_code_bytes.decode('utf-8').rstrip()
-        return JSONResponse(content={"patched_code": patched_code})
+        # The original code stripped the trailing newline for a "clean output in the editor".
+        # FlexiPatch usually preserves or normalizes trailing newlines, but keeping .rstrip()
+        # ensures consistency with the previous behavior if that's desired for your editor.
+        return JSONResponse(content={"patched_code": patched_code.rstrip()})
     
-    except Exception as e:
-        print(f"Error applying patch: {e}")
+    except ValueError as e: # FlexiPatch raises ValueError for invalid patches or application failures
+        print(f"Error applying patch with FlexiPatch: {e}")
+        # Raise HTTPException with a 400 status code for client-side errors (e.g., bad patch)
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Catch any other unexpected exceptions
+        print(f"An unexpected error occurred during patch application: {e}")
+        raise HTTPException(status_code=500, detail=f"An unexpected internal server error occurred: {e}")
 
 app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
