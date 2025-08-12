@@ -54,7 +54,7 @@ async def apply_patch(request: PatchRequest):
         print(f"Error applying patch: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
-app.mount("/", StaticFiles(directory="dist", html=True), name="static")
+app.mount("/", StaticFiles(directory="static", html=True), name="static")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Code Patcher Lollms App")
