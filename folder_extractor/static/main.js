@@ -1,3 +1,6 @@
+// folder_extractor/static/main.js
+// [UPDATE]
+
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State & Element Selectors ---
     const S = id => document.getElementById(id);
@@ -6,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statusMessage = S('status-message'),
         themeToggle = S('theme-toggle'),
         settingsBtn = S('settings-btn'),
+        logsBtn = S('logs-btn'), // New selector for logs button
         // Views
         projectListView = S('project-list-view'),
         extractorView = S('extractor-view'),
@@ -72,7 +76,12 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKeyToggleBtn = S('api-key-toggle-btn'),
         importPromptsBtn = S('import-prompts-btn'),
         exportPromptsBtn = S('export-prompts-btn'),
-        importPromptsInput = S('import-prompts-input');
+        importPromptsInput = S('import-prompts-input'),
+        // New Logs Modal Selectors
+        logsModal = S('logs-modal'),
+        logsModalContent = S('logs-modal-content'),
+        logsModalClearBtn = S('logs-modal-clear-btn'),
+        logsModalCloseBtn = S('logs-modal-close-btn');
 
 
     const clientState = {
@@ -82,8 +91,8 @@ document.addEventListener('DOMContentLoaded', () => {
         promptTemplates: [],
         llmSettings: { url: '', api_key: '', model_name: '' },
         filterSettings: {}, 
-        checkedTreePathsMap: new Map(),
-        markedForRemovalPaths: new Set(),
+        checkedTreePathsMap: new Map(), // Stores path -> 'full' or 'signatures'
+        markedForRemovalPaths: new Set(), // Stores paths to be excluded completely
         customPrompt: '',
         loadedDocPaths: [],
         chatHistory: [],
@@ -91,7 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         modelContextSize: 0,
         currentTokens: 0,
         currentTheme: 'light',
-        appVersion: '3.5.0'
+        appVersion: '3.5.0',
+        logMessages: [] // New state for log messages
     };
     
     const icons = {
@@ -100,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // --- Utility Functions ---
+    // Modified showStatus to also push to logs modal
     function showStatus(message, type = 'info', duration = 3000) {
         if (!statusMessage) return;
         statusMessage.textContent = message;
@@ -111,7 +122,9 @@ document.addEventListener('DOMContentLoaded', () => {
             info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
         };
         statusMessage.classList.add(...(typeClasses[type] || typeClasses.info).split(' '));
-        setTimeout(() => { if (statusMessage.textContent === message) statusMessage.textContent = 'Ready.'; }, duration)
+        setTimeout(() => { if (statusMessage.textContent === message) statusMessage.textContent = 'Ready.'; }, duration);
+
+        addLogEntry(message, type); // Also log to modal
     }
 
     async function handleApiResponse(responsePromise) {
@@ -123,6 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             return response.status === 204 ? null : response.json();
         } catch (error) {
+            addLogEntry(`API Request Error: ${error.message}`, 'error'); // Log API errors
             throw new Error(error.message || "A network error occurred.");
         }
     }
@@ -134,10 +148,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (extractorView) extractorView.classList.toggle('active', viewName === 'extractor');
         
         if (viewName === 'extractor') {
+            addLogEntry(`Switched to Extractor view for project: ${projectId}`, 'info');
             loadProjectIntoExtractor(projectId);
         } else {
             appTitle.textContent = "Folder Extractor";
             clientState.activeProjectId = null;
+            addLogEntry('Switched to Project Dashboard view.', 'info');
             fetchProjects();
         }
     }
@@ -147,8 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             clientState.projects = await handleApiResponse(fetch('/api/projects'));
             renderProjectCards();
+            addLogEntry('Projects loaded from server.', 'info');
         } catch (error) {
             showStatus(`Error fetching projects: ${error.message}`, 'error');
+            addLogEntry(`Error fetching projects: ${error.message}`, 'error');
         }
     }
 
@@ -160,6 +178,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <h3 class="text-lg font-semibold text-gray-700 dark:text-gray-300">No projects found.</h3>
                 <p class="text-gray-500 dark:text-gray-400 mt-2">Click "Add New Project" to get started.</p>
             </div>`;
+            addLogEntry('No projects found, displaying empty state.', 'info');
             return;
         }
         clientState.projects.forEach(p => {
@@ -210,6 +229,7 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'star':
                 try {
                     await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ starred: !project.starred })}));
+                    addLogEntry(`Project "${project.name}" starred status toggled.`, 'info');
                     await fetchProjects();
                 } catch (error) { showStatus(`Error starring project: ${error.message}`, 'error'); }
                 break;
@@ -221,6 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         localStorage.setItem(`projectState_${clonedProject.id}`, originalState);
                     }
                     showStatus(`Cloned "${project.name}". Settings and selections copied.`, 'success');
+                    addLogEntry(`Cloned project "${project.name}" to "${clonedProject.name}".`, 'success');
                     await fetchProjects();
                 } catch (error) { showStatus(`Error cloning project: ${error.message}`, 'error'); }
                 break;
@@ -229,8 +250,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (newName && newName.trim() !== project.name) {
                     try {
                         await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ name: newName.trim() })}));
+                        showStatus(`Project "${project.name}" renamed to "${newName.trim()}".`, 'success');
+                        addLogEntry(`Project "${project.name}" renamed to "${newName.trim()}".`, 'success');
                         await fetchProjects();
                     } catch (error) { showStatus(`Error updating project: ${error.message}`, 'error'); }
+                } else {
+                    addLogEntry('Project rename cancelled or name not changed.', 'info');
                 }
                 break;
             case 'delete':
@@ -238,8 +263,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     try {
                         await handleApiResponse(fetch(`/api/projects/${projectId}`, { method: 'DELETE' }));
                         localStorage.removeItem(`projectState_${projectId}`);
+                        showStatus(`Project "${project.name}" deleted.`, 'success');
+                        addLogEntry(`Project "${project.name}" deleted.`, 'success');
                         await fetchProjects();
                     } catch (error) { showStatus(`Error deleting project: ${error.message}`, 'error'); }
+                } else {
+                    addLogEntry('Project deletion cancelled.', 'info');
                 }
                 break;
         }
@@ -284,6 +313,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const project = clientState.projects.find(p => p.id === projectId);
         if (!project) {
             showStatus('Project not found.', 'error');
+            addLogEntry('Attempted to load non-existent project.', 'error');
             switchView('projects');
             return;
         }
@@ -294,6 +324,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const savedState = JSON.parse(localStorage.getItem(`projectState_${projectId}`) || '{}');
 
         clientState.filterSettings = savedState.filterSettings || { selected_presets: [], custom_folders: '', custom_extensions: '', custom_patterns: '', custom_inclusions: '', max_file_size_mb: 1.0 };
+        // Ensure checkedTreePathsMap is initialized as a Map
         clientState.checkedTreePathsMap = new Map(Object.entries(savedState.checkedTreePathsMap || {}));
         clientState.markedForRemovalPaths = new Set(savedState.markedForRemovalPaths || []);
         clientState.customPrompt = savedState.customPrompt || '';
@@ -321,13 +352,14 @@ document.addEventListener('DOMContentLoaded', () => {
         renderedOutputDiv.innerHTML = 'A rendered preview will appear here.';
         updateExtractorUIStates();
         updateTokenCountAndProgressBar();
+        addLogEntry(`Loaded project "${project.name}" into extractor.`, 'info');
     }
     
     function saveProjectState() {
         if (!clientState.activeProjectId) return;
         const stateToSave = {
             filterSettings: clientState.filterSettings,
-            checkedTreePathsMap: Object.fromEntries(clientState.checkedTreePathsMap),
+            checkedTreePathsMap: Object.fromEntries(clientState.checkedTreePathsMap), // Convert Map to object for JSON
             markedForRemovalPaths: Array.from(clientState.markedForRemovalPaths),
             customPrompt: customPromptTextarea.value,
             loadedDocPaths: clientState.loadedDocPaths,
@@ -336,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
             currentTokens: clientState.currentTokens
         };
         localStorage.setItem(`projectState_${clientState.activeProjectId}`, JSON.stringify(stateToSave));
+        addLogEntry('Project state saved to local storage.', 'info');
     }
     
     function updateExtractorClientStateFromUI() {
@@ -359,8 +392,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if(modalLlmUrlInput) modalLlmUrlInput.value = clientState.llmSettings.url;
             if(modalLlmApiKeyInput) modalLlmApiKeyInput.value = clientState.llmSettings.api_key;
             if(modalLlmModelSelect) modalLlmModelSelect.value = clientState.llmSettings.model_name || '';
+            addLogEntry('LLM settings loaded.', 'info');
         } catch(error) {
             showStatus('Could not load LLM settings.', 'warning');
+            addLogEntry(`Error loading LLM settings: ${error.message}`, 'error');
         }
     }
 
@@ -369,6 +404,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentUrl = modalLlmUrlInput.value.trim();
         if (!currentUrl) {
             showStatus("Please enter an LLM URL first.", "warning");
+            addLogEntry("Cannot fetch models: LLM URL is empty.", 'warning');
             return;
         }
         showStatus('Fetching models...', 'info');
@@ -376,11 +412,13 @@ document.addEventListener('DOMContentLoaded', () => {
         modalLlmModelSelect.innerHTML = '<option>Fetching...</option>';
         try {
             // Temporarily save settings to use the URL in the modal
+            // The server-side proxy_lollms_request will handle appending /v1/
             await handleApiResponse(fetch('/api/settings/llm', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ url: currentUrl, api_key: modalLlmApiKeyInput.value.trim(), model_name: clientState.llmSettings.model_name })
             }));
+            addLogEntry(`Attempting to fetch models from: ${currentUrl}`, 'info');
 
             const models = await handleApiResponse(fetch('/api/llm_models'));
             modalLlmModelSelect.innerHTML = '<option value="">-- Select a model --</option>';
@@ -393,13 +431,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 modalLlmModelSelect.value = clientState.llmSettings.model_name || '';
                 showStatus('Models loaded successfully.', 'success');
+                addLogEntry(`Successfully loaded ${models.length} models.`, 'success');
             } else {
                 modalLlmModelSelect.innerHTML = '<option>No models found</option>';
                 showStatus('No models found at the specified URL.', 'warning');
+                addLogEntry('No models found at the specified URL.', 'warning');
             }
         } catch (error) {
             modalLlmModelSelect.innerHTML = `<option>Error fetching</option>`;
             showStatus(`Error fetching models: ${error.message}`, 'error');
+            addLogEntry(`Failed to fetch models: ${error.message}`, 'error');
         } finally {
             // Restore original settings in case user cancels
             await fetchLlmSettings(); 
@@ -411,8 +452,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             clientState.promptTemplates = await handleApiResponse(fetch('/api/prompt_templates'));
             populateTemplateSelect();
+            addLogEntry('Prompt templates loaded.', 'info');
         } catch(error) {
             showStatus('Could not load prompt templates.', 'error');
+            addLogEntry(`Error loading prompt templates: ${error.message}`, 'error');
         }
     }
     
@@ -439,8 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemRow = document.createElement('div');
             itemRow.className = 'item-row flex items-center py-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded';
 
-            const isMarkedForRemoval = clientState.markedForRemovalPaths.has(item.path);
-            if (isMarkedForRemoval) li.classList.add('marked-for-removal');
+            // let isMarkedForRemoval = clientState.markedForRemovalPaths.has(item.path);
+            // if (isMarkedForRemoval) li.classList.add('marked-for-removal');
             
             let toggleIcon = null;
             if (item.is_dir && item.children && item.children.length > 0) {
@@ -464,24 +507,29 @@ document.addEventListener('DOMContentLoaded', () => {
             checkbox.disabled = !item.can_be_checked;
             label.appendChild(checkbox);
 
+            let sigButton = null;
             if (item.is_signature_candidate) { 
-                const sigButton = document.createElement('button');
+                sigButton = document.createElement('button');
                 sigButton.textContent = 'S';
                 sigButton.className = 'sig-button mr-1.5 border rounded bg-purple-200 dark:bg-purple-600 hover:bg-purple-300 dark:hover:bg-purple-500 text-purple-700 dark:text-purple-100';
-                sigButton.title = 'Select for Signatures only';
+                sigButton.title = 'Toggle Signatures only';
+                sigButton.disabled = !item.can_be_checked; // Disable if file cannot be checked
                 label.appendChild(sigButton);
 
                 sigButton.addEventListener('click', e => {
                     e.stopPropagation();
                     e.preventDefault();
-                    if (li.classList.contains('marked-for-removal')) return;
+                    if (li.classList.contains('marked-for-removal') || !item.can_be_checked) return;
+
                     const currentSelection = clientState.checkedTreePathsMap.get(item.path);
                     if (currentSelection === 'signatures') {
-                        clientState.checkedTreePathsMap.delete(item.path);
+                        clientState.checkedTreePathsMap.delete(item.path); // Toggle off signatures
+                        addLogEntry(`Deselected signatures for: ${item.name}`, 'info');
                     } else {
-                        clientState.checkedTreePathsMap.set(item.path, 'signatures');
+                        clientState.checkedTreePathsMap.set(item.path, 'signatures'); // Set to signatures
+                        addLogEntry(`Selected signatures for: ${item.name}`, 'info');
                     }
-                    applySelectionsToTree();
+                    applySelectionsToTree(); // Re-apply selections to update UI
                     saveProjectState();
                 });
             }
@@ -516,67 +564,71 @@ document.addEventListener('DOMContentLoaded', () => {
                     e.stopPropagation();
                     childrenUl.classList.toggle('hidden');
                     updateToggleIcon();
+                    addLogEntry(`Toggled directory: ${item.name}`, 'info');
                 });
             }
             
-            const updateRemovalState = () => {
-                const isMarked = clientState.markedForRemovalPaths.has(item.path);
-                li.classList.toggle('marked-for-removal', isMarked);
-                removalBtn.innerHTML = isMarked ? '↩️' : '✗';
-                removalBtn.title = isMarked ? 'Restore this item' : 'Mark for removal';
-            };
-            
+            // Removal button logic
             removalBtn.addEventListener('click', e => {
                 e.stopPropagation();
                 const isNowMarked = !clientState.markedForRemovalPaths.has(item.path);
                 
                 const pathsToUpdate = [item.path];
                 if (item.is_dir) {
+                    // Collect all descendant paths
                     li.querySelectorAll('.item-label').forEach(descLabel => pathsToUpdate.push(descLabel.dataset.path));
                 }
 
                 pathsToUpdate.forEach(path => {
                     if (isNowMarked) {
                         clientState.markedForRemovalPaths.add(path);
-                        clientState.checkedTreePathsMap.delete(path);
+                        clientState.checkedTreePathsMap.delete(path); // If marked for removal, it cannot be selected
+                        addLogEntry(`Marked for removal: ${Path.basename(path)}`, 'info');
                     } else {
                         clientState.markedForRemovalPaths.delete(path);
+                        addLogEntry(`Restored from removal: ${Path.basename(path)}`, 'info');
                     }
                 });
                 
-                applySelectionsToTree();
+                applySelectionsToTree(); // Re-apply selections to update UI
                 saveProjectState();
             });
 
+            // Checkbox logic for 'full' content
             checkbox.addEventListener('change', e => {
-                if(li.classList.contains('marked-for-removal')) {
-                    e.target.checked = false;
+                if(li.classList.contains('marked-for-removal') || !item.can_be_checked) {
+                    e.target.checked = false; // Prevent checking if removed or uncheckable
+                    addLogEntry(`Cannot select removed/uncheckable item: ${item.name}`, 'warning');
                     return;
                 }
                 const isChecked = e.target.checked;
                 if (isChecked) {
                     clientState.checkedTreePathsMap.set(item.path, 'full');
+                    addLogEntry(`Selected for full content: ${item.name}`, 'info');
                 } else {
                     clientState.checkedTreePathsMap.delete(item.path);
+                    addLogEntry(`Deselected: ${item.name}`, 'info');
                 }
 
                 if (item.is_dir) {
-                    propagateCheckState(li, isChecked);
+                    propagateCheckState(li, isChecked); // Propagate full selection only
                 }
 
-                applySelectionsToTree();
+                applySelectionsToTree(); // Re-apply selections to update UI
                 saveProjectState();
             });
             
             updateToggleIcon();
-            updateRemovalState();
-            parentDomElement.appendChild(li);
+            // Initial application of selection state
+            parentDomElement.appendChild(li); // Append before applying selections to ensure elements exist
+            applySelectionsToTree(); // Will be called again after rendering loop, but good for immediate state
         });
     }
 
     function propagateCheckState(listItem, isChecked) {
+        // This function now only propagates 'full' selection
         listItem.querySelectorAll('li').forEach(childLi => {
-            if (childLi.classList.contains('marked-for-removal')) return;
+            if (childLi.classList.contains('marked-for-removal')) return; // Do not touch removed items
 
             const checkbox = childLi.querySelector('.tree-checkbox:not(:disabled)');
             if (checkbox) {
@@ -588,26 +640,65 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         });
+        addLogEntry(`Propagated checkbox state for children of directory.`, 'info');
     }
 
     function applySelectionsToTree() {
-        document.querySelectorAll('li').forEach(li => {
+        document.querySelectorAll('.file-tree li').forEach(li => { // Use .file-tree li to be more specific
             const label = li.querySelector('.item-label');
             if(!label) return;
             
             const path = label.dataset.path;
+            const item = getTreeItemByPath(path); // Helper to get item data (can_be_checked, is_signature_candidate)
+            
+            if (!item) return; // Should not happen if path comes from rendered tree
+
             const isMarked = clientState.markedForRemovalPaths.has(path);
             li.classList.toggle('marked-for-removal', isMarked);
-            li.querySelector('.removal-toggle-btn').innerHTML = isMarked ? '↩️' : '✗';
+            
+            const removalBtn = li.querySelector('.removal-toggle-btn');
+            if (removalBtn) removalBtn.innerHTML = isMarked ? '↩️' : '✗';
 
             const checkbox = label.querySelector('.tree-checkbox');
             const sigButton = label.querySelector('.sig-button');
             const selectionType = clientState.checkedTreePathsMap.get(path);
             
-            if (checkbox) checkbox.checked = selectionType === 'full';
+            // Disable selection controls if marked for removal
+            if (checkbox) checkbox.disabled = isMarked || !item.can_be_checked;
+            if (sigButton) sigButton.disabled = isMarked || !item.can_be_checked;
+
+            // Apply visual state
+            if (checkbox) checkbox.checked = (selectionType === 'full');
             if (sigButton) sigButton.classList.toggle('active-sig', selectionType === 'signatures');
+
+            // If marked for removal, ensure no selection is active visually
+            if (isMarked) {
+                if (checkbox) checkbox.checked = false;
+                if (sigButton) sigButton.classList.remove('active-sig');
+            }
         });
         updateExtractorUIStates();
+    }
+
+    // Helper function to find item data from the original tree structure
+    // This assumes the tree structure is stored somewhere or accessible
+    // For now, will traverse the actual DOM tree and read attributes, or ideally,
+    // we'd store the full tree in clientState after loading.
+    let _cachedTreeData = []; // Store the full tree response
+    function getTreeItemByPath(targetPath) {
+        function findInTree(nodes) {
+            for (const node of nodes) {
+                if (node.path === targetPath) {
+                    return node;
+                }
+                if (node.children) {
+                    const found = findInTree(node.children);
+                    if (found) return found;
+                }
+            }
+            return null;
+        }
+        return findInTree(_cachedTreeData);
     }
 
 
@@ -619,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (repopulate) {
             clientState.checkedTreePathsMap.clear();
             clientState.markedForRemovalPaths.clear();
+            addLogEntry('Repopulating tree: clearing all existing selections and removals.', 'info');
         }
 
         showStatus('Loading project tree...', 'info');
@@ -632,20 +724,24 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (fileTreeContainer) fileTreeContainer.innerHTML = '';
             if (response.tree && response.tree.length > 0) {
+                _cachedTreeData = response.tree; // Cache the tree data
                 const rootUl = document.createElement('ul');
                 rootUl.className = 'list-none p-0 m-0';
                 renderTree(response.tree[0].children, rootUl);
                 fileTreeContainer.appendChild(rootUl);
-                applySelectionsToTree();
+                applySelectionsToTree(); // Apply selections after the entire tree is rendered
                 showStatus('Tree loaded successfully.', 'success');
+                addLogEntry('Project tree loaded successfully.', 'success');
                 switchTab('tab2');
             } else {
                 if (fileTreeContainer) fileTreeContainer.innerHTML = '<p class="p-4">No files found or folder is empty/filtered.</p>';
                 showStatus('No items found in project.', 'warning');
+                addLogEntry('No items found in project tree or all filtered out.', 'warning');
             }
         } catch (error) {
             if (fileTreeContainer) fileTreeContainer.innerHTML = `<p class="p-4 text-red-500">Error: ${error.message}</p>`;
             showStatus(`Error loading tree: ${error.message}`, 'error');
+            addLogEntry(`Failed to load project tree: ${error.message}`, 'error');
         } finally {
             updateExtractorUIStates();
         }
@@ -683,13 +779,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     tokenProgressBar.classList.add('progress-bar-safe');
                 }
                 tokenCountDisplay.textContent = `${clientState.currentTokens} / ${clientState.modelContextSize} tokens`;
+                addLogEntry(`Token usage updated: ${clientState.currentTokens}/${clientState.modelContextSize}`, 'info');
             } else {
                  tokenCountDisplay.textContent = `${clientState.currentTokens} tokens (context size unknown)`;
+                 addLogEntry(`Token count: ${clientState.currentTokens} (model context size unknown)`, 'info');
             }
 
         } catch (error) {
             console.error('Could not count tokens:', error);
             tokenCountDisplay.textContent = 'Token count unavailable';
+            addLogEntry(`Failed to count tokens: ${error.message}`, 'error');
         }
     }
 
@@ -726,23 +825,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (clientState.chatHistory.length > 0) {
             startDiscussionPlaceholder.classList.add('hidden');
             clientState.chatHistory.forEach(msg => renderChatMessage(msg.content, msg.role));
+            addLogEntry('Rendered chat history.', 'info');
         } else {
             startDiscussionPlaceholder.classList.remove('hidden');
             tokenProgressContainer.classList.add('hidden');
             tokenCountDisplay.textContent = '';
+            addLogEntry('Chat history is empty, showing start discussion placeholder.', 'info');
         }
     }
 
     async function handleSendMessage(messageContent) {
-        if (clientState.isAIGenerating || !messageContent.trim()) return;
+        if (clientState.isAIGenerating || !messageContent.trim()) {
+            if (!messageContent.trim()) {
+                addLogEntry('Attempted to send empty chat message.', 'warning');
+            }
+            return;
+        }
 
         if (clientState.modelContextSize > 0 && clientState.currentTokens >= clientState.modelContextSize) {
             showStatus('Context window is full. Please start a new discussion.', 'error');
+            addLogEntry('Chat context window is full.', 'error');
             return;
         }
 
         clientState.isAIGenerating = true;
         updateChatUIState();
+        addLogEntry('Sending chat message to AI.', 'info');
         
         const userMessage = { role: 'user', content: messageContent };
         clientState.chatHistory.push(userMessage);
@@ -798,10 +906,12 @@ document.addEventListener('DOMContentLoaded', () => {
             aiBubble.innerHTML = DOMPurify.sanitize(marked.parse(fullResponse));
             addCopyButtonsToCodeBlocks(aiBubble);
             await updateTokenCountAndProgressBar();
+            addLogEntry('AI response received successfully.', 'success');
 
         } catch (error) {
             aiBubble.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
             clientState.chatHistory.pop(); // Remove the failed AI message
+            addLogEntry(`Error during AI chat: ${error.message}`, 'error');
         } finally {
             clientState.isAIGenerating = false;
             updateChatUIState();
@@ -836,6 +946,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- New Logging Modal Functions ---
+    function addLogEntry(message, type = 'info') {
+        const timestamp = new Date().toLocaleString();
+        clientState.logMessages.push({ timestamp, type, message });
+        
+        // Keep only the last 200 messages to prevent excessive memory usage
+        const MAX_LOG_MESSAGES = 200;
+        if (clientState.logMessages.length > MAX_LOG_MESSAGES) {
+            clientState.logMessages.splice(0, clientState.logMessages.length - MAX_LOG_MESSAGES);
+        }
+        renderLogModalContent();
+    }
+
+    function renderLogModalContent() {
+        if (!logsModalContent) return;
+        logsModalContent.innerHTML = ''; // Clear existing content
+        if (clientState.logMessages.length === 0) {
+            logsModalContent.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">No log messages yet.</p>';
+            return;
+        }
+
+        clientState.logMessages.forEach(entry => {
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry log-entry.${entry.type}`;
+            logDiv.innerHTML = `<strong>[${entry.timestamp}] [${entry.type.toUpperCase()}]</strong> ${entry.message}`;
+            logsModalContent.appendChild(logDiv);
+        });
+        logsModalContent.scrollTop = logsModalContent.scrollHeight; // Auto-scroll to bottom
+    }
+
+    function openLogsModal() {
+        if (logsModal) logsModal.classList.remove('hidden');
+        renderLogModalContent(); // Render content when opening
+        addLogEntry('Logs modal opened.', 'info');
+    }
+
+    function closeLogsModal() {
+        if (logsModal) logsModal.classList.add('hidden');
+        addLogEntry('Logs modal closed.', 'info');
+    }
+
+    function clearLogs() {
+        clientState.logMessages = [];
+        renderLogModalContent();
+        addLogEntry('All logs cleared.', 'info');
+        showStatus('All logs cleared.', 'info');
+    }
+
     // --- Event Listeners & UI Updates ---
     function updateExtractorUIStates() {
         const hasTree = fileTreeContainer && fileTreeContainer.querySelector('ul');
@@ -861,6 +1019,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.toggle('active', content.id === `${tabId}-content`);
         });
+        addLogEntry(`Switched to tab: ${tabId.replace('tab', '')}`, 'info');
     }
 
     function attachEventListeners() {
@@ -868,15 +1027,18 @@ document.addEventListener('DOMContentLoaded', () => {
             const name = prompt("Enter a name for the new project:");
             if (!name || !name.trim()) return;
             showStatus('Opening server folder dialog...', 'info');
+            addLogEntry('Requesting server folder browse dialog.', 'info');
             try {
                 const browseResponse = await handleApiResponse(fetch('/api/browse_server_folder', { method: 'POST' }));
                 if (browseResponse.status === 'success' && browseResponse.path) {
                     const newProject = { name: name.trim(), path: browseResponse.path, starred: false };
                     await handleApiResponse(fetch('/api/projects', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(newProject) }));
                     showStatus('Project added successfully!', 'success');
+                    addLogEntry(`New project "${name.trim()}" added at "${browseResponse.path}".`, 'success');
                     await fetchProjects();
                 } else if (browseResponse.status === 'cancelled') {
                     showStatus('Folder selection cancelled.', 'info');
+                    addLogEntry('Server folder browse cancelled.', 'info');
                 }
             } catch (error) {
                 showStatus(`Error adding project: ${error.message}`, 'error');
@@ -886,8 +1048,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (importProjectsBtn) importProjectsBtn.addEventListener('click', () => importFileInput.click());
         if (importFileInput) importFileInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if (!file) return;
+            if (!file) {
+                addLogEntry('No file selected for project import.', 'warning');
+                return;
+            }
 
+            addLogEntry(`Attempting to import projects from file: ${file.name}`, 'info');
             const reader = new FileReader();
             reader.onload = async (event) => {
                 try {
@@ -899,9 +1065,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     }));
 
                     showStatus(`Successfully imported ${response.length} new project(s).`, 'success');
+                    addLogEntry(`Successfully imported ${response.length} new project(s) from "${file.name}".`, 'success');
                     await fetchProjects();
                 } catch (error) {
                     showStatus(`Import failed: ${error.message}`, 'error');
+                    addLogEntry(`Project import failed: ${error.message}`, 'error');
                 } finally {
                     e.target.value = ''; // Reset file input
                 }
@@ -914,8 +1082,10 @@ document.addEventListener('DOMContentLoaded', () => {
                                      .map(cb => cb.closest('.project-card').dataset.id);
             if (selectedIds.length === 0) {
                 showStatus('Please select at least one project to export.', 'warning');
+                addLogEntry('No projects selected for export.', 'warning');
                 return;
             }
+            addLogEntry(`Attempting to export ${selectedIds.length} projects.`, 'info');
             try {
                 const projectsToExport = await handleApiResponse(fetch('/api/projects/export', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
@@ -932,8 +1102,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 showStatus('Projects exported successfully.', 'success');
+                addLogEntry(`Successfully exported ${projectsToExport.length} projects.`, 'success');
             } catch (error) {
                 showStatus(`Export failed: ${error.message}`, 'error');
+                addLogEntry(`Project export failed: ${error.message}`, 'error');
             }
         });
 
@@ -948,26 +1120,41 @@ document.addEventListener('DOMContentLoaded', () => {
                 api_key: modalLlmApiKeyInput.value.trim(),
                 model_name: modalLlmModelSelect.value
              };
+            addLogEntry('Saving LLM settings.', 'info');
             try {
                 await handleApiResponse(fetch('/api/settings/llm', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(settings)}));
                 showStatus('LLM settings saved.', 'success');
+                addLogEntry('LLM settings saved successfully.', 'success');
                 clientState.llmSettings = settings;
                 if (settingsModal) settingsModal.classList.add('hidden');
             } catch (error) {
                 showStatus(`Error saving LLM settings: ${error.message}`, 'error');
+                addLogEntry(`Failed to save LLM settings: ${error.message}`, 'error');
             }
         });
         
         if (settingsBtn) settingsBtn.addEventListener('click', () => {
             settingsModal.classList.remove('hidden');
+            addLogEntry('Settings modal opened.', 'info');
         });
-        if (modalCloseSettingsBtn) modalCloseSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        if (modalCloseSettingsBtn) modalCloseSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            addLogEntry('Settings modal closed.', 'info');
+        });
+
+        // Event listeners for the new logs modal
+        if (logsBtn) logsBtn.addEventListener('click', openLogsModal);
+        if (logsModalCloseBtn) logsModalCloseBtn.addEventListener('click', closeLogsModal);
+        if (logsModalClearBtn) logsModalClearBtn.addEventListener('click', clearLogs);
+
         if (refreshModelsBtn) refreshModelsBtn.addEventListener('click', fetchLlmModels);
 
         if (setDefaultLollmsBtn) setDefaultLollmsBtn.addEventListener('click', () => {
             if (modalLlmUrlInput) {
-                modalLlmUrlInput.value = 'http://localhost:9642/v1';
+                // Changed default URL to base address
+                modalLlmUrlInput.value = 'http://localhost:9642';
                 showStatus('Default Lollms URL has been set.', 'info');
+                addLogEntry('Default Lollms URL set to http://localhost:9642.', 'info');
             }
         });
 
@@ -977,9 +1164,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (modalLlmApiKeyInput.type === 'password') {
                     modalLlmApiKeyInput.type = 'text';
                     apiKeyToggleBtn.innerHTML = icons.eyeSlash;
+                    addLogEntry('API Key visibility toggled ON.', 'info');
                 } else {
                     modalLlmApiKeyInput.type = 'password';
                     apiKeyToggleBtn.innerHTML = icons.eye;
+                    addLogEntry('API Key visibility toggled OFF.', 'info');
                 }
             });
         }
@@ -989,26 +1178,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const newPaths = Array.from(e.target.files).map(file => file.name); // Using name for simplicity
             clientState.loadedDocPaths = [...new Set([...clientState.loadedDocPaths, ...newPaths])].sort();
             updateDocListUI();
+            addLogEntry(`Added ${newPaths.length} documentation files.`, 'info');
             e.target.value = ''; // Reset file input
         });
         if (removeDocsBtn) removeDocsBtn.addEventListener('click', () => {
             const selected = Array.from(docList.querySelectorAll('.doc-checkbox:checked')).map(cb => cb.closest('li').dataset.path);
             clientState.loadedDocPaths = clientState.loadedDocPaths.filter(p => !selected.includes(p));
             updateDocListUI();
+            addLogEntry(`Removed ${selected.length} selected documentation files.`, 'info');
         });
         if (clearDocsBtn) clearDocsBtn.addEventListener('click', () => {
             clientState.loadedDocPaths = [];
             updateDocListUI();
+            addLogEntry('Cleared all documentation files.', 'info');
         });
 
         if (loadTemplateBtn) loadTemplateBtn.addEventListener('click', () => {
             const selectedName = templateSelect.value;
-            if (!selectedName) { showStatus('No template selected.', 'warning'); return; }
+            if (!selectedName) { showStatus('No template selected.', 'warning'); addLogEntry('Load template attempted with no template selected.', 'warning'); return; }
             const template = clientState.promptTemplates.find(t => t.name === selectedName);
             if (template && customPromptTextarea) {
                 customPromptTextarea.value = template.content;
                 updateExtractorClientStateFromUI();
                 showStatus(`Loaded template: ${selectedName}`, 'success');
+                addLogEntry(`Loaded prompt template: "${selectedName}".`, 'success');
             }
         });
 
@@ -1016,21 +1209,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const content = customPromptTextarea.value.trim();
             if (!content) {
                 showStatus('Prompt is empty, cannot save.', 'warning');
+                addLogEntry('Attempted to save empty prompt template.', 'warning');
                 return;
             }
             const name = prompt('Enter a name for this new prompt template:');
-            if (!name || !name.trim()) return;
+            if (!name || !name.trim()) {
+                addLogEntry('Prompt template save cancelled.', 'info');
+                return;
+            }
 
+            addLogEntry(`Attempting to save prompt template: "${name.trim()}".`, 'info');
             try {
                 await handleApiResponse(fetch('/api/save_template', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ name: name.trim(), content: content })
                 }));
                 showStatus(`Template "${name.trim()}" saved.`, 'success');
+                addLogEntry(`Prompt template "${name.trim()}" saved successfully.`, 'success');
                 await fetchPromptTemplates();
                 templateSelect.value = name.trim();
             } catch (error) {
                 showStatus(`Error saving template: ${error.message}`, 'error');
+                addLogEntry(`Failed to save prompt template: ${error.message}`, 'error');
             }
         });
 
@@ -1045,6 +1245,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 S('rendered-output-btn').classList.toggle('active', !isRaw);
                 S('raw-output-content').classList.toggle('active', isRaw);
                 S('rendered-output-content').classList.toggle('active', !isRaw);
+                addLogEntry(`Switched output sub-tab to: ${isRaw ? 'Raw Markdown' : 'Rendered Preview'}`, 'info');
             });
         });
 
@@ -1059,53 +1260,71 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if(backToProjectsBtn) backToProjectsBtn.addEventListener('click', () => switchView('projects'));
         if(loadTreeBtn) loadTreeBtn.addEventListener('click', () => performLoadTree(false));
-        if(refreshTreeBtn) refreshTreeBtn.addEventListener('click', () => refreshChoiceModal.classList.remove('hidden'));
-        if(refreshCancelBtn) refreshCancelBtn.addEventListener('click', () => refreshChoiceModal.classList.add('hidden'));
+        if(refreshTreeBtn) refreshTreeBtn.addEventListener('click', () => {
+            refreshChoiceModal.classList.remove('hidden');
+            addLogEntry('Refresh tree choice modal opened.', 'info');
+        });
+        if(refreshCancelBtn) refreshCancelBtn.addEventListener('click', () => {
+            refreshChoiceModal.classList.add('hidden');
+            addLogEntry('Refresh tree cancelled.', 'info');
+        });
         if(refreshPreserveBtn) refreshPreserveBtn.addEventListener('click', () => {
             refreshChoiceModal.classList.add('hidden');
             performLoadTree(false);
+            addLogEntry('Refreshing tree: preserving selections.', 'info');
         });
         if(refreshRepopulateBtn) refreshRepopulateBtn.addEventListener('click', () => {
             refreshChoiceModal.classList.add('hidden');
             performLoadTree(true);
+            addLogEntry('Refreshing tree: repopulating automatically.', 'info');
         });
         if(aiSelectBtn) aiSelectBtn.addEventListener('click', async () => {
             const userGoal = customPromptTextarea.value.trim();
             if (!userGoal) {
                 showStatus("Please describe your goal in the 'Custom Instructions' text area first.", 'warning');
+                addLogEntry("AI Select: User goal is empty.", 'warning');
                 return;
             }
             if (!clientState.llmSettings.url || !clientState.llmSettings.model_name) {
                 showStatus("Please configure LLM URL and select a model in Settings first.", "error");
+                addLogEntry("AI Select: LLM not configured.", 'error');
                 return;
             }
             showStatus('AI is analyzing your goal and selecting files...', 'info');
+            addLogEntry('Initiating AI file selection based on user goal.', 'info');
             try {
                 const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
                 const response = await handleApiResponse(fetch('/api/llm_select_files', {
                     method: 'POST', headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ project_path: project.path, user_goal: userGoal, filters: clientState.filterSettings })
                 }));
+                
                 if (response.files && response.files.length > 0) {
                     let selectionCount = 0;
-                    response.files.forEach(path => { 
-                        if (!clientState.markedForRemovalPaths.has(path) && !clientState.checkedTreePathsMap.has(path)) {
-                            selectionCount++; 
+                    clientState.checkedTreePathsMap.clear(); // Clear existing AI selections
+                    response.files.forEach(fileInfo => { // fileInfo is {path: absolutePath, type: "full"|"signatures"}
+                        const path = fileInfo.path;
+                        const type = fileInfo.type;
+                        if (!clientState.markedForRemovalPaths.has(path)) { // Only select if not marked for removal
+                            clientState.checkedTreePathsMap.set(path, type); 
+                            selectionCount++;
                         }
-                        clientState.checkedTreePathsMap.set(path, 'full'); 
                     });
                     applySelectionsToTree();
-                    showStatus(`AI selected ${selectionCount} new file(s) based on your instructions.`, 'success');
+                    showStatus(`AI selected ${selectionCount} file(s) based on your instructions.`, 'success');
+                    addLogEntry(`AI successfully selected ${selectionCount} file(s).`, 'success');
                 } else {
                     showStatus('AI did not suggest any files.', 'warning');
+                    addLogEntry('AI did not suggest any files for selection.', 'warning');
                 }
             } catch(error) { showStatus(`AI selection failed: ${error.message}`, 'error'); }
         });
         if(generateBtn) generateBtn.addEventListener('click', async () => {
             const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
             const selectedFiles = Array.from(clientState.checkedTreePathsMap.entries()).map(([path, type]) => ({ path, type }));
-            if (selectedFiles.length === 0) { showStatus('No files selected.', 'warning'); return; }
+            if (selectedFiles.length === 0) { showStatus('No files selected.', 'warning'); addLogEntry('Generation attempted with no files selected.', 'warning'); return; }
             showStatus('Generating output...', 'info');
+            addLogEntry('Starting generation of project structure text.', 'info');
             switchTab('tab3');
             rawOutputTextarea.value = 'Generating...';
             renderedOutputDiv.innerHTML = '<p>Generating...</p>';
@@ -1121,9 +1340,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 rawOutputTextarea.value = response.markdown;
                 renderedOutputDiv.innerHTML = DOMPurify.sanitize(marked.parse(response.markdown));
                 showStatus('Output generated successfully.', 'success');
+                addLogEntry('Project structure text generated successfully.', 'success');
 
                 clientState.currentTokens = response.token_count;
-                clientState.modelContextSize = 0;
+                clientState.modelContextSize = 0; // Reset context size as this is initial generation
                 if (tokenCountDisplay) {
                     tokenCountDisplay.textContent = response.token_count > -1 ? `${response.token_count} tokens (context size unknown)` : '';
                 }
@@ -1133,33 +1353,61 @@ document.addEventListener('DOMContentLoaded', () => {
                 rawOutputTextarea.value = `Error: ${error.message}`;
                 renderedOutputDiv.innerHTML = `<p class="text-red-500">Error: ${error.message}</p>`;
                 showStatus(`Generation failed: ${error.message}`, 'error');
+                addLogEntry(`Failed to generate structure text: ${error.message}`, 'error');
             } finally { 
                 updateExtractorUIStates(); 
                 saveProjectState();
             }
         });
         if(copyRawBtn) copyRawBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(rawOutputTextarea.value).then(() => showStatus('Copied to clipboard!', 'success'), () => showStatus('Failed to copy.', 'error'));
+            navigator.clipboard.writeText(rawOutputTextarea.value).then(() => {
+                showStatus('Copied to clipboard!', 'success');
+                addLogEntry('Raw Markdown copied to clipboard.', 'success');
+            }, () => {
+                showStatus('Failed to copy.', 'error');
+                addLogEntry('Failed to copy raw Markdown to clipboard.', 'error');
+            });
         });
         if(checkAllTextBtn) checkAllTextBtn.addEventListener('click', () => {
-            document.querySelectorAll('.tree-checkbox:not(:disabled)').forEach(cb => {
-                const li = cb.closest('li');
-                if (!li.classList.contains('marked-for-removal')) {
-                    const path = cb.closest('.item-label').dataset.path;
+            let count = 0;
+            // Iterate through _cachedTreeData to get all eligible files
+            function collectAllEligibleFiles(nodes) {
+                let eligibleFiles = [];
+                for (const node of nodes) {
+                    if (node.is_dir) {
+                        eligibleFiles = eligibleFiles.concat(collectAllEligibleFiles(node.children || []));
+                    } else if (node.can_be_checked && !clientState.markedForRemovalPaths.has(node.path)) {
+                        eligibleFiles.push(node.path);
+                    }
+                }
+                return eligibleFiles;
+            }
+            const allEligiblePaths = collectAllEligibleFiles(_cachedTreeData);
+
+            allEligiblePaths.forEach(path => {
+                if (clientState.checkedTreePathsMap.get(path) !== 'full') {
                     clientState.checkedTreePathsMap.set(path, 'full');
+                    count++;
                 }
             });
             applySelectionsToTree();
+            showStatus(`Checked all text files. (${count} new selections)`, 'info');
+            addLogEntry(`Selected all available text files for full content. (${count} new selections)`, 'info');
+            saveProjectState(); // Save state after bulk update
         });
         if(uncheckAllBtn) uncheckAllBtn.addEventListener('click', () => {
             clientState.checkedTreePathsMap.clear();
             applySelectionsToTree();
+            showStatus('Unchecked all files.', 'info');
+            addLogEntry('All file selections cleared.', 'info');
+            saveProjectState(); // Save state after bulk update
         });
         if(themeToggle) themeToggle.addEventListener('click', () => {
             const isDark = document.documentElement.classList.toggle('dark');
             clientState.currentTheme = isDark ? 'dark' : 'light';
             themeToggle.innerHTML = isDark ? '☀️' : '🌙';
             localStorage.setItem('theme', clientState.currentTheme);
+            addLogEntry(`Theme toggled to ${clientState.currentTheme}.`, 'info');
         });
 
         // Chat Event Listeners
@@ -1167,24 +1415,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const context = rawOutputTextarea.value;
             if (!context) {
                 showStatus('Generate output on Tab 3 first.', 'warning');
+                addLogEntry('Cannot start discussion: No project context generated.', 'warning');
                 return;
             }
             if (!clientState.llmSettings.url || !clientState.llmSettings.model_name) {
                 showStatus('Please configure LLM URL and select a model in Settings first.', 'error');
+                addLogEntry('Cannot start discussion: LLM settings incomplete.', 'error');
                 return;
             }
             showStatus("Initializing discussion...", "info");
+            addLogEntry("Initializing new AI discussion.", 'info');
             try {
                 const sizeResponse = await handleApiResponse(fetch('/api/context_size'));
                 clientState.modelContextSize = sizeResponse.context_size;
                 showStatus("Context size loaded.", "success");
+                addLogEntry(`AI model context size fetched: ${clientState.modelContextSize} tokens.`, 'success');
             } catch(e) {
                 showStatus(`Could not fetch model context size: ${e.message}`, 'warning');
+                addLogEntry(`Failed to fetch AI model context size: ${e.message}`, 'warning');
                 clientState.modelContextSize = 0;
             }
 
             clientState.chatHistory = [{ role: 'system', content: `The user has provided the following project context. Your task is to act as an expert software developer and assist them with their requests based on this context.\n\n---\n\n${context}` }];
             renderChatHistory(); // Clear placeholder
+            addLogEntry('Initial project context sent to AI for discussion.', 'info');
             handleSendMessage("Based on the context provided, analyze the project and propose a plan for the user's request as outlined in the initial instructions. If no specific request was made, provide a high-level overview and ask how you can help.");
         });
 
@@ -1213,7 +1467,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (importPromptsBtn) importPromptsBtn.addEventListener('click', () => importPromptsInput.click());
         if (importPromptsInput) importPromptsInput.addEventListener('change', async (e) => {
             const file = e.target.files[0];
-            if (!file) return;
+            if (!file) {
+                addLogEntry('No file selected for prompt import.', 'warning');
+                return;
+            }
+            addLogEntry(`Attempting to import prompts from file: ${file.name}`, 'info');
             const reader = new FileReader();
             reader.onload = async (event) => {
                 try {
@@ -1222,9 +1480,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(prompts)
                     }));
                     showStatus(`Imported ${added} new & updated ${updated} prompts.`, 'success');
+                    addLogEntry(`Successfully imported ${added} new and updated ${updated} prompts from "${file.name}".`, 'success');
                     await fetchPromptTemplates();
                 } catch(error) {
                     showStatus(`Prompt import failed: ${error.message}`, 'error');
+                    addLogEntry(`Prompt import failed: ${error.message}`, 'error');
                 } finally {
                     e.target.value = '';
                 }
@@ -1233,10 +1493,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (exportPromptsBtn) exportPromptsBtn.addEventListener('click', async () => {
+            addLogEntry('Attempting to export custom prompt templates.', 'info');
             try {
                 const promptsToExport = await handleApiResponse(fetch('/api/prompts/export'));
                 if (promptsToExport.length === 0) {
                     showStatus('No custom prompts to export.', 'warning');
+                    addLogEntry('No custom prompts found to export.', 'warning');
                     return;
                 }
                 const blob = new Blob([JSON.stringify(promptsToExport, null, 2)], { type: 'application/json' });
@@ -1247,8 +1509,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 a.click();
                 URL.revokeObjectURL(url);
                 showStatus('Custom prompts exported.', 'success');
+                addLogEntry(`Successfully exported ${promptsToExport.length} custom prompts.`, 'success');
             } catch(error) {
                 showStatus(`Export failed: ${error.message}`, 'error');
+                addLogEntry(`Prompt export failed: ${error.message}`, 'error');
             }
         });
     }
@@ -1262,6 +1526,9 @@ document.addEventListener('DOMContentLoaded', () => {
             clientState.currentTheme = isDark ? 'dark' : 'light';
             themeToggle.innerHTML = isDark ? '☀️' : '🌙';
         }
+        
+        // Initial log message
+        addLogEntry('Application started.', 'info');
         
         populatePresetList();
         attachEventListeners();
@@ -1283,6 +1550,7 @@ document.addEventListener('DOMContentLoaded', () => {
                              <label for="${id}" class="ml-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">${name}</label>`;
             presetList.appendChild(div);
         });
+        addLogEntry('Exclusion presets populated.', 'info');
     }
 
     initialize();

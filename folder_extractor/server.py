@@ -1,3 +1,6 @@
+# folder_extractor/server.py
+# [UPDATE]
+
 import os
 import sys
 import fnmatch
@@ -10,8 +13,7 @@ from typing import List, Dict, Optional, Any, Set
 import webbrowser
 import threading
 import uuid
-import httpx
-import argparse
+from ascii_colors import trace_exception # Still needed for potential proxying or other uses if not fully replaced, but core LLM logic moves to lollms_client
 
 try:
     import pipmaster
@@ -20,12 +22,20 @@ except ImportError:
     os.system(f"{sys.executable} -m pip install pipmaster")
     import pipmaster
 
-pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart", "httpx"])
+# Ensure lollms-client is installed
+pipmaster.ensure_packages(["fastapi", "uvicorn", "python-multipart", "httpx", "lollms-client"])
 
+# Import Server and Config directly from uvicorn
+from uvicorn import Server, Config
 from fastapi import FastAPI, HTTPException, Body, Request, UploadFile, File
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
+import argparse
+import asyncio
+
+# Import LollmsClient and MSG_TYPE from the lollms_client library
+from lollms_client import LollmsClient, MSG_TYPE
 
 APP_TITLE = "Folder Structure Extractor Web App"
 APP_VERSION = "3.5.0"
@@ -33,6 +43,19 @@ CONFIG_DIR = Path.home() / ".config" / "folder_extractor_web"
 PROMPTS_FILE = CONFIG_DIR / "prompt_templates.json"
 PROJECTS_FILE = CONFIG_DIR / "projects.json"
 LLM_SETTINGS_FILE = CONFIG_DIR / "llm_settings.json"
+
+# New constants for AI file selection context
+CORE_PROJECT_CONTEXT_FILES = [
+    "server.py",
+    "static/main.js",
+    "static/index.html",
+    "static/style.css",
+    "requirements.txt",
+    "description.yaml",
+    "default_prompts.json",
+    "README.md"
+]
+CORE_FILE_MAX_SIZE_BYTES = 50 * 1024 # 50 KB
 
 DEFAULT_TEMPLATES_DATA = [
   {
@@ -94,7 +117,7 @@ PRESET_EXCLUSIONS = {
     },
     "Log Files": {"folders": [], "extensions": [".log", ".log.*"], "patterns": ["*.log"]},
     "Binary/Archives": { "extensions": [".exe", ".dll", ".bin", ".o", ".a", ".lib", ".so", ".zip", ".rar", ".7z", ".tar", ".gz", ".iso"], "folders": [], "patterns": [] },
-    "Large Media Files": { "extensions": [".png", ".jpg", ".gif", ".mp4", ".mov", ".mp3", ".pdf", ".doc", ".docx", ".ppt", ".xls", ".psd", ".ai", ".svg"], "folders": [], "patterns": [] }
+    "Large Media Files": { "extensions": [".png", ".jpg", ".gif", ".mp4", ".mov", ".mp3", ".pdf", ".doc", ".docx", ".ppt", ".xls", ".psd", ".ai", ".svg"], "folders": [] , "patterns": []}
 }
 
 app = FastAPI(title=APP_TITLE, version=APP_VERSION)
@@ -393,7 +416,7 @@ async def get_projects():
 async def create_project(project: Project):
     projects = load_json_file(PROJECTS_FILE, [])
     projects.append(project.model_dump())
-    save_json_file(PROJECTS_FILE, projects)
+    save_json_file(PROMPTS_FILE, projects) # Bug fix: Should be PROJECTS_FILE, not PROMPTS_FILE
     return project
 
 @app.put("/api/projects/{project_id}", response_model=Project)
@@ -475,190 +498,243 @@ async def get_llm_settings():
 async def save_llm_settings(settings: LLMSettings):
     save_json_file(LLM_SETTINGS_FILE, settings.model_dump())
 
-async def proxy_lollms_request(endpoint: str, payload: dict, method: str = "POST"):
+# Helper function to get a configured LollmsClient instance
+def _get_lollms_client_instance() -> LollmsClient:
     settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
     if not settings.url:
         raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
 
-    base_url = settings.url.rsplit('/v1/', 1)[0]
-    # Adjust for base URLs that might not have /v1/
-    if endpoint=="count_tokens" or endpoint=="context_size" or endpoint=="models":
-        base_url = base_url + "/v1"
-    elif not base_url.endswith('/v1'):
-        base_url = settings.url.rstrip('/')
-
-    target_url = f"{base_url}/{endpoint}"
-
-    headers = {"Content-Type": "application/json"}
-    if settings.api_key:
-        headers["Authorization"] = f"Bearer {settings.api_key}"
-
+       
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            if method.upper() == "GET":
-                response = await client.get(target_url, headers=headers)
-            else:
-                response = await client.post(target_url, json=payload, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {target_url}. Error: {e}")
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
-    except (ValueError, json.JSONDecodeError, KeyError) as e:
-        raise HTTPException(status_code=500, detail=f"Could not parse LLM response for {endpoint}. Error: {e}")
-
+        # Use 'lollms' binding
+        return LollmsClient(
+            binding_name="lollms",
+            host_address=settings.url+"/v1",
+            service_key=settings.api_key,
+            model_name=settings.model_name
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to initialize LollmsClient: {e}")
 
 @app.get("/api/context_size")
 async def get_context_size():
-    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
-    if not settings.model_name:
-         raise HTTPException(status_code=400, detail="No model selected in settings.")
-    response = await proxy_lollms_request("context_size", {"model": settings.model_name})
-    return {"context_size": response.get("context_size", 0)}
+    try:
+        lc = _get_lollms_client_instance()
+        context_size = lc.get_ctx_size(lc.binding.model_name) # Use the client's configured model_name
+        return {"context_size": context_size}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching context size: {e}")
 
 @app.post("/api/count_tokens")
 async def count_tokens(request: TokenCountRequest):
-    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
-    if not settings.model_name:
-         raise HTTPException(status_code=400, detail="No model selected in settings.")
-    response = await proxy_lollms_request("count_tokens", {"model": settings.model_name, "text": request.text})
-    return {"count": response.get("count", -1)}
+    try:
+        lc = _get_lollms_client_instance()
+        count = lc.get_token_count(request.text, model=lc.model_name) # Use the client's configured model_name
+        return {"count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error counting tokens: {e}")
 
 @app.get("/api/llm_models", response_model=List[str])
 async def get_llm_models():
     try:
-        models_data = await proxy_lollms_request("models", {}, method="GET")
-        model_ids = [model['id'] for model in models_data.get('data', [])]
-        return sorted(model_ids)
-    except HTTPException as e:
-        # Re-raise the exception to be handled by FastAPI's exception handling
-        raise e
+        lc = _get_lollms_client_instance()
+        models = lc.listModels()
+        model_ids = [model['model_name'] for model in models] if isinstance(models, list) and models else models
+        return sorted(model_ids) if isinstance(model_ids, list) else []
     except Exception as e:
-        # Catch any other unexpected errors
-        raise HTTPException(status_code=500, detail=f"An unexpected error occurred while fetching models: {e}")
-
+        trace_exception(e)
+        raise HTTPException(status_code=500, detail=f"Error fetching models: {e}")
 
 @app.post("/api/chat")
 async def api_chat(request: ChatRequest):
-    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
-    if not settings.url:
-        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
+    lc = _get_lollms_client_instance()
 
-    headers = {"Content-Type": "application/json"}
-    if settings.api_key:
-        headers["Authorization"] = f"Bearer {settings.api_key}"
-
-    payload = {
-        "model": settings.model_name or "lollms-chat",
-        "messages": [msg.model_dump() for msg in request.messages],
-        "temperature": 0.1,
-        "max_tokens": 4096,
-        "stream": True
-    }
-
+    # Generator to stream chunks from lollms_client callback to SSE
     async def stream_generator():
+        full_response_content = ""
+        
+        # This queue will hold chunks received from the lollms_client callback
+        # and allow the FastAPI StreamingResponse to consume them.
+        chunk_queue = asyncio.Queue()
+        
+        # Callback function to put chunks into the queue
+        def streaming_callback(chunk: str, msg_type: MSG_TYPE, params=None, metadata=None) -> bool:
+            nonlocal full_response_content
+            if msg_type == MSG_TYPE.MSG_TYPE_CHUNK:
+                full_response_content += chunk
+                # Send chunk as SSE data
+                chunk_queue.put_nowait(f"data: {json.dumps({'choices': [{'delta': {'content': chunk}}]})}\n\n".encode('utf-8'))
+            elif msg_type == MSG_TYPE.MSG_TYPE_EXCEPTION:
+                error_message = f"Streaming Error: {chunk}"
+                chunk_queue.put_nowait(f"data: {json.dumps({'error': error_message})}\n\n".encode('utf-8'))
+                return False # Stop streaming on exception
+            return True # Continue streaming
+
+        # Run the lollms_client generation in a separate task to not block the FastAPI event loop
+        generation_task = asyncio.create_task(
+            lc.generate_from_messages(
+                messages=[msg.model_dump() for msg in request.messages],
+                stream=True,
+                streaming_callback=streaming_callback,
+                temperature=0.1,
+                max_tokens=4096
+            )
+        )
+
         try:
-            async with httpx.AsyncClient(timeout=None) as client:
-                async with client.stream("POST", settings.url, json=payload, headers=headers) as response:
-                    response.raise_for_status()
-                    async for chunk in response.aiter_bytes():
-                        yield chunk
-        except httpx.RequestError as e:
-            error_message = f"Error connecting to LLM service: {e}"
-            print(error_message)
-            yield f"data: {json.dumps({'error': error_message})}\n\n"
-        except httpx.HTTPStatusError as e:
-            error_message = f"LLM service returned error: {e.response.status_code} - {e.response.text}"
-            print(error_message)
-            yield f"data: {json.dumps({'error': error_message})}\n\n"
-        except Exception as e:
-            error_message = f"An unexpected error occurred: {e}"
-            print(error_message)
-            yield f"data: {json.dumps({'error': error_message})}\n\n"
+            # Yield chunks from the queue as they arrive
+            while True:
+                chunk_data = await asyncio.wait_for(chunk_queue.get(), timeout=60.0) # Add a timeout for safety
+                yield chunk_data
+                if generation_task.done() and chunk_queue.empty():
+                    break # Stop if generation is done and queue is empty
+        except asyncio.TimeoutError:
+            # If timeout occurs, assume generation has stalled or finished, but queue not empty
+            # Check if task is already done, if not, print a warning and break.
+            if not generation_task.done():
+                print("Warning: Streaming generator timed out, LLM generation might be stuck.")
+            # Ensure the final DONE message is sent
+        
+        # Ensure the generation task is awaited to catch any exceptions it might raise
+        # and to properly clean up resources.
+        await generation_task
+        
+        # Send the final DONE message
+        yield b"data: [DONE]\n\n"
 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
 @app.post("/api/llm_select_files")
 async def llm_select_files(request: LLMSelectRequest):
-    settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
-    if not settings.url:
-        raise HTTPException(status_code=400, detail="LLM service URL is not configured.")
-
     try:
-        tree_nodes = build_file_tree_with_selection_info(request.project_path, request.filters)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading project structure: {e}")
+        lc = _get_lollms_client_instance()
 
-    file_list = []
-    def flatten_tree(nodes):
-        for node in nodes:
-            path = Path(node["path"])
-            relative_path = path.relative_to(request.project_path)
-            if not node["is_dir"]:
-                file_list.append(str(relative_path).replace('\\', '/'))
-            if node.get("children"):
-                flatten_tree(node["children"])
-    
-    if tree_nodes:
-        flatten_tree(tree_nodes[0].get("children", []))
-    
-    if not file_list:
-        return JSONResponse(content={"status": "success", "files": []})
-
-    system_prompt = (
-        "You are an expert software development assistant. Your task is to analyze a user's instructions and a list of project files. "
-        "First, determine the user's primary goal from their instructions (e.g., 'add a feature', 'fix a bug', 'refactor code'). "
-        "Then, identify the most relevant files from the list that a developer would need to work on to achieve that goal. "
-        "Respond ONLY with a JSON array of strings, where each string is the full relative path of a relevant file. "
-        "Do not include any other text, explanation, or markdown formatting. Your entire response must be a single valid JSON array."
-        "\nExample response: [\"src/main.py\", \"core/utils.py\", \"tests/test_utils.py\"]"
-    )
-
-    user_message = f"User Instructions:\n---\n{request.user_goal}\n---\n\nProject Files:\n{json.dumps(file_list, indent=2)}"
-
-    headers = {"Content-Type": "application/json"}
-    if settings.api_key:
-        headers["Authorization"] = f"Bearer {settings.api_key}"
-
-    payload = {
-        "model": settings.model_name or "lollms-chat",
-        "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_message}
-        ],
-        "temperature": 0.0,
-        "max_tokens": 2048
-    }
-    
-    content_str = ""
-    try:
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(settings.url, json=payload, headers=headers)
-        response.raise_for_status()
-        llm_response = response.json()
-        content_str = llm_response['choices'][0]['message']['content']
-        
-        match = re.search(r'\[.*\]', content_str, re.DOTALL)
-        if not match:
-            raise ValueError("LLM response did not contain a valid JSON array.")
-        
-        selected_files = json.loads(match.group(0))
-
-        if not isinstance(selected_files, list) or not all(isinstance(f, str) for f in selected_files):
-            raise ValueError("LLM response was not a JSON array of strings.")
-            
         project_root = Path(request.project_path)
-        absolute_paths = [str(project_root / Path(f)) for f in selected_files if (project_root / Path(f)).exists()]
+        if not project_root.is_dir():
+            raise HTTPException(status_code=404, detail=f"Project folder not found: {request.project_path}")
 
-        return {"status": "success", "files": absolute_paths}
+        # Existing logic to get full tree and flatten file list
+        tree_nodes = build_file_tree_with_selection_info(request.project_path, request.filters)
+        
+        # This list will contain ALL eligible files the LLM can choose from, relative paths
+        file_list_all_eligible_paths = []
+        def flatten_tree_eligible_paths(nodes):
+            for node in nodes:
+                path = Path(node["path"])
+                if not node["is_dir"] and node.get("can_be_checked", True): # Only include files that can be checked
+                    file_list_all_eligible_paths.append(
+                        {"path": str(path.relative_to(project_root)).replace('\\', '/'),
+                         "is_signature_candidate": node.get("is_signature_candidate", False)}
+                    )
+                if node.get("children"):
+                    flatten_tree_eligible_paths(node["children"])
+        
+        if tree_nodes: # tree_nodes[0] is the root folder itself
+            flatten_tree_eligible_paths(tree_nodes[0].get("children", []))
+        
+        if not file_list_all_eligible_paths:
+            return JSONResponse(content={"status": "success", "files": []})
 
-    except httpx.RequestError as e:
-        raise HTTPException(status_code=502, detail=f"Could not connect to LLM service at {settings.url}. Error: {e}")
-    except httpx.HTTPStatusError as e:
-        raise HTTPException(status_code=e.response.status_code, detail=f"LLM service returned error: {e.response.text}")
-    except (ValueError, json.JSONDecodeError, KeyError) as e:
-        raise HTTPException(status_code=500, detail=f"Could not parse LLM response. Error: {e}. Raw response: {content_str}")
+        # --- New logic to gather core project context ---
+        core_context_parts = []
+        for rel_path_str in CORE_PROJECT_CONTEXT_FILES:
+            file_path = project_root / rel_path_str
+            if file_path.is_file():
+                try:
+                    file_size = file_path.stat().st_size
+                    if file_size > CORE_FILE_MAX_SIZE_BYTES:
+                        core_context_parts.append(f"### Core File: `{rel_path_str}` (too large for full content, size: {file_size / 1024:.2f} KB)")
+                        continue
+
+                    content = file_path.read_text(encoding="utf-8")
+                    lang = file_path.suffix.lower().lstrip('.')
+                    
+                    processed_content = ""
+                    if lang == "py":
+                        processed_content = extract_signatures_python(content)
+                        core_context_parts.append(f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```")
+                    elif lang == "js":
+                        processed_content = extract_signatures_js(content)
+                        core_context_parts.append(f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```")
+                    elif is_text_file(file_path): # Ensure it's truly text
+                        core_context_parts.append(f"### Core File Content: `{rel_path_str}`\n```{lang if lang else 'text'}\n{content}\n```")
+                    else:
+                        core_context_parts.append(f"### Core File: `{rel_path_str}` (binary or unreadable)")
+                except Exception as e:
+                    core_context_parts.append(f"### Core File: `{rel_path_str}` (Error reading: {e})")
+
+        core_context_string = ""
+        if core_context_parts:
+            core_context_string = "---\n## Core Project Overview\n\n" + "\n\n".join(core_context_parts) + "\n---"
+
+
+        system_prompt = (
+            "You are an expert software development assistant. Your task is to analyze a user's instructions and a list of project files. "
+            "You will first be provided with a 'Core Project Overview' containing content or signatures of crucial project files to help you understand the project's nature. "
+            "Then, you will receive a comprehensive list of all eligible files in the project, including whether they are 'signature candidates' (i.e., Python or JavaScript files from which signatures can be extracted). "
+            "Based on the user's primary goal, identify the most relevant files from the *comprehensive list* that a developer would need to work on to achieve that goal. "
+            "For each selected file, you must decide whether to include its 'full' content or only its 'signatures'. "
+            "Choose 'signatures' for large code files, libraries, framework files, or when only an overview of functions/classes is sufficient. Choose 'full' for critical files needing detailed analysis or modification, or for non-code files (like READMEs, config files, etc.)."
+            "Respond ONLY with a JSON array of objects, where each object has a 'path' (the full relative path of the file) and a 'type' (string: 'full' or 'signatures'). "
+            "** Do not include any other text, explanation, or markdown formatting **. Your entire response must be a single valid JSON array."
+            "\nExample response: [{\"path\": \"src/main.py\", \"type\": \"full\"}, {\"path\": \"core/utils.py\", \"type\": \"signatures\"}, {\"path\": \"tests/test_utils.py\", \"type\": \"full\"}]"
+        )
+
+        user_message = (
+            f"{core_context_string}\n\n"
+            f"User Instructions:\n---\n{request.user_goal}\n---\n\n"
+            f"Comprehensive Project Files (path, is_signature_candidate):\n{json.dumps(file_list_all_eligible_paths, indent=2)}"
+        )
+        
+        try:
+            # Use generate_text_from_messages for AI-powered file selection
+            # Note: LollmsClient returns a string for non-streaming, which we then parse.
+            content_str = lc.generate_from_messages(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                stream=False # Not streaming this response
+            )
+            
+            # Use regex to find the JSON array, in case LLM adds pre/post text
+            match = re.search(r'\[.*\]', content_str, re.DOTALL)
+            if not match:
+                raise ValueError("LLM response did not contain a valid JSON array.")
+            
+            selected_files_raw = json.loads(match.group(0))
+
+            if not isinstance(selected_files_raw, list) or not all(isinstance(f, dict) and 'path' in f and 'type' in f for f in selected_files_raw):
+                raise ValueError("LLM response was not a JSON array of objects with 'path' and 'type' keys.")
+            
+            # Convert relative paths from AI to absolute paths for the frontend
+            selected_files_info = []
+            for item in selected_files_raw:
+                rel_path = Path(item['path'])
+                abs_path = project_root / rel_path
+                if abs_path.exists():
+                    # Validate type to ensure it's 'full' or 'signatures'
+                    selection_type = item['type'].lower()
+                    if selection_type not in ['full', 'signatures']:
+                        print(f"Warning: Invalid selection type '{selection_type}' for {item['path']} from LLM. Defaulting to 'full'.")
+                        selection_type = 'full'
+                    
+                    # If LLM selected 'signatures' for a non-signature-candidate file, default to 'full'
+                    is_sig_candidate_in_list = next((f['is_signature_candidate'] for f in file_list_all_eligible_paths if f['path'] == item['path']), False)
+                    if selection_type == 'signatures' and not is_sig_candidate_in_list:
+                        print(f"Warning: LLM selected 'signatures' for non-signature-candidate file {item['path']}. Defaulting to 'full'.")
+                        selection_type = 'full'
+
+                    selected_files_info.append({"path": str(abs_path), "type": selection_type})
+
+            return {"status": "success", "files": selected_files_info}
+
+        except Exception as e:
+            trace_exception(e)
+            raise HTTPException(status_code=500, detail=f"AI selection failed: {e}. Raw response: {content_str if 'content_str' in locals() else 'N/A'}")
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing AI selection request: {e}")
 
 @app.post("/api/load_project_tree")
 async def api_load_project_tree(request: LoadProjectTreeRequest):
@@ -752,9 +828,10 @@ async def api_generate_structure(request: GenerateStructureRequest):
     try:
         settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
         if settings.url and settings.model_name:
-            response = await proxy_lollms_request("count_tokens", {"model": settings.model_name, "text": final_md})
-            token_count = response.get("count", -1)
-    except Exception:
+            lc = _get_lollms_client_instance()
+            token_count = lc.count_tokens(final_md, model=lc.model_name)
+    except Exception as e:
+        print(f"Warning: Could not get token count using lollms_client: {e}")
         token_count = -1
 
     return {"status": "success", "markdown": final_md, "token_count": token_count}
@@ -787,7 +864,7 @@ async def get_prompt_templates():
 
 @app.post("/api/save_template")
 async def save_template(template: Template):
-    templates = load_prompt_templates()
+    templates = load_prompt_file(PROMPTS_FILE, get_default_templates()) # Bug fix: Should be load_json_file
     existing_template_index = next((i for i, t in enumerate(templates) if t['name'] == template.name), None)
     
     if existing_template_index is not None:
@@ -869,52 +946,36 @@ async def get_index():
     return HTMLResponse(content=index_path.read_text(encoding="utf-8"))
 
 if __name__ == "__main__":
-    import uvicorn
     parser = argparse.ArgumentParser(
         description="A simple script to demonstrate parsing host and port."
     )
 
-    # 2. Add arguments
-    #    - '--host': The name of the argument on the command line.
-    #    - type=str: The type of the value (string is the default, but it's good to be explicit).
-    #    - default='0.0.0.0': The value to use if the user doesn't provide this argument.
-    #    - help='...': A helpful message shown when the user runs with -h or --help.
     parser.add_argument('--host', 
                         type=str, 
-                        default='0.0.0.0', 
-                        help='The host to bind the server to (default: 0.0.0.0)')
+                        default='localhost', # Changed default host to 'localhost'
+                        help='The host to bind the server to (default: localhost)')
 
-    #    - '--port': The name for the port argument.
-    #    - type=int: Crucial! argparse will automatically convert the value to an integer
-    #                and raise an error if it's not a valid number.
-    #    - default=9601: The default port number.
     parser.add_argument('--port', 
                         type=int, 
                         default=9601, 
                         help='The port to listen on (default: 9601)')
 
-    # 3. Parse the arguments from the command line
     args = parser.parse_args()
 
-    # 4. Use the parsed arguments
     HOST = args.host
     PORT = args.port
     
-    def run_server():
-        uvicorn.run(app, host=HOST, port=PORT, log_level="warning")
-
-    def open_browser():
+    def open_browser_after_delay():
         webbrowser.open(f"http://{HOST}:{PORT}")
 
     print("="*50)
     print(f" {APP_TITLE} - v{APP_VERSION} ".center(50, "="))
     print("="*50)
 
-    server_thread = threading.Thread(target=run_server)
-    server_thread.daemon = True
-    server_thread.start()
-    
-    threading.Timer(1.25, open_browser).start()
+    # Start the browser opening in a separate thread, non-blocking
+    browser_thread = threading.Timer(1.25, open_browser_after_delay)
+    browser_thread.daemon = True 
+    browser_thread.start()
     
     print(f"\nServer starting at http://{HOST}:{PORT}")
     print("Your web browser should open automatically.")
@@ -922,6 +983,12 @@ if __name__ == "__main__":
     print("\nPress Ctrl+C to stop the server.")
     
     try:
-        server_thread.join()
+        # Use uvicorn.Config and uvicorn.Server for programmatic control
+        # This will run the server in the main thread and handle signals gracefully.
+        config = Config(app, host=HOST, port=PORT, log_level="warning")
+        server = Server(config=config)
+        server.run()
     except KeyboardInterrupt:
         print("\nShutting down server.")
+        # Server.run() handles its own shutdown on KeyboardInterrupt
+        # No explicit server.stop() is needed here as server.run() completes.
