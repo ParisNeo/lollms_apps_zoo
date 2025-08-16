@@ -399,11 +399,44 @@ def generate_markdown_tree(root_path_str: str, hard_excluded_paths: Set[str]) ->
 def get_default_templates() -> List[Dict]:
     return DEFAULT_TEMPLATES_DATA
 
-def load_prompt_templates() -> List[Dict]:
-    return load_json_file(PROMPTS_FILE, get_default_templates())
-
 def save_prompt_templates(templates: List[Dict]):
     save_json_file(PROMPTS_FILE, templates)
+
+def load_prompt_templates() -> List[Dict]:
+    """
+    Loads prompt templates, automatically healing the file if it's corrupted
+    with project data from a previous bug.
+    """
+    # Load raw data, fall back to default if file doesn't exist.
+    if not PROMPTS_FILE.exists():
+        default_templates = get_default_templates()
+        save_prompt_templates(default_templates)
+        return default_templates
+    
+    templates_data = load_json_file(PROMPTS_FILE, [])
+
+    # Filter out any entries that don't look like templates.
+    # A valid template must be a dict with 'name' and 'content' keys.
+    # A project has 'id' and 'path', so checking for 'content' is a good discriminator.
+    cleaned_templates = [
+        t for t in templates_data 
+        if isinstance(t, dict) and 'name' in t and 'content' in t
+    ]
+
+    # If the file was empty after cleaning, or if we removed items, we need to take action.
+    if not cleaned_templates:
+        # If cleaning resulted in an empty list, the file was fully corrupted or empty. Reset to default.
+        print("INFO: Prompt templates file was empty or fully corrupted. Resetting to defaults.")
+        default_templates = get_default_templates()
+        save_prompt_templates(default_templates)
+        return default_templates
+
+    if len(cleaned_templates) < len(templates_data):
+        # If we removed some corrupted entries, save the cleaned list back.
+        print(f"INFO: Removed {len(templates_data) - len(cleaned_templates)} corrupted entries from prompt templates file.")
+        save_prompt_templates(cleaned_templates)
+
+    return cleaned_templates
 
 # --- API Endpoints ---
 
@@ -416,7 +449,7 @@ async def get_projects():
 async def create_project(project: Project):
     projects = load_json_file(PROJECTS_FILE, [])
     projects.append(project.model_dump())
-    save_json_file(PROMPTS_FILE, projects) # Bug fix: Should be PROJECTS_FILE, not PROMPTS_FILE
+    save_json_file(PROJECTS_FILE, projects)
     return project
 
 @app.put("/api/projects/{project_id}", response_model=Project)
@@ -508,10 +541,13 @@ def _get_lollms_client_instance() -> LollmsClient:
     try:
         # Use 'lollms' binding
         return LollmsClient(
-            binding_name="lollms",
-            host_address=settings.url+"/v1",
-            service_key=settings.api_key,
-            model_name=settings.model_name
+            llm_binding_name="lollms",
+            llm_binding_config={
+                "host_address":settings.url+"/v1",
+                "service_key":settings.api_key,
+                "model_name":settings.model_name
+            }
+            
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to initialize LollmsClient: {e}")
@@ -603,6 +639,14 @@ async def api_chat(request: ChatRequest):
         yield b"data: [DONE]\n\n"
 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
+import json
+import re
+from pathlib import Path
+from typing import List, Dict
+
+from fastapi import HTTPException
+from fastapi.responses import JSONResponse
+
 
 @app.post("/api/llm_select_files")
 async def llm_select_files(request: LLMSelectRequest):
@@ -615,23 +659,26 @@ async def llm_select_files(request: LLMSelectRequest):
 
         # Existing logic to get full tree and flatten file list
         tree_nodes = build_file_tree_with_selection_info(request.project_path, request.filters)
-        
+
         # This list will contain ALL eligible files the LLM can choose from, relative paths
         file_list_all_eligible_paths = []
+
         def flatten_tree_eligible_paths(nodes):
             for node in nodes:
                 path = Path(node["path"])
-                if not node["is_dir"] and node.get("can_be_checked", True): # Only include files that can be checked
+                if not node["is_dir"] and node.get("can_be_checked", True):  # Only include files that can be checked
                     file_list_all_eligible_paths.append(
-                        {"path": str(path.relative_to(project_root)).replace('\\', '/'),
-                         "is_signature_candidate": node.get("is_signature_candidate", False)}
+                        {
+                            "path": str(path.relative_to(project_root)).replace('\\', '/'),
+                            "is_signature_candidate": node.get("is_signature_candidate", False),
+                        }
                     )
                 if node.get("children"):
                     flatten_tree_eligible_paths(node["children"])
-        
-        if tree_nodes: # tree_nodes[0] is the root folder itself
+
+        if tree_nodes:  # tree_nodes[0] is the root folder itself
             flatten_tree_eligible_paths(tree_nodes[0].get("children", []))
-        
+
         if not file_list_all_eligible_paths:
             return JSONResponse(content={"status": "success", "files": []})
 
@@ -643,30 +690,43 @@ async def llm_select_files(request: LLMSelectRequest):
                 try:
                     file_size = file_path.stat().st_size
                     if file_size > CORE_FILE_MAX_SIZE_BYTES:
-                        core_context_parts.append(f"### Core File: `{rel_path_str}` (too large for full content, size: {file_size / 1024:.2f} KB)")
+                        core_context_parts.append(
+                            f"### Core File: `{rel_path_str}` (too large for full content, size: {file_size / 1024:.2f} KB)"
+                        )
                         continue
 
                     content = file_path.read_text(encoding="utf-8")
-                    lang = file_path.suffix.lower().lstrip('.')
-                    
+                    lang = file_path.suffix.lstrip('.')
+
                     processed_content = ""
                     if lang == "py":
                         processed_content = extract_signatures_python(content)
-                        core_context_parts.append(f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```")
+                        core_context_parts.append(
+                            f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```"
+                        )
                     elif lang == "js":
                         processed_content = extract_signatures_js(content)
-                        core_context_parts.append(f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```")
-                    elif is_text_file(file_path): # Ensure it's truly text
-                        core_context_parts.append(f"### Core File Content: `{rel_path_str}`\n```{lang if lang else 'text'}\n{content}\n```")
+                        core_context_parts.append(
+                            f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```"
+                        )
+                    elif is_text_file(file_path):  # Ensure it's truly text
+                        core_context_parts.append(
+                            f"### Core File Content: `{rel_path_str}`\n```{lang if lang else 'text'}\n{content}\n```"
+                        )
                     else:
-                        core_context_parts.append(f"### Core File: `{rel_path_str}` (binary or unreadable)")
+                        core_context_parts.append(
+                            f"### Core File: `{rel_path_str}` (binary or unreadable)"
+                        )
                 except Exception as e:
-                    core_context_parts.append(f"### Core File: `{rel_path_str}` (Error reading: {e})")
+                    core_context_parts.append(
+                        f"### Core File: `{rel_path_str}` (Error reading: {e})"
+                    )
 
         core_context_string = ""
         if core_context_parts:
-            core_context_string = "---\n## Core Project Overview\n\n" + "\n\n".join(core_context_parts) + "\n---"
-
+            core_context_string = "---\n## Core Project Overview\n\n" + "\n\n".join(
+                core_context_parts
+            ) + "\n---"
 
         system_prompt = (
             "You are an expert software development assistant. Your task is to analyze a user's instructions and a list of project files. "
@@ -685,45 +745,65 @@ async def llm_select_files(request: LLMSelectRequest):
             f"User Instructions:\n---\n{request.user_goal}\n---\n\n"
             f"Comprehensive Project Files (path, is_signature_candidate):\n{json.dumps(file_list_all_eligible_paths, indent=2)}"
         )
-        
-        try:
-            # Use generate_text_from_messages for AI-powered file selection
-            # Note: LollmsClient returns a string for non-streaming, which we then parse.
-            content_str = lc.generate_from_messages(
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                stream=False # Not streaming this response
-            )
-            
-            # Use regex to find the JSON array, in case LLM adds pre/post text
-            match = re.search(r'\[.*\]', content_str, re.DOTALL)
-            if not match:
-                raise ValueError("LLM response did not contain a valid JSON array.")
-            
-            selected_files_raw = json.loads(match.group(0))
 
-            if not isinstance(selected_files_raw, list) or not all(isinstance(f, dict) and 'path' in f and 'type' in f for f in selected_files_raw):
+        schema = {
+            "files": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string"},
+                        "type": {"type": "string", "enum": ["full", "signatures"]},
+                    },
+                    "required": ["path", "type"],
+                },
+            }
+        }
+
+        try:
+            # Use generate_structured_content
+            content_str = lc.generate_structured_content(
+                prompt=user_message,
+                schema=schema,
+                system_prompt=system_prompt,
+            )
+
+            if content_str is None:
+                raise ValueError("LLM failed to generate structured content.")
+
+            selected_files_raw = content_str
+
+            if not isinstance(selected_files_raw, list) or not all(
+                isinstance(f, dict) and "path" in f and "type" in f for f in selected_files_raw
+            ):
                 raise ValueError("LLM response was not a JSON array of objects with 'path' and 'type' keys.")
-            
+
             # Convert relative paths from AI to absolute paths for the frontend
             selected_files_info = []
             for item in selected_files_raw:
-                rel_path = Path(item['path'])
+                rel_path = Path(item["path"])
                 abs_path = project_root / rel_path
                 if abs_path.exists():
-                    # Validate type to ensure it's 'full' or 'signatures'
-                    selection_type = item['type'].lower()
-                    if selection_type not in ['full', 'signatures']:
-                        print(f"Warning: Invalid selection type '{selection_type}' for {item['path']} from LLM. Defaulting to 'full'.")
-                        selection_type = 'full'
-                    
-                    # If LLM selected 'signatures' for a non-signature-candidate file, default to 'full'
-                    is_sig_candidate_in_list = next((f['is_signature_candidate'] for f in file_list_all_eligible_paths if f['path'] == item['path']), False)
-                    if selection_type == 'signatures' and not is_sig_candidate_in_list:
-                        print(f"Warning: LLM selected 'signatures' for non-signature-candidate file {item['path']}. Defaulting to 'full'.")
-                        selection_type = 'full'
+                    selection_type = item["type"].lower()
+                    if selection_type not in ["full", "signatures"]:
+                        print(
+                            f"Warning: Invalid selection type '{selection_type}' for {item['path']} from LLM. Defaulting to 'full'."
+                        )
+                        selection_type = "full"
+
+                    is_sig_candidate_in_list = next(
+                        (
+                            f["is_signature_candidate"]
+                            for f in file_list_all_eligible_paths
+                            if f["path"] == item["path"]
+                        ),
+                        False,
+                    )
+                    if selection_type == "signatures" and not is_sig_candidate_in_list:
+                        print(
+                            f"Warning: LLM selected 'signatures' for non-signature-candidate file {item['path']}. Defaulting to 'full'."
+                        )
+                        selection_type = "full"
 
                     selected_files_info.append({"path": str(abs_path), "type": selection_type})
 
@@ -731,10 +811,16 @@ async def llm_select_files(request: LLMSelectRequest):
 
         except Exception as e:
             trace_exception(e)
-            raise HTTPException(status_code=500, detail=f"AI selection failed: {e}. Raw response: {content_str if 'content_str' in locals() else 'N/A'}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"AI selection failed: {e}. Raw response: {str(e)}",
+            )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error processing AI selection request: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error processing AI selection request: {e}",
+        )
 
 @app.post("/api/load_project_tree")
 async def api_load_project_tree(request: LoadProjectTreeRequest):
@@ -864,7 +950,7 @@ async def get_prompt_templates():
 
 @app.post("/api/save_template")
 async def save_template(template: Template):
-    templates = load_prompt_file(PROMPTS_FILE, get_default_templates()) # Bug fix: Should be load_json_file
+    templates = load_prompt_templates()
     existing_template_index = next((i for i, t in enumerate(templates) if t['name'] == template.name), None)
     
     if existing_template_index is not None:
