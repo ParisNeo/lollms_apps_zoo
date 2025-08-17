@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, List, Union
 import asyncio
+import argparse
 import pipmaster as pm
 import sys
 pm.ensure_packages([
@@ -408,9 +409,15 @@ async def find_path_endpoint(path_request: PathRequest):
 
 # --- Launcher ---
 def launch_webui():
+    parser = argparse.ArgumentParser(description="SafeStoreGraphRAG WebUI")
+    parser.add_argument("--host", type=str, default="0.0.0.0", help="The host to bind the server to.")
+    parser.add_argument("--port", type=int, default=8000, help="The port to run the server on.")
+    args = parser.parse_args()
+
     os.chdir(Path(__file__).parent.resolve())
-    ASCIIColors.info("Launching SafeStore WebUI on http://0.0.0.0:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
+    
+    ASCIIColors.info(f"Launching SafeStore WebUI on http://{args.host}:{args.port}")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 if __name__ == "__main__":
     launch_webui()
