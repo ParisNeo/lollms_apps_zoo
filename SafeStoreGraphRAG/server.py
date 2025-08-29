@@ -47,7 +47,7 @@ def load_config() -> Dict:
 
 def save_config(settings: LLMSettings):
     global LLM_CLIENT
-    CONFIG_FILE.write_text(settings.json(indent=2))
+    CONFIG_FILE.write_text(settings.model_dump_json(indent=2))
     LLM_CLIENT = None
 
 def get_lollms_client(force_reload: bool = False) -> LollmsClient:
