@@ -526,7 +526,46 @@
             async performDeleteDocument(docId) { try { const res = await fetch(`${API_URL}/projects/${this.state.currentProject}/documents/${docId}`, { method: 'DELETE' }); if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Server error'); } this.showNotification('Document deleted. Refreshing graph...', 'success'); this.showDocumentsModal(); this.fetchGraphData(); } catch (e) { this.showNotification(`Error deleting document: ${e.message}`, 'error'); } },
             async showSettingsModal(errorMessage = null) { const errorDiv = document.getElementById('settings-error-msg'); if (errorMessage) { errorDiv.innerText = errorMessage; errorDiv.classList.remove('hidden'); } else { errorDiv.classList.add('hidden'); } const select = document.getElementById('llm-binding-select'); select.innerHTML = ''; const [bindingsRes, currentSettingsRes] = await Promise.all([ fetch(`${API_URL}/settings/llm-bindings`), fetch(`${API_URL}/settings`) ]); this.state.bindings = await bindingsRes.json(); const currentSettings = await currentSettingsRes.json(); this.state.bindings.forEach(b => { const option = document.createElement('option'); option.value = b.name; option.innerText = b.name; if (b.name === currentSettings.binding_name) option.selected = true; select.appendChild(option); }); this.renderBindingConfig(currentSettings.config); document.getElementById('settings-modal').classList.add('active'); },
             hideSettingsModal() { document.getElementById('settings-modal').classList.remove('active'); },
-            renderBindingConfig(currentConfig = {}) { const select = document.getElementById('llm-binding-select'); const fieldsDiv = document.getElementById('llm-config-fields'); const binding = this.state.bindings.find(b => b.name === select.value); fieldsDiv.innerHTML = ''; if (!binding) return; binding.parameters.forEach(p => { const value = currentConfig[p.name] !== undefined ? currentConfig[p.name] : (p.default || ''); const type = p.type === 'int' ? 'number' : (p.type === 'bool' ? 'checkbox' : 'text'); const checked = (p.type === 'bool' && String(value).toLowerCase() === 'true') ? 'checked' : ''; fieldsDiv.innerHTML += `<div class="flex flex-col"><label class="mb-1 text-sm">${p.name}</label><input type="${type}" id="setting-${p.name}" ${checked} value="${type !== 'checkbox' ? value : ''}" placeholder="${p.description || ''}" class="bg-gray-200 dark:bg-gray-700 p-2 rounded-md outline-none"></div>`; }); },
+            renderBindingConfig(currentConfig = {}) {
+                const select = document.getElementById('llm-binding-select');
+                const fieldsDiv = document.getElementById('llm-config-fields');
+                const binding = this.state.bindings.find(b => b.name === select.value);
+            
+                fieldsDiv.innerHTML = '';
+                if (!binding) return;
+            
+                // Add the verify_ssl_certificate parameter if it doesn't exist
+                if (!binding.parameters.some(p => p.name === 'verify_ssl_certificate')) {
+                    binding.parameters.push({
+                        name: 'verify_ssl_certificate',
+                        type: 'bool',
+                        default: true,
+                        description: 'Verify SSL certificate when connecting'
+                    });
+                }
+            
+                binding.parameters.forEach(p => {
+                    const value = currentConfig[p.name] !== undefined ? currentConfig[p.name] : (p.default || '');
+                    const type = p.type === 'int' ? 'number' : (p.type === 'bool' ? 'checkbox' : 'text');
+                    const checked = (p.type === 'bool' && String(value).toLowerCase() === 'true') ? 'checked' : '';
+                    const isCheckbox = p.type === 'bool';
+            
+                    fieldsDiv.innerHTML += `
+                        <div class="flex flex-col">
+                            <label class="mb-1 text-sm">${p.name}</label>
+                            <input
+                                type="${type}"
+                                id="setting-${p.name}"
+                                ${checked}
+                                value="${isCheckbox ? (checked ? 'true' : 'false') : value}"
+                                placeholder="${p.description || ''}"
+                                class="bg-gray-200 dark:bg-gray-700 p-2 rounded-md outline-none ${isCheckbox ? 'h-5 w-5' : ''}"
+                                ${isCheckbox ? 'class="h-5 w-5"' : ''}
+                            >
+                        </div>
+                    `;
+                });
+            },
             async saveSettings() { const saveButton = document.getElementById('btn-save-settings'); const errorDiv = document.getElementById('settings-error-msg'); saveButton.disabled = true; saveButton.innerText = "Saving..."; errorDiv.classList.add('hidden'); const binding_name = document.getElementById('llm-binding-select').value; const binding = this.state.bindings.find(b => b.name === binding_name); const config = {}; if (binding) { binding.parameters.forEach(p => { const input = document.getElementById(`setting-${p.name}`); if(input) config[p.name] = input.type === 'checkbox' ? input.checked : input.value; }); } try { const res = await fetch(`${API_URL}/settings`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ binding_name, config }) }); const data = await res.json(); if (!res.ok) throw new Error(data.detail); this.hideSettingsModal(); this.showNotification("Settings saved successfully!", 'success'); } catch (e) { errorDiv.innerText = `Error: ${e.message}`; errorDiv.classList.remove('hidden'); } finally { saveButton.disabled = false; saveButton.innerText = i18n.en.save; } },
             async updateTasksView() {
                 try {
