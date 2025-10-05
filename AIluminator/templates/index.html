@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Text Detector</title>
+  <style>
+    .ai { background-color: #ffe08a; border-radius: 2px; }
+    .human { background-color: #c2f7c3; border-radius: 2px; }
+    body { font-family: sans-serif; max-width: 660px; margin: 40px auto; }
+    textarea { width: 100%; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <h2>AI Text Detector</h2>
+  <form method="post">
+    <textarea name="text" rows="6">{% if text %}{{ text }}{% endif %}</textarea>
+    <br>
+    <button>Analyze</button>
+  </form>
+  {% if result %}
+    <div style="margin-top:32px;">
+      <strong>AI Likelihood: {{ (result.ai_likelihood * 100)|round(1) }}%</strong>
+      <p>
+        <span class="ai">AI</span>&nbsp;
+        <span class="human">Human</span>
+      </p>
+      <div>
+        {% for passage in result.passages %}
+          <span class="{{ passage.likely | lower }}">{{ passage.text }}</span> 
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+</body>
+</html>
