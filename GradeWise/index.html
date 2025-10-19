@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GradeWise - Project Based Grade Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        .view { display: none; }
+        .view.active { display: block; }
+        /* Custom scrollbar for a better look */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200 font-sans">
+
+    <!-- Projects Dashboard View -->
+    <div id="projects-view" class="view p-8">
+        <header class="flex justify-between items-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 dark:text-white" data-i18n="myProjects">My Projects</h1>
+            <div class="flex items-center gap-4">
+                <select id="lang-selector-main" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                    <option value="en">English</option>
+                    <option value="fr">Français</option>
+                    <option value="ar">العربية</option>
+                    <option value="zh">中文</option>
+                    <option value="it">Italiano</option>
+                    <option value="de">Deutsch</option>
+                    <option value="es">Español</option>
+                </select>
+                <button id="create-project-btn" class="bg-blue-600 text-white px-5 py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-semibold" data-i18n="createProject">Create Project</button>
+            </div>
+        </header>
+        <div id="projects-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Project cards will be injected here -->
+        </div>
+        <div id="no-projects-message" class="text-center py-16 text-gray-500 hidden">
+            <h2 class="text-2xl font-semibold" data-i18n="noProjects">No projects yet.</h2>
+            <p class="mt-2" data-i18n="getStarted">Get started by creating a new project!</p>
+        </div>
+    </div>
+
+    <!-- Grades Management View -->
+    <div id="grades-view" class="view">
+        <div class="flex h-screen">
+            <!-- Sidebar -->
+            <aside class="w-1/4 max-w-sm bg-white dark:bg-gray-800 p-6 flex flex-col shadow-lg">
+                <div class="flex items-center mb-6">
+                    <button id="back-to-projects" class="mr-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300">&larr;</button>
+                    <h2 id="project-title-sidebar" class="text-2xl font-bold text-gray-900 dark:text-white truncate">Project Grades</h2>
+                </div>
+                <form id="grade-form" class="flex flex-col gap-4">
+                    <input type="text" id="matter-name" class="p-3 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Matter Name" required>
+                    <input type="text" id="grade-value" class="p-3 border rounded-lg bg-gray-50 dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Grade (e.g., 85 or 17/20)" required>
+                    <button type="submit" class="bg-blue-600 text-white p-3 rounded-lg hover:bg-blue-700 transition-colors" data-i18n="addGrade">Add Grade</button>
+                </form>
+                <ul id="grade-list" class="mt-6 flex-grow overflow-y-auto"></ul>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="flex-grow p-8 flex flex-col h-screen overflow-y-auto">
+                <h1 id="project-title-main" class="text-4xl font-bold mb-4 text-gray-900 dark:text-white flex-shrink-0" data-i18n="gradeDistribution">Grade Distribution</h1>
+                <div id="histogram-container" class="flex-grow bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md min-h-[300px]">
+                    <div id="histogram" class="w-full h-full"></div>
+                </div>
+                <div id="analysis" class="mt-8 bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md flex-shrink-0">
+                    <h2 class="text-3xl font-semibold mb-4 text-gray-900 dark:text-white" data-i18n="analysis">Analysis</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-lg">
+                        <p><strong data-i18n="mean">Mean:</strong> <span id="mean" class="font-mono"></span></p>
+                        <p><strong data-i18n="median">Median:</strong> <span id="median" class="font-mono"></span></p>
+                        <p><strong data-i18n="mode">Mode:</strong> <span id="mode" class="font-mono"></span></p>
+                        <p><strong data-i18n="std">Standard Deviation:</strong> <span id="std" class="font-mono"></span></p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    const translations = {
+        en: { myProjects: 'My Projects', createProject: 'Create Project', noProjects: 'No projects yet.', getStarted: 'Get started by creating a new project!', projectName: 'Project Name', cancel: 'Cancel', save: 'Save', delete: 'Delete', edit: 'Edit', deleteConfirm: 'Are you sure you want to delete this project?', grades: 'Grades', addGrade: 'Add Grade', language: 'Language', gradeDistribution: 'Grade Distribution', analysis: 'Analysis', mean: 'Mean', median: 'Median', mode: 'Mode', std: 'Standard Deviation', matterName: 'Matter Name', grade: 'Grade', gradePlaceholder: 'Grade (e.g., 85 or 17/20)', invalidGrade: 'Invalid grade. Use a number (e.g., 85) or a fraction (e.g., 17/20).', frequency: 'Frequency', distribution: 'Distribution', count: 'Count' },
+        fr: { myProjects: 'Mes Projets', createProject: 'Créer un Projet', noProjects: 'Aucun projet.', getStarted: 'Commencez par créer un nouveau projet !', projectName: 'Nom du Projet', cancel: 'Annuler', save: 'Enregistrer', delete: 'Supprimer', edit: 'Modifier', deleteConfirm: 'Êtes-vous sûr de vouloir supprimer ce projet ?', grades: 'Notes', addGrade: 'Ajouter une note', language: 'Langue', gradeDistribution: 'Distribution des notes', analysis: 'Analyse', mean: 'Moyenne', median: 'Médiane', mode: 'Mode', std: 'Écart-type', matterName: 'Nom de la matière', grade: 'Note', gradePlaceholder: 'Note (ex: 85 ou 17/20)', invalidGrade: 'Note invalide. Utilisez un nombre (ex: 85) ou une fraction (ex: 17/20).', frequency: 'Fréquence', distribution: 'Distribution', count: 'Compte' },
+        ar: { myProjects: 'مشاريعي', createProject: 'إنشاء مشروع', noProjects: 'لا توجد مشاريع بعد.', getStarted: 'ابدأ بإنشاء مشروع جديد!', projectName: 'اسم المشروع', cancel: 'إلغاء', save: 'حفظ', delete: 'حذف', edit: 'تعديل', deleteConfirm: 'هل أنت متأكد أنك تريد حذف هذا المشروع؟', grades: 'الدرجات', addGrade: 'أضف درجة', language: 'لغة', gradeDistribution: 'توزيع الدرجات', analysis: 'تحليل', mean: 'المتوسط', median: 'الوسيط', mode: 'المنوال', std: 'الانحراف المعياري', matterName: 'اسم المادة', grade: 'درجة', gradePlaceholder: 'درجة (مثال: 85 أو 17/20)', invalidGrade: 'درجة غير صالحة. استخدم رقمًا (مثال: 85) أو كسرًا (مثال: 17/20).', frequency: 'تكرار', distribution: 'توزيع', count: 'العدد' },
+        zh: { myProjects: '我的项目', createProject: '创建项目', noProjects: '尚无项目。', getStarted: '从创建一个新项目开始！', projectName: '项目名称', cancel: '取消', save: '保存', delete: '删除', edit: '编辑', deleteConfirm: '您确定要删除此项目吗？', grades: '成绩', addGrade: '添加成绩', language: '语言', gradeDistribution: '成绩分布', analysis: '分析', mean: '平均值', median: '中位数', mode: '众数', std: '标准差', matterName: '科目名称', grade: '成绩', gradePlaceholder: '成绩 (例如 85 或 17/20)', invalidGrade: '成绩格式无效。请使用数字（例如 85）或分数（例如 17/20）。', frequency: '频率', distribution: '分布', count: '计数' },
+        it: { myProjects: 'I miei Progetti', createProject: 'Crea Progetto', noProjects: 'Nessun progetto.', getStarted: 'Inizia creando un nuovo progetto!', projectName: 'Nome Progetto', cancel: 'Annulla', save: 'Salva', delete: 'Elimina', edit: 'Modifica', deleteConfirm: 'Sei sicuro di voler eliminare questo progetto?', grades: 'Voti', addGrade: 'Aggiungi voto', language: 'Lingua', gradeDistribution: 'Distribuzione dei voti', analysis: 'Analisi', mean: 'Media', median: 'Mediana', mode: 'Moda', std: 'Deviazione standard', matterName: 'Nome della materia', grade: 'Voto', gradePlaceholder: 'Voto (es. 85 o 17/20)', invalidGrade: 'Voto non valido. Usa un numero (es. 85) o una frazione (es. 17/20).', frequency: 'Frequenza', distribution: 'Distribuzione', count: 'Conteggio' },
+        de: { myProjects: 'Meine Projekte', createProject: 'Projekt erstellen', noProjects: 'Noch keine Projekte.', getStarted: 'Beginnen Sie mit der Erstellung eines neuen Projekts!', projectName: 'Projektname', cancel: 'Abbrechen', save: 'Speichern', delete: 'Löschen', edit: 'Bearbeiten', deleteConfirm: 'Sind Sie sicher, dass Sie dieses Projekt löschen möchten?', grades: 'Noten', addGrade: 'Note hinzufügen', language: 'Sprache', gradeDistribution: 'Notenverteilung', analysis: 'Analyse', mean: 'Mittelwert', median: 'Median', mode: 'Modus', std: 'Standardabweichung', matterName: 'Fachname', grade: 'Note', gradePlaceholder: 'Note (z.B. 85 oder 17/20)', invalidGrade: 'Ungültige Note. Verwenden Sie eine Zahl (z.B. 85) oder einen Bruch (z.B. 17/20).', frequency: 'Häufigkeit', distribution: 'Verteilung', count: 'Anzahl' },
+        es: { myProjects: 'Mis Proyectos', createProject: 'Crear Proyecto', noProjects: 'Aún no hay proyectos.', getStarted: '¡Empieza creando un nuevo proyecto!', projectName: 'Nombre del Proyecto', cancel: 'Cancelar', save: 'Guardar', delete: 'Eliminar', edit: 'Editar', deleteConfirm: '¿Estás seguro de que quieres eliminar este proyecto?', grades: 'Calificaciones', addGrade: 'Agregar calificación', language: 'Idioma', gradeDistribution: 'Distribución de calificaciones', analysis: 'Análisis', mean: 'Media', median: 'Mediana', mode: 'Moda', std: 'Desviación estándar', matterName: 'Nombre de la materia', grade: 'Calificación', gradePlaceholder: 'Calificación (ej. 85 o 17/20)', invalidGrade: 'Calificación no válida. Use un número (ej. 85) o una fracción (ej. 17/20).', frequency: 'Frecuencia', distribution: 'Distribución', count: 'Conteo' }
+    };
+
+    let appState = { projects: [], currentProjectId: null, language: 'en' };
+
+    function saveState() { localStorage.setItem('gradeWiseState', JSON.stringify(appState)); }
+    function loadState() {
+        const savedState = localStorage.getItem('gradeWiseState');
+        if (savedState) appState = JSON.parse(savedState);
+    }
+
+    const projectsView = document.getElementById('projects-view');
+    const gradesView = document.getElementById('grades-view');
+    const projectsGrid = document.getElementById('projects-grid');
+    const noProjectsMessage = document.getElementById('no-projects-message');
+    const createProjectBtn = document.getElementById('create-project-btn');
+    const backToProjectsBtn = document.getElementById('back-to-projects');
+    const gradeForm = document.getElementById('grade-form');
+    const matterNameInput = document.getElementById('matter-name');
+    const gradeValueInput = document.getElementById('grade-value');
+    const gradeList = document.getElementById('grade-list');
+    const langSelectorMain = document.getElementById('lang-selector-main');
+
+    function showProjectsView() {
+        gradesView.classList.remove('active');
+        projectsView.classList.add('active');
+        appState.currentProjectId = null;
+        renderProjects();
+        translateUI();
+    }
+
+    function showGradesView(projectId) {
+        const project = appState.projects.find(p => p.id === projectId);
+        if (!project) return;
+        appState.currentProjectId = projectId;
+        projectsView.classList.remove('active');
+        gradesView.classList.add('active');
+        document.getElementById('project-title-sidebar').textContent = project.name;
+        document.getElementById('project-title-main').textContent = project.name;
+        updateGradesUI();
+        translateUI();
+    }
+
+    function renderProjects() {
+        projectsGrid.innerHTML = '';
+        noProjectsMessage.style.display = appState.projects.length === 0 ? 'block' : 'none';
+        appState.projects.forEach(project => {
+            const card = document.createElement('div');
+            card.className = 'bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow cursor-pointer';
+            const gradeCountText = `${project.grades.length} ${translations[appState.language].grades.toLowerCase()}`;
+            card.innerHTML = `
+                <h3 class="text-xl font-bold mb-2 truncate">${project.name}</h3>
+                <p class="text-gray-500 dark:text-gray-400 mb-4">${gradeCountText}</p>
+                <div class="flex justify-end gap-2">
+                    <button class="edit-project-btn text-sm text-blue-500 hover:underline" data-id="${project.id}" data-i18n="edit">Edit</button>
+                    <button class="delete-project-btn text-sm text-red-500 hover:underline" data-id="${project.id}" data-i18n="delete">Delete</button>
+                </div>`;
+            card.addEventListener('click', (e) => {
+                if (!e.target.matches('.edit-project-btn, .delete-project-btn')) {
+                    showGradesView(project.id);
+                }
+            });
+            projectsGrid.appendChild(card);
+        });
+    }
+
+    function createProject() {
+        const projectName = prompt(translations[appState.language].projectName);
+        if (projectName) {
+            appState.projects.push({ id: `proj_${Date.now()}`, name: projectName, grades: [] });
+            saveState();
+            renderProjects();
+            translateUI();
+        }
+    }
+
+    function editProject(id) {
+        const project = appState.projects.find(p => p.id === id);
+        const newName = prompt(translations[appState.language].projectName, project.name);
+        if (newName && newName !== project.name) {
+            project.name = newName;
+            saveState();
+            renderProjects();
+            translateUI();
+        }
+    }
+
+    function deleteProject(id) {
+        if (confirm(translations[appState.language].deleteConfirm)) {
+            appState.projects = appState.projects.filter(p => p.id !== id);
+            saveState();
+            renderProjects();
+        }
+    }
+    
+    function parseGrade(input) {
+        const str = String(input).trim();
+        if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts.length === 2) {
+                const num = parseFloat(parts[0]);
+                const den = parseFloat(parts[1]);
+                if (!isNaN(num) && !isNaN(den) && den !== 0) {
+                    return { value: (num / den) * 100, displayValue: str };
+                }
+            }
+        } else {
+            const num = parseFloat(str);
+            if (!isNaN(num)) {
+                return { value: num, displayValue: str };
+            }
+        }
+        return null;
+    }
+
+    function getCurrentProject() { return appState.projects.find(p => p.id === appState.currentProjectId); }
+    
+    function addGrade(name, value, displayValue) {
+        const project = getCurrentProject();
+        const existingGrade = project.grades.find(g => g.name.toLowerCase() === name.toLowerCase());
+        if (existingGrade) {
+            existingGrade.value = value;
+            existingGrade.displayValue = displayValue;
+        } else {
+            project.grades.push({ name, value, displayValue });
+        }
+        saveState();
+        updateGradesUI();
+    }
+
+    function removeGrade(name) {
+        const project = getCurrentProject();
+        project.grades = project.grades.filter(g => g.name !== name);
+        saveState();
+        updateGradesUI();
+    }
+    
+    window.updateGradeName = function(element, oldName) {
+        const project = getCurrentProject();
+        const newName = element.textContent.trim();
+        const grade = project.grades.find(g => g.name === oldName);
+        if (grade && newName) { grade.name = newName; saveState(); renderGradeList(); } 
+        else { element.textContent = oldName; }
+    }
+
+    window.updateGradeValue = function(element, name) {
+        const project = getCurrentProject();
+        const parsedGrade = parseGrade(element.textContent.trim());
+        const grade = project.grades.find(g => g.name === name);
+        if (grade && parsedGrade) {
+            grade.value = parsedGrade.value;
+            grade.displayValue = parsedGrade.displayValue;
+            saveState();
+            updateGradesUI();
+        } else {
+            element.textContent = grade ? grade.displayValue : '';
+        }
+    }
+    
+    function updateGradesUI() {
+        renderGradeList();
+        const project = getCurrentProject();
+        const values = project ? project.grades.map(g => g.value) : [];
+
+        const mean = calculateMean(values);
+        const median = calculateMedian(values);
+        const modes = calculateMode(values);
+        const std = calculateStdDev(values);
+
+        renderHistogram(values, mean, median, modes, std);
+        renderAnalysis(mean, median, modes, std);
+    }
+
+    function renderGradeList() {
+        gradeList.innerHTML = '';
+        const project = getCurrentProject();
+        if (!project) return;
+        project.grades.forEach(grade => {
+            const li = document.createElement('li');
+            li.className = 'flex justify-between items-center p-3 my-1 bg-gray-50 dark:bg-gray-700 rounded-lg';
+            li.innerHTML = `
+                <div>
+                    <span class="font-semibold" contenteditable="true" onblur="updateGradeName(this, '${grade.name}')">${grade.name}</span>: 
+                    <span contenteditable="true" onblur="updateGradeValue(this, '${grade.name}')">${grade.displayValue}</span>
+                </div>
+                <button class="text-red-500 hover:text-red-700" onclick="removeGrade('${grade.name}')">✖</button>`;
+            gradeList.appendChild(li);
+        });
+    }
+
+    function normalPDF(x, mean, stdDev) {
+        const exponent = -0.5 * Math.pow((x - mean) / stdDev, 2);
+        const coefficient = 1 / (stdDev * Math.sqrt(2 * Math.PI));
+        return coefficient * Math.exp(exponent);
+    }
+
+    function renderHistogram(values, mean, median, modes, stdDev) {
+        const lang = appState.language;
+
+        const counts = {};
+        values.forEach(num => {
+            const roundedNum = parseFloat(num.toFixed(2));
+            counts[roundedNum] = (counts[roundedNum] || 0) + 1;
+        });
+        
+        const uniqueGrades = Object.keys(counts).map(Number);
+        const gradeCounts = uniqueGrades.map(grade => counts[grade]);
+
+        const barTrace = {
+            x: uniqueGrades, y: gradeCounts, type: 'bar',
+            name: translations[lang].frequency, marker: { color: '#3B82F6' }, width: 0.8
+        };
+        const plotData = [barTrace];
+        const shapes = [];
+        const annotations = [];
+        
+        if (values.length >= 2 && stdDev > 0) {
+            const x_curve = [];
+            const min = Math.max(0, mean - 4 * stdDev);
+            const max = Math.min(100, mean + 4 * stdDev);
+            for (let i = min; i <= max; i += 0.5) x_curve.push(i);
+            const y_curve = x_curve.map(x => normalPDF(x, mean, stdDev) * values.length);
+            plotData.push({
+                x: x_curve, y: y_curve, type: 'scatter', mode: 'lines',
+                name: translations[lang].distribution, line: { color: 'rgba(239, 68, 68, 0.7)' }
+            });
+
+            // Add Mean Line
+            shapes.push({ type: 'line', x0: mean, y0: 0, x1: mean, y1: 1, yref: 'paper', line: { color: 'rgba(239, 68, 68, 1)', width: 2 } });
+            annotations.push({ x: mean, y: 1.07, yref: 'paper', text: `${translations[lang].mean}: ${mean.toFixed(2)}`, showarrow: false, font: {color: 'rgba(239, 68, 68, 1)'} });
+            
+            // Add Median Line
+            shapes.push({ type: 'line', x0: median, y0: 0, x1: median, y1: 1, yref: 'paper', line: { color: 'rgba(34, 197, 94, 1)', width: 2, dash: 'dash' } });
+            annotations.push({ x: median, y: 1.14, yref: 'paper', text: `${translations[lang].median}: ${median.toFixed(2)}`, showarrow: false, font: {color: 'rgba(34, 197, 94, 1)'} });
+
+            // Add Mode Lines
+            modes.forEach((mode, index) => {
+                shapes.push({ type: 'line', x0: mode, y0: 0, x1: mode, y1: 1, yref: 'paper', line: { color: 'rgba(168, 85, 247, 1)', width: 2, dash: 'dot' } });
+                 if(index === 0) { // Only add one label for all modes to avoid clutter
+                    annotations.push({ x: mode, y: 1.21, yref: 'paper', text: `${translations[lang].mode}(s): ${modes.join(', ')}`, showarrow: false, font: {color: 'rgba(168, 85, 247, 1)'} });
+                 }
+            });
+        }
+
+        const layout = {
+            plot_bgcolor: 'transparent', paper_bgcolor: 'transparent',
+            font: { color: document.body.classList.contains('dark') ? '#F9FAFB' : '#111827' },
+            margin: { t: 80, b: 40, l: 40, r: 20 },
+            barmode: 'overlay', showlegend: true, legend: { x: 1, xanchor: 'right', y: 1.2 },
+            xaxis: { 
+                range: [-1, 101],
+                gridcolor: document.body.classList.contains('dark') ? '#374151' : '#E5E7EB',
+            },
+            yaxis: { 
+                title: translations[lang].count,
+                gridcolor: document.body.classList.contains('dark') ? '#374151' : '#E5E7EB'
+            },
+            shapes: shapes,
+            annotations: annotations.sort((a,b) => a.x - b.x) // Sort annotations to reduce overlap
+        };
+        Plotly.newPlot('histogram', plotData, layout, {responsive: true});
+    }
+
+    function renderAnalysis(mean, median, modes, std) {
+        document.getElementById('mean').textContent = isNaN(mean) ? 'N/A' : mean.toFixed(2);
+        document.getElementById('median').textContent = isNaN(median) ? 'N/A' : median.toFixed(2);
+        document.getElementById('mode').textContent = modes.length > 0 ? modes.join(', ') : 'N/A';
+        document.getElementById('std').textContent = isNaN(std) ? 'N/A' : std.toFixed(2);
+    }
+
+    // Calculation functions
+    function calculateMean(arr) { return arr.length === 0 ? NaN : arr.reduce((a, b) => a + b, 0) / arr.length; }
+    function calculateMedian(arr) { if (arr.length === 0) return NaN; const s = [...arr].sort((a,b)=>a-b); const m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+    function calculateMode(arr) { if (arr.length<2)return[];const m={};let x=0,c=[];arr.forEach(e=>{const r=parseFloat(e.toFixed(2));m[r]=(m[r]||0)+1;if(m[r]>x){x=m[r];c=[r];}else if(m[r]===x&&!c.includes(r)){c.push(r);}});if(x<=1||Object.values(m).every(v=>v===x))return[];return c;}
+    function calculateStdDev(arr) { if(arr.length < 2)return NaN;const m=calculateMean(arr);return Math.sqrt(arr.reduce((s,v)=>s+Math.pow(v-m,2),0)/(arr.length-1)); }
+    
+    function translateUI() {
+        const lang = appState.language;
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.dataset.i18n;
+            const translationKey = (el.tagName === 'STRONG') ? key.replace(':','') : key;
+            if (translations[lang]?.[translationKey]) {
+                 el.textContent = translations[lang][translationKey] + (el.tagName === 'STRONG' ? ':' : '');
+            }
+        });
+        matterNameInput.placeholder = translations[lang].matterName;
+        gradeValueInput.placeholder = translations[lang].gradePlaceholder;
+    }
+
+    function setLanguage(lang) {
+        appState.language = lang;
+        langSelectorMain.value = lang;
+        saveState();
+        translateUI();
+        if (projectsView.classList.contains('active')) { renderProjects(); } 
+        else if (gradesView.classList.contains('active')) { updateGradesUI(); }
+        translateUI();
+    }
+
+    createProjectBtn.addEventListener('click', createProject);
+    backToProjectsBtn.addEventListener('click', showProjectsView);
+
+    projectsGrid.addEventListener('click', (e) => {
+        if (e.target.matches('.edit-project-btn')) editProject(e.target.dataset.id);
+        if (e.target.matches('.delete-project-btn')) deleteProject(e.target.dataset.id);
+    });
+
+    gradeForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = matterNameInput.value.trim();
+        const parsedGrade = parseGrade(gradeValueInput.value);
+        if (name && parsedGrade) {
+            addGrade(name, parsedGrade.value, parsedGrade.displayValue);
+            matterNameInput.value = '';
+            gradeValueInput.value = '';
+            matterNameInput.focus();
+        } else {
+            alert(translations[appState.language].invalidGrade);
+        }
+    });
+    
+    langSelectorMain.addEventListener('change', (e) => setLanguage(e.target.value));
+    
+    const resizeObserver = new ResizeObserver(() => {
+        if(gradesView.classList.contains('active')) { Plotly.Plots.resize('histogram'); }
+    });
+    resizeObserver.observe(document.getElementById('histogram-container'));
+
+    function init() {
+        loadState();
+        langSelectorMain.value = appState.language;
+        showProjectsView();
+    }
+
+    init();
+    </script>
+</body>
+</html>
