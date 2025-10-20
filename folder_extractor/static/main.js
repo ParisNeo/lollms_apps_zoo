@@ -1,6 +1,8 @@
 // folder_extractor/static/main.js
 // [UPDATE]
-const Path = window.pathBrowserify;
+function basename(p) {
+  return p.split(/[\\/]/).pop(); // handles both / and \
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State & Element Selectors ---
@@ -584,10 +586,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (isNowMarked) {
                         clientState.markedForRemovalPaths.add(path);
                         clientState.checkedTreePathsMap.delete(path); // If marked for removal, it cannot be selected
-                        addLogEntry(`Marked for removal: ${Path.basename(path)}`, 'info');
+                        addLogEntry(`Marked for removal: ${basename(path)}`, 'info');
                     } else {
                         clientState.markedForRemovalPaths.delete(path);
-                        addLogEntry(`Restored from removal: ${Path.basename(path)}`, 'info');
+                        addLogEntry(`Restored from removal: ${basename(path)}`, 'info');
                     }
                 });
                 
