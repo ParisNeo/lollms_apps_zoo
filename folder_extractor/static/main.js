@@ -1,6 +1,6 @@
 // folder_extractor/static/main.js
 // [UPDATE]
-const path = window.pathBrowserify;
+const Path = window.pathBrowserify;
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- Global State & Element Selectors ---
