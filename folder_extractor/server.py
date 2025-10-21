@@ -574,7 +574,7 @@ async def count_tokens(request: TokenCountRequest):
 async def get_llm_models():
     try:
         lc = _get_lollms_client_instance()
-        models = lc.listModels()
+        models = lc.list_models()
         model_ids = [model['model_name'] for model in models] if isinstance(models, list) and models else models
         return sorted(model_ids) if isinstance(model_ids, list) else []
     except Exception as e:
