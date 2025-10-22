@@ -156,12 +156,14 @@ class Project(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     path: str
+    theme: Optional[str] = "Default"
     starred: bool = False
     last_accessed: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 class ProjectUpdateRequest(BaseModel):
     name: Optional[str] = None
     path: Optional[str] = None
+    theme: Optional[str] = None
     starred: Optional[bool] = None
 
 class ProjectExportRequest(BaseModel):

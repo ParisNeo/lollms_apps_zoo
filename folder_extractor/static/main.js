@@ -705,7 +705,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    async function performLoadTree(repopulate = false) {
+async function performLoadTree(repopulate = false) {
         if (!clientState.activeProjectId) return;
         const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
         if (!project) return;
@@ -715,6 +715,14 @@ document.addEventListener('DOMContentLoaded', () => {
             clientState.markedForRemovalPaths.clear();
             addLogEntry('Repopulating tree: clearing all existing selections and removals.', 'info');
         }
+
+        // --- Start Spinner ---
+        const btnContent = loadTreeBtn.querySelector('.btn-content');
+        const btnSpinner = loadTreeBtn.querySelector('.btn-spinner');
+        loadTreeBtn.disabled = true;
+        if (btnContent) btnContent.classList.add('hidden');
+        if (btnSpinner) btnSpinner.classList.remove('hidden');
+        // --- End Spinner ---
 
         showStatus('Loading project tree...', 'info');
         if (fileTreeContainer) fileTreeContainer.innerHTML = '<p class="p-4">Loading...</p>';
@@ -746,10 +754,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showStatus(`Error loading tree: ${error.message}`, 'error');
             addLogEntry(`Failed to load project tree: ${error.message}`, 'error');
         } finally {
+            // --- Stop Spinner ---
+            loadTreeBtn.disabled = false;
+            if (btnContent) btnContent.classList.remove('hidden');
+            if (btnSpinner) btnSpinner.classList.add('hidden');
+            // --- End Spinner ---
             updateExtractorUIStates();
         }
     }
-    
     // --- Chat & Tokenizer Logic ---
     async function updateTokenCountAndProgressBar() {
         if (clientState.chatHistory.length === 0 || !clientState.llmSettings.model_name) {
