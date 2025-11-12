@@ -300,10 +300,6 @@
                 </div>
                  <div id="models-status"></div>
             </div>
-            <div class="form-group">
-                <label for="lollms-key">API Key (optional)</label>
-                <input type="password" id="lollms-key" placeholder="Enter your key if required">
-            </div>
             <div class="modal-actions">
                 <button id="close-modal-btn" class="btn" style="background: #555;">Close</button>
                 <button id="save-settings-btn" class="btn">Save</button>
@@ -333,7 +329,6 @@
             const saveSettingsBtn = document.getElementById('save-settings-btn');
             const lollmsUrlInput = document.getElementById('lollms-url');
             const lollmsModelSelect = document.getElementById('lollms-model-select');
-            const lollmsKeyInput = document.getElementById('lollms-key');
             const refreshModelsBtn = document.getElementById('refresh-models-btn');
             const modelsStatusEl = document.getElementById('models-status');
 
@@ -342,7 +337,6 @@
             let btcData = null;
             let settings = {
                 lollmsUrl: 'http://localhost:9642',
-                apiKey: '',
                 modelName: ''
             };
 
@@ -361,14 +355,12 @@
                     settings = Object.assign({}, settings, savedSettings);
                 }
                 lollmsUrlInput.value = settings.lollmsUrl;
-                lollmsKeyInput.value = settings.apiKey;
                 // Model dropdown will be populated later, but we store the name
             };
 
             const saveSettings = () => {
                 settings.lollmsUrl = lollmsUrlInput.value.trim() || 'http://localhost:9642';
                 settings.modelName = lollmsModelSelect.value; // Get value from select
-                settings.apiKey = lollmsKeyInput.value.trim();
                 localStorage.setItem('btcAnalyzerSettings', JSON.stringify(settings));
                 toggleModal(false);
                 alert('Settings saved!');
@@ -389,8 +381,8 @@
                 refreshModelsBtn.disabled = true;
 
                 try {
-                    const response = await fetch(`${url}/v1/models`, {
-                        headers: { 'Authorization': `Bearer ${lollmsKeyInput.value.trim()}` }
+                    const response = await fetch(`/lollms/v1/models`, {
+                        headers: { 'X-Lollms-Url': url }
                     });
                     if (!response.ok) throw new Error(`Server returned ${response.status}`);
                     const data = await response.json();
@@ -524,9 +516,12 @@ Recent 7-day closing prices:\n${recentPrices}`;
                 const systemPrompt = "You are a crypto market analyst. Provide a brief, neutral analysis of the provided Bitcoin data. Do NOT give financial advice or predict future prices. Focus on describing current market sentiment, identifying potential short-term support and resistance levels based *only* on the provided data, and highlighting notable patterns (e.g., volatility, trends). Format your response using Markdown.";
                 
                 try {
-                    const response = await fetch(`${settings.lollmsUrl}/v1/chat/completions`, {
+                    const response = await fetch(`/lollms/v1/chat/completions`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${settings.apiKey}` },
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'X-Lollms-Url': settings.lollmsUrl
+                        },
                         body: JSON.stringify({
                             model: settings.modelName,
                             messages: [
@@ -537,8 +532,8 @@ Recent 7-day closing prices:\n${recentPrices}`;
                         })
                     });
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(`API Error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                        const errorText = await response.text();
+                        throw new Error(`API Error: ${response.status} - ${errorText || response.statusText}`);
                     }
                     const result = await response.json();
                     aiResultEl.innerHTML = marked.parse(result.choices[0].message.content);
