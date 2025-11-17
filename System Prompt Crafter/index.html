@@ -478,45 +478,33 @@ Your output MUST be a single JSON object with the following structure, and nothi
             loadModels();
         }
         
-        const fetchLollmsModels = async () => {
-            const url = lollmsUrlInput.value.trim() || settings.lollmsUrl;
-            modelsStatusEl.textContent = 'Fetching models...';
-            lollmsModelSelect.innerHTML = '<option>Loading...</option>';
-            lollmsModelSelect.disabled = true;
-            refreshModelsBtn.disabled = true;
-
+        async function loadModels() {
             try {
-                const response = await fetch(`/lollms/v1/models`, {
-                    headers: { 'X-Lollms-Url': url }
-                });
+                const response = await fetch('/api/v1/list_models');
                 if (!response.ok) throw new Error(`Server returned ${response.status}`);
-                const data = await response.json();
+                const models = await response.json();
                 
-                lollmsModelSelect.innerHTML = ''; // Clear loading option
-                if (data.data && data.data.length > 0) {
-                    data.data.forEach(model => {
-                        const option = document.createElement('option');
-                        option.value = model.id;
-                        option.textContent = model.id;
-                        if (model.id === settings.modelName) {
-                            option.selected = true; // Pre-select saved model
-                        }
-                        lollmsModelSelect.appendChild(option);
-                    });
-                    modelsStatusEl.textContent = 'Models loaded successfully.';
-                } else {
-                    modelsStatusEl.textContent = 'No models found.';
+                craftingModelSelect.innerHTML = '';
+                testModelSelect.innerHTML = '';
+                models.forEach(model => {
+                    const option = document.createElement('option');
+                    option.value = model;
+                    option.textContent = model;
+                    craftingModelSelect.appendChild(option);
+                    testModelSelect.appendChild(option);
+                });
+                
+                // Pre-select the first model if available
+                if (models.length > 0) {
+                    craftingModelSelect.value = models[0];
+                    testModelSelect.value = models[0];
                 }
             } catch (error) {
-                console.error("Error fetching Lollms models:", error);
-                lollmsModelSelect.innerHTML = '<option>Could not load models</option>';
-                modelsStatusEl.textContent = `Error: ${error.message}. Check URL.`;
-            } finally {
-                lollmsModelSelect.disabled = false;
-                refreshModelsBtn.disabled = false;
+                console.error("Error loading models:", error);
+                craftingModelSelect.innerHTML = '<option>Error loading models</option>';
+                testModelSelect.innerHTML = '<option>Error loading models</option>';
             }
-        };
-
+        }
 
         window.onclick = function(event) {
             if (event.target == settingsModal) {
@@ -530,4 +518,4 @@ Your output MUST be a single JSON object with the following structure, and nothi
         });
     </script>
 </body>
-</html> 
+</html>
