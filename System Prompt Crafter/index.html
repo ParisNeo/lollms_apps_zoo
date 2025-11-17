@@ -478,49 +478,45 @@ Your output MUST be a single JSON object with the following structure, and nothi
             loadModels();
         }
         
-        async function loadModels() {
-            const lollmsUrl = localStorage.getItem('lollms_url');
-            if (!lollmsUrl) {
-                console.log("Lollms URL not found. Opening settings.");
-                openSettingsModal();
-                return;
-            }
+        const fetchLollmsModels = async () => {
+            const url = lollmsUrlInput.value.trim() || settings.lollmsUrl;
+            modelsStatusEl.textContent = 'Fetching models...';
+            lollmsModelSelect.innerHTML = '<option>Loading...</option>';
+            lollmsModelSelect.disabled = true;
+            refreshModelsBtn.disabled = true;
 
             try {
-                const response = await fetch('/lollms/list_models', {
-                    method: 'GET',
-                    headers: { 'X-Lollms-Url': lollmsUrl }
+                const response = await fetch(`/lollms/v1/models`, {
+                    headers: { 'X-Lollms-Url': url }
                 });
-
-                if (!response.ok) throw new Error(`Failed to fetch models: ${response.statusText}`);
+                if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                const data = await response.json();
                 
-                const models = await response.json();
-                craftingModelSelect.innerHTML = '';
-                testModelSelect.innerHTML = '';
-                
-                if (models.length === 0) {
-                    craftingModelSelect.innerHTML = '<option>No models found</option>';
-                    testModelSelect.innerHTML = '<option>No models found</option>';
-                    return;
+                lollmsModelSelect.innerHTML = ''; // Clear loading option
+                if (data.data && data.data.length > 0) {
+                    data.data.forEach(model => {
+                        const option = document.createElement('option');
+                        option.value = model.id;
+                        option.textContent = model.id;
+                        if (model.id === settings.modelName) {
+                            option.selected = true; // Pre-select saved model
+                        }
+                        lollmsModelSelect.appendChild(option);
+                    });
+                    modelsStatusEl.textContent = 'Models loaded successfully.';
+                } else {
+                    modelsStatusEl.textContent = 'No models found.';
                 }
-
-                models.forEach(model => {
-                    const option1 = document.createElement('option');
-                    option1.value = model;
-                    option1.textContent = model;
-                    craftingModelSelect.appendChild(option1);
-
-                    const option2 = document.createElement('option');
-                    option2.value = model;
-                    option2.textContent = model;
-                    testModelSelect.appendChild(option2);
-                });
             } catch (error) {
-                console.error("Error loading models:", error);
-                alert("Could not connect to Lollms server. Please check the URL in settings.");
-                openSettingsModal();
+                console.error("Error fetching Lollms models:", error);
+                lollmsModelSelect.innerHTML = '<option>Could not load models</option>';
+                modelsStatusEl.textContent = `Error: ${error.message}. Check URL.`;
+            } finally {
+                lollmsModelSelect.disabled = false;
+                refreshModelsBtn.disabled = false;
             }
-        }
+        };
+
 
         window.onclick = function(event) {
             if (event.target == settingsModal) {
