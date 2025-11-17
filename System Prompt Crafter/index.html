@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Prompt Crafter</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --primary-bg: #1a1a1a;
+            --secondary-bg: #2a2a2a;
+            --input-bg: #333;
+            --text-color: #f0f0f0;
+            --primary-color: #4a90e2;
+            --border-color: #444;
+            --success-color: #50e3c2;
+            --error-color: #e35050;
+            --info-color: #f5a623;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--primary-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .card {
+            background-color: var(--secondary-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            padding: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        textarea, select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border-color);
+            background-color: var(--input-bg);
+            color: var(--text-color);
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: var(--primary-color);
+            color: white;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #357abd;
+        }
+        
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        #process-output {
+            margin-top: 20px;
+        }
+
+        .iteration-log {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .iteration-header {
+            background-color: var(--border-color);
+            color: var(--primary-color);
+            padding: 10px 15px;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .log-section {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .log-section:last-child {
+            border-bottom: none;
+        }
+
+        .log-section h3 {
+            margin-top: 0;
+            color: var(--info-color);
+        }
+
+        pre {
+            background-color: var(--input-bg);
+            padding: 10px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "Courier New", Courier, monospace;
+        }
+
+        .final-status {
+            text-align: center;
+            font-size: 1.3rem;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+        .status-success {
+            background-color: var(--success-color);
+            color: #111;
+        }
+        .status-finished {
+            background-color: var(--info-color);
+            color: #111;
+        }
+
+        /* Settings Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.6);
+        }
+        .modal-content {
+            background-color: var(--secondary-bg);
+            margin: 10% auto;
+            padding: 25px;
+            border: 1px solid var(--border-color);
+            width: 80%;
+            max-width: 500px;
+            border-radius: 8px;
+        }
+        .close-button {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .settings-icon {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            cursor: pointer;
+            font-size: 24px;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div class="settings-icon" onclick="openSettingsModal()">⚙️</div>
+
+    <div class="container">
+        <header>
+            <h1>System Prompt Crafter</h1>
+            <p style="text-align: center;">Describe your idea, and let AI craft, test, and refine the perfect system prompt for you.</p>
+        </header>
+
+        <div class="card">
+            <h2>Configuration</h2>
+            <div class="form-group">
+                <label for="idea-input">Your Core Idea</label>
+                <textarea id="idea-input" placeholder="e.g., 'Create an AI assistant that only speaks in pirate slang but provides accurate, modern-day technical support.'"></textarea>
+            </div>
+            <div style="display: flex; gap: 20px;">
+                <div class="form-group" style="flex: 1;">
+                    <label for="crafting-model">Crafting Model</label>
+                    <select id="crafting-model"></select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label for="test-model">Test Model</label>
+                    <select id="test-model"></select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label for="max-iterations">Max Iterations</label>
+                <input type="number" id="max-iterations" value="5" min="1" max="20">
+            </div>
+            <button id="start-button" onclick="startCrafting()">
+                Start Crafting
+                <div id="spinner" class="spinner hidden"></div>
+            </button>
+        </div>
+
+        <div id="process-output"></div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="closeSettingsModal()">&times;</span>
+            <h2>Settings</h2>
+            <div class="form-group">
+                <label for="lollms-url">Lollms Server URL</label>
+                <input type="text" id="lollms-url" placeholder="http://localhost:9600">
+            </div>
+            <button onclick="saveSettings()">Save and Reload Models</button>
+        </div>
+    </div>
+
+    <script>
+        const ideaInput = document.getElementById('idea-input');
+        const craftingModelSelect = document.getElementById('crafting-model');
+        const testModelSelect = document.getElementById('test-model');
+        const maxIterationsInput = document.getElementById('max-iterations');
+        const startButton = document.getElementById('start-button');
+        const processOutput = document.getElementById('process-output');
+        const spinner = document.getElementById('spinner');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const lollmsUrlInput = document.getElementById('lollms-url');
+
+        // --- Core Application Logic ---
+
+        async function startCrafting() {
+            const userIdea = ideaInput.value.trim();
+            const craftingModel = craftingModelSelect.value;
+            const testModel = testModelSelect.value;
+            const maxIterations = parseInt(maxIterationsInput.value, 10);
+
+            if (!userIdea || !craftingModel || !testModel) {
+                alert("Please fill in all fields and select models.");
+                return;
+            }
+
+            toggleControls(true);
+            processOutput.innerHTML = '';
+
+            try {
+                // Step 1: Initial crafting of system prompt and first test case
+                let iterationLog = createIterationLog(1);
+                updateLogSection(iterationLog, "status", "<h3>Status</h3><p>Crafting initial system prompt and test case...</p>");
+                
+                const initialCraftPrompt = `You are a System Prompt Engineering expert. Your goal is to craft a perfect system prompt based on a user's idea.
+User Idea: "${userIdea}"
+Your task:
+1. Craft a clear and effective system prompt based on this idea.
+2. Synthesize a simple but effective user prompt that can be used to test if a model follows the instructions in your system prompt.
+Your output MUST be a single JSON object with the following structure, and nothing else:
+{
+  "system_prompt": "...",
+  "test_user_prompt": "..."
+}`;
+                
+                const initialResponseText = await generateText(craftingModel, initialCraftPrompt);
+                const initialJson = parseJsonFromText(initialResponseText);
+
+                let currentSystemPrompt = initialJson.system_prompt;
+                let currentTestUserPrompt = initialJson.test_user_prompt;
+
+                for (let i = 1; i <= maxIterations; i++) {
+                    if (i > 1) {
+                       iterationLog = createIterationLog(i);
+                    }
+                    
+                    updateLogSection(iterationLog, "system-prompt", `<h3>System Prompt (Under Test)</h3><pre>${escapeHtml(currentSystemPrompt)}</pre>`);
+                    updateLogSection(iterationLog, "test-user-prompt", `<h3>Test User Prompt</h3><pre>${escapeHtml(currentTestUserPrompt)}</pre>`);
+                    updateLogSection(iterationLog, "status", "<h3>Status</h3><p>Running test against the Test Model...</p>");
+
+                    // Step 2: Run the test
+                    const testModelResponse = await generateText(testModel, currentTestUserPrompt, currentSystemPrompt);
+                    const renderedTestResponse = marked.parse(testModelResponse);
+                    updateLogSection(iterationLog, "test-model-response", `<h3>Test Model Response</h3><div>${renderedTestResponse}</div>`);
+                    updateLogSection(iterationLog, "status", "<h3>Status</h3><p>Analyzing response and refining prompt with Crafting Model...</p>");
+
+                    // Step 3: Analyze and refine
+                    const analysisPrompt = `You are a System Prompt Engineering expert. You are evaluating and refining a system prompt.
+User's original idea: "${userIdea}"
+Current System Prompt being tested: "${currentSystemPrompt}"
+User prompt used for the test: "${currentTestUserPrompt}"
+Test Model's actual response: "${testModelResponse}"
+
+Your task:
+1. Analyze the model's response. Does it follow all instructions from the system prompt? Is it helpful? Point out any flaws or deviations.
+2. Make a decision: is the system prompt "perfect" or does it "need_refinement"?
+3. If it needs refinement, create a new, improved version of the system prompt AND a new user prompt to test the specific refinements you made.
+4. If it's perfect, you can return the original system prompt and an empty test prompt.
+
+Your output MUST be a single JSON object with the following structure, and nothing else:
+{
+  "analysis": "...",
+  "decision": "perfect" | "need_refinement",
+  "new_system_prompt": "...",
+  "new_test_user_prompt": "..."
+}`;
+                    const analysisResponseText = await generateText(craftingModel, analysisPrompt);
+                    const analysisJson = parseJsonFromText(analysisResponseText);
+                    
+                    const renderedAnalysis = marked.parse(analysisJson.analysis);
+                    updateLogSection(iterationLog, "analysis", `<h3>Analysis & Decision</h3><p><b>Decision:</b> ${analysisJson.decision}</p><div>${renderedAnalysis}</div>`);
+                    updateLogSection(iterationLog, "status", `<h3>Status</h3><p>Iteration ${i} complete.</p>`);
+
+
+                    if (analysisJson.decision === 'perfect') {
+                        processOutput.insertAdjacentHTML('beforeend', '<div class="final-status status-success">✅ Process complete! A perfect system prompt has been crafted.</div>');
+                        break;
+                    }
+
+                    currentSystemPrompt = analysisJson.new_system_prompt;
+                    currentTestUserPrompt = analysisJson.new_test_user_prompt;
+
+                    if (i === maxIterations) {
+                        processOutput.insertAdjacentHTML('beforeend', '<div class="final-status status-finished">🏁 Max iterations reached. The last generated prompt is shown above.</div>');
+                    }
+                }
+
+            } catch (error) {
+                console.error("Crafting process failed:", error);
+                processOutput.innerHTML = `<p style="color: var(--error-color);">An error occurred: ${error.message}</p>`;
+            } finally {
+                toggleControls(false);
+            }
+        }
+
+        function createIterationLog(iteration) {
+            const iterationDiv = document.createElement('div');
+            iterationDiv.className = 'iteration-log';
+            iterationDiv.id = `iteration-${iteration}`;
+            iterationDiv.innerHTML = `<div class="iteration-header">Iteration ${iteration}</div>`;
+            processOutput.appendChild(iterationDiv);
+            return iterationDiv;
+        }
+
+        function updateLogSection(iterationLog, id, content) {
+            let section = iterationLog.querySelector(`#${iterationLog.id}-${id}`);
+            if (!section) {
+                section = document.createElement('div');
+                section.className = 'log-section';
+                section.id = `${iterationLog.id}-${id}`;
+                iterationLog.appendChild(section);
+            }
+            section.innerHTML = content;
+        }
+
+        // --- API & Utility Functions ---
+
+        async function generateText(model, prompt, systemPrompt = null) {
+            const lollmsUrl = localStorage.getItem('lollms_url');
+            if (!lollmsUrl) throw new Error("Lollms URL not set.");
+
+            const body = {
+                model_name: model,
+                prompt: prompt,
+                temperature: 0.5,
+                n_predict: 2048,
+                stream: false
+            };
+            if(systemPrompt) {
+                body.system_prompt = systemPrompt;
+            }
+
+            const response = await fetch('/lollms/generate_text', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Lollms-Url': lollmsUrl
+                },
+                body: JSON.stringify(body)
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error: ${response.statusText} - ${errorText}`);
+            }
+            const data = await response.json();
+            return data.generation;
+        }
+
+        function parseJsonFromText(text) {
+            try {
+                const jsonMatch = text.match(/```json\n([\s\S]*?)\n```|({[\s\S]*})/);
+                if (!jsonMatch) throw new Error("No JSON object found in the response.");
+                // Prefer the captured group that is not undefined.
+                const jsonString = jsonMatch[1] || jsonMatch[2];
+                return JSON.parse(jsonString);
+            } catch (error) {
+                console.error("Failed to parse JSON:", text);
+                throw new Error("The model did not return a valid JSON object. Please try again.");
+            }
+        }
+        
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function toggleControls(isLoading) {
+            startButton.disabled = isLoading;
+            ideaInput.disabled = isLoading;
+            craftingModelSelect.disabled = isLoading;
+            testModelSelect.disabled = isLoading;
+            maxIterationsInput.disabled = isLoading;
+            if (isLoading) {
+                spinner.classList.remove('hidden');
+            } else {
+                spinner.classList.add('hidden');
+            }
+        }
+        
+        // --- Settings and Initialization ---
+
+        function openSettingsModal() {
+            lollmsUrlInput.value = localStorage.getItem('lollms_url') || '';
+            settingsModal.style.display = 'block';
+        }
+
+        function closeSettingsModal() {
+            settingsModal.style.display = 'none';
+        }
+
+        function saveSettings() {
+            localStorage.setItem('lollms_url', lollmsUrlInput.value.trim());
+            closeSettingsModal();
+            loadModels();
+        }
+        
+        async function loadModels() {
+            const lollmsUrl = localStorage.getItem('lollms_url');
+            if (!lollmsUrl) {
+                console.log("Lollms URL not found. Opening settings.");
+                openSettingsModal();
+                return;
+            }
+
+            try {
+                const response = await fetch('/lollms/list_models', {
+                    method: 'GET',
+                    headers: { 'X-Lollms-Url': lollmsUrl }
+                });
+
+                if (!response.ok) throw new Error(`Failed to fetch models: ${response.statusText}`);
+                
+                const models = await response.json();
+                craftingModelSelect.innerHTML = '';
+                testModelSelect.innerHTML = '';
+                
+                if (models.length === 0) {
+                    craftingModelSelect.innerHTML = '<option>No models found</option>';
+                    testModelSelect.innerHTML = '<option>No models found</option>';
+                    return;
+                }
+
+                models.forEach(model => {
+                    const option1 = document.createElement('option');
+                    option1.value = model;
+                    option1.textContent = model;
+                    craftingModelSelect.appendChild(option1);
+
+                    const option2 = document.createElement('option');
+                    option2.value = model;
+                    option2.textContent = model;
+                    testModelSelect.appendChild(option2);
+                });
+            } catch (error) {
+                console.error("Error loading models:", error);
+                alert("Could not connect to Lollms server. Please check the URL in settings.");
+                openSettingsModal();
+            }
+        }
+
+        window.onclick = function(event) {
+            if (event.target == settingsModal) {
+                closeSettingsModal();
+            }
+        }
+
+        // Initial load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadModels();
+        });
+    </script>
+</body>
+</html> 
