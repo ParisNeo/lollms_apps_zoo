@@ -1,185 +1,353 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // UI Elements
-    const ideaTextarea = document.getElementById('idea');
-    const craftorModelSelect = document.getElementById('craftor-model');
-    const testerModelSelect = document.getElementById('tester-model');
-    const startCraftingBtn = document.getElementById('start-crafting-btn');
-    const runRefineBtn = document.getElementById('run-refine-btn');
-    const startOverBtn = document.getElementById('start-over-btn');
+  console.log('🚀 App initialized - DOM loaded');
 
-    const setupSection = document.getElementById('setup-section');
-    const workbenchSection = document.getElementById('workbench-section');
-    const resultsSection = document.getElementById('results-section');
-    const successSection = document.getElementById('success-section');
-
-    const systemPromptTextarea = document.getElementById('system-prompt');
-    const testPromptsList = document.getElementById('test-prompts-list');
-    const testResultsContainer = document.getElementById('test-results-container');
-    const analysisOutput = document.getElementById('analysis-output');
-    const finalPromptTextarea = document.getElementById('final-prompt');
-    const spinner = document.getElementById('spinner');
-
-    // State
-    let currentTestPrompts = [];
-
-    // --- API Functions ---
-    const api = {
-        getModels: () => fetch('/api/v1/list_models').then(res => res.json()),
-        startCrafting: (idea) => fetch('/api/v1/start_crafting', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idea })
-        }).then(res => res.json()),
-        runTest: (system_prompt, test_prompts) => fetch('/api/v1/run_test', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system_prompt, test_prompts })
-        }).then(res => res.json()),
-        analyzeAndRefine: (system_prompt, test_results) => fetch('/api/v1/analyze_and_refine', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ system_prompt, test_results })
-        }).then(res => res.json())
-    };
-
-    // --- UI Update Functions ---
-    const showSpinner = (show) => spinner.classList.toggle('hidden', !show);
-    const disableButtons = (disabled) => {
-        startCraftingBtn.disabled = disabled;
-        runRefineBtn.disabled = disabled;
-    };
-
-    const populateModels = async () => {
-        try {
-            const models = await api.getModels();
-            craftorModelSelect.innerHTML = '';
-            testerModelSelect.innerHTML = '';
-            models.forEach(model => {
-                craftorModelSelect.innerHTML += `<option value="${model}">${model}</option>`;
-                testerModelSelect.innerHTML += `<option value="${model}">${model}</option>`;
-            });
-            craftorModelSelect.disabled = false;
-            testerModelSelect.disabled = false;
-        } catch (error) {
-            console.error("Failed to load models:", error);
-            craftorModelSelect.innerHTML = '<option>Error loading models</option>';
-            testerModelSelect.innerHTML = '<option>Error loading models</option>';
-        }
-    };
+  // ==========================================
+  // UI ELEMENT REFERENCES
+  // ==========================================
+  const elements = {
+    // Input elements
+    ideaTextarea: document.getElementById('idea'),
+    craftorModelSelect: document.getElementById('craftor-model'),
+    testerModelSelect: document.getElementById('tester-model'),
     
-    const updateTestPromptsUI = (prompts) => {
-        testPromptsList.innerHTML = '';
-        prompts.forEach(prompt => {
-            const li = document.createElement('li');
-            li.textContent = prompt;
-            testPromptsList.appendChild(li);
-        });
-    };
+    // Buttons
+    startCraftingBtn: document.getElementById('start-crafting-btn'),
+    runRefineBtn: document.getElementById('run-refine-btn'),
+    startOverBtn: document.getElementById('start-over-btn'),
+    
+    // Sections
+    setupSection: document.getElementById('setup-section'),
+    workbenchSection: document.getElementById('workbench-section'),
+    resultsSection: document.getElementById('results-section'),
+    successSection: document.getElementById('success-section'),
+    
+    // Output elements
+    systemPromptTextarea: document.getElementById('system-prompt'),
+    testPromptsList: document.getElementById('test-prompts-list'),
+    testResultsContainer: document.getElementById('test-results-container'),
+    analysisOutput: document.getElementById('analysis-output'),
+    finalPromptTextarea: document.getElementById('final-prompt'),
+    spinner: document.getElementById('spinner')
+  };
 
-    const displayTestResults = (results) => {
-        testResultsContainer.innerHTML = '<h3>Test Executions</h3>';
-        results.forEach(result => {
-            const div = document.createElement('div');
-            div.className = 'result-pair';
-            div.innerHTML = `
-                <h4>User Prompt: "${result.user_prompt}"</h4>
-                <div class="response">${result.ai_response.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
-            `;
-            testResultsContainer.appendChild(div);
-        });
-    };
+  // Validate all elements exist
+  console.log('📋 Validating UI elements...');
+  Object.entries(elements).forEach(([key, element]) => {
+    if (!element) {
+      console.error(`❌ Missing element: ${key}`);
+    } else {
+      console.log(`✅ Found element: ${key}`);
+    }
+  });
 
-    const resetUI = () => {
-        setupSection.classList.remove('hidden');
-        workbenchSection.classList.add('hidden');
-        resultsSection.classList.add('hidden');
-        successSection.classList.add('hidden');
-        ideaTextarea.value = '';
-        systemPromptTextarea.value = '';
-        testResultsContainer.innerHTML = '';
-        analysisOutput.textContent = '';
-        currentTestPrompts = [];
-        disableButtons(false);
-    };
+  // ==========================================
+  // STATE MANAGEMENT
+  // ==========================================
+  const state = {
+    currentTestPrompts: []
+  };
 
-    // --- Event Handlers ---
-    startCraftingBtn.addEventListener('click', async () => {
-        const idea = ideaTextarea.value.trim();
-        if (!idea) {
-            alert('Please enter an idea for your system prompt.');
-            return;
-        }
-        disableButtons(true);
-        showSpinner(true);
+  // ==========================================
+  // API FUNCTIONS
+  // ==========================================
+  const api = {
+    getModels: async () => {
+      console.log('📡 API: Fetching models from /api/v1/list_models');
+      try {
+        const response = await fetch('/api/v1/list_models');
+        console.log('📥 Response status:', response.status, response.statusText);
         
-        workbenchSection.classList.remove('hidden');
-        resultsSection.classList.remove('hidden');
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
-
-
-        try {
-            const data = await api.startCrafting(idea);
-            systemPromptTextarea.value = data.system_prompt;
-            currentTestPrompts = data.test_prompts;
-            updateTestPromptsUI(currentTestPrompts);
-            analysisOutput.textContent = `Initial Judging Criteria:\n\n${data.judging_criteria}`;
-            testResultsContainer.innerHTML = ''; // Clear previous results
-        } catch (error) {
-            console.error(error);
-            analysisOutput.textContent = `Error: ${error.message}`;
-        } finally {
-            disableButtons(false);
-            showSpinner(false);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
         }
-    });
+        
+        const data = await response.json();
+        console.log('✅ Models received:', data);
+        return data;
+      } catch (error) {
+        console.error('❌ Error fetching models:', error);
+        throw error;
+      }
+    },
 
-    runRefineBtn.addEventListener('click', async () => {
-        const system_prompt = systemPromptTextarea.value.trim();
-        if (!system_prompt || currentTestPrompts.length === 0) {
-            alert('System prompt and test cases must be present.');
-            return;
+    startCrafting: async (idea) => {
+      console.log('📡 API: Starting crafting with idea:', idea.substring(0, 50) + '...');
+      try {
+        const response = await fetch('/api/v1/start_crafting', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idea })
+        });
+        console.log('📥 Start crafting response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Crafting data received:', {
+          systemPromptLength: data.system_prompt?.length,
+          testPromptsCount: data.test_prompts?.length,
+          judgingCriteriaLength: data.judging_criteria?.length
+        });
+        return data;
+      } catch (error) {
+        console.error('❌ Error in startCrafting:', error);
+        throw error;
+      }
+    },
+
+    runTest: async (system_prompt, test_prompts) => {
+      console.log('📡 API: Running test with', test_prompts.length, 'prompts');
+      try {
+        const response = await fetch('/api/v1/run_test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ system_prompt, test_prompts })
+        });
+        console.log('📥 Run test response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Test results received:', data.length, 'results');
+        return data;
+      } catch (error) {
+        console.error('❌ Error in runTest:', error);
+        throw error;
+      }
+    },
+
+    analyzeAndRefine: async (system_prompt, test_results) => {
+      console.log('📡 API: Analyzing and refining with', test_results.length, 'results');
+      try {
+        const response = await fetch('/api/v1/analyze_and_refine', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ system_prompt, test_results })
+        });
+        console.log('📥 Analyze response status:', response.status);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('✅ Analysis received, status:', data.status);
+        return data;
+      } catch (error) {
+        console.error('❌ Error in analyzeAndRefine:', error);
+        throw error;
+      }
+    }
+  };
+
+  // ==========================================
+  // UI UPDATE FUNCTIONS
+  // ==========================================
+  const ui = {
+    showSpinner: (show) => {
+      console.log(show ? '⏳ Showing spinner' : '✓ Hiding spinner');
+      elements.spinner.classList.toggle('hidden', !show);
+    },
+
+    disableButtons: (disabled) => {
+      console.log(disabled ? '🔒 Disabling buttons' : '🔓 Enabling buttons');
+      elements.startCraftingBtn.disabled = disabled;
+      elements.runRefineBtn.disabled = disabled;
+    },
+
+    populateModels: async () => {
+      console.log('🔄 Starting to populate models...');
+      try {
+        const models = await api.getModels();
+        
+        if (!Array.isArray(models)) {
+          console.error('❌ Models response is not an array:', models);
+          throw new Error('Invalid models format');
         }
 
-        disableButtons(true);
-        showSpinner(true);
-        resultsSection.classList.remove('hidden');
-        resultsSection.scrollIntoView({ behavior: 'smooth' });
-        testResultsContainer.innerHTML = '';
-        analysisOutput.textContent = '';
+        console.log('📝 Populating', models.length, 'models into selects');
+        
+        elements.craftorModelSelect.innerHTML = '';
+        elements.testerModelSelect.innerHTML = '';
+        
+        models.forEach((model, index) => {
+          console.log(`  ${index + 1}. Adding model:`, model);
+          const option1 = document.createElement('option');
+          option1.value = model;
+          option1.textContent = model;
+          elements.craftorModelSelect.appendChild(option1);
+          
+          const option2 = document.createElement('option');
+          option2.value = model;
+          option2.textContent = model;
+          elements.testerModelSelect.appendChild(option2);
+        });
+        
+        elements.craftorModelSelect.disabled = false;
+        elements.testerModelSelect.disabled = false;
+        console.log('✅ Models populated successfully');
+      } catch (error) {
+        console.error('❌ Failed to populate models:', error);
+        elements.craftorModelSelect.innerHTML = '<option>Error loading models</option>';
+        elements.testerModelSelect.innerHTML = '<option>Error loading models</option>';
+        alert('Failed to load models. Check console for details.');
+      }
+    },
 
-        try {
-            // 1. Run the test
-            const test_results = await api.runTest(system_prompt, currentTestPrompts);
-            displayTestResults(test_results);
+    updateTestPrompts: (prompts) => {
+      console.log('📝 Updating test prompts UI with', prompts.length, 'prompts');
+      elements.testPromptsList.innerHTML = '';
+      
+      prompts.forEach((prompt, index) => {
+        console.log(`  ${index + 1}. ${prompt.substring(0, 50)}...`);
+        const li = document.createElement('li');
+        li.textContent = prompt;
+        elements.testPromptsList.appendChild(li);
+      });
+    },
 
-            // 2. Analyze and refine
-            const analysis_result = await api.analyzeAndRefine(system_prompt, test_results);
-            analysisOutput.textContent = analysis_result.analysis;
+    displayTestResults: (results) => {
+      console.log('📊 Displaying', results.length, 'test results');
+      elements.testResultsContainer.innerHTML = '<h3>Test Executions</h3>';
+      
+      results.forEach((result, index) => {
+        console.log(`  Result ${index + 1}:`, {
+          userPrompt: result.user_prompt?.substring(0, 50),
+          responseLength: result.ai_response?.length
+        });
+        
+        const div = document.createElement('div');
+        div.className = 'result-pair';
+        div.innerHTML = `
+          <div><strong>User Prompt:</strong> "${result.user_prompt}"</div>
+          <div><strong>AI Response:</strong></div>
+          <pre>${result.ai_response.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+        `;
+        elements.testResultsContainer.appendChild(div);
+      });
+    },
 
-            if (analysis_result.status === 'success') {
-                finalPromptTextarea.value = analysis_result.final_prompt;
-                successSection.classList.remove('hidden');
-                workbenchSection.classList.add('hidden');
-                resultsSection.classList.add('hidden');
-                successSection.scrollIntoView({ behavior: 'smooth' });
-            } else if (analysis_result.status === 'refine') {
-                systemPromptTextarea.value = analysis_result.refined_prompt;
-                currentTestPrompts = analysis_result.new_test_prompts;
-                updateTestPromptsUI(currentTestPrompts);
-                alert("Prompt has been refined. Review the new prompt and test cases, then run the test again.");
-                workbenchSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        } catch (error) {
-            console.error(error);
-            analysisOutput.textContent = `Error: ${error.message}`;
-        } finally {
-            disableButtons(false);
-            showSpinner(false);
-        }
-    });
+    resetUI: () => {
+      console.log('🔄 Resetting UI to initial state');
+      elements.setupSection.classList.remove('hidden');
+      elements.workbenchSection.classList.add('hidden');
+      elements.resultsSection.classList.add('hidden');
+      elements.successSection.classList.add('hidden');
+      elements.ideaTextarea.value = '';
+      elements.systemPromptTextarea.value = '';
+      elements.testResultsContainer.innerHTML = '';
+      elements.analysisOutput.textContent = '';
+      state.currentTestPrompts = [];
+      ui.disableButtons(false);
+      console.log('✅ UI reset complete');
+    }
+  };
 
-    startOverBtn.addEventListener('click', resetUI);
+  // ==========================================
+  // EVENT HANDLERS
+  // ==========================================
+  elements.startCraftingBtn.addEventListener('click', async () => {
+    console.log('🎨 Start Crafting button clicked');
+    const idea = elements.ideaTextarea.value.trim();
+    
+    if (!idea) {
+      console.warn('⚠️ No idea entered');
+      alert('Please enter an idea for your system prompt.');
+      return;
+    }
 
-    // --- Initialization ---
-    populateModels();
+    console.log('📝 Idea entered:', idea.substring(0, 100) + '...');
+    ui.disableButtons(true);
+    ui.showSpinner(true);
+    elements.workbenchSection.classList.remove('hidden');
+    elements.resultsSection.classList.remove('hidden');
+    elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
+
+    try {
+      const data = await api.startCrafting(idea);
+      
+      elements.systemPromptTextarea.value = data.system_prompt;
+      state.currentTestPrompts = data.test_prompts;
+      ui.updateTestPrompts(state.currentTestPrompts);
+      elements.analysisOutput.textContent = `Initial Judging Criteria:\n\n${data.judging_criteria}`;
+      elements.testResultsContainer.innerHTML = '';
+      
+      console.log('✅ Crafting complete');
+    } catch (error) {
+      console.error('❌ Crafting failed:', error);
+      elements.analysisOutput.textContent = `Error: ${error.message}`;
+    } finally {
+      ui.disableButtons(false);
+      ui.showSpinner(false);
+    }
+  });
+
+  elements.runRefineBtn.addEventListener('click', async () => {
+    console.log('🔬 Run & Refine button clicked');
+    const system_prompt = elements.systemPromptTextarea.value.trim();
+    
+    if (!system_prompt || state.currentTestPrompts.length === 0) {
+      console.warn('⚠️ Missing system prompt or test cases');
+      alert('System prompt and test cases must be present.');
+      return;
+    }
+
+    console.log('🧪 Starting test run with', state.currentTestPrompts.length, 'prompts');
+    ui.disableButtons(true);
+    ui.showSpinner(true);
+    elements.resultsSection.classList.remove('hidden');
+    elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
+    elements.testResultsContainer.innerHTML = '';
+    elements.analysisOutput.textContent = '';
+
+    try {
+      // Run the test
+      console.log('⏳ Running tests...');
+      const test_results = await api.runTest(system_prompt, state.currentTestPrompts);
+      ui.displayTestResults(test_results);
+      
+      // Analyze and refine
+      console.log('⏳ Analyzing results...');
+      const analysis_result = await api.analyzeAndRefine(system_prompt, test_results);
+      elements.analysisOutput.textContent = analysis_result.analysis;
+
+      if (analysis_result.status === 'success') {
+        console.log('🎉 Success! Final prompt ready');
+        elements.finalPromptTextarea.value = analysis_result.final_prompt;
+        elements.successSection.classList.remove('hidden');
+        elements.workbenchSection.classList.add('hidden');
+        elements.resultsSection.classList.add('hidden');
+        elements.successSection.scrollIntoView({ behavior: 'smooth' });
+      } else if (analysis_result.status === 'refine') {
+        console.log('🔄 Refinement needed, updating prompt');
+        elements.systemPromptTextarea.value = analysis_result.refined_prompt;
+        state.currentTestPrompts = analysis_result.new_test_prompts;
+        ui.updateTestPrompts(state.currentTestPrompts);
+        alert("Prompt has been refined. Review the new prompt and test cases, then run the test again.");
+        elements.workbenchSection.scrollIntoView({ behavior: 'smooth' });
+      }
+    } catch (error) {
+      console.error('❌ Test/refinement failed:', error);
+      elements.analysisOutput.textContent = `Error: ${error.message}`;
+    } finally {
+      ui.disableButtons(false);
+      ui.showSpinner(false);
+    }
+  });
+
+  elements.startOverBtn.addEventListener('click', () => {
+    console.log('🔄 Start Over button clicked');
+    ui.resetUI();
+  });
+
+  // ==========================================
+  // INITIALIZATION
+  // ==========================================
+  console.log('🎬 Starting initialization...');
+  ui.populateModels();
+  console.log('✅ Initialization complete');
 });
