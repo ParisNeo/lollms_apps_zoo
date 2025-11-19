@@ -175,16 +175,17 @@ document.addEventListener('DOMContentLoaded', () => {
         elements.testerModelSelect.innerHTML = '';
         
         models.forEach((model, index) => {
-          console.log(`  ${index + 1}. Adding model:`, model);
-          const option1 = document.createElement('option');
-          option1.value = model;
-          option1.textContent = model;
-          elements.craftorModelSelect.appendChild(option1);
-          
-          const option2 = document.createElement('option');
-          option2.value = model;
-          option2.textContent = model;
-          elements.testerModelSelect.appendChild(option2);
+        console.log(`  ${index + 1}. Adding model:`, model);
+
+        const option1 = document.createElement('option');
+        option1.value = model.model_name;
+        option1.textContent = model.model_name;
+        elements.craftorModelSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = model.model_name;
+        option2.textContent = model.model_name;
+        elements.testerModelSelect.appendChild(option2);
         });
         
         elements.craftorModelSelect.disabled = false;
