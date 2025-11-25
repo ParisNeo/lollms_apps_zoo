@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle = S('theme-toggle'),
         settingsBtn = S('settings-btn'),
         logsBtn = S('logs-btn'), // New selector for logs button
+        backToProjectsBtn = S('back-to-projects-btn'), // Now in header
         // Views
         projectListView = S('project-list-view'),
         extractorView = S('extractor-view'),
@@ -23,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
         exportProjectsBtn = S('export-projects-btn'),
         importFileInput = S('import-file-input'),
         // Extractor View
-        backToProjectsBtn = S('back-to-projects-btn'),
         folderPathInput = S('folder-path-input'),
         loadTreeBtn = S('load-tree-btn'),
         presetList = S('preset-list'),
@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
         fileTreeContainer = S('file-tree-container'),
         refreshTreeBtn = S('refresh-tree-btn'),
         aiSelectBtn = S('ai-select-btn'),
+        manualSelectBtn = S('manual-select-btn'), // New Manual Select Button
+        selectionTokenCountDisplay = S('selection-token-count-display'),
         checkAllTextBtn = S('check-all-text-btn'),
         uncheckAllBtn = S('uncheck-all-btn'),
         templateSelect = S('template-select'),
@@ -84,7 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
         logsModal = S('logs-modal'),
         logsModalContent = S('logs-modal-content'),
         logsModalClearBtn = S('logs-modal-clear-btn'),
-        logsModalCloseBtn = S('logs-modal-close-btn');
+        logsModalCloseBtn = S('logs-modal-close-btn'),
+        // New Manual Select Modal Selectors
+        manualSelectModal = S('manual-select-modal'),
+        manualSelectTextarea = S('manual-select-textarea'),
+        manualSelectConfirmBtn = S('manual-select-confirm-btn'),
+        manualSelectCancelBtn = S('manual-select-cancel-btn');
 
 
     const clientState = {
@@ -144,6 +151,15 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            const context = this;
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(context, args), delay);
+        };
+    }
+
     // --- View Management ---
     function switchView(viewName, projectId = null) {
         clientState.currentView = viewName;
@@ -153,11 +169,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewName === 'extractor') {
             addLogEntry(`Switched to Extractor view for project: ${projectId}`, 'info');
             loadProjectIntoExtractor(projectId);
+            if(backToProjectsBtn) backToProjectsBtn.classList.remove('hidden'); // Show back button
         } else {
             appTitle.textContent = "Folder Extractor";
             clientState.activeProjectId = null;
             addLogEntry('Switched to Project Dashboard view.', 'info');
             fetchProjects();
+            if(backToProjectsBtn) backToProjectsBtn.classList.add('hidden'); // Hide back button
         }
     }
 
@@ -357,7 +375,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    function loadProjectIntoExtractor(projectId) {
+    async function loadProjectIntoExtractor(projectId) {
         const project = clientState.projects.find(p => p.id === projectId);
         if (!project) {
             showStatus('Project not found.', 'error');
@@ -406,11 +424,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateDocListUI();
         renderChatHistory();
-        fileTreeContainer.innerHTML = '<p class="text-gray-500 dark:text-gray-400 p-4 text-center">Click "Load Project Tree" to begin.</p>';
+
+        // Clear old output from any previously viewed project
         rawOutputTextarea.value = '';
         renderedOutputDiv.innerHTML = 'A rendered preview will appear here.';
-        updateExtractorUIStates();
+
+        // Explicitly switch to Tab 1. The user will see this tab while the tree loads.
+        // `performLoadTree` will then switch to Tab 2 on success.
+        switchTab('tab1');
+
+        // Automatically load the project tree.
+        await performLoadTree(false);
+
+        // Update other UI elements that depend on project state
         updateTokenCountAndProgressBar();
+        debouncedUpdateSelectionTokenCount();
         addLogEntry(`Loaded project "${project.name}" into extractor.`, 'info');
     }
     
@@ -737,6 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
         updateExtractorUIStates();
+        debouncedUpdateSelectionTokenCount();
     }
 
     // Helper function to find item data from the original tree structure
@@ -818,6 +847,54 @@ async function performLoadTree(repopulate = false) {
             updateExtractorUIStates();
         }
     }
+
+    // --- Tokenizer Logic ---
+    async function updateSelectionTokenCount() {
+        if (!selectionTokenCountDisplay) return;
+    
+        const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+        const selectedFiles = Array.from(clientState.checkedTreePathsMap.entries());
+    
+        if (!project || !clientState.llmSettings.url || !clientState.llmSettings.model_name) {
+            selectionTokenCountDisplay.textContent = 'Tokens: N/A';
+            selectionTokenCountDisplay.title = 'Configure LLM settings to see token count.';
+            return;
+        }
+    
+        if (selectedFiles.length === 0) {
+            selectionTokenCountDisplay.textContent = 'Tokens: 0';
+            selectionTokenCountDisplay.title = 'Total tokens for selected files.';
+            return;
+        }
+    
+        selectionTokenCountDisplay.textContent = 'Tokens: ...';
+    
+        try {
+            const response = await handleApiResponse(fetch('/api/count_selection_tokens', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    folder_path: project.path,
+                    selected_files_info: selectedFiles.map(([path, type]) => ({ path, type })),
+                })
+            }));
+    
+            if (response.token_count > -1) {
+                selectionTokenCountDisplay.textContent = `Tokens: ${response.token_count.toLocaleString()}`;
+            } else {
+                selectionTokenCountDisplay.textContent = 'Tokens: Error';
+            }
+            selectionTokenCountDisplay.title = 'Total tokens for selected files.';
+    
+        } catch (error) {
+            console.error("Token count error:", error);
+            selectionTokenCountDisplay.textContent = 'Tokens: Error';
+            selectionTokenCountDisplay.title = `Error: ${error.message}`;
+            addLogEntry(`Failed to count selection tokens: ${error.message}`, 'error');
+        }
+    }
+    const debouncedUpdateSelectionTokenCount = debounce(updateSelectionTokenCount, 500);
+
     // --- Chat & Tokenizer Logic ---
     async function updateTokenCountAndProgressBar() {
         if (clientState.chatHistory.length === 0 || !clientState.llmSettings.model_name) {
@@ -1198,6 +1275,7 @@ async function performLoadTree(repopulate = false) {
                 addLogEntry('LLM settings saved successfully.', 'success');
                 clientState.llmSettings = settings;
                 if (settingsModal) settingsModal.classList.add('hidden');
+                debouncedUpdateSelectionTokenCount();
             } catch (error) {
                 showStatus(`Error saving LLM settings: ${error.message}`, 'error');
                 addLogEntry(`Failed to save LLM settings: ${error.message}`, 'error');
@@ -1217,6 +1295,88 @@ async function performLoadTree(repopulate = false) {
         if (logsBtn) logsBtn.addEventListener('click', openLogsModal);
         if (logsModalCloseBtn) logsModalCloseBtn.addEventListener('click', closeLogsModal);
         if (logsModalClearBtn) logsModalClearBtn.addEventListener('click', clearLogs);
+
+        // Event listeners for Manual Select Modal
+        if (manualSelectBtn) manualSelectBtn.addEventListener('click', () => {
+            manualSelectModal.classList.remove('hidden');
+            manualSelectTextarea.focus();
+        });
+
+        const closeManualModal = () => {
+            manualSelectModal.classList.add('hidden');
+            manualSelectTextarea.value = '';
+        };
+
+        if (manualSelectCancelBtn) manualSelectCancelBtn.addEventListener('click', closeManualModal);
+
+        if (manualSelectConfirmBtn) manualSelectConfirmBtn.addEventListener('click', () => {
+            const text = manualSelectTextarea.value;
+            const lines = text.split('\n');
+            const pathsToSelect = new Set();
+            
+            // Parse lines
+            lines.forEach(line => {
+                let cleanLine = line.trim();
+                if (!cleanLine) return;
+                if (cleanLine.startsWith('```')) return; // Ignore code block fences
+                // Basic cleanup if user pasted "File: path/to/file"
+                cleanLine = cleanLine.replace(/^File:\s*/i, '').trim();
+                // Normalize slashes to forward slashes for comparison
+                cleanLine = cleanLine.replace(/\\/g, '/');
+                // Remove leading slash if present
+                if (cleanLine.startsWith('/')) cleanLine = cleanLine.substring(1);
+                
+                if (cleanLine) pathsToSelect.add(cleanLine);
+            });
+
+            if (pathsToSelect.size === 0) {
+                showStatus('No valid paths found in text.', 'warning');
+                return;
+            }
+
+            // Traverse tree to find matches
+            let matchCount = 0;
+            const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+            
+            // Helper to get relative path from absolute path string given project root string
+            // This is a naive string replacement, might fail if casing differs on Windows etc.
+            // But since server sent both, they should match casing usually.
+            const projectRootNormalized = project.path.replace(/\\/g, '/').replace(/\/$/, '');
+
+            function traverseAndSelect(nodes) {
+                nodes.forEach(node => {
+                    const nodePathNormalized = node.path.replace(/\\/g, '/');
+                    
+                    // Check if this node matches any selected relative path
+                    // relative path = nodePath - projectRoot
+                    let rel = nodePathNormalized;
+                    if (rel.startsWith(projectRootNormalized)) {
+                        rel = rel.substring(projectRootNormalized.length);
+                        if (rel.startsWith('/')) rel = rel.substring(1);
+                    }
+                    
+                    if (pathsToSelect.has(rel) && !node.is_dir && node.can_be_checked) {
+                        if (!clientState.markedForRemovalPaths.has(node.path)) {
+                            clientState.checkedTreePathsMap.set(node.path, 'full');
+                            matchCount++;
+                        }
+                    }
+                    
+                    if (node.children) traverseAndSelect(node.children);
+                });
+            }
+
+            if (_cachedTreeData) {
+                traverseAndSelect(_cachedTreeData);
+                applySelectionsToTree();
+                saveProjectState();
+                showStatus(`Selected ${matchCount} files from manual list.`, 'success');
+                addLogEntry(`Manual select: Selected ${matchCount} files.`, 'success');
+                closeManualModal();
+            } else {
+                showStatus('Tree not loaded.', 'error');
+            }
+        });
 
         if (refreshModelsBtn) refreshModelsBtn.addEventListener('click', fetchLlmModels);
 
@@ -1401,7 +1561,7 @@ async function performLoadTree(repopulate = false) {
             renderedOutputDiv.innerHTML = '<p>Generating...</p>';
             try {
                 const response = await handleApiResponse(fetch('/api/generate_structure', {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         folder_path: project.path, filters: clientState.filterSettings,
                         selected_files_info: selectedFiles, custom_prompt: customPromptTextarea.value,
@@ -1431,13 +1591,26 @@ async function performLoadTree(repopulate = false) {
             }
         });
         if(copyRawBtn) copyRawBtn.addEventListener('click', () => {
-            navigator.clipboard.writeText(rawOutputTextarea.value).then(() => {
-                showStatus('Copied to clipboard!', 'success');
-                addLogEntry('Raw Markdown copied to clipboard.', 'success');
-            }, () => {
-                showStatus('Failed to copy.', 'error');
-                addLogEntry('Failed to copy raw Markdown to clipboard.', 'error');
-            });
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(rawOutputTextarea.value).then(() => {
+                    showStatus('Copied to clipboard!', 'success');
+                    addLogEntry('Raw Markdown copied to clipboard.', 'success');
+                }).catch(() => {
+                    showStatus('Failed to copy.', 'error');
+                    addLogEntry('Failed to copy raw Markdown to clipboard.', 'error');
+                });
+            } else {
+                // Fallback for older browsers or insecure contexts
+                try {
+                    rawOutputTextarea.select();
+                    document.execCommand('copy');
+                    showStatus('Copied to clipboard!', 'success');
+                    addLogEntry('Raw Markdown copied to clipboard.', 'success');
+                } catch (err) {
+                    showStatus('Failed to copy. Please copy manually.', 'error');
+                    addLogEntry('Clipboard not available.', 'error');
+                }
+            }
         });
         if(checkAllTextBtn) checkAllTextBtn.addEventListener('click', () => {
             let count = 0;

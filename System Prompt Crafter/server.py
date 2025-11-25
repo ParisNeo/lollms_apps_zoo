@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from lollms_client import LollmsClient
-from ascii_colors import ASCIIColors
+from ascii_colors import ASCIIColors, trace_exception
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -69,12 +69,25 @@ def initialize_lollms_clients():
 
 craftor_lc, tester_lc = initialize_lollms_clients()
 
+def create_temp_lollms_client(model_name: str = None):
+    """Create a temporary Lollms client with optional model override."""
+    base_config = {
+        "host_address": os.getenv("LOLLMS_HOST", "http://localhost:9642"),
+        "service_key": os.getenv("LOLLMS_KEY", ""),
+        "verify_ssl_certificate": os.getenv("VERIFY_SSL", "true").lower() == "true"
+    }
+    if model_name:
+        base_config["model_name"] = model_name
+    return LollmsClient(llm_binding_name="lollms", llm_binding_config=base_config, force_new=True)
+
 class CraftRequest(BaseModel):
     idea: str
+    craftor_model: str = None  # Optional
 
 class TestRequest(BaseModel):
     system_prompt: str
     test_prompts: List[str]
+    tester_model: str = None  # Optional
 
 class TestResult(BaseModel):
     user_prompt: str
@@ -83,6 +96,7 @@ class TestResult(BaseModel):
 class RefineRequest(BaseModel):
     system_prompt: str
     test_results: List[TestResult]
+    craftor_model: str = None  # Optional
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root():
@@ -112,16 +126,18 @@ def start_crafting(request: CraftRequest):
     ASCIIColors.yellow("=" * 60)
     ASCIIColors.info("🎨 API: /api/v1/start_crafting - Request received")
     ASCIIColors.yellow("=" * 60)
-    if not craftor_lc:
-        raise HTTPException(status_code=503, detail="Craftor Lollms client not initialized.")
-    meta_prompt = f"""
-    You are an expert System Prompt Designer. Your task is to take a user's idea and generate a high-quality, robust system prompt.
-    You must also generate a set of diverse user prompts to test for ADHERENCE to the system prompt's instructions.
-    User's Idea: "{request.idea}"
-    Provide a JSON object with system prompt, test prompts, and judging criteria.
-    """
+    # Use the model selected by user, fallback to env if not provided
+    craftor_model = request.craftor_model if request.craftor_model else os.getenv("CRAFTOR_MODEL_NAME")
+    meta_prompt = f"""Take the user's idea and generate a high-quality, robust system prompt.
+You must also generate a set of diverse user prompts to test for ADHERENCE to the system prompt's instructions.
+User's Idea (or proposed system prompt): 
+{request.idea}
+Provide a JSON object with system prompt, test prompts, and judging criteria.
+"""
     try:
-        response = craftor_lc.generate_structured_content(
+        # Create temporary client with selected model
+        temp_craftor_lc = create_temp_lollms_client(craftor_model)
+        response = temp_craftor_lc.generate_structured_content(
             prompt=meta_prompt,
             schema={
                 "type": "object",
@@ -135,6 +151,7 @@ def start_crafting(request: CraftRequest):
         )
         return response
     except Exception as e:
+        trace_exception(e)
         raise HTTPException(status_code=500, detail=f"Failed to generate initial prompt: {e}")
 
 @app.post("/api/v1/run_test")
@@ -142,28 +159,30 @@ def run_test(request: TestRequest):
     ASCIIColors.yellow("=" * 60)
     ASCIIColors.info("🧪 API: /api/v1/run_test - Request received")
     ASCIIColors.yellow("=" * 60)
-    if not tester_lc:
-        raise HTTPException(status_code=503, detail="Tester Lollms client not initialized.")
+    tester_model = request.tester_model if request.tester_model else os.getenv("TESTER_MODEL_NAME")
     results = []
-    for user_prompt in request.test_prompts:
-        try:
-            response = tester_lc.generate_text(
-                prompt=user_prompt,
-                system_prompt=request.system_prompt,
-                max_generation_size=512
-            )
-            results.append({"user_prompt": user_prompt, "ai_response": response})
-        except Exception as e:
-            results.append({"user_prompt": user_prompt, "ai_response": f"Error during generation: {e}"})
-    return results
+    try:
+        temp_tester_lc = create_temp_lollms_client(tester_model)
+        for user_prompt in request.test_prompts:
+            try:
+                response = temp_tester_lc.generate_text(
+                    prompt=user_prompt,
+                    system_prompt=request.system_prompt,
+                    max_generation_size=512
+                )
+                results.append({"user_prompt": user_prompt, "ai_response": response})
+            except Exception as e:
+                results.append({"user_prompt": user_prompt, "ai_response": f"Error during generation: {e}"})
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to run test: {e}")
 
 @app.post("/api/v1/analyze_and_refine")
 def analyze_and_refine(request: RefineRequest):
     ASCIIColors.yellow("=" * 60)
     ASCIIColors.info("🔬 API: /api/v1/analyze_and_refine - Request received")
     ASCIIColors.yellow("=" * 60)
-    if not craftor_lc:
-        raise HTTPException(status_code=503, detail="Craftor Lollms client not initialized.")
+    craftor_model = request.craftor_model if request.craftor_model else os.getenv("CRAFTOR_MODEL_NAME")
     test_results_str = json.dumps([res.dict() for res in request.test_results], indent=2)
     meta_prompt = f"""
     You are a System Prompt Adherence Analyst. Evaluate adherence.
@@ -173,7 +192,8 @@ def analyze_and_refine(request: RefineRequest):
     {test_results_str}
     """
     try:
-        response = craftor_lc.generate_structured_content(
+        temp_craftor_lc = create_temp_lollms_client(craftor_model)
+        response = temp_craftor_lc.generate_structured_content(
             prompt=meta_prompt,
             schema={
                 "type": "object",

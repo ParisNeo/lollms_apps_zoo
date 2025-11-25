@@ -70,13 +70,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
-    startCrafting: async (idea) => {
-      console.log('📡 API: Starting crafting with idea:', idea.substring(0, 50) + '...');
+    startCrafting: async (request) => {
+      console.log('📡 API: Starting crafting with idea:', request.idea.substring(0, 50) + '...');
       try {
         const response = await fetch('/api/v1/start_crafting', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idea })
+          body: JSON.stringify(request)
         });
         console.log('📥 Start crafting response status:', response.status);
         
@@ -97,13 +97,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
-    runTest: async (system_prompt, test_prompts) => {
-      console.log('📡 API: Running test with', test_prompts.length, 'prompts');
+    runTest: async (request) => {
+      console.log('📡 API: Running test with', request.test_prompts.length, 'prompts');
       try {
         const response = await fetch('/api/v1/run_test', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_prompt, test_prompts })
+          body: JSON.stringify(request)
         });
         console.log('📥 Run test response status:', response.status);
         
@@ -120,13 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     },
 
-    analyzeAndRefine: async (system_prompt, test_results) => {
-      console.log('📡 API: Analyzing and refining with', test_results.length, 'results');
+    analyzeAndRefine: async (request) => {
+      console.log('📡 API: Analyzing and refining with', request.test_results.length, 'results');
       try {
         const response = await fetch('/api/v1/analyze_and_refine', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ system_prompt, test_results })
+          body: JSON.stringify(request)
         });
         console.log('📥 Analyze response status:', response.status);
         
@@ -269,7 +269,10 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.resultsSection.scrollIntoView({ behavior: 'smooth' });
 
     try {
-      const data = await api.startCrafting(idea);
+      const data = await api.startCrafting({
+        idea: idea,
+        craftor_model: elements.craftorModelSelect.value
+      });
       
       elements.systemPromptTextarea.value = data.system_prompt;
       state.currentTestPrompts = data.test_prompts;
@@ -308,12 +311,20 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Run the test
       console.log('⏳ Running tests...');
-      const test_results = await api.runTest(system_prompt, state.currentTestPrompts);
+      const test_results = await api.runTest({
+        system_prompt: system_prompt,
+        test_prompts: state.currentTestPrompts,
+        tester_model: elements.testerModelSelect.value
+      });
       ui.displayTestResults(test_results);
       
       // Analyze and refine
       console.log('⏳ Analyzing results...');
-      const analysis_result = await api.analyzeAndRefine(system_prompt, test_results);
+      const analysis_result = await api.analyzeAndRefine({
+        system_prompt: system_prompt,
+        test_results: test_results,
+        craftor_model: elements.craftorModelSelect.value
+      });
       elements.analysisOutput.textContent = analysis_result.analysis;
 
       if (analysis_result.status === 'success') {
