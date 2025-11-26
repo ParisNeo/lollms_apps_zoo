@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshTreeBtn = S('refresh-tree-btn'),
         aiSelectBtn = S('ai-select-btn'),
         manualSelectBtn = S('manual-select-btn'), // New Manual Select Button
+        genSelectionPromptBtn = S('gen-selection-prompt-btn'), // New Gen Prompt Button
         selectionTokenCountDisplay = S('selection-token-count-display'),
         checkAllTextBtn = S('check-all-text-btn'),
         uncheckAllBtn = S('uncheck-all-btn'),
@@ -91,7 +92,20 @@ document.addEventListener('DOMContentLoaded', () => {
         manualSelectModal = S('manual-select-modal'),
         manualSelectTextarea = S('manual-select-textarea'),
         manualSelectConfirmBtn = S('manual-select-confirm-btn'),
-        manualSelectCancelBtn = S('manual-select-cancel-btn');
+        manualSelectCancelBtn = S('manual-select-cancel-btn'),
+        // New Selection Prompt Modal Selectors
+        selectionPromptModal = S('selection-prompt-modal'),
+        selectionPromptTextarea = S('selection-prompt-textarea'),
+        selectionPromptCopyBtn = S('selection-prompt-copy-btn'),
+        selectionPromptCloseBtn = S('selection-prompt-close-btn'),
+        // New Manual Selection Result Modal Selectors
+        manualResultModal = S('manual-selection-result-modal'),
+        manualResultSelectedCount = S('manual-result-selected-count'),
+        manualResultSelectedList = S('manual-result-selected-list'),
+        manualResultMissingSection = S('manual-result-missing-section'),
+        manualResultMissingCount = S('manual-result-missing-count'),
+        manualResultMissingList = S('manual-result-missing-list'),
+        manualResultCloseBtn = S('manual-result-close-btn');
 
 
     const clientState = {
@@ -1156,7 +1170,7 @@ async function performLoadTree(repopulate = false) {
 
         if(generateBtn) generateBtn.disabled = !hasTree || !hasSelections;
         if(copyRawBtn) copyRawBtn.disabled = !hasOutput;
-        [refreshTreeBtn, aiSelectBtn, checkAllTextBtn, uncheckAllBtn].forEach(b => { if(b) b.disabled = !hasTree });
+        [refreshTreeBtn, aiSelectBtn, checkAllTextBtn, uncheckAllBtn, genSelectionPromptBtn].forEach(b => { if(b) b.disabled = !hasTree });
     }
     
     function switchTab(tabId) {
@@ -1314,16 +1328,13 @@ async function performLoadTree(repopulate = false) {
             const lines = text.split('\n');
             const pathsToSelect = new Set();
             
-            // Parse lines
             lines.forEach(line => {
                 let cleanLine = line.trim();
                 if (!cleanLine) return;
                 if (cleanLine.startsWith('```')) return; // Ignore code block fences
-                // Basic cleanup if user pasted "File: path/to/file"
                 cleanLine = cleanLine.replace(/^File:\s*/i, '').trim();
-                // Normalize slashes to forward slashes for comparison
                 cleanLine = cleanLine.replace(/\\/g, '/');
-                // Remove leading slash if present
+                if (cleanLine.startsWith('./')) cleanLine = cleanLine.substring(2);
                 if (cleanLine.startsWith('/')) cleanLine = cleanLine.substring(1);
                 
                 if (cleanLine) pathsToSelect.add(cleanLine);
@@ -1334,13 +1345,14 @@ async function performLoadTree(repopulate = false) {
                 return;
             }
 
-            // Traverse tree to find matches
+            // Deselect all others first as requested
+            clientState.checkedTreePathsMap.clear();
+
             let matchCount = 0;
+            const foundPaths = new Set();
             const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
             
             // Helper to get relative path from absolute path string given project root string
-            // This is a naive string replacement, might fail if casing differs on Windows etc.
-            // But since server sent both, they should match casing usually.
             const projectRootNormalized = project.path.replace(/\\/g, '/').replace(/\/$/, '');
 
             function traverseAndSelect(nodes) {
@@ -1348,17 +1360,19 @@ async function performLoadTree(repopulate = false) {
                     const nodePathNormalized = node.path.replace(/\\/g, '/');
                     
                     // Check if this node matches any selected relative path
-                    // relative path = nodePath - projectRoot
                     let rel = nodePathNormalized;
                     if (rel.startsWith(projectRootNormalized)) {
                         rel = rel.substring(projectRootNormalized.length);
                         if (rel.startsWith('/')) rel = rel.substring(1);
                     }
                     
-                    if (pathsToSelect.has(rel) && !node.is_dir && node.can_be_checked) {
-                        if (!clientState.markedForRemovalPaths.has(node.path)) {
-                            clientState.checkedTreePathsMap.set(node.path, 'full');
-                            matchCount++;
+                    if (pathsToSelect.has(rel)) {
+                        if (!node.is_dir && node.can_be_checked) {
+                            if (!clientState.markedForRemovalPaths.has(node.path)) {
+                                clientState.checkedTreePathsMap.set(node.path, 'full');
+                                foundPaths.add(rel);
+                                matchCount++;
+                            }
                         }
                     }
                     
@@ -1370,13 +1384,123 @@ async function performLoadTree(repopulate = false) {
                 traverseAndSelect(_cachedTreeData);
                 applySelectionsToTree();
                 saveProjectState();
-                showStatus(`Selected ${matchCount} files from manual list.`, 'success');
-                addLogEntry(`Manual select: Selected ${matchCount} files.`, 'success');
+
+                // Prepare Modal Data
+                const missingPaths = Array.from(pathsToSelect).filter(p => !foundPaths.has(p));
+                
+                manualResultSelectedCount.textContent = foundPaths.size;
+                manualResultSelectedList.innerHTML = '';
+                Array.from(foundPaths).sort().forEach(p => {
+                    const li = document.createElement('li');
+                    li.textContent = p;
+                    manualResultSelectedList.appendChild(li);
+                });
+
+                manualResultMissingCount.textContent = missingPaths.length;
+                manualResultMissingList.innerHTML = '';
+                if (missingPaths.length > 0) {
+                    manualResultMissingSection.classList.remove('hidden');
+                    missingPaths.sort().forEach(p => {
+                        const li = document.createElement('li');
+                        li.textContent = p;
+                        manualResultMissingList.appendChild(li);
+                    });
+                } else {
+                    manualResultMissingSection.classList.add('hidden');
+                }
+
                 closeManualModal();
+                manualResultModal.classList.remove('hidden'); // Show result modal
+                addLogEntry(`Manual select: Selected ${matchCount} files. Missing: ${missingPaths.length}.`, 'info');
             } else {
                 showStatus('Tree not loaded.', 'error');
             }
         });
+
+        // Event listener for closing manual result modal
+        if (manualResultCloseBtn) manualResultCloseBtn.addEventListener('click', () => {
+            manualResultModal.classList.add('hidden');
+        });
+
+        // Event listeners for Selection Prompt Generation
+        if (genSelectionPromptBtn) genSelectionPromptBtn.addEventListener('click', () => {
+            if (!_cachedTreeData || _cachedTreeData.length === 0) {
+                showStatus('No tree data available.', 'warning');
+                return;
+            }
+            
+            const project = clientState.projects.find(p => p.id === clientState.activeProjectId);
+            const userInstructions = customPromptTextarea.value.trim();
+
+            function buildAsciiTree(nodes, prefix = '') {
+                let lines = [];
+                // Filter out removed items. Note: node.path is absolute.
+                const visibleNodes = nodes.filter(n => !clientState.markedForRemovalPaths.has(n.path));
+                
+                // Also, if directory is empty after filtering, should we show it? Yes, as structure.
+                
+                visibleNodes.forEach((node, index) => {
+                    const isLast = index === visibleNodes.length - 1;
+                    const connector = isLast ? '└─ ' : '├─ ';
+                    const icon = node.is_dir ? '📁' : (node.is_text ? '📄' : '▫️');
+                    
+                    lines.push(`${prefix}${connector}${icon} ${node.name}${node.is_dir ? '/' : ''}`);
+                    
+                    if (node.children && node.children.length > 0) {
+                        const childPrefix = prefix + (isLast ? '   ' : '│  ');
+                        lines.push(...buildAsciiTree(node.children, childPrefix));
+                    }
+                });
+                return lines;
+            }
+
+            // _cachedTreeData[0] is root. Start from its children to avoid double root printing if handled manually,
+            // or just process root.
+            // Server's generate_markdown_tree prints root then recurses.
+            // Let's do similar.
+            const rootNode = _cachedTreeData[0];
+            let treeLines = [];
+            if (rootNode.children) {
+                treeLines.push(...buildAsciiTree(rootNode.children));
+            }
+            const treeText = treeLines.join('\n');
+
+            const generatedText = `Project Structure:
+${treeText}
+
+Please select the right files to perform the following task:
+
+\`\`\`markdown
+${userInstructions}
+\`\`\``;
+
+            selectionPromptTextarea.value = generatedText;
+            selectionPromptModal.classList.remove('hidden');
+            addLogEntry('Opened external selection prompt modal.', 'info');
+        });
+
+        if (selectionPromptCloseBtn) selectionPromptCloseBtn.addEventListener('click', () => {
+            selectionPromptModal.classList.add('hidden');
+        });
+
+        if (selectionPromptCopyBtn) selectionPromptCopyBtn.addEventListener('click', () => {
+             if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(selectionPromptTextarea.value).then(() => {
+                    showStatus('Prompt copied to clipboard!', 'success');
+                }).catch(() => {
+                    showStatus('Failed to copy.', 'error');
+                });
+            } else {
+                 try {
+                    selectionPromptTextarea.select();
+                    document.execCommand('copy');
+                    showStatus('Prompt copied to clipboard!', 'success');
+                } catch (err) {
+                    showStatus('Failed to copy.', 'error');
+                }
+            }
+        });
+
 
         if (refreshModelsBtn) refreshModelsBtn.addEventListener('click', fetchLlmModels);
 

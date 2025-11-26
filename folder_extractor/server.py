@@ -38,7 +38,7 @@ import asyncio
 from lollms_client import LollmsClient, MSG_TYPE
 
 APP_TITLE = "Folder Structure Extractor Web App"
-APP_VERSION = "3.5.0"
+APP_VERSION = "3.5.1"
 CONFIG_DIR = Path.home() / ".config" / "folder_extractor_web"
 PROMPTS_FILE = CONFIG_DIR / "prompt_templates.json"
 PROJECTS_FILE = CONFIG_DIR / "projects.json"
@@ -183,6 +183,10 @@ class ChatRequest(BaseModel):
 
 class TokenCountRequest(BaseModel):
     text: str
+
+class CountSelectionTokensRequest(BaseModel):
+    folder_path: str
+    selected_files_info: List[Dict[str, str]]
 
 class LLMSelectRequest(BaseModel):
     project_path: str
@@ -366,7 +370,7 @@ def build_file_tree_with_selection_info(root_path_str: str, filters: FilterSetti
 
 def generate_markdown_tree(root_path_str: str, hard_excluded_paths: Set[str]) -> str:
     root_path = Path(root_path_str)
-    markdown_lines = [f"📁 {root_path.name}/"]
+    markdown_lines = []
     
     def recurse_md_tree(current_path: Path, prefix: str):
         try:
@@ -558,7 +562,7 @@ def _get_lollms_client_instance() -> LollmsClient:
 async def get_context_size():
     try:
         lc = _get_lollms_client_instance()
-        context_size = lc.get_ctx_size(lc.binding.model_name) # Use the client's configured model_name
+        context_size = lc.get_ctx_size(lc.llm.model_name) # Use the client's configured model_name
         return {"context_size": context_size}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching context size: {e}")
@@ -566,11 +570,59 @@ async def get_context_size():
 @app.post("/api/count_tokens")
 async def count_tokens(request: TokenCountRequest):
     try:
+        settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+        if not settings.url or not settings.model_name:
+            return {"count": 0}
+
         lc = _get_lollms_client_instance()
-        count = lc.get_token_count(request.text, model=lc.model_name) # Use the client's configured model_name
+        count = lc.count_tokens(request.text)
         return {"count": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error counting tokens: {e}")
+
+@app.post("/api/count_selection_tokens")
+async def count_selection_tokens(request: CountSelectionTokensRequest):
+    try:
+        settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
+        if not settings.url or not settings.model_name:
+            return {"token_count": 0}
+            
+        lc = _get_lollms_client_instance()
+        
+        full_text_parts = []
+        for item in request.selected_files_info:
+            path_str = item.get("path")
+            selection_type = item.get("type", "full")
+            
+            if not path_str: continue
+            
+            file_path = Path(path_str)
+            if not file_path.exists(): continue
+            
+            try:
+                # Naive text extraction for counting
+                content = file_path.read_text(encoding="utf-8", errors="ignore")
+                
+                if selection_type == "signatures":
+                    lang = file_path.suffix.lower().lstrip('.')
+                    if lang == "py":
+                        content = extract_signatures_python(content)
+                    elif lang == "js":
+                        content = extract_signatures_js(content)
+                
+                full_text_parts.append(f"File: {file_path.name}\n{content}")
+            except Exception:
+                pass
+        
+        full_text = "\n".join(full_text_parts)
+        if not full_text:
+            return {"token_count": 0}
+
+        count = lc.count_tokens(full_text)
+        return {"token_count": count}
+    except Exception as e:
+        print(f"Error in count_selection_tokens: {e}")
+        return {"token_count": -1}
 
 @app.get("/api/llm_models", response_model=List[str])
 async def get_llm_models():
@@ -917,7 +969,7 @@ async def api_generate_structure(request: GenerateStructureRequest):
         settings = LLMSettings(**load_json_file(LLM_SETTINGS_FILE, {}))
         if settings.url and settings.model_name:
             lc = _get_lollms_client_instance()
-            token_count = lc.count_tokens(final_md, model=lc.model_name)
+            token_count = lc.count_tokens(final_md)
     except Exception as e:
         print(f"Warning: Could not get token count using lollms_client: {e}")
         token_count = -1
