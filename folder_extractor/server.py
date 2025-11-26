@@ -13,7 +13,7 @@ from typing import List, Dict, Optional, Any, Set
 import webbrowser
 import threading
 import uuid
-from ascii_colors import trace_exception # Still needed for potential proxying or other uses if not fully replaced, but core LLM logic moves to lollms_client
+from ascii_colors import trace_exception
 
 try:
     import pipmaster
@@ -588,6 +588,7 @@ async def count_selection_tokens(request: CountSelectionTokensRequest):
             return {"token_count": 0}
             
         lc = _get_lollms_client_instance()
+        root_path = Path(request.folder_path)
         
         full_text_parts = []
         for item in request.selected_files_info:
@@ -600,21 +601,28 @@ async def count_selection_tokens(request: CountSelectionTokensRequest):
             if not file_path.exists(): continue
             
             try:
+                try:
+                    rel_path = file_path.relative_to(root_path).as_posix()
+                except ValueError:
+                    rel_path = file_path.name
+
                 # Naive text extraction for counting
                 content = file_path.read_text(encoding="utf-8", errors="ignore")
                 
+                lang = file_path.suffix.lower().lstrip('.')
+                if not lang: lang = 'text'
+
                 if selection_type == "signatures":
-                    lang = file_path.suffix.lower().lstrip('.')
                     if lang == "py":
                         content = extract_signatures_python(content)
                     elif lang == "js":
                         content = extract_signatures_js(content)
                 
-                full_text_parts.append(f"File: {file_path.name}\n{content}")
+                full_text_parts.append(f"File: {rel_path}\n```{lang}\n{content}\n```")
             except Exception:
                 pass
         
-        full_text = "\n".join(full_text_parts)
+        full_text = "\n\n".join(full_text_parts)
         if not full_text:
             return {"token_count": 0}
 
@@ -745,7 +753,7 @@ async def llm_select_files(request: LLMSelectRequest):
                     file_size = file_path.stat().st_size
                     if file_size > CORE_FILE_MAX_SIZE_BYTES:
                         core_context_parts.append(
-                            f"### Core File: `{rel_path_str}` (too large for full content, size: {file_size / 1024:.2f} KB)"
+                            f"File: {rel_path_str}\n(too large for full content, size: {file_size / 1024:.2f} KB)"
                         )
                         continue
 
@@ -756,24 +764,24 @@ async def llm_select_files(request: LLMSelectRequest):
                     if lang == "py":
                         processed_content = extract_signatures_python(content)
                         core_context_parts.append(
-                            f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```"
+                            f"File: {rel_path_str}\n```{lang}\n{processed_content}\n```"
                         )
                     elif lang == "js":
                         processed_content = extract_signatures_js(content)
                         core_context_parts.append(
-                            f"### Core File Signatures: `{rel_path_str}`\n```{lang}\n{processed_content}\n```"
+                            f"File: {rel_path_str}\n```{lang}\n{processed_content}\n```"
                         )
                     elif is_text_file(file_path):  # Ensure it's truly text
                         core_context_parts.append(
-                            f"### Core File Content: `{rel_path_str}`\n```{lang if lang else 'text'}\n{content}\n```"
+                            f"File: {rel_path_str}\n```{lang if lang else 'text'}\n{content}\n```"
                         )
                     else:
                         core_context_parts.append(
-                            f"### Core File: `{rel_path_str}` (binary or unreadable)"
+                            f"File: {rel_path_str}\n(binary or unreadable)"
                         )
                 except Exception as e:
                     core_context_parts.append(
-                        f"### Core File: `{rel_path_str}` (Error reading: {e})"
+                        f"File: {rel_path_str}\n(Error reading: {e})"
                     )
 
         core_context_string = ""
@@ -914,11 +922,11 @@ async def api_generate_structure(request: GenerateStructureRequest):
             doc_path = Path(doc_path_str)
             if doc_path.is_file():
                 try:
-                    doc_contents.append(f"### Doc: `{doc_path.name}`\n```\n{doc_path.read_text(encoding='utf-8')}\n```")
+                    doc_contents.append(f"File: {doc_path.name}\n```text\n{doc_path.read_text(encoding='utf-8')}\n```")
                 except Exception as e:
-                    doc_contents.append(f"### Doc: `{doc_path.name}` [Error reading: {e}]")
+                    doc_contents.append(f"File: {doc_path.name}\n[Error reading: {e}]")
             else:
-                doc_contents.append(f"### Doc: `{doc_path.name}` [Not found on server]")
+                doc_contents.append(f"File: {doc_path.name}\n[Not found on server]")
         processed_prompt += "\n".join(doc_contents)
     
     file_contents = []
@@ -929,9 +937,9 @@ async def api_generate_structure(request: GenerateStructureRequest):
             continue
             
         relative_path = file_path_obj.relative_to(root_path).as_posix()
-        file_contents.append(f"### `{relative_path}`")
         
         language = file_path_obj.suffix.lower().lstrip('.')
+        if not language: language = 'text'
         
         try:
             content = file_path_obj.read_text(encoding="utf-8")
@@ -943,13 +951,13 @@ async def api_generate_structure(request: GenerateStructureRequest):
             else:
                 processed_content = content
             
-            file_contents.append(f"```{language}\n{processed_content}\n```")
+            file_contents.append(f"File: {relative_path}\n```{language}\n{processed_content}\n```")
 
         except Exception as e:
-            file_contents.append(f"```\nError reading file: {relative_path}\n{e}\n```")
+            file_contents.append(f"File: {relative_path}\n```\nError reading file: {e}\n```")
 
     final_md_parts = [
-        f"# Folder Structure: {root_path.name}",
+        f"# Project name: {root_path.name}",
         f"*(Generated: {gen_dt.strftime('%Y-%m-%d %H:%M:%S')})*",
         "---",
         "## Custom Instructions",
