@@ -113,7 +113,7 @@ textarea.fi{resize:vertical;min-height:54px}
 #selbar{display:none;background:var(--bg2);border:1px solid var(--ln);border-radius:var(--r);padding:4px 10px;font-size:11px;color:var(--t1);gap:8px;align-items:center}
 
 /* modal */
-#mo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:none;align-items:center;justify-content:center}
+#mo{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:none;align-items:center;justify-content:center}
 #mo.open{display:flex}
 .modal{background:var(--bg2);border:1px solid var(--ln2);border-radius:var(--r2);padding:22px;width:460px;max-width:95vw;max-height:85vh;overflow-y:auto}
 .modal h2{font-size:14px;font-weight:600;margin-bottom:16px}
@@ -135,7 +135,7 @@ textarea.fi{resize:vertical;min-height:54px}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--t2);text-align:center;padding:24px}
 .empty svg{width:40px;height:40px;opacity:.25}
 .empty p{font-size:11px;line-height:1.6;max-width:180px}
-#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(50px);background:var(--bg4);border:1px solid var(--ln2);border-radius:var(--r2);padding:7px 14px;font-size:12px;z-index:300;transition:transform .2s;pointer-events:none;white-space:nowrap}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%) translateY(50px);background:var(--bg4);border:1px solid var(--ln2);border-radius:var(--r2);padding:7px 14px;font-size:12px;z-index:400;transition:transform .2s;pointer-events:none;white-space:nowrap}
 #toast.show{transform:translateX(-50%) translateY(0)}
 
 .sparql-row:hover{background:var(--bg4) !important}
@@ -146,7 +146,12 @@ textarea.fi{resize:vertical;min-height:54px}
 
 <!-- TOPBAR -->
 <div id="tb">
-  <div class="logo"><span class="hex">⬡</span> Onto</div>
+  <div class="logo" style="cursor:pointer" onclick="showProjects()" title="Go to Projects Dashboard"><span class="hex">⬡</span> Onto</div>
+  <div class="tsep"></div>
+  <button class="tbtn" onclick="showProjects()" style="background:var(--acc-bg); color:var(--acc); font-weight:600">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px;height:12px;"><path d="M1 3h12v9H1zM4 1h6v2H4z"/></svg>
+    Projects
+  </button>
   <div class="tsep"></div>
   <button class="tbtn" onclick="openModal('class')"><div class="dot" style="background:var(--acc)"></div>Class</button>
   <button class="tbtn" onclick="openModal('property')"><div class="dot" style="background:var(--tel)"></div>Obj. Property</button>
@@ -292,6 +297,41 @@ textarea.fi{resize:vertical;min-height:54px}
   </div>
 </div></div>
 
+<!-- PROJECTS DASHBOARD OVERLAY -->
+<div id="projects-overlay" style="position:fixed; inset:0; background:var(--bg0); z-index:200; display:none; flex-direction:column; padding:40px 60px; overflow-y:auto;">
+  <div style="max-width:1000px; width:100%; margin:0 auto; display:flex; flex-direction:column; gap:24px;">
+
+    <!-- Header -->
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <div>
+        <h1 style="font-size:24px; font-weight:700; letter-spacing:-0.5px; color:var(--t0); display:flex; align-items:center; gap:8px;">
+          <span style="color:var(--acc)">⬡</span> Onto Projects
+        </h1>
+        <p style="color:var(--t2); font-size:12px; margin-top:4px;">Manage, edit, and explore your semantic web ontologies stored locally.</p>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-g" id="btn-close-projects" onclick="closeProjects()">Back to Editor</button>
+        <button class="btn btn-g" onclick="showCreateProjectModal()">+ New Project</button>
+        <button class="btn btn-p" onclick="showImportProjectModal()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"><path d="M7 1v7M4 5l3 3 3-3"/><path d="M2 10h10v2H2z"/></svg>
+          Import from File
+        </button>
+      </div>
+    </div>
+
+    <!-- Search/Filter -->
+    <div style="display:flex; gap:12px; background:var(--bg1); border:1px solid var(--ln); border-radius:var(--r2); padding:8px 12px; align-items:center;">
+      <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px; height:14px; color:var(--t2);"><circle cx="6" cy="6" r="4"/><line x1="9" y1="9" x2="13" y2="13"/></svg>
+      <input type="text" id="project-search" placeholder="Search projects by name..." oninput="renderProjectsList()" style="background:transparent; border:none; outline:none; color:var(--t0); flex:1; font-family:var(--font); font-size:13px;">
+    </div>
+
+    <!-- Grid List -->
+    <div id="projects-grid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:18px; margin-top:10px;">
+    </div>
+
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -305,6 +345,7 @@ let curCT = 'manchester';
 let curIT = 'd';
 let selEl = null;
 let pendingAction = null;
+let activeProjectId = null;
 
 let lastSparqlResults = null;
 let hideOrphans = false;
@@ -589,11 +630,17 @@ function showImport(){
   document.getElementById('mok').textContent='Import';
   document.getElementById('mbody').innerHTML=`
   <div class="mrow"><label>Format</label><select class="fi" id="ifmt">
+    <option value="auto">Auto-detect format</option>
     <option value="manchester">Manchester OWL</option>
     <option value="rdfxml">RDF/XML</option>
     <option value="turtle">Turtle</option>
+    <option value="functional">OWL Functional-Style</option>
   </select></div>
-  <div class="mrow"><label>Ontology text</label><textarea class="fi mono" id="itxt" rows="10" placeholder="Paste your ontology here…"></textarea></div>`;
+  <div class="mrow" style="margin-bottom:14px">
+    <label>Load from File</label>
+    <input type="file" id="import-file" class="fi" accept=".owl,.rdf,.ttl,.omn,.fss,.txt" style="padding:4px;" onchange="handleImportFile(this)">
+  </div>
+  <div class="mrow"><label>Ontology text</label><textarea class="fi mono" id="itxt" rows="10" placeholder="Paste or load your ontology here…"></textarea></div>`;
   document.getElementById('mo').classList.add('open');
 }
 
@@ -775,6 +822,7 @@ function updateStats(){
   document.getElementById('si2').textContent = cy.nodes().filter(n=>n.data('type')==='individual').length;
   document.getElementById('se').textContent = cy.edges().length;
   applyOrphansFilter();
+  saveActiveProject();
 }
 
 /* ═══════════════════════════════════════════════
@@ -1496,15 +1544,221 @@ function genTurtle(){
 /* ═══════════════════════════════════════════════
    IMPORT
 ═══════════════════════════════════════════════ */
+function handleImportFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = function(e) {
+    const text = e.target.result;
+    document.getElementById('itxt').value = text;
+    const fmtSel = document.getElementById('ifmt');
+    if (fmtSel.value === 'auto') {
+      const detected = autoDetectFormat(text);
+      toast(`Detected format: ${detected}`);
+    }
+  };
+  r.readAsText(file);
+}
+
+function autoDetectFormat(text) {
+  const clean = text.trim();
+  if (clean.startsWith('<?xml') || clean.includes('<rdf:RDF') || clean.includes('<owl:Ontology')) {
+    return 'rdfxml';
+  }
+  if (clean.includes('@prefix') || clean.match(/a\s+owl:Ontology/)) {
+    return 'turtle';
+  }
+  if (clean.match(/Prefix\s*\(/i) || clean.match(/Ontology\s*\(/i) || clean.match(/Declaration\s*\(/i)) {
+    return 'functional';
+  }
+  return 'manchester';
+}
+
 function importOntology(fmt,text){
   cy.elements().remove();
   resetFocus();
-  if(fmt==='manchester') parseManchester(text);
-  else if(fmt==='rdfxml') parseRDFXML(text);
-  else parseTurtle(text);
+
+  let targetFmt = fmt;
+  if (fmt === 'auto') {
+    targetFmt = autoDetectFormat(text);
+  }
+
+  if(targetFmt==='manchester') parseManchester(text);
+  else if(targetFmt==='rdfxml') parseRDFXML(text);
+  else if(targetFmt==='turtle') parseTurtle(text);
+  else if(targetFmt==='functional') parseFunctionalStyle(text);
+
   refreshTree(); updateStats();
   setTimeout(runLayout,60);
-  toast('Import successful');
+  toast(`Import successful (${targetFmt})`);
+}
+
+function parseFunctionalStyle(text) {
+  const cleanText = text.split('\n')
+    .map(line => line.replace(/#.*$/, ''))
+    .join(' ')
+    .replace(/\s+/g, ' ');
+
+  const prefixMatches = cleanText.matchAll(/Prefix\s*\(\s*(?:([\w-]*):)?\s*=\s*<([^>]+)>\s*\)/gi);
+  for (const match of prefixMatches) {
+    const prefix = match[1] || '';
+    const iri = match[2];
+    if (prefix === '') {
+      baseIRI = iri;
+      ontoIRI = baseIRI.replace(/#$/, '').replace(/\/$/, '');
+      document.getElementById('iri-disp').textContent = baseIRI;
+    }
+  }
+
+  const declRegex = /Declaration\(\s*(Class|ObjectProperty|DataProperty|AnnotationProperty|NamedIndividual)\(\s*([^\s()]+)\s*\)\s*\)/gi;
+  let declMatch;
+  while ((declMatch = declRegex.exec(cleanText)) !== null) {
+    const typeMap = {
+      class: 'class',
+      objectproperty: 'property',
+      dataproperty: 'dataprop',
+      annotationproperty: 'annprop',
+      namedindividual: 'individual'
+    };
+    const rawType = declMatch[1].toLowerCase();
+    const type = typeMap[rawType];
+    const name = sp(declMatch[2]);
+    if (type && name) {
+      addNodeImport(type, name);
+    }
+  }
+
+  const subClassMatches = cleanText.matchAll(/SubClassOf\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of subClassMatches) {
+    const child = sp(match[1]);
+    const parent = sp(match[2]);
+    if (child && parent) {
+      ensureN('class', child);
+      ensureN('class', parent);
+      addEdgeSafe('subClassOf', findNid(child), findNid(parent));
+    }
+  }
+
+  const eqClassMatches = cleanText.matchAll(/EquivalentClasses\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of eqClassMatches) {
+    const c1 = sp(match[1]);
+    const c2 = sp(match[2]);
+    if (c1 && c2) {
+      ensureN('class', c1);
+      ensureN('class', c2);
+      addEdgeSafe('equivalentClass', findNid(c1), findNid(c2));
+    }
+  }
+
+  const djClassMatches = cleanText.matchAll(/DisjointClasses\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of djClassMatches) {
+    const c1 = sp(match[1]);
+    const c2 = sp(match[2]);
+    if (c1 && c2) {
+      ensureN('class', c1);
+      ensureN('class', c2);
+      addEdgeSafe('disjointWith', findNid(c1), findNid(c2));
+    }
+  }
+
+  const classAssertMatches = cleanText.matchAll(/ClassAssertion\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of classAssertMatches) {
+    const cls = sp(match[1]);
+    const ind = sp(match[2]);
+    if (cls && ind) {
+      ensureN('class', cls);
+      ensureN('individual', ind);
+      addEdgeSafe('type', findNid(ind), findNid(cls));
+    }
+  }
+
+  const opDomainMatches = cleanText.matchAll(/ObjectPropertyDomain\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of opDomainMatches) {
+    const prop = sp(match[1]);
+    const cls = sp(match[2]);
+    if (prop && cls) {
+      ensureN('property', prop);
+      ensureN('class', cls);
+      addEdgeSafe('domain', findNid(prop), findNid(cls));
+    }
+  }
+
+  const opRangeMatches = cleanText.matchAll(/ObjectPropertyRange\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of opRangeMatches) {
+    const prop = sp(match[1]);
+    const cls = sp(match[2]);
+    if (prop && cls) {
+      ensureN('property', prop);
+      ensureN('class', cls);
+      addEdgeSafe('range', findNid(prop), findNid(cls));
+    }
+  }
+
+  const dpDomainMatches = cleanText.matchAll(/DataPropertyDomain\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of dpDomainMatches) {
+    const prop = sp(match[1]);
+    const cls = sp(match[2]);
+    if (prop && cls) {
+      ensureN('dataprop', prop);
+      ensureN('class', cls);
+      addEdgeSafe('domain', findNid(prop), findNid(cls));
+    }
+  }
+
+  const dpRangeMatches = cleanText.matchAll(/DataPropertyRange\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Datatype\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of dpRangeMatches) {
+    const prop = sp(match[1]);
+    const rangeVal = sp(match[2]);
+    if (prop && rangeVal) {
+      ensureN('dataprop', prop);
+      if (!rangeVal.startsWith('xsd:') && !rangeVal.startsWith('rdfs:')) {
+        ensureN('class', rangeVal);
+        addEdgeSafe('range', findNid(prop), findNid(rangeVal));
+      }
+    }
+  }
+
+  const subPropMatches = cleanText.matchAll(/SubObjectPropertyOf\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:ObjectProperty\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of subPropMatches) {
+    const subP = sp(match[1]);
+    const superP = sp(match[2]);
+    if (subP && superP) {
+      ensureN('property', subP);
+      ensureN('property', superP);
+      addEdgeSafe('subPropertyOf', findNid(subP), findNid(superP));
+    }
+  }
+
+  const opAssertMatches = cleanText.matchAll(/ObjectPropertyAssertion\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi);
+  for (const match of opAssertMatches) {
+    const prop = sp(match[1]);
+    const src = sp(match[2]);
+    const tgt = sp(match[3]);
+    if (prop && src && tgt) {
+      ensureN('property', prop);
+      ensureN('individual', src);
+      ensureN('individual', tgt);
+      addEdgeSafe(prop, findNid(src), findNid(tgt));
+    }
+  }
+
+  const annMatches = cleanText.matchAll(/AnnotationAssertion\(\s*(?:AnnotationProperty\()?([^\s()]+)\)?\s+([^\s()]+)\s+"([^"]+)"(?:@[a-zA-Z-]+)?\s*\)/gi);
+  for (const match of annMatches) {
+    const prop = sp(match[1]);
+    const subject = sp(match[2]);
+    const val = match[3];
+    const nid = findNid(subject);
+    if (nid) {
+      const node = cy.getElementById(nid);
+      if (node.length) {
+        if (prop.toLowerCase() === 'label' || prop.toLowerCase() === 'rdfs:label') {
+          node.data('rdfsLabel', val);
+        } else if (prop.toLowerCase() === 'comment' || prop.toLowerCase() === 'rdfs:comment') {
+          node.data('comment', val);
+        }
+      }
+    }
+  }
 }
 
 function addNodeImport(type,name){
@@ -1676,7 +1930,356 @@ Individual: :Polly
   setTimeout(runLayout,80);
 }
 
-loadSample();
+/* ═══════════════════════════════════════════════
+   PROJECTS STATE MANAGEMENT
+═══════════════════════════════════════════════ */
+const safeStorage = {
+  memoryStore: {},
+  getItem(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return this.memoryStore[key] || null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      this.memoryStore[key] = String(value);
+    }
+  },
+  removeItem(key) {
+    try {
+      localStorage.removeItem(key);
+    } catch (e) {
+      delete this.memoryStore[key];
+    }
+  }
+};
+
+function getProjectsList() {
+  const data = safeStorage.getItem('onto_projects_list');
+  return data ? JSON.parse(data) : [];
+}
+
+function showProjects() {
+  document.getElementById('projects-overlay').style.display = 'flex';
+  const list = getProjectsList();
+  const closeBtn = document.getElementById('btn-close-projects');
+  if (activeProjectId && list.some(p => p.id === activeProjectId)) {
+    closeBtn.style.display = 'inline-block';
+  } else {
+    closeBtn.style.display = 'none';
+  }
+  renderProjectsList();
+}
+
+function closeProjects() {
+  if (!activeProjectId) {
+    const list = getProjectsList();
+    if (list.length > 0) {
+      loadProject(list[0].id);
+    } else {
+      toast("Please create or select a project first.");
+      return;
+    }
+  }
+  document.getElementById('projects-overlay').style.display = 'none';
+}
+
+function renderProjectsList() {
+  const query = document.getElementById('project-search').value.toLowerCase().trim();
+  const list = getProjectsList();
+  const grid = document.getElementById('projects-grid');
+
+  const filtered = list.filter(p => p.name.toLowerCase().includes(query) || p.baseIRI.toLowerCase().includes(query));
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `
+      <div style="grid-column: 1/-1; display:flex; flex-direction:column; align-items:center; padding:60px 20px; color:var(--t2);">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" style="width:48px; height:48px; opacity:0.3; margin-bottom:12px;"><path d="M1 3h12v9H1zM4 1h6v2H4z"/></svg>
+        <p style="font-size:13px;">No projects found. Create a new one or load from an ontology file!</p>
+      </div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(p => {
+    const isCurrent = p.id === activeProjectId;
+    const dateStr = new Date(p.lastModified).toLocaleDateString(undefined, {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'});
+    return `
+    <div onclick="loadProject('${p.id}')" style="background:var(--bg1); border:1.5px solid ${isCurrent ? 'var(--acc)' : 'var(--ln)'}; border-radius:var(--r2); padding:18px; display:flex; flex-direction:column; justify-content:space-between; height:180px; transition:all 0.12s; cursor:pointer; position:relative; hover:border-color:var(--ln2);">
+      ${isCurrent ? '<div style="position:absolute; top:12px; right:12px; background:var(--acc-bg); color:var(--acc); font-size:9px; font-weight:700; padding:2px 6px; border-radius:3px; text-transform:uppercase;">Active</div>' : ''}
+      <div>
+        <h3 style="font-size:15px; font-weight:600; color:var(--t0); margin-bottom:4px; max-width:80%; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escAttr(p.name)}</h3>
+        <p style="font-family:var(--mono); font-size:10px; color:var(--t2); text-overflow:ellipsis; overflow:hidden; white-space:nowrap; margin-bottom:12px;" title="${escAttr(p.baseIRI)}">${escAttr(p.baseIRI)}</p>
+        <div style="display:flex; gap:12px;">
+          <div><span style="font-weight:600; color:var(--acc); font-size:13px;">${p.classes || 0}</span> <span style="font-size:10px; color:var(--t2); text-transform:uppercase;">Classes</span></div>
+          <div><span style="font-weight:600; color:var(--tel); font-size:13px;">${p.props || 0}</span> <span style="font-size:10px; color:var(--t2); text-transform:uppercase;">Props</span></div>
+          <div><span style="font-weight:600; color:var(--grn); font-size:13px;">${p.inds || 0}</span> <span style="font-size:10px; color:var(--t2); text-transform:uppercase;">Inds</span></div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid var(--ln); padding-top:12px;">
+        <span style="font-size:10px; color:var(--t3);">${dateStr}</span>
+        <div style="display:flex; gap:6px;">
+          <button class="btn btn-g" style="padding:3px 8px; font-size:10px;" onclick="renameProject('${p.id}', event)">Rename</button>
+          <button class="btn btn-d" style="padding:3px 8px; font-size:10px;" onclick="deleteProject('${p.id}', event)">Delete</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function loadProject(id) {
+  const list = getProjectsList();
+  const proj = list.find(p => p.id === id);
+  if (!proj) return;
+
+  activeProjectId = id;
+  safeStorage.setItem('onto_active_project_id', id);
+
+  cy.elements().remove();
+  const elementsData = safeStorage.getItem('onto_proj_elements_' + id);
+  if (elementsData) {
+    try {
+      cy.add(JSON.parse(elementsData));
+    } catch(e) {
+      toast("Error loading project nodes");
+    }
+  }
+
+  baseIRI = proj.baseIRI;
+  ontoIRI = proj.ontoIRI;
+  ontoLabel = proj.name;
+
+  document.getElementById('iri-disp').textContent = baseIRI;
+  document.getElementById('onto-nm').textContent = ontoLabel;
+
+  refreshTree();
+  // Ensure we display stats, applying filters without triggering duplicate saves
+  document.getElementById('sc').textContent = cy.nodes().filter(n=>n.data('type')==='class').length;
+  document.getElementById('sp').textContent = cy.nodes().filter(n=>['property','dataprop','annprop'].includes(n.data('type'))).length;
+  document.getElementById('si2').textContent = cy.nodes().filter(n=>n.data('type')==='individual').length;
+  document.getElementById('se').textContent = cy.edges().length;
+  applyOrphansFilter();
+
+  // Fit nodes in viewport
+  if (cy.elements().length > 0) {
+    setTimeout(() => cy.fit(null, 40), 100);
+  }
+
+  document.getElementById('projects-overlay').style.display = 'none';
+  toast(`Loaded project: ${proj.name}`);
+}
+
+function createProjectDirect(name, baseI, elements = []) {
+  const id = 'proj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  let resolvedBase = baseI.trim();
+  if(!resolvedBase.endsWith('#')&&!resolvedBase.endsWith('/')) resolvedBase += '#';
+  const resolvedOnto = resolvedBase.replace(/#$/,'').replace(/\/$/,'');
+
+  const projMetadata = {
+    id: id,
+    name: name.trim(),
+    baseIRI: resolvedBase,
+    ontoIRI: resolvedOnto,
+    lastModified: Date.now(),
+    classes: 0,
+    props: 0,
+    inds: 0,
+    axioms: 0
+  };
+
+  const list = getProjectsList();
+  list.unshift(projMetadata);
+  safeStorage.setItem('onto_projects_list', JSON.stringify(list));
+  safeStorage.setItem('onto_proj_elements_' + id, JSON.stringify(elements));
+
+  return id;
+}
+
+function showCreateProjectModal() {
+  pendingAction = { type: 'create-project' };
+  document.getElementById('mtitle').textContent = 'Create New Project';
+  document.getElementById('mok').textContent = 'Create';
+  document.getElementById('mbody').innerHTML = `
+    <div class="mrow"><label>Project Name</label><input class="fi" id="new-proj-name" placeholder="e.g. My Domain Ontology"></div>
+    <div class="mrow"><label>Base IRI</label><input class="fi mono" id="new-proj-iri" value="http://example.org/onto#"></div>`;
+  document.getElementById('mo').classList.add('open');
+  setTimeout(() => document.getElementById('new-proj-name').focus(), 40);
+}
+
+function showImportProjectModal() {
+  pendingAction = { type: 'import-project' };
+  document.getElementById('mtitle').textContent = 'Import Ontology Project';
+  document.getElementById('mok').textContent = 'Import & Create';
+  document.getElementById('mbody').innerHTML = `
+    <div class="mrow"><label>Project Name</label><input class="fi" id="imp-proj-name" placeholder="e.g. Imported Ontology"></div>
+    <div class="mrow"><label>Format</label><select class="fi" id="imp-proj-fmt">
+      <option value="auto">Auto-detect format</option>
+      <option value="manchester">Manchester OWL</option>
+      <option value="rdfxml">RDF/XML</option>
+      <option value="turtle">Turtle</option>
+      <option value="functional">OWL Functional-Style</option>
+    </select></div>
+    <div class="mrow">
+      <label>Select Ontology File</label>
+      <input type="file" id="imp-proj-file" class="fi" accept=".owl,.rdf,.ttl,.omn,.fss,.txt" style="padding:4px;" onchange="handleImportProjectFile(this)">
+    </div>
+    <div class="mrow"><label>File Content Preview</label><textarea class="fi mono" id="imp-proj-text" rows="6" placeholder="Loaded content will appear here..."></textarea></div>`;
+  document.getElementById('mo').classList.add('open');
+  setTimeout(() => document.getElementById('imp-proj-name').focus(), 40);
+}
+
+function handleImportProjectFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  // Autofill name if empty
+  const nameInput = document.getElementById('imp-proj-name');
+  if (!nameInput.value.trim()) {
+    nameInput.value = file.name.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+  }
+
+  const r = new FileReader();
+  r.onload = function(e) {
+    document.getElementById('imp-proj-text').value = e.target.result;
+  };
+  r.readAsText(file);
+}
+
+function renameProject(id, event) {
+  if (event) event.stopPropagation();
+  const list = getProjectsList();
+  const proj = list.find(p => p.id === id);
+  if (!proj) return;
+
+  const newName = prompt("Rename Project:", proj.name);
+  if (newName === null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) return;
+
+  proj.name = trimmed;
+  proj.lastModified = Date.now();
+  safeStorage.setItem('onto_projects_list', JSON.stringify(list));
+
+  if (activeProjectId === id) {
+    ontoLabel = trimmed;
+    document.getElementById('onto-nm').textContent = trimmed;
+  }
+
+  renderProjectsList();
+  toast("Project renamed");
+}
+
+function deleteProject(id, event) {
+  if (event) event.stopPropagation();
+  const list = getProjectsList();
+  const proj = list.find(p => p.id === id);
+  if (!proj) return;
+
+  if (!confirm(`Are you sure you want to delete "${proj.name}"? This action cannot be undone.`)) return;
+
+  const newList = list.filter(p => p.id !== id);
+  safeStorage.setItem('onto_projects_list', JSON.stringify(newList));
+  safeStorage.removeItem('onto_proj_elements_' + id);
+
+  if (activeProjectId === id) {
+    activeProjectId = null;
+    safeStorage.removeItem('onto_active_project_id');
+  }
+
+  renderProjectsList();
+  toast("Project deleted");
+}
+
+function saveActiveProject() {
+  if (!activeProjectId) return;
+  const projectList = getProjectsList();
+  const existing = projectList.find(p => p.id === activeProjectId);
+  if (!existing) return;
+
+  const classCount = cy.nodes().filter(n=>n.data('type')==='class').length;
+  const propCount = cy.nodes().filter(n=>['property','dataprop','annprop'].includes(n.data('type'))).length;
+  const indCount = cy.nodes().filter(n=>n.data('type')==='individual').length;
+  const elements = cy.elements().jsons();
+
+  safeStorage.setItem('onto_proj_elements_' + activeProjectId, JSON.stringify(elements));
+
+  existing.name = ontoLabel;
+  existing.baseIRI = baseIRI;
+  existing.ontoIRI = ontoIRI;
+  existing.lastModified = Date.now();
+  existing.classes = classCount;
+  existing.props = propCount;
+  existing.inds = indCount;
+  existing.axioms = cy.edges().length;
+
+  safeStorage.setItem('onto_projects_list', JSON.stringify(projectList));
+}
+
+// Modify modalOK to support project creation and imports
+const originalModalOK = modalOK;
+modalOK = function() {
+  const a = pendingAction;
+  if (!a) return;
+
+  if (a.type === 'create-project') {
+    const name = document.getElementById('new-proj-name').value.trim();
+    const iri = document.getElementById('new-proj-iri').value.trim();
+    if (!name || !iri) { toast("Name and IRI are required"); return; }
+
+    const newId = createProjectDirect(name, iri);
+    closeModal();
+    loadProject(newId);
+    return;
+  }
+
+  if (a.type === 'import-project') {
+    const name = document.getElementById('imp-proj-name').value.trim();
+    const fmt = document.getElementById('imp-proj-fmt').value;
+    const txt = document.getElementById('imp-proj-text').value.trim();
+    if (!name || !txt) { toast("Name and file content are required"); return; }
+
+    // Create temporary environment to import elements
+    const tempId = createProjectDirect(name, "http://example.org/imported#");
+    closeModal();
+
+    // Load project metadata, import, then auto-save handles the rest
+    loadProject(tempId);
+    try {
+      importOntology(fmt, txt);
+    } catch(e) {
+      toast("Parsing failed: " + e.message);
+    }
+    return;
+  }
+
+  originalModalOK();
+};
+
+function initAppProjects() {
+  const list = getProjectsList();
+  const savedActiveId = safeStorage.getItem('onto_active_project_id');
+
+  if (list.length === 0) {
+    // Generate sample project on first launch
+    const sampleId = createProjectDirect("Animals Ontology", "http://example.org/animals#");
+    activeProjectId = sampleId;
+    safeStorage.setItem('onto_active_project_id', sampleId);
+    loadSample();
+    saveActiveProject();
+    showProjects();
+  } else {
+    if (savedActiveId && list.some(p => p.id === savedActiveId)) {
+      loadProject(savedActiveId);
+    } else {
+      loadProject(list[0].id);
+    }
+  }
+}
+
+initAppProjects();
 </script>
 </body>
 </html>
