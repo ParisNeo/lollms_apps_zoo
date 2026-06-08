@@ -139,6 +139,8 @@ textarea.fi{resize:vertical;min-height:54px}
 #toast.show{transform:translateX(-50%) translateY(0)}
 
 .sparql-row:hover{background:var(--bg4) !important}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.animate-spin { animation: spin 1s linear infinite; }
 </style>
 </head>
 <body>
@@ -247,6 +249,7 @@ textarea.fi{resize:vertical;min-height:54px}
       <span class="ctab" id="ct-r" onclick="switchCT('rdfxml')">RDF/XML</span>
       <span class="ctab" id="ct-t" onclick="switchCT('turtle')">Turtle</span>
       <span class="ctab" id="ct-q" onclick="switchCT('sparql')">SPARQL Query</span>
+      <span class="ctab" id="ct-ai" onclick="switchCT('ai')">AI Assistant</span>
       <div style="flex:1"></div>
       <button class="btn btn-g" style="font-size:11px;padding:3px 9px" onclick="copyCode()">Copy</button>
       <button class="btn btn-g" style="font-size:11px;padding:3px 9px" onclick="dlCode()">Download</button>
@@ -254,12 +257,24 @@ textarea.fi{resize:vertical;min-height:54px}
     </div>
     <textarea id="cp-ta" readonly spellcheck="false"></textarea>
     <div id="sparql-container" style="display:none; flex:1; flex-direction:row; height:calc(100% - 34px); overflow:hidden;">
-      <div style="width:45%; display:flex; flex-direction:column; border-right:1px solid var(--ln); padding:8px 12px; gap:8px;">
+      <div style="width:45%; display:flex; flex-direction:column; border-right:1px solid var(--ln); padding:8px 12px; gap:6px;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2)">SPARQL Query</span>
           <button class="btn btn-p" style="font-size:11px; padding:3px 9px;" onclick="executeSPARQL()">Run Query</button>
         </div>
-        <textarea id="sparql-query-input" class="fi mono" style="flex:1; resize:none; background:var(--bg2); color:var(--t0); border:1px solid var(--ln); line-height: 1.5;" spellcheck="false"></textarea>
+        <select id="sparql-templates" class="fi fi-sm" onchange="loadSPARQLTemplate(this.value)" style="background:var(--bg3); font-size:11px; padding:4px 8px;">
+          <option value="">— Select Template Query —</option>
+          <option value="classes">List All Classes</option>
+          <option value="properties">List All Object Properties</option>
+          <option value="individuals">List All Individuals with Types</option>
+          <option value="subclasses">Find SubClassOf Relationships</option>
+          <option value="domains-ranges">Object Properties with Domains and Ranges</option>
+          <option value="labels">Query Node Comments/Labels</option>
+          <option value="ask-any">ASK query for any dogs</option>
+          <option value="construct">CONSTRUCT Equivalent Class Subgraph</option>
+          <option value="describe">DESCRIBE query on Fido</option>
+        </select>
+        <textarea id="sparql-query-input" class="fi mono" style="flex:1; resize:none; background:var(--bg2); color:var(--t0); border:1px solid var(--ln); line-height: 1.5; font-size:11px;" spellcheck="false"></textarea>
       </div>
       <div style="width:55%; display:flex; flex-direction:column; padding:8px 12px; gap:8px; overflow:hidden;">
         <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -268,6 +283,24 @@ textarea.fi{resize:vertical;min-height:54px}
         </div>
         <div id="sparql-results" style="flex:1; overflow-y:auto; background:var(--bg2); border:1px solid var(--ln); border-radius:var(--r); padding:4px;">
           <div style="color:var(--t2); font-style:italic; padding:8px; font-size:11px;">Execute a query to see results here...</div>
+        </div>
+      </div>
+    </div>
+    <div id="ai-container" style="display:none; flex:1; flex-direction:row; height:calc(100% - 34px); overflow:hidden;">
+      <div style="width:45%; display:flex; flex-direction:column; border-right:1px solid var(--ln); padding:8px 12px; gap:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2)">Natural Language Question</span>
+          <button class="btn btn-g" style="font-size:10px; padding:3px 6px;" onclick="openModal('ai-settings')">⚙ Configure Agent</button>
+        </div>
+        <textarea id="ai-question" class="fi" style="flex:1; resize:none; background:var(--bg2); color:var(--t0); border:1px solid var(--ln); font-size:12px; line-height:1.4;" placeholder="e.g. Which classes are disjoint with Mammals?" spellcheck="false"></textarea>
+        <button class="btn btn-p" style="font-size:12px; padding:6px; font-weight:600;" onclick="askAIAgent()">Ask AI Assistant</button>
+      </div>
+      <div style="width:55%; display:flex; flex-direction:column; padding:8px 12px; gap:8px; overflow:hidden;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2)">AI Execution & Explanation</span>
+        </div>
+        <div id="ai-results" style="flex:1; overflow-y:auto; background:var(--bg2); border:1px solid var(--ln); border-radius:var(--r); padding:10px; font-size:12px; line-height:1.5;">
+          <div style="color:var(--t2); font-style:italic; padding:4px;">Type queries on the left to consult your ontology data using AI...</div>
         </div>
       </div>
     </div>
@@ -350,6 +383,37 @@ let activeProjectId = null;
 let lastSparqlResults = null;
 let hideOrphans = false;
 let highlightConnectionsMode = false;
+let importedEntities = {};
+
+// Clean names of terms (strip prefixes/brackets/quotes)
+function cleanName(term) {
+  term = (term || '').trim();
+  if (term.startsWith('<') && term.endsWith('>')) {
+    return term.slice(1, -1).split(/[#/]/).pop();
+  }
+  term = term.replace(/^[a-zA-Z0-9_-]+:/, ''); // Strip prefix
+  term = term.replace(/[<>]/g, '');
+  if (term.startsWith('"') && term.endsWith('"')) {
+    return term.slice(1, -1);
+  }
+  if (term.startsWith('"')) {
+    const end = term.lastIndexOf('"');
+    if (end > 0) return term.slice(1, end);
+  }
+  return term;
+}
+
+function declareEntity(name, type) {
+  name = cleanName(name);
+  if (!name) return;
+  if (importedEntities[name]) {
+    if (type === 'individual' && ['class', 'property', 'dataprop', 'annprop'].includes(importedEntities[name])) {
+      return;
+    }
+  }
+  importedEntities[name] = type;
+  addNodeImport(type, name);
+}
 
 // Per-type visual config (user-editable)
 const typeStyles = {
@@ -556,20 +620,51 @@ function clearAll(){
 /* ═══════════════════════════════════════════════
    MODAL
 ═══════════════════════════════════════════════ */
+function getAISettings() {
+  const data = safeStorage.getItem('onto_ai_settings');
+  return data ? JSON.parse(data) : {
+    apiKey: '',
+    baseUrl: 'http://localhost:9642/v1',
+    model: 'gpt-4o-mini'
+  };
+}
+
 function openModal(type){
   pendingAction={type};
   const titles={
     class:'Add Class',property:'Add Object Property',dataprop:'Add Data Property',
     individual:'Add Individual',annprop:'Add Annotation Property',
     'style-settings':'Visual Styles',
+    'ai-settings':'AI Agent Configuration'
   };
   document.getElementById('mtitle').textContent = titles[type]||'Add';
-  document.getElementById('mok').textContent = type==='style-settings' ? 'Close' : 'Add';
+  document.getElementById('mok').textContent = (type==='style-settings' || type==='ai-settings') ? 'Close' : 'Add';
 
   if(type==='style-settings'){
     document.getElementById('mbody').innerHTML = buildStyleSettings();
     document.getElementById('mo').classList.add('open');
     bindStyleEvents();
+    return;
+  }
+
+  if(type==='ai-settings'){
+    const cfg = getAISettings();
+    document.getElementById('mbody').innerHTML = `
+          <div class="mrow">
+            <label>OpenAI-V1 Compatible Base URL</label>
+            <input class="fi mono" id="ai-base" value="${escAttr(cfg.baseUrl)}" placeholder="https://api.openai.com/v1">
+          </div>
+          <div class="mrow">
+            <label>API Key / Token</label>
+            <input class="fi" type="password" id="ai-key" value="${escAttr(cfg.apiKey)}" placeholder="sk-...">
+          </div>
+          <div class="mrow">
+            <label>Model Name</label>
+            <input class="fi mono" id="ai-model" value="${escAttr(cfg.model)}" placeholder="gpt-4o-mini">
+          </div>
+          <p style="font-size:11px; color:var(--t2); margin-top:8px;">The agent automatically generates SPARQL queries based on your ontology schema, executes them locally, and synthesizes natural language answers.</p>
+        `;
+    document.getElementById('mo').classList.add('open');
     return;
   }
 
@@ -649,6 +744,16 @@ function modalOK(){
   if(!a) return;
 
   if(a.type==='style-settings'){ closeModal(); return; }
+
+  if(a.type==='ai-settings'){
+    const baseUrl = document.getElementById('ai-base').value.trim();
+    const apiKey = document.getElementById('ai-key').value.trim();
+    const model = document.getElementById('ai-model').value.trim();
+    safeStorage.setItem('onto_ai_settings', JSON.stringify({ baseUrl, apiKey, model }));
+    toast("AI settings saved");
+    closeModal();
+    return;
+  }
 
   if(a.type==='relation'){
     let rt = document.getElementById('mrt').value;
@@ -1088,24 +1193,27 @@ function toggleCP(fmt){
 function closeCP(){ document.getElementById('cp').classList.remove('open'); }
 function switchCT(t){
   curCT=t;
-  ['manchester','rdfxml','turtle','sparql'].forEach(x=>{
-    const tabId = 'ct-' + (x === 'manchester' ? 'm' : x === 'rdfxml' ? 'r' : x === 'turtle' ? 't' : 'q');
+  ['manchester','rdfxml','turtle','sparql','ai'].forEach(x=>{
+    const tabId = 'ct-' + (x === 'manchester' ? 'm' : x === 'rdfxml' ? 'r' : x === 'turtle' ? 't' : x === 'sparql' ? 'q' : 'ai');
     const el = document.getElementById(tabId);
     if(el) el.classList.toggle('active', x===t);
   });
 
   const ta = document.getElementById('cp-ta');
   const sc = document.getElementById('sparql-container');
+  const ac = document.getElementById('ai-container');
   const isSparql = t === 'sparql';
+  const isAI = t === 'ai';
 
   document.querySelectorAll('#cp-head .btn-g').forEach(btn => {
     if (btn.textContent !== '✕') {
-      btn.style.display = isSparql ? 'none' : 'inline-block';
+      btn.style.display = (isSparql || isAI) ? 'none' : 'inline-block';
     }
   });
 
   if (isSparql) {
     ta.style.display = 'none';
+    ac.style.display = 'none';
     sc.style.display = 'flex';
     const qi = document.getElementById('sparql-query-input');
     if (!qi.value.trim()) {
@@ -1118,9 +1226,14 @@ SELECT ?sub ?obj WHERE {
   ?sub rdfs:subClassOf ?obj .
 }`;
     }
+  } else if (isAI) {
+    ta.style.display = 'none';
+    sc.style.display = 'none';
+    ac.style.display = 'flex';
   } else {
     ta.style.display = 'block';
     sc.style.display = 'none';
+    ac.style.display = 'none';
     updateCP();
   }
 }
@@ -1192,103 +1305,392 @@ function getOntologyTriples() {
   return triples;
 }
 
-function runSPARQL(queryText) {
-  const cleanQuery = queryText
-    .split('\n')
-    .filter(line => !line.trim().toLowerCase().startsWith('prefix'))
-    .join('\n')
-    .replace(/#.*$/gm, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const selectMatch = cleanQuery.match(/SELECT\s+([\s\S]+?)\s+WHERE/i);
-  if (!selectMatch) throw new Error("Missing SELECT clause");
-  const selectVars = selectMatch[1].trim().split(/\s+/).map(v => v.trim());
-
-  const whereMatch = cleanQuery.match(/WHERE\s*\{([\s\S]+?)\}/i);
-  if (!whereMatch) throw new Error("Missing WHERE clause block");
-  const whereBody = whereMatch[1].trim();
-
-  const patterns = [];
-  const rawPatterns = whereBody.split(/\.(?=(?:[^"]|"[^"]*")*$)/);
-  rawPatterns.forEach(pat => {
-    const parts = pat.trim().match(/(?:[^\s"]+|"[^"]*")+/g);
-    if (parts && parts.length >= 3) {
-      patterns.push({
-        s: parts[0],
-        p: parts[1],
-        o: parts[2]
-      });
-    }
-  });
-
-  const db = getOntologyTriples();
-  const results = [];
-
-  function matchPattern(patternIdx, env, matchedIds) {
-    if (patternIdx === patterns.length) {
-      const resultRow = {};
-      selectVars.forEach(v => {
-        resultRow[v] = env[v] !== undefined ? env[v] : '';
-      });
-      resultRow._elementIds = Array.from(matchedIds);
-      results.push(resultRow);
-      return;
-    }
-
-    const pat = patterns[patternIdx];
-    const sVal = pat.s.startsWith('?') ? env[pat.s] : pat.s;
-    const pVal = pat.p.startsWith('?') ? env[pat.p] : pat.p;
-    const oVal = pat.o.startsWith('?') ? env[pat.o] : pat.o;
-
-    for (const triple of db) {
-      const newEnv = { ...env };
-
-      if (pat.s.startsWith('?')) {
-        if (sVal !== undefined && sVal !== triple.s) continue;
-        newEnv[pat.s] = triple.s;
-      } else {
-        if (pat.s !== triple.s) continue;
-      }
-
-      if (pat.p.startsWith('?')) {
-        if (pVal !== undefined && pVal !== triple.p) continue;
-        newEnv[pat.p] = triple.p;
-      } else {
-        if (pat.p !== triple.p) continue;
-      }
-
-      if (pat.o.startsWith('?')) {
-        if (oVal !== undefined && oVal !== triple.o) continue;
-        newEnv[pat.o] = triple.o;
-      } else {
-        if (pat.o !== triple.o) continue;
-      }
-
-      const nextMatched = new Set(matchedIds);
-      if (triple.elementId) {
-        nextMatched.add(triple.elementId);
-      }
-
-      matchPattern(patternIdx + 1, newEnv, nextMatched);
+function expandIRI(term, queryPrefixes) {
+  term = term.trim();
+  if (term.startsWith('<') && term.endsWith('>')) {
+    return term.slice(1, -1);
+  }
+  if (term.startsWith('"') && term.endsWith('"')) {
+    return term;
+  }
+  const colonIdx = term.indexOf(':');
+  if (colonIdx !== -1) {
+    const prefix = term.slice(0, colonIdx);
+    const local = term.slice(colonIdx + 1);
+    const base = queryPrefixes[prefix] || {
+      rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+      rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+      owl: 'http://www.w3.org/2002/07/owl#',
+      xsd: 'http://www.w3.org/2001/XMLSchema#',
+      '': baseIRI
+    }[prefix];
+    if (base) {
+      return base + local;
     }
   }
+  return term;
+}
 
-  matchPattern(0, {}, new Set());
-
-  const uniqueResults = [];
-  const seen = new Set();
-  results.forEach(row => {
-    const temp = { ...row };
-    delete temp._elementIds;
-    const str = JSON.stringify(temp);
-    if (!seen.has(str)) {
-      seen.add(str);
-      uniqueResults.push(row);
+function contractIRI(term, prefixes) {
+  if (!term) return '';
+  if (term.startsWith('"') && term.endsWith('"')) {
+    return term;
+  }
+  for (const [prefix, base] of Object.entries(prefixes)) {
+    if (term.startsWith(base)) {
+      return (prefix ? prefix + ':' : ':') + term.slice(base.length);
     }
+  }
+  return term;
+}
+
+function parseTriplePatterns(text, prefixes) {
+  const clean = text.replace(/#.*$/gm, '').trim();
+  const tokens = [];
+  let currentToken = '';
+  let inString = false;
+  let inUri = false;
+
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    if (char === '"' && clean[i-1] !== '\\') {
+      inString = !inString;
+      currentToken += char;
+    } else if (char === '<' && !inString) {
+      inUri = true;
+      currentToken += char;
+    } else if (char === '>' && !inString && inUri) {
+      inUri = false;
+      currentToken += char;
+    } else if (!inString && !inUri && (char === ' ' || char === '\t' || char === '\n' || char === '\r' || char === ';' || char === ',' || char === '.')) {
+      if (currentToken.trim()) {
+        tokens.push(currentToken.trim());
+        currentToken = '';
+      }
+      if (char === ';' || char === ',' || char === '.') {
+        tokens.push(char);
+      }
+    } else {
+      currentToken += char;
+    }
+  }
+  if (currentToken.trim()) {
+    tokens.push(currentToken.trim());
+  }
+
+  const patterns = [];
+  let subject = null;
+  let predicate = null;
+  let state = 'SUBJECT';
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '.') {
+      subject = null;
+      predicate = null;
+      state = 'SUBJECT';
+    } else if (token === ';') {
+      predicate = null;
+      state = 'PREDICATE';
+    } else if (token === ',') {
+      state = 'OBJECT';
+    } else {
+      if (state === 'SUBJECT') {
+        subject = token;
+        state = 'PREDICATE';
+      } else if (state === 'PREDICATE') {
+        predicate = token;
+        state = 'OBJECT';
+      } else if (state === 'OBJECT') {
+        const object = token;
+        patterns.push({
+          s: subject.startsWith('?') ? subject : expandIRI(subject, prefixes),
+          p: predicate.startsWith('?') ? predicate : expandIRI(predicate, prefixes),
+          o: object.startsWith('?') ? object : expandIRI(object, prefixes)
+        });
+      }
+    }
+  }
+  return patterns;
+}
+
+function evaluatePatterns(patterns, db, initialEnvs, elementIdsPerEnv) {
+  let envs = [...initialEnvs];
+  for (let i = 0; i < envs.length; i++) {
+    elementIdsPerEnv[i] = new Set();
+  }
+
+  patterns.forEach(pat => {
+    const nextEnvs = [];
+    const nextIds = [];
+
+    envs.forEach((env, envIdx) => {
+      const sVal = pat.s.startsWith('?') ? env[pat.s] : pat.s;
+      const pVal = pat.p.startsWith('?') ? env[pat.p] : pat.p;
+      const oVal = pat.o.startsWith('?') ? env[pat.o] : pat.o;
+
+      db.forEach(triple => {
+        const newEnv = { ...env };
+
+        if (pat.s.startsWith('?')) {
+          if (sVal !== undefined && sVal !== triple.s) return;
+          newEnv[pat.s] = triple.s;
+        } else {
+          if (pat.s !== triple.s) return;
+        }
+
+        if (pat.p.startsWith('?')) {
+          if (pVal !== undefined && pVal !== triple.p) return;
+          newEnv[pat.p] = triple.p;
+        } else {
+          if (pat.p !== triple.p) return;
+        }
+
+        if (pat.o.startsWith('?')) {
+          if (oVal !== undefined && oVal !== triple.o) return;
+          newEnv[pat.o] = triple.o;
+        } else {
+          if (pat.o !== triple.o) return;
+        }
+
+        const elementTrack = new Set(elementIdsPerEnv[envIdx] || []);
+        if (triple.elementId) {
+          elementTrack.add(triple.elementId);
+        }
+
+        nextEnvs.push(newEnv);
+        nextIds.push(elementTrack);
+      });
+    });
+
+    envs = nextEnvs;
+    elementIdsPerEnv.length = 0;
+    nextIds.forEach(idTrack => elementIdsPerEnv.push(idTrack));
   });
 
-  return { vars: selectVars, rows: uniqueResults };
+  return envs;
+}
+
+function evaluateFilter(filterStr, env, prefixes) {
+  const clean = filterStr.trim();
+
+  const containsLCaseMatch = clean.match(/contains\s*\(\s*lcase\s*\(\s*(\?\w+)\s*\)\s*,\s*"([^"]+)"\s*\)/i);
+  if (containsLCaseMatch) {
+    const val = env[containsLCaseMatch[1]];
+    if (!val) return false;
+    const search = containsLCaseMatch[2].toLowerCase();
+    return val.toLowerCase().includes(search);
+  }
+
+  const containsMatch = clean.match(/contains\s*\(\s*(\?\w+)\s*,\s*"([^"]+)"\s*\)/i);
+  if (containsMatch) {
+    const val = env[containsMatch[1]];
+    if (!val) return false;
+    const search = containsMatch[2];
+    return val.includes(search);
+  }
+
+  const regexMatch = clean.match(/regex\s*\(\s*(\?\w+)\s*,\s*"([^"]+)"\s*(?:,\s*"i"\s*)?\)/i);
+  if (regexMatch) {
+    const val = env[regexMatch[1]];
+    if (!val) return false;
+    const pattern = regexMatch[2];
+    const rx = new RegExp(pattern, clean.toLowerCase().endsWith('"i"') || clean.toLowerCase().endsWith('"i" )') ? 'i' : '');
+    return rx.test(val);
+  }
+
+  const equalsMatch = clean.match(/(\?\w+)\s*=\s*(.+)/);
+  if (equalsMatch) {
+    const val = env[equalsMatch[1]];
+    const matchVal = expandIRI(equalsMatch[2].trim(), prefixes);
+    return val === matchVal;
+  }
+
+  const notEqualsMatch = clean.match(/(\?\w+)\s*!=\s*(.+)/);
+  if (notEqualsMatch) {
+    const val = env[notEqualsMatch[1]];
+    const matchVal = expandIRI(notEqualsMatch[2].trim(), prefixes);
+    return val !== matchVal;
+  }
+
+  return true;
+}
+
+function evaluateSPARQLQuery(queryText) {
+  const prefixes = {
+    rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+    rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+    owl: 'http://www.w3.org/2002/07/owl#',
+    xsd: 'http://www.w3.org/2001/XMLSchema#',
+    '': baseIRI
+  };
+
+  const prefixRegex = /(?:PREFIX|prefix)\s+([\w-]*):?\s+<([^>]+)>/g;
+  let match;
+  while ((match = prefixRegex.exec(queryText)) !== null) {
+    prefixes[match[1]] = match[2];
+  }
+
+  let bodyText = queryText
+    .replace(/(?:PREFIX|prefix)\s+[\w-]*:?\s+<[^>]+>/gi, '')
+    .replace(/#.*$/gm, '')
+    .trim();
+
+  const queryTypeMatch = bodyText.match(/^(SELECT|CONSTRUCT|ASK|DESCRIBE)/i);
+  if (!queryTypeMatch) throw new Error("Could not detect query type (SELECT, CONSTRUCT, ASK, DESCRIBE required)");
+  const qType = queryTypeMatch[1].toUpperCase();
+
+  let constructTemplate = null;
+  if (qType === 'CONSTRUCT') {
+    const constMatch = bodyText.match(/CONSTRUCT\s*\{([\s\S]+?)\}\s*WHERE/i);
+    if (!constMatch) throw new Error("CONSTRUCT query must specify template in format: CONSTRUCT { ... } WHERE { ... }");
+    constructTemplate = parseTriplePatterns(constMatch[1], prefixes);
+  }
+
+  let describeTerms = [];
+  if (qType === 'DESCRIBE') {
+    const descMatch = bodyText.match(/DESCRIBE\s+([\s\S]+?)(?:\s+WHERE|\s*\{|$)/i);
+    if (!descMatch) throw new Error("DESCRIBE query missing variables or IRIs");
+    describeTerms = descMatch[1].trim().split(/\s+/).map(t => t.trim());
+  }
+
+  let wherePatterns = [];
+  let filters = [];
+  const whereMatch = bodyText.match(/WHERE\s*\{([\s\S]+?)\}/i) || bodyText.match(/\{([\s\S]+?)\}/i);
+
+  if (whereMatch) {
+    const whereContent = whereMatch[1];
+    const filterRegex = /FILTER\s*\((.+?)\)/gi;
+    let fMatch;
+    let cleanedContent = whereContent;
+    while ((fMatch = filterRegex.exec(whereContent)) !== null) {
+      filters.push(fMatch[1].trim());
+    }
+    cleanedContent = cleanedContent.replace(/FILTER\s*\(.+?\)/gi, '');
+    wherePatterns = parseTriplePatterns(cleanedContent, prefixes);
+  } else if (qType === 'DESCRIBE') {
+    wherePatterns = [];
+  } else {
+    throw new Error("Missing query body patterns inside { ... }");
+  }
+
+  const db = getOntologyTriples().map(t => ({
+    s: expandIRI(t.s, prefixes),
+    p: expandIRI(t.p, prefixes),
+    o: expandIRI(t.o, prefixes),
+    elementId: t.elementId,
+    rawTriple: t
+  }));
+
+  let boundEnvs = [{}];
+  let elementIdsPerEnv = [];
+
+  if (wherePatterns.length > 0) {
+    boundEnvs = evaluatePatterns(wherePatterns, db, boundEnvs, elementIdsPerEnv);
+  } else {
+    boundEnvs = [{}];
+  }
+
+  boundEnvs = boundEnvs.filter((env, envIdx) => {
+    return filters.every(f => evaluateFilter(f, env, prefixes));
+  });
+
+  if (qType === 'SELECT') {
+    const selectVarsMatch = bodyText.match(/SELECT\s+([\s\S]+?)\s+WHERE/i);
+    let selectVars = [];
+    if (selectVarsMatch) {
+      const varStr = selectVarsMatch[1].trim();
+      if (varStr === '*') {
+        const allVars = new Set();
+        boundEnvs.forEach(env => Object.keys(env).forEach(k => allVars.add(k)));
+        selectVars = Array.from(allVars);
+      } else {
+        selectVars = varStr.split(/\s+/).map(v => v.trim());
+      }
+    }
+
+    const finalRows = boundEnvs.map((env, idx) => {
+      const row = {};
+      selectVars.forEach(v => {
+        row[v] = contractIRI(env[v], prefixes);
+      });
+      row._elementIds = Array.from(elementIdsPerEnv[idx] || []);
+      return row;
+    });
+
+    return { type: 'SELECT', vars: selectVars, rows: finalRows };
+  }
+
+  if (qType === 'CONSTRUCT') {
+    const constructedTriples = [];
+    const constructedElementIds = new Set();
+
+    boundEnvs.forEach((env, idx) => {
+      const envElements = elementIdsPerEnv[idx] || new Set();
+      envElements.forEach(id => constructedElementIds.add(id));
+
+      constructTemplate.forEach(tpl => {
+        const sVal = tpl.s.startsWith('?') ? env[tpl.s] : tpl.s;
+        const pVal = tpl.p.startsWith('?') ? env[tpl.p] : tpl.p;
+        const oVal = tpl.o.startsWith('?') ? env[tpl.o] : tpl.o;
+
+        if (sVal && pVal && oVal) {
+          constructedTriples.push({
+            s: contractIRI(sVal, prefixes),
+            p: contractIRI(pVal, prefixes),
+            o: contractIRI(oVal, prefixes)
+          });
+        }
+      });
+    });
+
+    const uniqueTriples = [];
+    const seen = new Set();
+    constructedTriples.forEach(t => {
+      const str = `${t.s}|${t.p}|${t.o}`;
+      if (!seen.has(str)) {
+        seen.add(str);
+        uniqueTriples.push(t);
+      }
+    });
+
+    return { type: 'CONSTRUCT', triples: uniqueTriples, elementIds: Array.from(constructedElementIds) };
+  }
+
+  if (qType === 'ASK') {
+    return { type: 'ASK', result: boundEnvs.length > 0 };
+  }
+
+  if (qType === 'DESCRIBE') {
+    const matchingIRIs = new Set();
+    describeTerms.forEach(term => {
+      if (term.startsWith('?')) {
+        boundEnvs.forEach(env => {
+          if (env[term]) matchingIRIs.add(env[term]);
+        });
+      } else {
+        matchingIRIs.add(expandIRI(term, prefixes));
+      }
+    });
+
+    const descRows = [];
+    const descVars = ['?subject', '?predicate', '?object'];
+    const matchedElementIds = new Set();
+
+    db.forEach(t => {
+      if (matchingIRIs.has(t.s) || matchingIRIs.has(t.o)) {
+        descRows.push({
+          '?subject': contractIRI(t.s, prefixes),
+          '?predicate': contractIRI(t.p, prefixes),
+          '?object': contractIRI(t.o, prefixes),
+          _elementIds: [t.elementId]
+        });
+        if (t.elementId) matchedElementIds.add(t.elementId);
+      }
+    });
+
+    return { type: 'DESCRIBE', vars: descVars, rows: descRows, elementIds: Array.from(matchedElementIds) };
+  }
 }
 
 function executeSPARQL() {
@@ -1297,35 +1699,73 @@ function executeSPARQL() {
   const selectAllBtn = document.getElementById('sparql-select-all-btn');
 
   try {
-    const res = runSPARQL(qi);
+    const res = evaluateSPARQLQuery(qi);
     lastSparqlResults = res;
 
-    if (res.rows.length === 0) {
-      resDiv.innerHTML = `<div style="color:var(--t2); font-style:italic; padding:8px; font-size:11px;">No matches found.</div>`;
+    if (res.type === 'ASK') {
+      resDiv.innerHTML = `
+        <div style="padding:12px; font-size:14px; font-weight:bold; color:${res.result ? 'var(--grn)' : 'var(--red)'}">
+          ASK Result: ${res.result ? 'TRUE' : 'FALSE'}
+        </div>`;
       selectAllBtn.style.display = 'none';
       return;
     }
 
-    selectAllBtn.style.display = 'inline-block';
+    if (res.type === 'CONSTRUCT') {
+      if (res.triples.length === 0) {
+        resDiv.innerHTML = `<div style="color:var(--t2); font-style:italic; padding:8px; font-size:11px;">Constructed subgraph is empty.</div>`;
+        selectAllBtn.style.display = 'none';
+        return;
+      }
 
-    let html = `<table style="width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; color:var(--t0);">`;
-    html += `<tr style="border-bottom:1px solid var(--ln2); background:var(--bg3); color:var(--t1);"><th style="padding:6px; text-align:left;">#</th>`;
-    res.vars.forEach(v => {
-      html += `<th style="padding:6px; text-align:left;">${v}</th>`;
-    });
-    html += `</tr>`;
+      selectAllBtn.style.display = 'inline-block';
+      selectAllBtn.textContent = "Select Constructed Subgraph";
 
-    res.rows.forEach((row, idx) => {
-      const rowBg = idx % 2 === 0 ? 'transparent' : 'var(--bg3)';
-      html += `<tr onclick="selectSPARQLRow(${idx})" class="sparql-row" style="border-bottom:1px solid var(--ln); background:${rowBg}; cursor:pointer;" title="Click to focus on canvas">`;
-      html += `<td style="padding:6px; color:var(--t2);">${idx + 1}</td>`;
+      let html = `<div style="padding:6px; font-weight:bold; font-size:11px; color:var(--tel); border-bottom:1px solid var(--ln);">CONSTRUCTED SUBGRAPH TRIPLES:</div>`;
+      html += `<table style="width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; color:var(--t0); margin-top:6px;">`;
+      res.triples.forEach((triple, idx) => {
+        const rowBg = idx % 2 === 0 ? 'transparent' : 'var(--bg3)';
+        html += `<tr onclick="selectConstructedRow(${idx})" class="sparql-row" style="border-bottom:1px solid var(--ln); background:${rowBg}; cursor:pointer;" title="Click to focus constructed elements">`;
+        html += `<td style="padding:6px; color:var(--t2);">${idx+1}</td>`;
+        html += `<td style="padding:6px; color:var(--acc);">${escAttr(triple.s)}</td>`;
+        html += `<td style="padding:6px; color:var(--tel);">${escAttr(triple.p)}</td>`;
+        html += `<td style="padding:6px; color:var(--grn);">${escAttr(triple.o)}</td>`;
+        html += `</tr>`;
+      });
+      html += `</table>`;
+      resDiv.innerHTML = html;
+      return;
+    }
+
+    if (res.type === 'SELECT' || res.type === 'DESCRIBE') {
+      if (res.rows.length === 0) {
+        resDiv.innerHTML = `<div style="color:var(--t2); font-style:italic; padding:8px; font-size:11px;">No matches found.</div>`;
+        selectAllBtn.style.display = 'none';
+        return;
+      }
+
+      selectAllBtn.style.display = 'inline-block';
+      selectAllBtn.textContent = "Select All Matches";
+
+      let html = `<table style="width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; color:var(--t0);">`;
+      html += `<tr style="border-bottom:1px solid var(--ln2); background:var(--bg3); color:var(--t1);"><th style="padding:6px; text-align:left;">#</th>`;
       res.vars.forEach(v => {
-        html += `<td style="padding:6px; color:var(--acc);">${escAttr(row[v] || '')}</td>`;
+        html += `<th style="padding:6px; text-align:left;">${v}</th>`;
       });
       html += `</tr>`;
-    });
-    html += `</table>`;
-    resDiv.innerHTML = html;
+
+      res.rows.forEach((row, idx) => {
+        const rowBg = idx % 2 === 0 ? 'transparent' : 'var(--bg3)';
+        html += `<tr onclick="selectSPARQLRow(${idx})" class="sparql-row" style="border-bottom:1px solid var(--ln); background:${rowBg}; cursor:pointer;" title="Click to focus on canvas">`;
+        html += `<td style="padding:6px; color:var(--t2);">${idx + 1}</td>`;
+        res.vars.forEach(v => {
+          html += `<td style="padding:6px; color:var(--acc);">${escAttr(row[v] || '')}</td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</table>`;
+      resDiv.innerHTML = html;
+    }
   } catch(e) {
     lastSparqlResults = null;
     selectAllBtn.style.display = 'none';
@@ -1340,7 +1780,6 @@ function selectSPARQLRow(idx) {
 
   const idsToSelect = new Set(row._elementIds || []);
 
-  // Map variables bound to individuals/classes back to their respective nodes
   lastSparqlResults.vars.forEach(v => {
     const val = row[v];
     if (val && val.startsWith(':')) {
@@ -1358,22 +1797,72 @@ function selectSPARQLRow(idx) {
   }
 }
 
+function selectConstructedRow(idx) {
+  if (!lastSparqlResults || !lastSparqlResults.triples[idx]) return;
+  const t = lastSparqlResults.triples[idx];
+  cy.elements().unselect();
+
+  const idsToSelect = new Set();
+  const sNode = cy.nodes().filter(n => n.data('label') === cleanName(t.s));
+  if (sNode.length) idsToSelect.add(sNode.id());
+
+  const oNode = cy.nodes().filter(n => n.data('label') === cleanName(t.o));
+  if (oNode.length) idsToSelect.add(oNode.id());
+
+  const edges = cy.edges().filter(e => {
+    const srcLabel = cy.getElementById(e.data('source')).data('label');
+    const tgtLabel = cy.getElementById(e.data('target')).data('label');
+    const relType = e.data('relType') || e.data('label');
+    return cleanName(srcLabel) === cleanName(t.s) &&
+           cleanName(tgtLabel) === cleanName(t.o) &&
+           cleanName(relType) === cleanName(t.p);
+  });
+  edges.forEach(e => idsToSelect.add(e.id()));
+
+  const targetElements = cy.elements().filter(el => idsToSelect.has(el.id()));
+  if (targetElements.length) {
+    targetElements.select();
+    cy.animate({ center: { eles: targetElements } }, { duration: 300 });
+    toast(`Selected ${targetElements.length} elements from constructed triple`);
+  }
+}
+
 function selectAllSPARQLMatches() {
-  if (!lastSparqlResults || lastSparqlResults.rows.length === 0) return;
+  if (!lastSparqlResults) return;
   cy.elements().unselect();
   const idsToSelect = new Set();
 
-  lastSparqlResults.rows.forEach(row => {
-    (row._elementIds || []).forEach(id => idsToSelect.add(id));
-    lastSparqlResults.vars.forEach(v => {
-      const val = row[v];
-      if (val && val.startsWith(':')) {
-        const label = val.slice(1);
-        const node = cy.nodes().filter(n => n.data('label') === label);
-        if (node.length) idsToSelect.add(node.id());
-      }
+  if (lastSparqlResults.type === 'CONSTRUCT') {
+    lastSparqlResults.triples.forEach(t => {
+      const sNode = cy.nodes().filter(n => n.data('label') === cleanName(t.s));
+      if (sNode.length) idsToSelect.add(sNode.id());
+
+      const oNode = cy.nodes().filter(n => n.data('label') === cleanName(t.o));
+      if (oNode.length) idsToSelect.add(oNode.id());
+
+      const edges = cy.edges().filter(e => {
+        const srcLabel = cy.getElementById(e.data('source')).data('label');
+        const tgtLabel = cy.getElementById(e.data('target')).data('label');
+        const relType = e.data('relType') || e.data('label');
+        return cleanName(srcLabel) === cleanName(t.s) &&
+               cleanName(tgtLabel) === cleanName(t.o) &&
+               cleanName(relType) === cleanName(t.p);
+      });
+      edges.forEach(e => idsToSelect.add(e.id()));
     });
-  });
+  } else if (lastSparqlResults.type === 'SELECT' || lastSparqlResults.type === 'DESCRIBE') {
+    lastSparqlResults.rows.forEach(row => {
+      (row._elementIds || []).forEach(id => idsToSelect.add(id));
+      lastSparqlResults.vars.forEach(v => {
+        const val = row[v];
+        if (val && val.startsWith(':')) {
+          const label = val.slice(1);
+          const node = cy.nodes().filter(n => n.data('label') === label);
+          if (node.length) idsToSelect.add(node.id());
+        }
+      });
+    });
+  }
 
   const targetElements = cy.elements().filter(el => idsToSelect.has(el.id()));
   if (targetElements.length) {
@@ -1383,6 +1872,219 @@ function selectAllSPARQLMatches() {
   } else {
     toast("No elements matched to select");
   }
+}
+
+function loadSPARQLTemplate(val) {
+  if(!val) return;
+  const templates = {
+    classes: `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?class WHERE {
+  ?class rdf:type owl:Class .
+}`,
+    properties: `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?property WHERE {
+  ?property rdf:type owl:ObjectProperty .
+}`,
+    individuals: `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?individual ?class WHERE {
+  ?individual rdf:type ?class .
+  ?class rdf:type owl:Class .
+}`,
+    subclasses: `PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?childClass ?parentClass WHERE {
+  ?childClass rdfs:subClassOf ?parentClass .
+}`,
+    'domains-ranges': `PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?prop ?domain ?range WHERE {
+  ?prop rdfs:domain ?domain .
+  ?prop rdfs:range ?range .
+}`,
+    labels: `PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?node ?label ?comment WHERE {
+  ?node rdfs:label ?label .
+  OPTIONAL { ?node rdfs:comment ?comment }
+}`,
+    'ask-any': `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX : <${baseIRI}>
+ASK WHERE {
+  ?ind rdf:type :Dog .
+}`,
+    construct: `PREFIX owl: <http://www.w3.org/2002/07/owl#>
+CONSTRUCT {
+  ?c1 owl:equivalentClass ?c2 .
+} WHERE {
+  ?c1 owl:equivalentClass ?c2 .
+}`,
+    describe: `DESCRIBE :Fido`
+  };
+
+  const queryInput = document.getElementById('sparql-query-input');
+  if (templates[val]) {
+    queryInput.value = templates[val];
+  }
+}
+
+async function askAIAgent() {
+  const qText = document.getElementById('ai-question').value.trim();
+  const resDiv = document.getElementById('ai-results');
+  if (!qText) { toast("Please type a question."); return; }
+
+  const cfg = getAISettings();
+  if (!cfg.apiKey) {
+    resDiv.innerHTML = `
+      <div style="color:var(--amb); padding:8px; line-height: 1.6;">
+        ⚠️ <strong>API Key Missing</strong><br>
+        Please click on <strong>⚙ Configure Agent</strong> to save your OpenAI-compatible API key.
+      </div>`;
+    return;
+  }
+
+  resDiv.innerHTML = `<div style="color:var(--t1); display:flex; align-items:center; gap:8px;"><svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;color:var(--acc)"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="8"/></svg> Reasoning query path…</div>`;
+
+  try {
+    const classes = cy.nodes().filter(n => n.data('type') === 'class').map(n => n.data('label'));
+    const props = cy.nodes().filter(n => n.data('type') === 'property').map(n => n.data('label'));
+    const dataprops = cy.nodes().filter(n => n.data('type') === 'dataprop').map(n => n.data('label'));
+    const inds = cy.nodes().filter(n => n.data('type') === 'individual').map(n => n.data('label'));
+
+    const schemaSummary = `
+Base IRI: <${baseIRI}>
+Classes: ${classes.join(', ') || 'none'}
+Object Properties: ${props.join(', ') || 'none'}
+Data Properties: ${dataprops.join(', ') || 'none'}
+Individuals: ${inds.join(', ') || 'none'}
+`;
+
+    const prompt1 = `You are a SPARQL query generator agent acting over a locally loaded graph.
+Here is the active ontology schema summary:
+${schemaSummary}
+
+Convert this user question to a valid, clean, single SPARQL query.
+User question: "${qText}"
+
+Return ONLY the SPARQL query inside raw XML tags <sparql> ... </sparql> in your response. No explanations or markdown formatting outside of that.
+Use standard PREFIX declarations:
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX : <${baseIRI}>`;
+
+    const res1 = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [{ role: 'user', content: prompt1 }],
+        temperature: 0.1
+      })
+    });
+
+    if (!res1.ok) {
+      const errData = await res1.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `HTTP ${res1.status}`);
+    }
+
+    const data1 = await res1.json();
+    const content1 = data1.choices[0].message.content;
+
+    const qMatch = content1.match(/<sparql>([\s\S]+?)<\/sparql>/i) || [null, content1.replace(/```sparql|```/g, '')];
+    if (!qMatch[1]) throw new Error("Could not extract SPARQL query from AI response");
+    const generatedQuery = qMatch[1].trim();
+
+    resDiv.innerHTML = `
+      <div style="color:var(--t1); margin-bottom:8px;">
+        <div style="font-weight:600; color:var(--acc); font-size:11px; text-transform:uppercase;">Generated SPARQL:</div>
+        <pre style="background:var(--bg3); padding:8px; border-radius:4px; font-family:var(--mono); font-size:10px; margin-top:4px; white-space:pre-wrap; border:1px solid var(--ln); max-height:80px; overflow-y:auto;">${escAttr(generatedQuery)}</pre>
+      </div>
+      <div style="color:var(--t1); display:flex; align-items:center; gap:8px; margin-top:8px;">
+        <svg class="animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;color:var(--tel)"><circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="8"/></svg> Running query and synthesizing explanation…
+      </div>`;
+
+    let queryResult;
+    try {
+      queryResult = evaluateSPARQLQuery(generatedQuery);
+    } catch(queryErr) {
+      throw new Error(`SPARQL execution failed: ${queryErr.message}\nQuery: ${generatedQuery}`);
+    }
+
+    lastSparqlResults = queryResult;
+    selectAllSPARQLMatches();
+
+    let formattedResultStr = '';
+    if (queryResult.type === 'ASK') {
+      formattedResultStr = `ASK Result: ${queryResult.result}`;
+    } else if (queryResult.type === 'CONSTRUCT') {
+      formattedResultStr = `CONSTRUCT Result (Constructed triples):\n` + JSON.stringify(queryResult.triples, null, 2);
+    } else {
+      formattedResultStr = `SELECT/DESCRIBE Result (JSON rows):\n` + JSON.stringify(queryResult.rows, null, 2);
+    }
+
+    const prompt2 = `You are an AI Ontology Agent explaining query results to a user.
+User Question: "${qText}"
+Executed SPARQL:
+\`\`\`sparql
+${generatedQuery}
+\`\`\`
+Ontology Query Result:
+${formattedResultStr}
+
+Synthesize a clear, concise natural language answer based ONLY on the query results. If matching elements exist, mention that they are highlighted on the canvas. Use markdown formatting gracefully.`;
+
+    const res2 = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [{ role: 'user', content: prompt2 }],
+        temperature: 0.3
+      })
+    });
+
+    if (!res2.ok) throw new Error(`Explanation draft failed (HTTP ${res2.status})`);
+    const data2 = await res2.json();
+    const content2 = data2.choices[0].message.content;
+
+    resDiv.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <div>
+          <div style="font-weight:600; color:var(--acc); font-size:11px; text-transform:uppercase;">Generated SPARQL:</div>
+          <pre style="background:var(--bg3); padding:8px; border-radius:4px; font-family:var(--mono); font-size:10px; margin-top:4px; white-space:pre-wrap; border:1px solid var(--ln); max-height:80px; overflow-y:auto;">${escAttr(generatedQuery)}</pre>
+        </div>
+        <div style="border-top:1px solid var(--ln); padding-top:8px;">
+          <div style="font-weight:600; color:var(--grn); font-size:11px; text-transform:uppercase; margin-bottom:4px;">Answer:</div>
+          <div class="ai-ans-md" style="font-size:12px; color:var(--t0); line-height:1.5;">${parseMarkdownSimple(content2)}</div>
+        </div>
+      </div>`;
+
+  } catch(err) {
+    let extraHelp = '';
+    if (window.location.protocol === 'file:') {
+      extraHelp = `<br><br><span style="color:var(--amb)"><strong>Tip:</strong> Since you are running via file://, this error is likely caused by CORS. Launch the app through the Lollms Apps Zoo UI to bypass browser origin security restrictions.</span>`;
+    }
+    resDiv.innerHTML = `
+      <div style="color:var(--red); padding:8px; font-family:var(--mono); font-size:11px; white-space:pre-wrap;">
+        Error occurred:<br>${err.message}${extraHelp}
+      </div>`;
+  }
+}
+
+function parseMarkdownSimple(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\"(.*?)\"\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`(.*?)`/g, '<code style="background:var(--bg3); padding:1px 4px; border-radius:3px; font-family:var(--mono);">$1</code>')
+    .replace(/\n/g, '<br>');
 }
 
 /* ═══════════════════════════════════════════════
@@ -1577,6 +2279,7 @@ function autoDetectFormat(text) {
 function importOntology(fmt,text){
   cy.elements().remove();
   resetFocus();
+  importedEntities = {};
 
   let targetFmt = fmt;
   if (fmt === 'auto') {
@@ -1762,8 +2465,22 @@ function parseFunctionalStyle(text) {
 }
 
 function addNodeImport(type,name){
-  const ex=cy.nodes().filter(n=>n.data('type')===type&&n.data('label')===name);
-  if(ex.length) return ex.first().id();
+  name = cleanName(name);
+  const ex = cy.nodes().filter(n => n.data('label') === name);
+  if (ex.length) {
+    const oldNode = ex.first();
+    // Upgrade from individual to specific class/property types if needed
+    if (oldNode.data('type') === 'individual' && type !== 'individual') {
+      const cfg = typeStyles[type] || typeStyles.class;
+      const dims = nodeDims(name, type);
+      oldNode.data({
+        type: type,
+        shape: cfg.shape, fill: cfg.fill, stroke: cfg.stroke, textColor: cfg.textColor,
+        ...dims
+      });
+    }
+    return oldNode.id();
+  }
   const id=type+'__'+name.replace(/\W+/g,'_')+'__'+Date.now()+'_'+Math.random().toString(36).slice(2,5);
   const cfg=typeStyles[type]||typeStyles.class;
   const dims=nodeDims(name,type);
@@ -1774,9 +2491,9 @@ function addNodeImport(type,name){
   return id;
 }
 
-function findNid(name){ const n=cy.nodes().filter(x=>x.data('label')===name); return n.length?n.first().id():null; }
-function ensureN(type,name){ if(!findNid(name)) addNodeImport(type,name); }
-function sp(s){ return (s||'').replace(/^[a-zA-Z_]*:/,'').replace(/[<>]/g,'').trim(); }
+function findNid(name){ const n=cy.nodes().filter(x=>x.data('label')===cleanName(name)); return n.length?n.first().id():null; }
+function ensureN(type,name){ if(!findNid(name)) declareEntity(name, type); }
+function sp(s){ return cleanName(s); }
 function parseTargets(s){ return s.split(',').map(x=>sp(x.trim())).filter(Boolean); }
 
 function parseManchester(text){
@@ -1790,13 +2507,46 @@ function parseManchester(text){
     const dm=line.match(/^DataProperty:\s+(\S+)/);
     const am=line.match(/^AnnotationProperty:\s+(\S+)/);
     const im=line.match(/^Individual:\s+(\S+)/);
-    if(cm){ curType='class'; curName=sp(cm[1]); addNodeImport('class',curName); continue; }
-    if(om){ curType='property'; curName=sp(om[1]); addNodeImport('property',curName); continue; }
-    if(dm){ curType='dataprop'; curName=sp(dm[1]); addNodeImport('dataprop',curName); continue; }
-    if(am){ curType='annprop'; curName=sp(am[1]); addNodeImport('annprop',curName); continue; }
-    if(im){ curType='individual'; curName=sp(im[1]); addNodeImport('individual',curName); continue; }
+    if(cm){ curType='class'; curName=sp(cm[1]); declareEntity(curName, 'class'); continue; }
+    if(om){ curType='property'; curName=sp(om[1]); declareEntity(curName, 'property'); continue; }
+    if(dm){ curType='dataprop'; curName=sp(dm[1]); declareEntity(curName, 'dataprop'); continue; }
+    if(am){ curType='annprop'; curName=sp(am[1]); declareEntity(curName, 'annprop'); continue; }
+    if(im){ curType='individual'; curName=sp(im[1]); declareEntity(curName, 'individual'); continue; }
     if(!curName) continue;
     const srcId=findNid(curName);
+
+    // Handle SubClassOf Restrictions (e.g. hasOwner some Person)
+    const restriction = line.match(/SubClassOf:\s+(\S+)\s+(some|only|value|min|max|exactly)\s+(\S+)/i);
+    if (restriction) {
+      const pred = sp(restriction[1]);
+      const obj = sp(restriction[3]);
+      if (pred && obj) {
+        ensureN('class', curName);
+        ensureN('class', obj);
+        addEdgeSafe(pred, findNid(curName), findNid(obj));
+        continue;
+      }
+    }
+
+    // Facts: hasOwner :Joe, hasAge 5
+    const fa=line.match(/Facts:\s+(.+)/);
+    if(fa){
+      const facts = fa[1].split(',');
+      facts.forEach(fact => {
+        const parts = fact.trim().split(/\s+/);
+        if(parts.length >= 2) {
+          const pred = sp(parts[0]);
+          const obj = sp(parts[1]);
+          if(pred && obj) {
+            ensureN('individual', curName);
+            ensureN('individual', obj);
+            addEdgeSafe(pred, findNid(curName), findNid(obj));
+          }
+        }
+      });
+      continue;
+    }
+
     const sc=line.match(/SubClassOf:\s+(.+)/), eq=line.match(/EquivalentTo:\s+(.+)/), dj=line.match(/DisjointWith:\s+(.+)/);
     const ty=line.match(/Types:\s+(.+)/), do_=line.match(/Domain:\s+(.+)/), ra=line.match(/Range:\s+(.+)/);
     const la=line.match(/Annotations:.*rdfs:label\s+"([^"]+)"/), co=line.match(/Annotations:.*rdfs:comment\s+"([^"]+)"/);
@@ -1812,49 +2562,223 @@ function parseManchester(text){
 }
 
 function parseRDFXML(text){
-  const doc=new DOMParser().parseFromString(text,'application/xml');
-  const ln=uri=>(uri||'').split(/[#/]/).pop();
-  doc.querySelectorAll('Class').forEach(el=>{ const n=ln(el.getAttribute('rdf:about')||el.getAttribute('rdf:ID')||''); if(n&&n!=='owl:Class') addNodeImport('class',n); });
-  doc.querySelectorAll('ObjectProperty').forEach(el=>{ const n=ln(el.getAttribute('rdf:about')||''); if(n) addNodeImport('property',n); });
-  doc.querySelectorAll('DatatypeProperty').forEach(el=>{ const n=ln(el.getAttribute('rdf:about')||''); if(n) addNodeImport('dataprop',n); });
-  doc.querySelectorAll('NamedIndividual').forEach(el=>{ const n=ln(el.getAttribute('rdf:about')||''); if(n) addNodeImport('individual',n); });
-  doc.querySelectorAll('Class').forEach(el=>{
-    const src=ln(el.getAttribute('rdf:about')||el.getAttribute('rdf:ID')||'');
-    if(!src) return; const srcId=findNid(src);
-    el.querySelectorAll('subClassOf').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t){ ensureN('class',t); addEdgeSafe('subClassOf',srcId,findNid(t)); }});
-    el.querySelectorAll('equivalentClass').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t){ ensureN('class',t); addEdgeSafe('equivalentClass',srcId,findNid(t)); }});
-    el.querySelectorAll('disjointWith').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t){ ensureN('class',t); addEdgeSafe('disjointWith',srcId,findNid(t)); }});
-  });
-  doc.querySelectorAll('ObjectProperty').forEach(el=>{
-    const src=ln(el.getAttribute('rdf:about')||''); if(!src) return; const srcId=findNid(src);
-    el.querySelectorAll('domain').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t){ ensureN('class',t); addEdgeSafe('domain',srcId,findNid(t)); }});
-    el.querySelectorAll('range').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t){ ensureN('class',t); addEdgeSafe('range',srcId,findNid(t)); }});
-  });
-  doc.querySelectorAll('NamedIndividual').forEach(el=>{
-    const src=ln(el.getAttribute('rdf:about')||''); if(!src) return; const srcId=findNid(src);
-    el.querySelectorAll('type').forEach(x=>{ const t=ln(x.getAttribute('rdf:resource')||''); if(t&&t!=='NamedIndividual'){ ensureN('class',t); addEdgeSafe('type',srcId,findNid(t)); }});
-  });
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const rdfRoot = doc.documentElement;
+  const ln = uri => (uri || '').split(/[#/]/).pop();
+
+  const children = rdfRoot.children;
+  for (let i = 0; i < children.length; i++) {
+    const subjectEl = children[i];
+    const subjectURI = subjectEl.getAttribute('rdf:about') || subjectEl.getAttribute('rdf:ID') || '';
+    if (!subjectURI) continue;
+    const subject = ln(subjectURI);
+
+    const subjectTypeLocal = subjectEl.localName;
+    let type = 'individual';
+    if (subjectTypeLocal === 'Class') type = 'class';
+    else if (subjectTypeLocal === 'ObjectProperty') type = 'property';
+    else if (subjectTypeLocal === 'DatatypeProperty') type = 'dataprop';
+    else if (subjectTypeLocal === 'AnnotationProperty') type = 'annprop';
+    else if (subjectTypeLocal === 'NamedIndividual') type = 'individual';
+
+    declareEntity(subject, type);
+
+    const properties = subjectEl.children;
+    for (let j = 0; j < properties.length; j++) {
+      const propEl = properties[j];
+      const predicate = propEl.localName;
+      const objectURI = propEl.getAttribute('rdf:resource') || propEl.getAttribute('rdf:about') || '';
+
+      if (objectURI) {
+        const object = ln(objectURI);
+        if (predicate === 'subClassOf') {
+          declareEntity(subject, 'class');
+          declareEntity(object, 'class');
+          addEdgeSafe('subClassOf', findNid(subject), findNid(object));
+        } else if (predicate === 'equivalentClass') {
+          declareEntity(subject, 'class');
+          declareEntity(object, 'class');
+          addEdgeSafe('equivalentClass', findNid(subject), findNid(object));
+        } else if (predicate === 'disjointWith') {
+          declareEntity(subject, 'class');
+          declareEntity(object, 'class');
+          addEdgeSafe('disjointWith', findNid(subject), findNid(object));
+        } else if (predicate === 'domain') {
+          declareEntity(subject, 'property');
+          declareEntity(object, 'class');
+          addEdgeSafe('domain', findNid(subject), findNid(object));
+        } else if (predicate === 'range') {
+          declareEntity(subject, 'property');
+          declareEntity(object, 'class');
+          addEdgeSafe('range', findNid(subject), findNid(object));
+        } else if (predicate === 'subPropertyOf') {
+          declareEntity(subject, 'property');
+          declareEntity(object, 'property');
+          addEdgeSafe('subPropertyOf', findNid(subject), findNid(object));
+        } else if (predicate === 'type') {
+          if (object === 'Class') {
+            declareEntity(subject, 'class');
+          } else if (object === 'ObjectProperty') {
+            declareEntity(subject, 'property');
+          } else if (object === 'DatatypeProperty') {
+            declareEntity(subject, 'dataprop');
+          } else if (object === 'AnnotationProperty') {
+            declareEntity(subject, 'annprop');
+          } else if (object === 'NamedIndividual') {
+            declareEntity(subject, 'individual');
+          } else {
+            declareEntity(subject, 'individual');
+            declareEntity(object, 'class');
+            addEdgeSafe('type', findNid(subject), findNid(object));
+          }
+        } else {
+          declareEntity(subject, 'individual');
+          declareEntity(object, 'individual');
+          addEdgeSafe(predicate, findNid(subject), findNid(object));
+        }
+      } else {
+        const literalVal = propEl.textContent.trim();
+        if (literalVal) {
+          const node = cy.getElementById(findNid(subject));
+          if (node.length) {
+            if (predicate === 'label') {
+              node.data('rdfsLabel', literalVal);
+            } else if (predicate === 'comment') {
+              node.data('comment', literalVal);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 function parseTurtle(text){
-  const lines=text.split('\n').filter(l=>!l.trim().startsWith('@')&&!l.trim().startsWith('#')&&l.trim());
-  const stmts=lines.join(' ').split(/\.\s+/);
-  const triples=[];
-  stmts.forEach(stmt=>{
-    const p=stmt.trim().split(/\s+/);
-    if(p.length>=3){ const s=sp(p[0]),pr=p[1],o=sp(p.slice(2).join(' ').replace(/[;,]/g,'').trim()); if(s&&o) triples.push([s,pr,o]); }
-  });
-  triples.forEach(([s,p,o])=>{
-    if(p==='a'||p==='rdf:type'){
-      if(o==='owl:Class') addNodeImport('class',s);
-      else if(o==='owl:ObjectProperty') addNodeImport('property',s);
-      else if(o==='owl:DatatypeProperty') addNodeImport('dataprop',s);
-      else if(o==='owl:NamedIndividual') addNodeImport('individual',s);
+  let clean = text.replace(/#.*$/gm, '');
+
+  const prefixes = {};
+  const prefixRegex = /(?:@prefix|PREFIX)\s+([\w-]*):?\s+<([^>]+)>\s*\.?/gi;
+  let match;
+  while ((match = prefixRegex.exec(clean)) !== null) {
+    prefixes[match[1] || ''] = match[2];
+  }
+
+  clean = clean.replace(/(?:@prefix|PREFIX)\s+[\w-]*:?\s+<[^>]+>\s*\.?/gi, '');
+
+  const tokens = [];
+  let currentToken = '';
+  let inString = false;
+  let inUri = false;
+
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    if (char === '"' && clean[i-1] !== '\\') {
+      inString = !inString;
+      currentToken += char;
+    } else if (char === '<' && !inString) {
+      inUri = true;
+      currentToken += char;
+    } else if (char === '>' && !inString && inUri) {
+      inUri = false;
+      currentToken += char;
+    } else if (!inString && !inUri && (char === ' ' || char === '\t' || char === '\n' || char === '\r' || char === ';' || char === ',' || char === '.')) {
+      if (currentToken.trim()) {
+        tokens.push(currentToken.trim());
+        currentToken = '';
+      }
+      if (char === ';' || char === ',' || char === '.') {
+        tokens.push(char);
+      }
+    } else {
+      currentToken += char;
     }
-  });
-  triples.forEach(([s,p,o])=>{
-    if(p==='rdfs:subClassOf'){ ensureN('class',s); ensureN('class',o); addEdgeSafe('subClassOf',findNid(s),findNid(o)); }
-  });
+  }
+  if (currentToken.trim()) {
+    tokens.push(currentToken.trim());
+  }
+
+  let subject = null;
+  let predicate = null;
+  let state = 'SUBJECT';
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i];
+    if (token === '.') {
+      subject = null;
+      predicate = null;
+      state = 'SUBJECT';
+    } else if (token === ';') {
+      predicate = null;
+      state = 'PREDICATE';
+    } else if (token === ',') {
+      state = 'OBJECT';
+    } else {
+      if (state === 'SUBJECT') {
+        subject = token;
+        state = 'PREDICATE';
+      } else if (state === 'PREDICATE') {
+        predicate = token;
+        state = 'OBJECT';
+      } else if (state === 'OBJECT') {
+        const object = token;
+        const s = cleanName(subject);
+        const p = predicate;
+        const o = cleanName(object);
+
+        if (p === 'a' || p === 'rdf:type' || p === '<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>') {
+          if (o === 'owl:Class' || o === 'rdfs:Class' || o === 'Class') {
+            declareEntity(s, 'class');
+          } else if (o === 'owl:ObjectProperty' || o === 'ObjectProperty') {
+            declareEntity(s, 'property');
+          } else if (o === 'owl:DatatypeProperty' || o === 'DatatypeProperty') {
+            declareEntity(s, 'dataprop');
+          } else if (o === 'owl:AnnotationProperty' || o === 'AnnotationProperty') {
+            declareEntity(s, 'annprop');
+          } else if (o === 'owl:NamedIndividual' || o === 'NamedIndividual') {
+            declareEntity(s, 'individual');
+          } else {
+            declareEntity(s, 'individual');
+            declareEntity(o, 'class');
+            addEdgeSafe('type', findNid(s), findNid(o));
+          }
+        } else if (p === 'rdfs:subClassOf' || p === 'subClassOf') {
+          declareEntity(s, 'class');
+          declareEntity(o, 'class');
+          addEdgeSafe('subClassOf', findNid(s), findNid(o));
+        } else if (p === 'owl:equivalentClass' || p === 'equivalentClass') {
+          declareEntity(s, 'class');
+          declareEntity(o, 'class');
+          addEdgeSafe('equivalentClass', findNid(s), findNid(o));
+        } else if (p === 'owl:disjointWith' || p === 'disjointWith') {
+          declareEntity(s, 'class');
+          declareEntity(o, 'class');
+          addEdgeSafe('disjointWith', findNid(s), findNid(o));
+        } else if (p === 'rdfs:domain' || p === 'domain') {
+          declareEntity(s, 'property');
+          declareEntity(o, 'class');
+          addEdgeSafe('domain', findNid(s), findNid(o));
+        } else if (p === 'rdfs:range' || p === 'range') {
+          declareEntity(s, 'property');
+          declareEntity(o, 'class');
+          addEdgeSafe('range', findNid(s), findNid(o));
+        } else if (p === 'rdfs:subPropertyOf' || p === 'subPropertyOf') {
+          declareEntity(s, 'property');
+          declareEntity(o, 'property');
+          addEdgeSafe('subPropertyOf', findNid(s), findNid(o));
+        } else if (p === 'rdfs:label' || p === 'label') {
+          const node = cy.getElementById(findNid(s));
+          if (node.length) node.data('rdfsLabel', o);
+        } else if (p === 'rdfs:comment' || p === 'comment') {
+          const node = cy.getElementById(findNid(s));
+          if (node.length) node.data('comment', o);
+        } else {
+          declareEntity(s, 'individual');
+          declareEntity(o, 'individual');
+          addEdgeSafe(cleanName(p), findNid(s), findNid(o));
+        }
+      }
+    }
+  }
 }
 
 /* ═══════════════════════════════════════════════
@@ -2275,6 +3199,25 @@ function initAppProjects() {
       loadProject(savedActiveId);
     } else {
       loadProject(list[0].id);
+    }
+  }
+  initAIAssistantUI();
+}
+
+function initAIAssistantUI() {
+  if (window.location.protocol === 'file:') {
+    const resDiv = document.getElementById('ai-results');
+    if (resDiv) {
+      resDiv.innerHTML = `
+        <div style="background:var(--amb-bg); border:1px solid var(--amb); border-radius:var(--r); padding:12px; color:var(--t0); font-size:12px; line-height:1.6; margin-bottom:12px;">
+          <strong style="color:var(--amb)">⚠️ CORS Browser Security Alert</strong><br>
+          You have opened Onto directly from a local file (<code>file:///</code>). Modern browsers block API requests (CORS preflight checks) from local files for security reasons.<br><br>
+          <strong>How to resolve:</strong><br>
+          1. Launch this app directly through the <strong>Lollms Apps Zoo UI</strong> (which serves the files from the same port, avoiding CORS issues entirely).<br>
+          2. Or serve this directory using a local server (e.g., <code>python -m http.server 8000</code>) and access it via <code>http://localhost:8000</code> in your browser.
+        </div>
+        <div style="color:var(--t2); font-style:italic; padding:4px;">Type queries on the left to consult your ontology data using AI...</div>
+      `;
     }
   }
 }
