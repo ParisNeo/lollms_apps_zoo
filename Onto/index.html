@@ -642,12 +642,22 @@ function clearAll(){
    MODAL
 ═══════════════════════════════════════════════ */
 function getAISettings() {
-  const data = safeStorage.getItem('onto_ai_settings');
-  return data ? JSON.parse(data) : {
-    apiKey: '',
-    baseUrl: 'http://localhost:9642/v1',
-    model: 'gpt-4o-mini'
+  // Lollms integration - no API key needed, uses local backend
+  return {
+    apiKey: 'lollms-integrated',
+    baseUrl: 'local-bridge',
+    model: 'lollms-active-model',
+    connected: false
   };
+}
+
+function checkLollmsStatus() {
+  // Check status via Qt bridge if available
+  if (window.qtBridge) {
+    const status = window.qtBridge.getLollmsStatus();
+    return status === 'connected';
+  }
+  return false;
 }
 
 function openModal(type){
@@ -678,24 +688,36 @@ function openModal(type){
   }
 
   if(type==='ai-settings'){
-    const cfg = getAISettings();
+    const isConnected = checkLollmsStatus();
+    const statusColor = isConnected ? 'var(--grn)' : 'var(--red)';
+    const statusText = isConnected ? 'Connected' : 'Disconnected';
+    const statusIcon = isConnected ? '✓' : '✗';
+
     document.getElementById('mbody').innerHTML = `
-          <div class="mrow">
-            <label>OpenAI-V1 Compatible Base URL</label>
-            <input class="fi mono" id="ai-base" value="${escAttr(cfg.baseUrl)}" placeholder="https://api.openai.com/v1">
-          </div>
-          <div class="mrow">
-            <label>API Key / Token</label>
-            <div style="display:flex; gap:6px;">
-              <input class="fi" type="password" id="ai-key" value="${escAttr(cfg.apiKey)}" placeholder="sk-..." style="flex:1;">
-              <button class="btn btn-g" style="padding:4px 10px; font-size:11px;" onclick="pasteKeyFromClipboard(event)">Paste</button>
+          <div style="background:var(--bg3); border:1px solid var(--ln); border-radius:var(--r); padding:12px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <span style="font-size:18px; color:${statusColor}; font-weight:bold;">${statusIcon}</span>
+              <span style="font-size:12px; font-weight:600; color:${statusColor};">Lollms Backend: ${statusText}</span>
             </div>
+            <p style="font-size:11px; color:var(--t2); line-height:1.5;">
+              The AI Assistant is integrated directly with your Lollms backend. 
+              ${isConnected 
+                ? 'You can now ask natural language questions about your ontology.' 
+                : 'Please connect to Lollms in the main Settings view to enable AI features.'}
+            </p>
           </div>
           <div class="mrow">
-            <label>Model Name</label>
-            <input class="fi mono" id="ai-model" value="${escAttr(cfg.model)}" placeholder="gpt-4o-mini">
+            <label>Active Model</label>
+            <input class="fi mono" id="ai-model" value="lollms-active-model" readonly style="background:var(--bg2); color:var(--t2);">
           </div>
-          <p style="font-size:11px; color:var(--t2); margin-top:8px;">The agent automatically generates SPARQL queries based on your ontology schema, executes them locally, and synthesizes natural language answers.</p>
+          <div class="mrow">
+            <label>Connection Type</label>
+            <input class="fi" value="Local Qt Bridge (No API Key Required)" readonly style="background:var(--bg2); color:var(--t2);">
+          </div>
+          <p style="font-size:11px; color:var(--t2); margin-top:8px;">
+            The agent automatically generates SPARQL queries based on your ontology schema using your local Lollms instance, 
+            executes them locally, and synthesizes natural language answers.
+          </p>
         `;
     document.getElementById('mo').classList.add('open');
     return;
@@ -2232,18 +2254,7 @@ function parseMarkdownSimple(text) {
     .replace(/\n/g, '<br>');
 }
 
-async function pasteKeyFromClipboard(e) {
-  if (e) e.preventDefault();
-  try {
-    const text = await navigator.clipboard.readText();
-    if (text) {
-      document.getElementById('ai-key').value = text.trim();
-      toast("Key pasted from clipboard");
-    }
-  } catch (err) {
-    toast("Clipboard read permission denied or unavailable");
-  }
-}
+// Removed: pasteKeyFromClipboard - no longer needed with Lollms integration
 
 function parseCSV(text) {
   const lines = [];
@@ -2637,6 +2648,120 @@ function parseFunctionalStyle(text) {
     }
   }
 
+  // Helper: Extract entity name from various formats
+  function extractEntity(str) {
+    if (!str) return null;
+    str = str.trim();
+    // Skip complex expressions
+    if (str.includes('ObjectUnionOf') || str.includes('ObjectSomeValuesFrom') || str.includes('ObjectAllValuesFrom') || str.includes('ObjectIntersectionOf')) {
+      return null;
+    }
+    // Handle <IRI> format
+    if (str.startsWith('<') && str.endsWith('>')) {
+      const iri = str.slice(1, -1);
+      return iri.split(/[#/]/).pop();
+    }
+    // Handle prefixed names like owl:Thing, xsd:string, rdfs:IP_Knowledge
+    if (str.includes(':')) {
+      const parts = str.split(':');
+      if (parts[0] === 'owl' || parts[0] === 'xsd') {
+        return str; // Keep owl: and xsd: as-is
+      }
+      // Keep rdfs: prefixed names (like rdfs:IP_Knowledge, rdfs:Legal_annex)
+      if (parts[0] === 'rdfs' || parts[0] === 'rdf') {
+        return str;
+      }
+      return parts[1];
+    }
+    // Handle plain names - strip any parentheses
+    return str.replace(/[()]/g, '').trim();
+  }
+
+  // Helper: Parse ObjectUnionOf to extract all classes
+  function parseUnionOf(str) {
+    const classes = [];
+    if (!str || typeof str !== 'string') return classes;
+    const unionMatch = str.match(/ObjectUnionOf\(([^)]+(?:\([^)]*\)[^)]*)*)\)/i);
+    if (unionMatch) {
+      const inner = unionMatch[1];
+      // Match class references: <IRI>, prefixed names like owl:XXX, or plain names
+      const entityRegex = /<([^>]+)>|(\w+):([\w-]+)|([\w-]+)/g;
+      let entityMatch;
+      while ((entityMatch = entityRegex.exec(inner)) !== null) {
+        let ent = null;
+        if (entityMatch[1]) {
+          // Full IRI <...>
+          ent = entityMatch[1].split(/[#/]/).pop();
+        } else if (entityMatch[2] && entityMatch[3]) {
+          // Prefixed name prefix:local
+          if (['owl', 'xsd'].includes(entityMatch[2])) {
+            continue; // Skip owl: and xsd: built-ins
+          }
+          // Keep rdfs: prefixed names like rdfs:IP_Knowledge
+          ent = entityMatch[2] + ':' + entityMatch[3];
+        } else if (entityMatch[4]) {
+          // Plain name
+          ent = entityMatch[4].trim();
+        }
+        if (ent && ent.length > 0 && ent !== 'ObjectUnionOf' && ent !== 'owl:Thing' && ent !== 'owl:Nothing') {
+          classes.push(ent);
+        }
+      }
+    }
+    return classes;
+  }
+
+  // Helper: Parse ObjectSomeValuesFrom restriction
+  function parseSomeValuesFrom(str) {
+    const match = str.match(/ObjectSomeValuesFrom\(\s*(?:ObjectProperty\s*\(\s*([^\s()]+)\s*\)\s*|([^\s()]+))\s+(?:owl:Thing|owl:Nothing|Class\(\s*([^\s()]+)\s*\)|([^\s()]+))\s*\)/i);
+    if (match) {
+      const prop = extractEntity(match[1] || match[2]);
+      const target = extractEntity(match[3] || match[4]);
+      return { prop, target };
+    }
+    return null;
+  }
+
+  // Helper: Parse DataSomeValuesFrom restriction
+  function parseDataSomeValuesFrom(str) {
+    const match = str.match(/DataSomeValuesFrom\(\s*(?:DataProperty\s*\(\s*([^\s()]+)\s*\)\s*|([^\s()]+))\s+(?:rdfs:Literal|xsd:\w+)\s*\)/i);
+    if (match) {
+      const prop = extractEntity(match[1] || match[2]);
+      return { prop };
+    }
+    return null;
+  }
+
+  // Helper: Extract classes from DisjointClasses with multiple arguments
+  function parseDisjointClasses(str) {
+    const classes = [];
+    if (!str || typeof str !== 'string') return classes;
+    const disjointMatch = str.match(/DisjointClasses\(([^)]+(?:\([^)]*\)[^)]*)*)\)/i);
+    if (disjointMatch) {
+      const inner = disjointMatch[1];
+      const entityRegex = /<([^>]+)>|(\w+):(\w+)|([\w-]+)/g;
+      let entityMatch;
+      while ((entityMatch = entityRegex.exec(inner)) !== null) {
+        let ent = null;
+        if (entityMatch[1]) {
+          ent = entityMatch[1].split(/[#/]/).pop();
+        } else if (entityMatch[2] && entityMatch[3]) {
+          if (['owl', 'rdfs', 'rdf', 'xsd'].includes(entityMatch[2])) {
+            continue;
+          }
+          ent = entityMatch[3];
+        } else if (entityMatch[4]) {
+          ent = entityMatch[4].trim();
+        }
+        if (ent && ent.length > 0 && ent !== 'owl:Thing' && ent !== 'DisjointClasses') {
+          classes.push(ent);
+        }
+      }
+    }
+    return classes;
+  }
+
+  // 1. Parse Declarations
   const declRegex = /Declaration\(\s*(Class|ObjectProperty|DataProperty|AnnotationProperty|NamedIndividual)\(\s*([^\s()]+)\s*\)\s*\)/gi;
   let declMatch;
   while ((declMatch = declRegex.exec(cleanText)) !== null) {
@@ -2655,43 +2780,116 @@ function parseFunctionalStyle(text) {
     }
   }
 
-  const subClassMatches = cleanText.matchAll(/SubClassOf\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of subClassMatches) {
-    const child = sp(match[1]);
-    const parent = sp(match[2]);
-    if (child && parent) {
-      ensureN('class', child);
-      ensureN('class', parent);
-      addEdgeSafe('subClassOf', findNid(child), findNid(parent));
+  // 2. Parse SubClassOf (including complex expressions)
+  const subClassRegex = /SubClassOf\(\s*(?:Class\()?([^\s()]+)\)?\s+([^)]+(?:\([^)]*\)[^)]*)*)\s*\)/gi;
+  let subMatch;
+  while ((subMatch = subClassRegex.exec(cleanText)) !== null) {
+    const child = extractEntity(subMatch[1]);
+    const parentExpr = subMatch[2];
+
+    if (child) {
+      // Check if parent is ObjectUnionOf
+      const unionClasses = parseUnionOf(parentExpr);
+      if (unionClasses.length > 0) {
+        unionClasses.forEach(pc => {
+          ensureN('class', pc);
+          addEdgeSafe('subClassOf', findNid(child), findNid(pc));
+        });
+        continue;
+      }
+
+      // Check if parent is ObjectSomeValuesFrom restriction
+      const restriction = parseSomeValuesFrom(parentExpr);
+      if (restriction && restriction.prop && restriction.target) {
+        ensureN('class', child);
+        ensureN('class', restriction.target);
+        ensureN('property', restriction.prop);
+        addEdgeSafe(restriction.prop, findNid(child), findNid(restriction.target));
+        continue;
+      }
+
+      // Skip if parentExpr contains complex expressions we can't handle
+      if (parentExpr.includes('ObjectUnionOf') || parentExpr.includes('ObjectSomeValuesFrom') || parentExpr.includes('ObjectAllValuesFrom')) {
+        continue;
+      }
+
+      // Simple SubClassOf
+      const parent = extractEntity(parentExpr);
+      if (parent && parent !== 'owl:Thing' && parent.length < 50) {
+        ensureN('class', child);
+        ensureN('class', parent);
+        addEdgeSafe('subClassOf', findNid(child), findNid(parent));
+      }
     }
   }
 
-  const eqClassMatches = cleanText.matchAll(/EquivalentClasses\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of eqClassMatches) {
-    const c1 = sp(match[1]);
-    const c2 = sp(match[2]);
-    if (c1 && c2) {
-      ensureN('class', c1);
-      ensureN('class', c2);
-      addEdgeSafe('equivalentClass', findNid(c1), findNid(c2));
+  // 3. Parse EquivalentClasses (including ObjectUnionOf)
+  const eqClassRegex = /EquivalentClasses\(\s*(?:Class\()?([^\s()]+)\)?\s+([^)]+(?:\([^)]*\)[^)]*)*)\s*\)/gi;
+  let eqMatch;
+  while ((eqMatch = eqClassRegex.exec(cleanText)) !== null) {
+    const c1 = extractEntity(eqMatch[1]);
+    const expr = eqMatch[2];
+
+    if (c1) {
+      // Check for ObjectUnionOf - create edges to ALL members
+      const unionClasses = parseUnionOf(expr);
+      if (unionClasses.length > 0) {
+        ensureN('class', c1);
+        unionClasses.forEach(uc => {
+          ensureN('class', uc);
+          addEdgeSafe('equivalentClass', findNid(c1), findNid(uc));
+        });
+        continue;
+      }
+
+      // Check if c1 itself is part of a union (reverse pattern)
+      const c1UnionCheck = parseUnionOf(eqMatch[1]);
+      if (c1UnionCheck.length > 0) {
+        const c2 = extractEntity(expr);
+        if (c2) {
+          ensureN('class', c2);
+          c1UnionCheck.forEach(uc => {
+            ensureN('class', uc);
+            addEdgeSafe('equivalentClass', findNid(uc), findNid(c2));
+          });
+          continue;
+        }
+      }
+
+      // Skip complex expressions we can't handle
+      if (expr.includes('ObjectUnionOf') || expr.includes('ObjectSomeValuesFrom')) {
+        continue;
+      }
+
+      const c2 = extractEntity(expr);
+      if (c2 && c2 !== c1 && c2.length < 50) {
+        ensureN('class', c1);
+        ensureN('class', c2);
+        addEdgeSafe('equivalentClass', findNid(c1), findNid(c2));
+      }
     }
   }
 
-  const djClassMatches = cleanText.matchAll(/DisjointClasses\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of djClassMatches) {
-    const c1 = sp(match[1]);
-    const c2 = sp(match[2]);
-    if (c1 && c2) {
-      ensureN('class', c1);
-      ensureN('class', c2);
-      addEdgeSafe('disjointWith', findNid(c1), findNid(c2));
+  // 4. Parse DisjointClasses (multiple arguments)
+  const djClassRegex = /DisjointClasses\(([^)]+(?:\([^)]*\)[^)]*)*)\)/gi;
+  let djMatch;
+  while ((djMatch = djClassRegex.exec(cleanText)) !== null) {
+    const classes = parseDisjointClasses(djMatch[0]);
+    for (let i = 0; i < classes.length; i++) {
+      for (let j = i + 1; j < classes.length; j++) {
+        ensureN('class', classes[i]);
+        ensureN('class', classes[j]);
+        addEdgeSafe('disjointWith', findNid(classes[i]), findNid(classes[j]));
+      }
     }
   }
 
-  const classAssertMatches = cleanText.matchAll(/ClassAssertion\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of classAssertMatches) {
-    const cls = sp(match[1]);
-    const ind = sp(match[2]);
+  // 5. Parse ClassAssertion (type assertions)
+  const classAssertRegex = /ClassAssertion\(\s*(?:Class\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi;
+  let caMatch;
+  while ((caMatch = classAssertRegex.exec(cleanText)) !== null) {
+    const cls = extractEntity(caMatch[1]);
+    const ind = extractEntity(caMatch[2]);
     if (cls && ind) {
       ensureN('class', cls);
       ensureN('individual', ind);
@@ -2699,10 +2897,12 @@ function parseFunctionalStyle(text) {
     }
   }
 
-  const opDomainMatches = cleanText.matchAll(/ObjectPropertyDomain\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of opDomainMatches) {
-    const prop = sp(match[1]);
-    const cls = sp(match[2]);
+  // 6. Parse ObjectPropertyDomain
+  const opDomainRegex = /ObjectPropertyDomain\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi;
+  let opdMatch;
+  while ((opdMatch = opDomainRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(opdMatch[1]);
+    const cls = extractEntity(opdMatch[2]);
     if (prop && cls) {
       ensureN('property', prop);
       ensureN('class', cls);
@@ -2710,45 +2910,69 @@ function parseFunctionalStyle(text) {
     }
   }
 
-  const opRangeMatches = cleanText.matchAll(/ObjectPropertyRange\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of opRangeMatches) {
-    const prop = sp(match[1]);
-    const cls = sp(match[2]);
-    if (prop && cls) {
-      ensureN('property', prop);
-      ensureN('class', cls);
-      addEdgeSafe('range', findNid(prop), findNid(cls));
-    }
-  }
+  // 7. Parse ObjectPropertyRange (CRITICAL - handles most connections)
+  const opRangeRegex = /ObjectPropertyRange\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+([^)]+(?:\([^)]*\)[^)]*)*)\s*\)/gi;
+  let oprMatch;
+  while ((oprMatch = opRangeRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(oprMatch[1]);
+    const rangeExpr = oprMatch[2];
 
-  const dpDomainMatches = cleanText.matchAll(/DataPropertyDomain\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of dpDomainMatches) {
-    const prop = sp(match[1]);
-    const cls = sp(match[2]);
-    if (prop && cls) {
-      ensureN('dataprop', prop);
-      ensureN('class', cls);
-      addEdgeSafe('domain', findNid(prop), findNid(cls));
-    }
-  }
+    if (prop) {
+      // Check for ObjectUnionOf range - create edges to ALL members
+      const unionClasses = parseUnionOf(rangeExpr);
+      if (unionClasses.length > 0) {
+        ensureN('property', prop);
+        unionClasses.forEach(uc => {
+          ensureN('class', uc);
+          addEdgeSafe('range', findNid(prop), findNid(uc));
+        });
+        continue;
+      }
 
-  const dpRangeMatches = cleanText.matchAll(/DataPropertyRange\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Datatype\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of dpRangeMatches) {
-    const prop = sp(match[1]);
-    const rangeVal = sp(match[2]);
-    if (prop && rangeVal) {
-      ensureN('dataprop', prop);
-      if (!rangeVal.startsWith('xsd:') && !rangeVal.startsWith('rdfs:')) {
-        ensureN('class', rangeVal);
-        addEdgeSafe('range', findNid(prop), findNid(rangeVal));
+      // Skip complex expressions we can't handle
+      if (rangeExpr.includes('ObjectUnionOf') || rangeExpr.includes('ObjectSomeValuesFrom')) {
+        continue;
+      }
+
+      const cls = extractEntity(rangeExpr);
+      if (cls && cls.length < 50) {
+        ensureN('property', prop);
+        ensureN('class', cls);
+        addEdgeSafe('range', findNid(prop), findNid(cls));
       }
     }
   }
 
-  const subPropMatches = cleanText.matchAll(/SubObjectPropertyOf\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:ObjectProperty\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of subPropMatches) {
-    const subP = sp(match[1]);
-    const superP = sp(match[2]);
+  // 8. Parse DataPropertyDomain
+  const dpDomainRegex = /DataPropertyDomain\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Class\()?([^\s()]+)\)?\s*\)/gi;
+  let dpdMatch;
+  while ((dpdMatch = dpDomainRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(dpdMatch[1]);
+    const cls = extractEntity(dpdMatch[2]);
+    if (prop && cls) {
+      ensureN('dataprop', prop);
+      ensureN('class', cls);
+      addEdgeSafe('domain', findNid(prop), findNid(cls));
+    }
+  }
+
+  // 9. Parse DataPropertyRange
+  const dpRangeRegex = /DataPropertyRange\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:Datatype\()?([^\s()]+)\)?\s*\)/gi;
+  let dprMatch;
+  while ((dprMatch = dpRangeRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(dprMatch[1]);
+    const rangeVal = extractEntity(dprMatch[2]);
+    if (prop) {
+      ensureN('dataprop', prop);
+    }
+  }
+
+  // 10. Parse SubObjectPropertyOf
+  const subPropRegex = /SubObjectPropertyOf\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:ObjectProperty\()?([^\s()]+)\)?\s*\)/gi;
+  let sopMatch;
+  while ((sopMatch = subPropRegex.exec(cleanText)) !== null) {
+    const subP = extractEntity(sopMatch[1]);
+    const superP = extractEntity(sopMatch[2]);
     if (subP && superP) {
       ensureN('property', subP);
       ensureN('property', superP);
@@ -2756,34 +2980,116 @@ function parseFunctionalStyle(text) {
     }
   }
 
-  const opAssertMatches = cleanText.matchAll(/ObjectPropertyAssertion\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi);
-  for (const match of opAssertMatches) {
-    const prop = sp(match[1]);
-    const src = sp(match[2]);
-    const tgt = sp(match[3]);
+  // 11. Parse ObjectPropertyAssertion
+  const opAssertRegex = /ObjectPropertyAssertion\(\s*(?:ObjectProperty\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s+(?:NamedIndividual\()?([^\s()]+)\)?\s*\)/gi;
+  let opaMatch;
+  while ((opaMatch = opAssertRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(opaMatch[1]);
+    const src = extractEntity(opaMatch[2]);
+    const tgt = extractEntity(opaMatch[3]);
     if (prop && src && tgt) {
-      ensureN('property', prop);
       ensureN('individual', src);
       ensureN('individual', tgt);
       addEdgeSafe(prop, findNid(src), findNid(tgt));
     }
   }
 
-  const annMatches = cleanText.matchAll(/AnnotationAssertion\(\s*(?:AnnotationProperty\()?([^\s()]+)\)?\s+([^\s()]+)\s+"([^"]+)"(?:@[a-zA-Z-]+)?\s*\)/gi);
-  for (const match of annMatches) {
-    const prop = sp(match[1]);
-    const subject = sp(match[2]);
-    const val = match[3];
+  // 12. Parse SameIndividual
+  const sameIndRegex = /SameIndividual\(([^)]+)\)/gi;
+  let siMatch;
+  while ((siMatch = sameIndRegex.exec(cleanText)) !== null) {
+    const inner = siMatch[1];
+    const individuals = inner.match(/(<[^>]+>|[\w-]+)/g) || [];
+    const extracted = individuals.map(extractEntity).filter(e => e);
+    for (let i = 0; i < extracted.length; i++) {
+      for (let j = i + 1; j < extracted.length; j++) {
+        ensureN('individual', extracted[i]);
+        ensureN('individual', extracted[j]);
+        // Use a special relation for sameIndividual
+        addEdgeSafe('sameAs', findNid(extracted[i]), findNid(extracted[j]));
+      }
+    }
+  }
+
+  // 13. Parse DifferentIndividuals
+  const diffIndRegex = /DifferentIndividuals\(([^)]+)\)/gi;
+  let diMatch;
+  while ((diMatch = diffIndRegex.exec(cleanText)) !== null) {
+    const inner = diMatch[1];
+    const individuals = inner.match(/(<[^>]+>|[\w-]+)/g) || [];
+    const extracted = individuals.map(extractEntity).filter(e => e);
+    for (let i = 0; i < extracted.length; i++) {
+      for (let j = i + 1; j < extracted.length; j++) {
+        ensureN('individual', extracted[i]);
+        ensureN('individual', extracted[j]);
+        addEdgeSafe('differentFrom', findNid(extracted[i]), findNid(extracted[j]));
+      }
+    }
+  }
+
+  // 14. Parse AnnotationAssertion (for labels and comments)
+  const annRegex = /AnnotationAssertion\(\s*(?:AnnotationProperty\()?([^\s()]+)\)?\s+(?:rdfs:label|rdfs:comment|[\w:]+)\s+(?:<[^>]+>|[\w:]+)\s+"([^"]+)"(?:@[a-zA-Z-]+)?\s*\)/gi;
+  let annMatch;
+  while ((annMatch = annRegex.exec(cleanText)) !== null) {
+    const prop = extractEntity(annMatch[1]);
+    const val = annMatch[2];
+
+    // Extract subject from the annotation - need to re-match with subject
+    const annFullRegex = /AnnotationAssertion\(\s*(?:AnnotationProperty\()?([^\s()]+)\)?\s+(?:rdfs:label|rdfs:comment|[\w:]*)?\s*(?:<([^>]+)>|([\w:]+))\s+"([^"]+)"(?:@[a-zA-Z-]+)?\s*\)/gi;
+    const fullMatch = annFullRegex.exec(annMatch[0]);
+    if (fullMatch) {
+      const subjectIRI = fullMatch[2] || fullMatch[3];
+      const subject = extractEntity(subjectIRI ? '<' + subjectIRI + '>' : subjectIRI);
+      const annotationVal = fullMatch[4];
+
+      const nid = findNid(subject);
+      if (nid) {
+        const node = cy.getElementById(nid);
+        if (node.length) {
+          const propLower = prop.toLowerCase();
+          if (propLower === 'label' || propLower === 'rdfs:label') {
+            node.data('rdfsLabel', annotationVal);
+          } else if (propLower === 'comment' || propLower === 'rdfs:comment') {
+            node.data('comment', annotationVal);
+          }
+        }
+      }
+    }
+  }
+
+  // 15. Parse AnnotationAssertion with IRI subject format
+  const annIRIRegex = /AnnotationAssertion\(\s*(?:AnnotationProperty\()?(rdfs:label|rdfs:comment)\)?\s+<([^>]+)>\s+"([^"]+)"(?:@[a-zA-Z-]+)?\s*\)/gi;
+  let annIRIMatch;
+  while ((annIRIMatch = annIRIRegex.exec(cleanText)) !== null) {
+    const prop = annIRIMatch[1];
+    const subjectIRI = annIRIMatch[2];
+    const val = annIRIMatch[3];
+    const subject = subjectIRI.split(/[#/]/).pop();
+
     const nid = findNid(subject);
     if (nid) {
       const node = cy.getElementById(nid);
       if (node.length) {
-        if (prop.toLowerCase() === 'label' || prop.toLowerCase() === 'rdfs:label') {
+        if (prop.toLowerCase().includes('label')) {
           node.data('rdfsLabel', val);
-        } else if (prop.toLowerCase() === 'comment' || prop.toLowerCase() === 'rdfs:comment') {
+        } else if (prop.toLowerCase().includes('comment')) {
           node.data('comment', val);
         }
       }
+    }
+  }
+
+  // 16. Parse SubClassOf with DataSomeValuesFrom (for data property connections)
+  const subClassDataRegex = /SubClassOf\(\s*(?:Class\()?([^\s()]+)\)?\s+DataSomeValuesFrom\(\s*(?:DataProperty\()?([^\s()]+)\)?\s+(?:rdfs:Literal|xsd:\w+)\s*\)\s*\)/gi;
+  let scdMatch;
+  while ((scdMatch = subClassDataRegex.exec(cleanText)) !== null) {
+    const cls = extractEntity(scdMatch[1]);
+    const dp = extractEntity(scdMatch[2]);
+    if (cls && dp) {
+      ensureN('class', cls);
+      ensureN('dataprop', dp);
+      // Create a range edge from dataprop to class
+      addEdgeSafe('range', findNid(dp), findNid(cls));
     }
   }
 }
@@ -3864,20 +4170,16 @@ function initAppProjects() {
 }
 
 function initAIAssistantUI() {
-  if (window.location.protocol === 'file:') {
-    const resDiv = document.getElementById('ai-results');
-    if (resDiv) {
-      resDiv.innerHTML = `
-        <div style="background:var(--amb-bg); border:1px solid var(--amb); border-radius:var(--r); padding:12px; color:var(--t0); font-size:12px; line-height:1.6; margin-bottom:12px;">
-          <strong style="color:var(--amb)">⚠️ CORS Browser Security Alert</strong><br>
-          You have opened Onto directly from a local file (<code>file:///</code>). Modern browsers block API requests (CORS preflight checks) from local files for security reasons.<br><br>
-          <strong>How to resolve:</strong><br>
-          1. Launch this app directly through the <strong>Lollms Apps Zoo UI</strong> (which serves the files from the same port, avoiding CORS issues entirely).<br>
-          2. Or serve this directory using a local server (e.g., <code>python -m http.server 8000</code>) and access it via <code>http://localhost:8000</code> in your browser.
-        </div>
-        <div style="color:var(--t2); font-style:italic; padding:4px;">Type queries on the left to consult your ontology data using AI...</div>
-      `;
-    }
+  // Lollms integration - check connection status on load
+  console.log('[OntoBuilder] AI Assistant initialized with Lollms integration');
+
+  // Set up Qt bridge if available (running in Aitiana Studio)
+  if (window.qtBridge) {
+    console.log('[OntoBuilder] Qt bridge detected - Lollms integration active');
+    const initialStatus = window.qtBridge.getLollmsStatus();
+    onLollmsStatusChange(initialStatus);
+  } else {
+    console.log('[OntoBuilder] Running in standalone mode - Qt bridge not available');
   }
 }
 
