@@ -178,6 +178,11 @@ textarea.fi{resize:vertical;min-height:54px}
     Styles
   </button>
   <div class="tsep"></div>
+  <button class="tbtn" onclick="openModal('help')" style="color:var(--sky);">
+    <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="6"/><path d="M7 10h.01M7 7V4.5"/></svg>
+    Help & Tutorial
+  </button>
+  <div class="tsep"></div>
   <button class="tbtn" onclick="toggleCP('manchester')">
     <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3.5 4.5 1 7 3.5 9.5"/><polyline points="10.5 4.5 13 7 10.5 9.5"/><line x1="8" y1="2" x2="6" y2="12"/></svg>
     Export / Query
@@ -264,15 +269,31 @@ textarea.fi{resize:vertical;min-height:54px}
         </div>
         <select id="sparql-templates" class="fi fi-sm" onchange="loadSPARQLTemplate(this.value)" style="background:var(--bg3); font-size:11px; padding:4px 8px;">
           <option value="">— Select Template Query —</option>
-          <option value="classes">List All Classes</option>
-          <option value="properties">List All Object Properties</option>
-          <option value="individuals">List All Individuals with Types</option>
-          <option value="subclasses">Find SubClassOf Relationships</option>
-          <option value="domains-ranges">Object Properties with Domains and Ranges</option>
-          <option value="labels">Query Node Comments/Labels</option>
-          <option value="ask-any">ASK query for any dogs</option>
-          <option value="construct">CONSTRUCT Equivalent Class Subgraph</option>
-          <option value="describe">DESCRIBE query on Fido</option>
+          <optgroup label="Basic Retrieval (SELECT)">
+            <option value="classes">List All Classes</option>
+            <option value="properties">List All Object Properties</option>
+            <option value="dataprops">List All Data Properties</option>
+            <option value="individuals">List All Individuals with Types</option>
+          </optgroup>
+          <optgroup label="Structural Hierarchy & Schema Analysis">
+            <option value="subclasses">Find SubClassOf Hierarchies</option>
+            <option value="domains-ranges">Object Properties with Domains/Ranges</option>
+            <option value="labels">Query Comments & Annotation Labels</option>
+          </optgroup>
+          <optgroup label="Fact Inspection & Statistics">
+            <option value="all-facts">List All Object Property Assertions</option>
+            <option value="count-entities">Count Entities by Category</option>
+          </optgroup>
+          <optgroup label="Graph Construction (CONSTRUCT Subgraphs)">
+            <option value="construct">CONSTRUCT Equivalent Classes Subgraph</option>
+            <option value="construct-subclasses">CONSTRUCT SubClass Hierarchy Subgraph</option>
+            <option value="construct-domains">CONSTRUCT Domains and Ranges Map</option>
+            <option value="construct-facts">CONSTRUCT Full Fact Assertions Map</option>
+          </optgroup>
+          <optgroup label="Validation & Node Extraction (ASK / DESCRIBE)">
+            <option value="ask-any">ASK if any dogs exist</option>
+            <option value="describe">DESCRIBE specific node :Fido</option>
+          </optgroup>
         </select>
         <textarea id="sparql-query-input" class="fi mono" style="flex:1; resize:none; background:var(--bg2); color:var(--t0); border:1px solid var(--ln); line-height: 1.5; font-size:11px;" spellcheck="false"></textarea>
       </div>
@@ -743,7 +764,7 @@ function modalOK(){
   const a = pendingAction;
   if(!a) return;
 
-  if(a.type==='style-settings'){ closeModal(); return; }
+  if(a.type==='style-settings' || a.type==='help'){ closeModal(); return; }
 
   if(a.type==='ai-settings'){
     const baseUrl = document.getElementById('ai-base').value.trim();
@@ -1887,6 +1908,11 @@ PREFIX owl: <http://www.w3.org/2002/07/owl#>
 SELECT ?property WHERE {
   ?property rdf:type owl:ObjectProperty .
 }`,
+    dataprops: `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?property WHERE {
+  ?property rdf:type owl:DatatypeProperty .
+}`,
     individuals: `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 SELECT ?individual ?class WHERE {
@@ -1907,6 +1933,19 @@ SELECT ?node ?label ?comment WHERE {
   ?node rdfs:label ?label .
   OPTIONAL { ?node rdfs:comment ?comment }
 }`,
+    'all-facts': `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?subject ?property ?object WHERE {
+  ?subject ?property ?object .
+  ?subject rdf:type owl:NamedIndividual .
+  FILTER(?property != rdf:type)
+}`,
+    'count-entities': `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+SELECT ?type (COUNT(?entity) AS ?count) WHERE {
+  ?entity rdf:type ?type .
+  FILTER(?type IN (owl:Class, owl:ObjectProperty, owl:DatatypeProperty, owl:NamedIndividual))
+} GROUP BY ?type`,
     'ask-any': `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX : <${baseIRI}>
 ASK WHERE {
@@ -1917,6 +1956,28 @@ CONSTRUCT {
   ?c1 owl:equivalentClass ?c2 .
 } WHERE {
   ?c1 owl:equivalentClass ?c2 .
+}`,
+    'construct-subclasses': `PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+CONSTRUCT {
+  ?child rdfs:subClassOf ?parent .
+} WHERE {
+  ?child rdfs:subClassOf ?parent .
+}`,
+    'construct-domains': `PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+CONSTRUCT {
+  ?prop rdfs:domain ?domain ; rdfs:range ?range .
+} WHERE {
+  ?prop rdfs:domain ?domain .
+  OPTIONAL { ?prop rdfs:range ?range }
+}`,
+    'construct-facts': `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+CONSTRUCT {
+  ?sub ?pred ?obj .
+} WHERE {
+  ?sub ?pred ?obj .
+  ?sub rdf:type owl:NamedIndividual .
+  FILTER(?pred != rdf:type)
 }`,
     describe: `DESCRIBE :Fido`
   };
