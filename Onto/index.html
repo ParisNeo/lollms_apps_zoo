@@ -754,19 +754,22 @@ function showImport(){
     <option value="csv">CSV Spreadsheet to RDF (Tabular)</option>
   </select></div>
   <div id="csv-options" class="mrow" style="display:none; background:var(--bg3); padding:10px; border-radius:var(--r); border:1px solid var(--ln); margin-bottom:12px;">
-    <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2); margin-bottom:6px;">CSV Schema Rules:</div>
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2); margin-bottom:6px;">CSV Importer Setup:</div>
     <div style="display:flex; flex-direction:column; gap:6px;">
-      <label style="display:flex; align-items:center; gap:6px; font-size:11px; text-transform:none; color:var(--t1); cursor:pointer;">
-        <input type="checkbox" id="csv-first-col-id" checked> First column is Subject ID / Name
-      </label>
-      <div style="font-size:10px; color:var(--t2); line-height:1.4;">Other columns map to predicates. Cell values starting with a colon (e.g. <code>:Fido</code>) are mapped as object properties (nodes), others as text attributes.</div>
+      <div style="font-size:10px; color:var(--t2); line-height:1.4;">Paste your CSV spreadsheet below or load a file to configure headers dynamically.</div>
+
+      <div id="csv-mapper-container" style="margin-top:8px; display:none;">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2); margin-bottom:6px;">Map Column Roles:</div>
+        <div id="csv-mapper-list" style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; background:var(--bg2); padding:8px; border-radius:var(--r); border:1px solid var(--ln);">
+        </div>
+      </div>
     </div>
   </div>
   <div class="mrow" style="margin-bottom:14px">
     <label>Load from File</label>
     <input type="file" id="import-file" class="fi" accept=".owl,.rdf,.ttl,.omn,.fss,.txt" style="padding:4px;" onchange="handleImportFile(this)">
   </div>
-  <div class="mrow"><label>Ontology text</label><textarea class="fi mono" id="itxt" rows="10" placeholder="Paste or load your ontology here…"></textarea></div>`;
+  <div class="mrow"><label>Ontology text</label><textarea class="fi mono" id="itxt" rows="10" placeholder="Paste or load your ontology here…" oninput="updateCSVMapper()"></textarea></div>`;
   document.getElementById('mo').classList.add('open');
 }
 
@@ -775,6 +778,7 @@ function handleImportFormatChange(val) {
   if (val === 'csv') {
     fileInput.accept = ".csv,.txt";
     document.getElementById('csv-options').style.display = '';
+    updateCSVMapper();
   } else {
     fileInput.accept = ".owl,.rdf,.ttl,.omn,.fss,.txt";
     document.getElementById('csv-options').style.display = 'none';
@@ -2345,7 +2349,12 @@ function handleImportFile(input) {
     const fmtSel = document.getElementById('ifmt');
     if (fmtSel.value === 'auto') {
       const detected = autoDetectFormat(text);
+      fmtSel.value = detected;
+      handleImportFormatChange(detected);
       toast(`Detected format: ${detected}`);
+    }
+    if (fmtSel.value === 'csv') {
+      updateCSVMapper();
     }
   };
   r.readAsText(file);
@@ -2679,7 +2688,48 @@ function parseRDFXML(text){
     for (let j = 0; j < properties.length; j++) {
       const propEl = properties[j];
       const predicate = propEl.localName;
-      const objectURI = propEl.getAttribute('rdf:resource') || propEl.getAttribute('rdf:about') || '';
+
+      // 1. Parse Anonymous OWL Class Restrictions (e.g. Dog subClassOf (hasOwner some Person))
+      const restrictionEl = propEl.querySelector('Restriction');
+      if (restrictionEl) {
+        const onPropEl = restrictionEl.querySelector('onProperty');
+        const targetEl = restrictionEl.querySelector('someValuesFrom, allValuesFrom, hasValue, target');
+        if (onPropEl && targetEl) {
+          const relType = ln(onPropEl.getAttribute('rdf:resource') || onPropEl.getAttribute('rdf:about') || '');
+          const targetObj = ln(targetEl.getAttribute('rdf:resource') || targetEl.getAttribute('rdf:about') || '');
+          if (relType && targetObj) {
+            declareEntity(subject, 'class');
+            declareEntity(targetObj, 'class');
+            addEdgeSafe(relType, findNid(subject), findNid(targetObj));
+            continue;
+          }
+        }
+      }
+
+      // 2. Parse nested boolean collections (unionOf / intersectionOf) inside domains/ranges
+      const unionEl = propEl.querySelector('unionOf, intersectionOf');
+      if (unionEl) {
+        const listClasses = unionEl.querySelectorAll('Class, Description');
+        listClasses.forEach(clsEl => {
+          const classURI = clsEl.getAttribute('rdf:about') || clsEl.getAttribute('rdf:resource') || '';
+          if (classURI) {
+            const classObj = ln(classURI);
+            declareEntity(subject, type);
+            declareEntity(classObj, 'class');
+            addEdgeSafe(predicate, findNid(subject), findNid(classObj));
+          }
+        });
+        continue;
+      }
+
+      // 3. Fallback: Search descendant nodes if flat attribute target is empty
+      let objectURI = propEl.getAttribute('rdf:resource') || propEl.getAttribute('rdf:about') || '';
+      if (!objectURI) {
+        const descendant = propEl.querySelector('[rdf:about], [rdf:resource]');
+        if (descendant) {
+          objectURI = descendant.getAttribute('rdf:about') || descendant.getAttribute('rdf:resource') || '';
+        }
+      }
 
       if (objectURI) {
         const object = ln(objectURI);
@@ -2945,53 +2995,129 @@ function parseCSV(text) {
   return lines;
 }
 
+let currentCsvHeaders = [];
+let currentCsvRows = [];
+
+function updateCSVMapper() {
+  const txt = document.getElementById('itxt').value.trim();
+  const container = document.getElementById('csv-mapper-container');
+  const list = document.getElementById('csv-mapper-list');
+  if (!txt) {
+    if (container) container.style.display = 'none';
+    return;
+  }
+
+  try {
+    const rows = parseCSV(txt);
+    if (rows.length < 1) {
+      if (container) container.style.display = 'none';
+      return;
+    }
+
+    currentCsvHeaders = rows[0].map(h => h.trim());
+    currentCsvRows = rows.slice(1);
+    const previewRow = rows[1] || [];
+
+    if (container) container.style.display = 'block';
+    if (list) {
+      list.innerHTML = currentCsvHeaders.map((header, idx) => {
+        const previewVal = (previewRow[idx] || '').trim();
+        let defaultRole = 'data';
+        if (idx === 0) defaultRole = 'subject';
+        else if (header.toLowerCase() === 'type' || header.toLowerCase() === 'class') defaultRole = 'type';
+        else if (header.toLowerCase() === 'label' || header.toLowerCase() === 'name') defaultRole = 'label';
+        else if (header.toLowerCase() === 'comment' || header.toLowerCase() === 'description') defaultRole = 'comment';
+
+        return `
+          <div style="display:flex; align-items:center; gap:8px; font-size:11px; color:var(--t1);">
+            <span style="font-family:var(--mono); font-size:10px; width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escAttr(header)}">${idx + 1}. <strong>${escAttr(header)}</strong></span>
+            <span style="flex:1; color:var(--t2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-style:italic;" title="${escAttr(previewVal)}">Preview: "${escAttr(previewVal)}"</span>
+            <select class="fi fi-sm csv-col-role" data-col-idx="${idx}" style="width:160px; background:var(--bg3); padding:2px; font-size:11px;" onchange="validateCSVMapperRole(this)">
+              <option value="subject" ${defaultRole==='subject'?'selected':''}>Subject ID (Node)</option>
+              <option value="type" ${defaultRole==='type'?'selected':''}>Class Type (rdf:type)</option>
+              <option value="label" ${defaultRole==='label'?'selected':''}>rdfs:label</option>
+              <option value="comment" ${defaultRole==='comment'?'selected':''}>rdfs:comment</option>
+              <option value="object" ${defaultRole==='object'?'selected':''}>Object Property (Edge)</option>
+              <option value="data" ${defaultRole==='data'?'selected':''}>Data Property (Text)</option>
+              <option value="ignore" ${defaultRole==='ignore'?'selected':''}>— Ignore —</option>
+            </select>
+          </div>
+        `;
+      }).join('');
+    }
+  } catch(e) {
+    if (container) container.style.display = 'none';
+  }
+}
+
+function validateCSVMapperRole(sel) {
+  if (sel.value === 'subject') {
+    document.querySelectorAll('.csv-col-role').forEach(other => {
+      if (other !== sel && other.value === 'subject') {
+        other.value = 'data';
+      }
+    });
+  }
+}
+
 function importCSV(text) {
   const rows = parseCSV(text);
   if (rows.length < 2) throw new Error("CSV requires a header row and at least one data row");
 
   const headers = rows[0].map(h => h.trim());
   const dataRows = rows.slice(1);
-  const firstColIsId = document.getElementById('csv-first-col-id').checked;
+
+  const colRoles = [];
+  let subjectColIdx = -1;
+
+  document.querySelectorAll('.csv-col-role').forEach(sel => {
+    const idx = parseInt(sel.getAttribute('data-col-idx'));
+    const role = sel.value;
+    colRoles[idx] = role;
+    if (role === 'subject') subjectColIdx = idx;
+  });
+
+  if (subjectColIdx === -1) {
+    subjectColIdx = 0;
+    for (let i = 0; i < headers.length; i++) {
+      colRoles[i] = (i === 0) ? 'subject' : 'data';
+    }
+  }
 
   dataRows.forEach((row, rowIdx) => {
-    let subject = '';
-    let startIndex = 0;
-    if (firstColIsId) {
-      subject = sp(row[0]);
-      startIndex = 1;
-    } else {
-      subject = `Individual_${rowIdx + 1}`;
-      startIndex = 0;
-    }
+    const rawSubject = (row[subjectColIdx] || '').trim();
+    if (!rawSubject) return;
+    const subject = sp(rawSubject);
 
-    if (!subject) return;
     declareEntity(subject, 'individual');
 
-    for (let i = startIndex; i < row.length; i++) {
+    for (let i = 0; i < row.length; i++) {
+      if (i === subjectColIdx) continue;
+      const role = colRoles[i] || 'ignore';
+      if (role === 'ignore') continue;
+
       const predicate = sp(headers[i]);
       const cellVal = (row[i] || '').trim();
       if (!predicate || !cellVal) continue;
 
-      if (predicate.toLowerCase() === 'type' || predicate.toLowerCase() === 'class') {
+      if (role === 'type') {
         const classObj = sp(cellVal);
         declareEntity(classObj, 'class');
         addEdgeSafe('type', findNid(subject), findNid(classObj));
-      } else if (predicate.toLowerCase() === 'label') {
+      } else if (role === 'label') {
         const node = cy.getElementById(findNid(subject));
         if (node.length) node.data('rdfsLabel', cellVal);
-      } else if (predicate.toLowerCase() === 'comment') {
+      } else if (role === 'comment') {
         const node = cy.getElementById(findNid(subject));
         if (node.length) node.data('comment', cellVal);
-      } else {
-        if (cellVal.startsWith(':')) {
-          const objectIndividual = sp(cellVal);
-          declareEntity(objectIndividual, 'individual');
-          addEdgeSafe(predicate, findNid(subject), findNid(objectIndividual));
-        } else {
-          const node = cy.getElementById(findNid(subject));
-          if (node.length) {
-            node.data(predicate, cellVal);
-          }
+      } else if (role === 'object') {
+        const objectIndividual = sp(cellVal);
+        declareEntity(objectIndividual, 'individual');
+        addEdgeSafe(predicate, findNid(subject), findNid(objectIndividual));
+      } else if (role === 'data') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) {
+          node.data(predicate, cellVal);
         }
       }
     }
