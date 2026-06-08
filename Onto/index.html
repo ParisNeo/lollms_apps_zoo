@@ -745,19 +745,40 @@ function showImport(){
   document.getElementById('mtitle').textContent='Import Ontology';
   document.getElementById('mok').textContent='Import';
   document.getElementById('mbody').innerHTML=`
-  <div class="mrow"><label>Format</label><select class="fi" id="ifmt">
+  <div class="mrow"><label>Format</label><select class="fi" id="ifmt" onchange="handleImportFormatChange(this.value)">
     <option value="auto">Auto-detect format</option>
     <option value="manchester">Manchester OWL</option>
     <option value="rdfxml">RDF/XML</option>
     <option value="turtle">Turtle</option>
     <option value="functional">OWL Functional-Style</option>
+    <option value="csv">CSV Spreadsheet to RDF (Tabular)</option>
   </select></div>
+  <div id="csv-options" class="mrow" style="display:none; background:var(--bg3); padding:10px; border-radius:var(--r); border:1px solid var(--ln); margin-bottom:12px;">
+    <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:var(--t2); margin-bottom:6px;">CSV Schema Rules:</div>
+    <div style="display:flex; flex-direction:column; gap:6px;">
+      <label style="display:flex; align-items:center; gap:6px; font-size:11px; text-transform:none; color:var(--t1); cursor:pointer;">
+        <input type="checkbox" id="csv-first-col-id" checked> First column is Subject ID / Name
+      </label>
+      <div style="font-size:10px; color:var(--t2); line-height:1.4;">Other columns map to predicates. Cell values starting with a colon (e.g. <code>:Fido</code>) are mapped as object properties (nodes), others as text attributes.</div>
+    </div>
+  </div>
   <div class="mrow" style="margin-bottom:14px">
     <label>Load from File</label>
     <input type="file" id="import-file" class="fi" accept=".owl,.rdf,.ttl,.omn,.fss,.txt" style="padding:4px;" onchange="handleImportFile(this)">
   </div>
   <div class="mrow"><label>Ontology text</label><textarea class="fi mono" id="itxt" rows="10" placeholder="Paste or load your ontology here…"></textarea></div>`;
   document.getElementById('mo').classList.add('open');
+}
+
+function handleImportFormatChange(val) {
+  const fileInput = document.getElementById('import-file');
+  if (val === 'csv') {
+    fileInput.accept = ".csv,.txt";
+    document.getElementById('csv-options').style.display = '';
+  } else {
+    fileInput.accept = ".owl,.rdf,.ttl,.omn,.fss,.txt";
+    document.getElementById('csv-options').style.display = 'none';
+  }
 }
 
 function modalOK(){
@@ -1742,7 +1763,14 @@ function executeSPARQL() {
       selectAllBtn.style.display = 'inline-block';
       selectAllBtn.textContent = "Select Constructed Subgraph";
 
-      let html = `<div style="padding:6px; font-weight:bold; font-size:11px; color:var(--tel); border-bottom:1px solid var(--ln);">CONSTRUCTED SUBGRAPH TRIPLES:</div>`;
+      let html = `<div style="padding:6px; font-weight:bold; font-size:11px; color:var(--tel); border-bottom:1px solid var(--ln); display:flex; justify-content:space-between; align-items:center;">`;
+      html += `  <span>CONSTRUCTED SUBGRAPH TRIPLES:</span>`;
+      html += `  <div style="display:flex; gap:4px;">`;
+      html += `    <button class="btn btn-g" style="padding:2px 6px; font-size:10px;" onclick="exportConstructed('turtle')">Copy TTL</button>`;
+      html += `    <button class="btn btn-g" style="padding:2px 6px; font-size:10px;" onclick="exportConstructed('rdfxml')">Copy RDF</button>`;
+      html += `    <button class="btn btn-g" style="padding:2px 6px; font-size:10px;" onclick="exportConstructed('manchester')">Copy OMN</button>`;
+      html += `  </div>`;
+      html += `</div>`;
       html += `<table style="width:100%; border-collapse:collapse; font-family:var(--mono); font-size:11px; color:var(--t0); margin-top:6px;">`;
       res.triples.forEach((triple, idx) => {
         const rowBg = idx % 2 === 0 ? 'transparent' : 'var(--bg3)';
@@ -2325,10 +2353,11 @@ function handleImportFile(input) {
 
 function autoDetectFormat(text) {
   const clean = text.trim();
+  const lower = clean.toLowerCase();
   if (clean.startsWith('<?xml') || clean.includes('<rdf:RDF') || clean.includes('<owl:Ontology')) {
     return 'rdfxml';
   }
-  if (clean.includes('@prefix') || clean.match(/a\s+owl:Ontology/)) {
+  if (lower.includes('@prefix') || lower.includes('prefix ') || lower.includes('base ') || clean.match(/a\s+owl:Ontology/i) || clean.match(/a\s+owl:Class/i) || clean.match(/a\s+owl:NamedIndividual/i)) {
     return 'turtle';
   }
   if (clean.match(/Prefix\s*\(/i) || clean.match(/Ontology\s*\(/i) || clean.match(/Declaration\s*\(/i)) {
@@ -2347,7 +2376,9 @@ function importOntology(fmt,text){
     targetFmt = autoDetectFormat(text);
   }
 
-  if(targetFmt==='manchester') parseManchester(text);
+  if (targetFmt === 'csv') {
+    importCSV(text);
+  } else if(targetFmt==='manchester') parseManchester(text);
   else if(targetFmt==='rdfxml') parseRDFXML(text);
   else if(targetFmt==='turtle') parseTurtle(text);
   else if(targetFmt==='functional') parseFunctionalStyle(text);
@@ -2866,6 +2897,166 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2100);
 }
 
+
+async function pasteKeyFromClipboard(e) {
+  if (e) e.preventDefault();
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      document.getElementById('ai-key').value = text.trim();
+      toast("Key pasted from clipboard");
+    }
+  } catch (err) {
+    toast("Clipboard read permission denied or unavailable");
+  }
+}
+
+function parseCSV(text) {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i+1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push("");
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += char;
+    }
+  }
+  if (row.length > 1 || row[0] !== "") {
+    lines.push(row);
+  }
+  return lines;
+}
+
+function importCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error("CSV requires a header row and at least one data row");
+
+  const headers = rows[0].map(h => h.trim());
+  const dataRows = rows.slice(1);
+  const firstColIsId = document.getElementById('csv-first-col-id').checked;
+
+  dataRows.forEach((row, rowIdx) => {
+    let subject = '';
+    let startIndex = 0;
+    if (firstColIsId) {
+      subject = sp(row[0]);
+      startIndex = 1;
+    } else {
+      subject = `Individual_${rowIdx + 1}`;
+      startIndex = 0;
+    }
+
+    if (!subject) return;
+    declareEntity(subject, 'individual');
+
+    for (let i = startIndex; i < row.length; i++) {
+      const predicate = sp(headers[i]);
+      const cellVal = (row[i] || '').trim();
+      if (!predicate || !cellVal) continue;
+
+      if (predicate.toLowerCase() === 'type' || predicate.toLowerCase() === 'class') {
+        const classObj = sp(cellVal);
+        declareEntity(classObj, 'class');
+        addEdgeSafe('type', findNid(subject), findNid(classObj));
+      } else if (predicate.toLowerCase() === 'label') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) node.data('rdfsLabel', cellVal);
+      } else if (predicate.toLowerCase() === 'comment') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) node.data('comment', cellVal);
+      } else {
+        if (cellVal.startsWith(':')) {
+          const objectIndividual = sp(cellVal);
+          declareEntity(objectIndividual, 'individual');
+          addEdgeSafe(predicate, findNid(subject), findNid(objectIndividual));
+        } else {
+          const node = cy.getElementById(findNid(subject));
+          if (node.length) {
+            node.data(predicate, cellVal);
+          }
+        }
+      }
+    }
+  });
+}
+
+function exportConstructedTriples(triples, format) {
+  if (format === 'turtle') {
+    let t = `@prefix : <${baseIRI}> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n\n`;
+    const grouped = {};
+    triples.forEach(tr => {
+      if (!grouped[tr.s]) grouped[tr.s] = [];
+      grouped[tr.s].push(tr);
+    });
+    for (const [sub, trList] of Object.entries(grouped)) {
+      t += `${sub} `;
+      const predGroups = {};
+      trList.forEach(tr => {
+        if (!predGroups[tr.p]) predGroups[tr.p] = [];
+        predGroups[tr.p].push(tr.o);
+      });
+      const predLines = Object.entries(predGroups).map(([pred, objs]) => {
+        return `${pred} ${objs.join(', ')}`;
+      });
+      t += predLines.join(' ;\n    ') + ' .\n\n';
+    }
+    return t.trim();
+  }
+  
+  if (format === 'rdfxml') {
+    let x = `<?xml version="1.0"?>\n<rdf:RDF\n  xml:base="${baseIRI}"\n  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n  xmlns:owl="http://www.w3.org/2002/07/owl#"\n  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n\n`;
+    triples.forEach(tr => {
+      const sName = cleanName(tr.s);
+      const pName = cleanName(tr.p);
+      const oName = cleanName(tr.o);
+      x += `  <rdf:Description rdf:about="${baseIRI}${sName}">\n`;
+      if (tr.o.startsWith(':') || tr.o.startsWith('<')) {
+        x += `    <${pName} rdf:resource="${baseIRI}${oName}"/>\n`;
+      } else {
+        x += `    <${pName}>${xe(tr.o)}</${pName}>\n`;
+      }
+      x += `  </rdf:Description>\n\n`;
+    });
+    x += `</rdf:RDF>`;
+    return x;
+  }
+
+  if (format === 'manchester') {
+    let m = `Prefix: : <${baseIRI}>\n\n`;
+    triples.forEach(tr => {
+      m += `Individual: ${tr.s}\n    Facts: ${tr.p} ${tr.o}\n\n`;
+    });
+    return m.trim();
+  }
+  return '';
+}
+
+function exportConstructed(format) {
+  if (!lastSparqlResults || lastSparqlResults.type !== 'CONSTRUCT') return;
+  const txt = exportConstructedTriples(lastSparqlResults.triples, format);
+  navigator.clipboard.writeText(txt);
+  toast(`Copied constructed subgraph as ${format.toUpperCase()}`);
+}
+
+function xe(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 /* ═══════════════════════════════════════════════
    SAMPLE
 ═══════════════════════════════════════════════ */
