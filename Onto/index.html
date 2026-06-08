@@ -656,10 +656,19 @@ function openModal(type){
     class:'Add Class',property:'Add Object Property',dataprop:'Add Data Property',
     individual:'Add Individual',annprop:'Add Annotation Property',
     'style-settings':'Visual Styles',
-    'ai-settings':'AI Agent Configuration'
+    'ai-settings':'AI Agent Configuration',
+    help:'SPARQL & AI Agent Tutorial'
   };
+  
+  const modalEl = document.getElementById('modal');
+  if (type === 'help') {
+    modalEl.style.width = '640px';
+  } else {
+    modalEl.style.width = '460px';
+  }
+
   document.getElementById('mtitle').textContent = titles[type]||'Add';
-  document.getElementById('mok').textContent = (type==='style-settings' || type==='ai-settings') ? 'Close' : 'Add';
+  document.getElementById('mok').textContent = (type==='style-settings' || type==='ai-settings' || type==='help') ? 'Close' : 'Add';
 
   if(type==='style-settings'){
     document.getElementById('mbody').innerHTML = buildStyleSettings();
@@ -677,13 +686,56 @@ function openModal(type){
           </div>
           <div class="mrow">
             <label>API Key / Token</label>
-            <input class="fi" type="password" id="ai-key" value="${escAttr(cfg.apiKey)}" placeholder="sk-...">
+            <div style="display:flex; gap:6px;">
+              <input class="fi" type="password" id="ai-key" value="${escAttr(cfg.apiKey)}" placeholder="sk-..." style="flex:1;">
+              <button class="btn btn-g" style="padding:4px 10px; font-size:11px;" onclick="pasteKeyFromClipboard(event)">Paste</button>
+            </div>
           </div>
           <div class="mrow">
             <label>Model Name</label>
             <input class="fi mono" id="ai-model" value="${escAttr(cfg.model)}" placeholder="gpt-4o-mini">
           </div>
           <p style="font-size:11px; color:var(--t2); margin-top:8px;">The agent automatically generates SPARQL queries based on your ontology schema, executes them locally, and synthesizes natural language answers.</p>
+        `;
+    document.getElementById('mo').classList.add('open');
+    return;
+  }
+
+  if(type==='help'){
+    document.getElementById('mbody').innerHTML = `
+          <div style="font-size:12.5px; line-height:1.6; color:var(--t0); display:flex; flex-direction:column; gap:14px;">
+            <p>Welcome to <strong>Onto</strong>! This ontology manager features a fully integrated semantic execution layer, combining local SPARQL engines with advanced generative AI. Below is a comprehensive guide to mastering semantic web querying on your visual dataset.</p>
+            
+            <div style="border-top:1px solid var(--ln); padding-top:12px;">
+              <h3 style="color:var(--sky); font-size:13px; margin-bottom:6px;">1. What is SPARQL?</h3>
+              <p>SPARQL is the standardized query language for RDF/OWL databases. It works by matching **logical triples** consisting of three parts:
+                <br><code style="background:var(--bg3); padding:2px 6px; border-radius:3px; font-family:var(--mono);">Subject (Entity) → Predicate (Relationship) → Object (Entity/Value)</code>
+              </p>
+              <p style="margin-top:6px;">For example, the pattern <code style="background:var(--bg3); padding:1px 4px; border-radius:3px; font-family:var(--mono);">?animal rdf:type :Mammal</code> matches any individual (<code style="font-family:var(--mono);">?animal</code>) that has a type relationship with the class Mammal.</p>
+            </div>
+
+            <div style="border-top:1px solid var(--ln); padding-top:12px;">
+              <h3 style="color:var(--tel); font-size:13px; margin-bottom:6px;">2. Mastering SPARQL Query Forms</h3>
+              <ul style="list-style-type: disc; margin-left:20px; display:flex; flex-direction:column; gap:6px;">
+                <li><strong>SELECT</strong>: Acts like a relational database query, mapping bound variables into tabular sheets. Use <code style="font-family:var(--mono);">SELECT *</code> to return all bound variables.</li>
+                <li><strong>CONSTRUCT (Subgraphs)</strong>: An exceptionally powerful tool. Instead of returning raw spreadsheets, it **synthesizes a new visual graph** of triples based on matched criteria. Clicking matched triples automatically highlights and selects connected structures on the canvas.</li>
+                <li><strong>ASK</strong>: Checks whether a specific logical condition exists in the dataset, returning a fast, simple <code style="color:var(--grn)">TRUE</code> or <code style="color:var(--red)">FALSE</code>.</li>
+                <li><strong>DESCRIBE</strong>: Automatically collects and presents all predicates, attributes, and assertions connected to a target node.</li>
+              </ul>
+            </div>
+
+            <div style="border-top:1px solid var(--ln); padding-top:12px;">
+              <h3 style="color:var(--acc); font-size:13px; margin-bottom:6px;">3. The Power of SPARQL + AI Agents</h3>
+              <p>While modern generative models are incredibly conversational, they suffer from context window limits and logical hallucination when analyzing complex graph hierarchies directly.</p>
+              <p style="margin-top:6px;">By configuring an <strong>OpenAI-V1 Compatible Agent</strong>, you combine the best of both worlds:</p>
+              <ol style="list-style-type: decimal; margin-left:20px; display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+                <li>You ask a natural language question (e.g. <em>"Which pets belong to humans?"</em>).</li>
+                <li>The agent converts your question into a precise, logical SPARQL query based on the active schema rules.</li>
+                <li>The query is executed locally against the graph with <strong>zero hallucination</strong>.</li>
+                <li>The result is summarized, and matched nodes/relationships are highlighted on the canvas automatically.</li>
+              </ol>
+            </div>
+          </div>
         `;
     document.getElementById('mo').classList.add('open');
     return;
@@ -2180,6 +2232,177 @@ function parseMarkdownSimple(text) {
     .replace(/\n/g, '<br>');
 }
 
+async function pasteKeyFromClipboard(e) {
+  if (e) e.preventDefault();
+  try {
+    const text = await navigator.clipboard.readText();
+    if (text) {
+      document.getElementById('ai-key').value = text.trim();
+      toast("Key pasted from clipboard");
+    }
+  } catch (err) {
+    toast("Clipboard read permission denied or unavailable");
+  }
+}
+
+function parseCSV(text) {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i+1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push("");
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      lines.push(row);
+      row = [""];
+    } else {
+      row[row.length - 1] += char;
+    }
+  }
+  if (row.length > 1 || row[0] !== "") {
+    lines.push(row);
+  }
+  return lines;
+}
+
+function importCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error("CSV requires a header row and at least one data row");
+
+  const headers = rows[0].map(h => h.trim());
+  const dataRows = rows.slice(1);
+
+  const colRoles = [];
+  let subjectColIdx = -1;
+
+  document.querySelectorAll('.csv-col-role').forEach(sel => {
+    const idx = parseInt(sel.getAttribute('data-col-idx'));
+    const role = sel.value;
+    colRoles[idx] = role;
+    if (role === 'subject') subjectColIdx = idx;
+  });
+
+  if (subjectColIdx === -1) {
+    subjectColIdx = 0;
+    for (let i = 0; i < headers.length; i++) {
+      colRoles[i] = (i === 0) ? 'subject' : 'data';
+    }
+  }
+
+  dataRows.forEach((row, rowIdx) => {
+    const rawSubject = (row[subjectColIdx] || '').trim();
+    if (!rawSubject) return;
+    const subject = sp(rawSubject);
+
+    declareEntity(subject, 'individual');
+
+    for (let i = 0; i < row.length; i++) {
+      if (i === subjectColIdx) continue;
+      const role = colRoles[i] || 'ignore';
+      if (role === 'ignore') continue;
+
+      const predicate = sp(headers[i]);
+      const cellVal = (row[i] || '').trim();
+      if (!predicate || !cellVal) continue;
+
+      if (role === 'type') {
+        const classObj = sp(cellVal);
+        declareEntity(classObj, 'class');
+        addEdgeSafe('type', findNid(subject), findNid(classObj));
+      } else if (role === 'label') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) node.data('rdfsLabel', cellVal);
+      } else if (role === 'comment') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) node.data('comment', cellVal);
+      } else if (role === 'object') {
+        const objectIndividual = sp(cellVal);
+        declareEntity(objectIndividual, 'individual');
+        addEdgeSafe(predicate, findNid(subject), findNid(objectIndividual));
+      } else if (role === 'data') {
+        const node = cy.getElementById(findNid(subject));
+        if (node.length) {
+          node.data(predicate, cellVal);
+        }
+      }
+    }
+  });
+}
+
+function exportConstructedTriples(triples, format) {
+  if (format === 'turtle') {
+    let t = `@prefix : <${baseIRI}> .\n@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .\n@prefix owl: <http://www.w3.org/2002/07/owl#> .\n@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .\n\n`;
+    const grouped = {};
+    triples.forEach(tr => {
+      if (!grouped[tr.s]) grouped[tr.s] = [];
+      grouped[tr.s].push(tr);
+    });
+    for (const [sub, trList] of Object.entries(grouped)) {
+      t += `${sub} `;
+      const predGroups = {};
+      trList.forEach(tr => {
+        if (!predGroups[tr.p]) predGroups[tr.p] = [];
+        predGroups[tr.p].push(tr.o);
+      });
+      const predLines = Object.entries(predGroups).map(([pred, objs]) => {
+        return `${pred} ${objs.join(', ')}`;
+      });
+      t += predLines.join(' ;\n    ') + ' .\n\n';
+    }
+    return t.trim();
+  }
+
+  if (format === 'rdfxml') {
+    let x = `<?xml version="1.0"?>\n<rdf:RDF\n  xml:base="${baseIRI}"\n  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"\n  xmlns:owl="http://www.w3.org/2002/07/owl#"\n  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">\n\n`;
+    triples.forEach(tr => {
+      const sName = cleanName(tr.s);
+      const pName = cleanName(tr.p);
+      const oName = cleanName(tr.o);
+      x += `  <rdf:Description rdf:about="${baseIRI}${sName}">\n`;
+      if (tr.o.startsWith(':') || tr.o.startsWith('<')) {
+        x += `    <${pName} rdf:resource="${baseIRI}${oName}"/>\n`;
+      } else {
+        x += `    <${pName}>${xe(tr.o)}</${pName}>\n`;
+      }
+      x += `  </rdf:Description>\n\n`;
+    });
+    x += `</rdf:RDF>`;
+    return x;
+  }
+
+  if (format === 'manchester') {
+    let m = `Prefix: : <${baseIRI}>\n\n`;
+    triples.forEach(tr => {
+      m += `Individual: ${tr.s}\n    Facts: ${tr.p} ${tr.o}\n\n`;
+    });
+    return m.trim();
+  }
+  return '';
+}
+
+function exportConstructed(format) {
+  if (!lastSparqlResults || lastSparqlResults.type !== 'CONSTRUCT') return;
+  const txt = exportConstructedTriples(lastSparqlResults.triples, format);
+  navigator.clipboard.writeText(txt);
+  toast(`Copied constructed subgraph as ${format.toUpperCase()}`);
+}
+
+function xe(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
 /* ═══════════════════════════════════════════════
    MANCHESTER OWL GENERATION
 ═══════════════════════════════════════════════ */
@@ -2664,13 +2887,67 @@ function parseManchester(text){
 
 function parseRDFXML(text){
   const doc = new DOMParser().parseFromString(text, 'application/xml');
+  const parserError = doc.querySelector('parsererror');
+  if (parserError) {
+    throw new Error("XML Syntax Error: " + parserError.textContent);
+  }
+
   const rdfRoot = doc.documentElement;
   const ln = uri => (uri || '').split(/[#/]/).pop();
+
+  // Namespace-safe attribute getter
+  function getAttr(el, localName) {
+    if (!el) return '';
+    const nsRDF = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#';
+    return el.getAttributeNS(nsRDF, localName) || 
+           el.getAttribute('rdf:' + localName) || 
+           el.getAttribute(localName) || 
+           '';
+  }
+
+  // Namespace-safe element finder
+  function findElByLocalName(parent, localName) {
+    if (!parent) return null;
+    if (parent.localName === localName) return parent;
+    for (let i = 0; i < parent.children.length; i++) {
+      const res = findElByLocalName(parent.children[i], localName);
+      if (res) return res;
+    }
+    return null;
+  }
+
+  // Recursively extract rdf:about or rdf:resource from any nested children
+  function findNestedURI(el) {
+    if (!el) return '';
+    let uri = getAttr(el, 'resource') || getAttr(el, 'about');
+    if (uri) return uri;
+    for (let i = 0; i < el.children.length; i++) {
+      const child = el.children[i];
+      const childUri = findNestedURI(child);
+      if (childUri) return childUri;
+    }
+    return '';
+  }
+
+  function collectDescendants(el, localNames, results = []) {
+    if (localNames.includes(el.localName)) {
+      results.push(el);
+    }
+    for (let i = 0; i < el.children.length; i++) {
+      collectDescendants(el.children[i], localNames, results);
+    }
+    return results;
+  }
+
+  console.log("[RDFXML Import] Starting graph parse...");
 
   const children = rdfRoot.children;
   for (let i = 0; i < children.length; i++) {
     const subjectEl = children[i];
-    const subjectURI = subjectEl.getAttribute('rdf:about') || subjectEl.getAttribute('rdf:ID') || '';
+
+    if (subjectEl.localName === 'Ontology') continue;
+
+    const subjectURI = getAttr(subjectEl, 'about') || getAttr(subjectEl, 'ID') || '';
     if (!subjectURI) continue;
     const subject = ln(subjectURI);
 
@@ -2682,6 +2959,7 @@ function parseRDFXML(text){
     else if (subjectTypeLocal === 'AnnotationProperty') type = 'annprop';
     else if (subjectTypeLocal === 'NamedIndividual') type = 'individual';
 
+    console.log(`[RDFXML Import] Declaring Subject: :${subject} as ${type}`);
     declareEntity(subject, type);
 
     const properties = subjectEl.children;
@@ -2689,15 +2967,18 @@ function parseRDFXML(text){
       const propEl = properties[j];
       const predicate = propEl.localName;
 
-      // 1. Parse Anonymous OWL Class Restrictions (e.g. Dog subClassOf (hasOwner some Person))
-      const restrictionEl = propEl.querySelector('Restriction');
+      // 1. Parse Anonymous OWL Class Restrictions safely
+      const restrictionEl = findElByLocalName(propEl, 'Restriction');
       if (restrictionEl) {
-        const onPropEl = restrictionEl.querySelector('onProperty');
-        const targetEl = restrictionEl.querySelector('someValuesFrom, allValuesFrom, hasValue, target');
+        const onPropEl = findElByLocalName(restrictionEl, 'onProperty');
+        const targetEl = findElByLocalName(restrictionEl, 'someValuesFrom') || 
+                         findElByLocalName(restrictionEl, 'allValuesFrom') || 
+                         findElByLocalName(restrictionEl, 'hasValue');
         if (onPropEl && targetEl) {
-          const relType = ln(onPropEl.getAttribute('rdf:resource') || onPropEl.getAttribute('rdf:about') || '');
-          const targetObj = ln(targetEl.getAttribute('rdf:resource') || targetEl.getAttribute('rdf:about') || '');
+          const relType = ln(findNestedURI(onPropEl));
+          const targetObj = ln(findNestedURI(targetEl));
           if (relType && targetObj) {
+            console.log(`[RDFXML Import]   Found Class Restriction: :${subject} ${relType} :${targetObj}`);
             declareEntity(subject, 'class');
             declareEntity(targetObj, 'class');
             addEdgeSafe(relType, findNid(subject), findNid(targetObj));
@@ -2706,14 +2987,15 @@ function parseRDFXML(text){
         }
       }
 
-      // 2. Parse nested boolean collections (unionOf / intersectionOf) inside domains/ranges
-      const unionEl = propEl.querySelector('unionOf, intersectionOf');
+      // 2. Parse nested boolean collections (unionOf / intersectionOf)
+      const unionEl = findElByLocalName(propEl, 'unionOf') || findElByLocalName(propEl, 'intersectionOf');
       if (unionEl) {
-        const listClasses = unionEl.querySelectorAll('Class, Description');
+        const listClasses = collectDescendants(unionEl, ['Class', 'Description']);
         listClasses.forEach(clsEl => {
-          const classURI = clsEl.getAttribute('rdf:about') || clsEl.getAttribute('rdf:resource') || '';
+          const classURI = findNestedURI(clsEl);
           if (classURI) {
             const classObj = ln(classURI);
+            console.log(`[RDFXML Import]   Found Boolean Collection Link: :${subject} ${predicate} :${classObj}`);
             declareEntity(subject, type);
             declareEntity(classObj, 'class');
             addEdgeSafe(predicate, findNid(subject), findNid(classObj));
@@ -2723,16 +3005,14 @@ function parseRDFXML(text){
       }
 
       // 3. Fallback: Search descendant nodes if flat attribute target is empty
-      let objectURI = propEl.getAttribute('rdf:resource') || propEl.getAttribute('rdf:about') || '';
+      let objectURI = getAttr(propEl, 'resource') || getAttr(propEl, 'about') || '';
       if (!objectURI) {
-        const descendant = propEl.querySelector('[rdf:about], [rdf:resource]');
-        if (descendant) {
-          objectURI = descendant.getAttribute('rdf:about') || descendant.getAttribute('rdf:resource') || '';
-        }
+        objectURI = findNestedURI(propEl);
       }
 
       if (objectURI) {
         const object = ln(objectURI);
+        console.log(`[RDFXML Import]   Found Edge Assertion: :${subject} ${predicate} :${object}`);
         if (predicate === 'subClassOf') {
           declareEntity(subject, 'class');
           declareEntity(object, 'class');
@@ -2774,7 +3054,7 @@ function parseRDFXML(text){
             addEdgeSafe('type', findNid(subject), findNid(object));
           }
         } else {
-          declareEntity(subject, 'individual');
+          declareEntity(subject, type);
           declareEntity(object, 'individual');
           addEdgeSafe(predicate, findNid(subject), findNid(object));
         }
@@ -2793,6 +3073,7 @@ function parseRDFXML(text){
       }
     }
   }
+  console.log("[RDFXML Import] Parse complete.");
 }
 
 function parseTurtle(text){
