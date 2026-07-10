@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Studio</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a14;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Header */
+  #header {
+    background: #111118;
+    padding: 10px 20px;
+    border-bottom: 1px solid #222;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+  #header h1 {
+    font-size: 18px;
+    background: linear-gradient(90deg, #ff0844, #ff6b35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    white-space: nowrap;
+  }
+  #header .spacer { flex: 1; }
+
+  /* Audio status indicator */
+  #audio-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-family: monospace;
+  }
+  #audio-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: #333;
+    transition: background 0.3s;
+  }
+  #audio-dot.green { background: #00ff7f; box-shadow: 0 0 8px #00ff7f; }
+  #audio-dot.red { background: #ff0844; box-shadow: 0 0 8px #ff0844; }
+
+  /* Main stage */
+  #stage {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+  }
+  #video-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    background: #000;
+  }
+
+  /* Slide info (hidden during recording) */
+  #slide-info {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 10;
+  }
+  body.recording #slide-info { opacity: 0; transition: opacity 0.3s; }
+  #slide-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+  }
+  #slide-subtitle {
+    font-size: 14px;
+    opacity: 0.6;
+  }
+
+  /* Caption bar */
+  #caption-bar {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    padding: 12px 24px;
+    border-radius: 8px;
+    max-width: 80%;
+    text-align: center;
+    font-size: 18px;
+    transition: opacity 0.3s;
+  }
+  body.recording #caption-bar {
+    bottom: 30px;
+    background: rgba(0,0,0,0.85);
+  }
+
+  /* Progress bar */
+  #progress-bar {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: #222;
+  }
+  body.recording #progress-bar { opacity: 0; }
+  #progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff0844, #ff6b35);
+    width: 0;
+    transition: width 0.3s;
+  }
+
+  /* Control panel */
+  #controls {
+    background: #111118;
+    padding: 12px 20px;
+    border-top: 1px solid #222;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  body.recording #controls { opacity: 0; pointer-events: none; }
+
+  #controls label {
+    font-size: 12px;
+    color: #888;
+    white-space: nowrap;
+  }
+  #controls select, #controls input[type="range"] {
+    background: #1a1a2e;
+    border: 1px solid #333;
+    color: #e0e0e0;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  #controls select {
+    max-width: 200px;
+  }
+  #speed-val {
+    font-family: monospace;
+    font-size: 12px;
+    min-width: 35px;
+  }
+
+  /* Buttons */
+  button {
+    background: #1a1a2e;
+    border: 1px solid #333;
+    color: #e0e0e0;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  button:hover {
+    background: #2a2a4e;
+    border-color: #444;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  #btn-play { background: #1a3a1a; border-color: #2a5a2a; }
+  #btn-play:hover { background: #2a5a2a; }
+  #btn-record {
+    background: #3a1a1a;
+    border-color: #5a2a2a;
+    font-weight: 700;
+  }
+  #btn-record:hover { background: #5a2a2a; }
+  #btn-record.recording { background: #ff0844; color: white; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  /* Upload area */
+  #upload-area {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  #file-info {
+    font-size: 12px;
+    color: #888;
+    font-family: monospace;
+  }
+
+  /* Message overlay */
+  #message-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #111118;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 30px 40px;
+    text-align: center;
+    z-index: 100;
+    display: none;
+    max-width: 500px;
+  }
+  #message-overlay h2 { margin-bottom: 12px; }
+  #message-overlay .detail {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #888;
+    text-align: left;
+    background: #0a0a14;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: monospace;
+    white-space: pre-wrap;
+  }
+  #message-overlay button {
+    margin-top: 16px;
+  }
+
+  /* Loading spinner */
+  #loading {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 20px;
+    z-index: 200;
+  }
+  #loading .spinner {
+    width: 50px; height: 50px;
+    border: 4px solid #222;
+    border-top-color: #ff0844;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading p { color: #e0e0e0; font-size: 14px; }
+
+  /* Download notification */
+  #download-notif {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: #1a3a1a;
+    border: 1px solid #2a5a2a;
+    border-radius: 8px;
+    padding: 16px 20px;
+    max-width: 350px;
+    z-index: 100;
+    display: none;
+  }
+  #download-notif h3 { margin-bottom: 8px; }
+  #download-notif .code {
+    background: #000;
+    padding: 8px;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+    margin-top: 8px;
+    overflow-x: auto;
+    user-select: all;
+  }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🎬 Video Studio</h1>
+  <div id="upload-area">
+    <label>Source:</label>
+    <input type="file" id="file-upload" accept=".html">
+    <span id="file-info">No file loaded</span>
+  </div>
+  <div class="spacer"></div>
+  <div id="audio-status">
+    <div id="audio-dot"></div>
+    <span id="audio-status-text">IDLE</span>
+  </div>
+</div>
+
+<div id="stage">
+  <div id="slide-info">
+    <div id="slide-title">Upload a video-source HTML file to begin</div>
+    <div id="slide-subtitle"></div>
+  </div>
+  <canvas id="video-canvas" width="1920" height="1080"></canvas>
+  <div id="caption-bar">Waiting for source file...</div>
+  <div id="progress-bar"><div id="progress-fill"></div></div>
+</div>
+
+<div id="controls">
+  <label>🎙️ Voice:</label>
+  <select id="voice-select" disabled><option>Upload file first</option></select>
+  <label>⚡ Speed:</label>
+  <input type="range" id="speed-slider" min="0.5" max="2.0" step="0.1" value="1.0" disabled>
+  <span id="speed-val">1.0×</span>
+  <button id="btn-synth" disabled>🎵 Synthesize Audio</button>
+  <button id="btn-play" disabled>▶ Play</button>
+  <button id="btn-record" disabled>⬤ Record</button>
+</div>
+
+<div id="message-overlay">
+  <h2 id="msg-title">Message</h2>
+  <p id="msg-text"></p>
+  <div class="detail" id="msg-detail"></div>
+  <button id="msg-close">OK</button>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p id="loading-text">Working...</p>
+</div>
+
+<div id="download-notif">
+  <h3>✅ Video Downloaded!</h3>
+  <p>Your <code>.webm</code> file has been saved.</p>
+  <p>Convert to seekable MP4:</p>
+  <div class="code">ffmpeg -i video.webm -c:v libx264 -c:a aac video.mp4</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// VIDEO STUDIO — Lollms App Frontend
+// Architecture: Server-side TTS → audio files → Web Audio graph → MediaRecorder
+// NO SpeechSynthesis for recording. NO getDisplayMedia. NO tab sharing.
+// ═══════════════════════════════════════════════════════
+
+// ─── State ───
+let state = {
+  fileId: null,
+  fileName: null,
+  slides: [],        // [{ index, narration }]
+  audioFiles: [],    // [{ index, url, audioEl, duration }]
+  currentSlide: 0,
+  isPlaying: false,
+  isRecording: false,
+  recorder: null,
+  chunks: [],
+  audioCtx: null,
+  audioDest: null,
+  sourceNodes: [],
+  animFrameId: null,
+  slideStartTime: 0,
+  narration: [],
+  animations: [],
+  slideMeta: [],
+  canvas: null,
+  ctx: null,
+  config: { canvas_fps: 30 }
+};
+
+// ─── DOM refs ───
+const $ = id => document.getElementById(id);
+const canvas = $('video-canvas');
+const ctx = canvas.getContext('2d');
+state.canvas = canvas;
+state.ctx = ctx;
+
+// ─── Audio context (lazy init on first user gesture) ───
+function getAudioContext() {
+  if (!state.audioCtx) {
+    state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    state.audioDest = state.audioCtx.createMediaStreamDestination();
+  }
+  return state.audioCtx;
+}
+
+// ─── Audio status indicator ───
+function setAudioStatus(state, text) {
+  const dot = $('audio-dot');
+  dot.className = state; // 'green', 'red', or ''
+  $('audio-status-text').textContent = text;
+}
+
+// ─── Message overlay ───
+function showMessage(title, text, detail = '') {
+  $('msg-title').textContent = title;
+  $('msg-text').textContent = text;
+  if (detail) {
+    $('msg-detail').textContent = detail;
+    $('msg-detail').style.display = 'block';
+  } else {
+    $('msg-detail').style.display = 'none';
+  }
+  $('message-overlay').style.display = 'block';
+}
+function hideMessage() {
+  $('message-overlay').style.display = 'none';
+}
+$('msg-close').addEventListener('click', hideMessage);
+
+// ─── Loading overlay ───
+function showLoading(text) {
+  $('loading-text').textContent = text;
+  $('loading').style.display = 'flex';
+}
+function hideLoading() {
+  $('loading').style.display = 'none';
+}
+
+// ─── File upload ───
+$('file-upload').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  showLoading('Uploading & parsing source file...');
+  
+  const formData = new FormData();
+  formData.append('file', file);
+  
+  try {
+    const resp = await fetch('/upload', { method: 'POST', body: formData });
+    const data = await resp.json();
+    
+    if (data.error) throw new Error(data.error);
+    
+    state.fileId = data.file_id;
+    state.fileName = data.filename;
+    state.slides = data.slides;
+    state.narration = data.slides.map(s => s.narration);
+    
+    // Fetch config & load voices
+    await loadConfig();
+    await loadVoices();
+    
+    // Load the animations from the source file
+    await loadAnimationsFromSource(data.filename);
+    
+    $('file-info').textContent = `${file.name} — ${data.slide_count} slides`;
+    $('btn-synth').disabled = false;
+    $('btn-play').disabled = false;
+    $('btn-record').disabled = false;
+    $('voice-select').disabled = false;
+    $('speed-slider').disabled = false;
+    
+    // Show first slide
+    state.currentSlide = 0;
+    updateSlideInfo();
+    startAnimation(0);
+    
+    hideLoading();
+    showMessage('File Loaded', `${data.slide_count} slides parsed. Click "Synthesize Audio" to generate TTS, then Play or Record.`);
+  } catch (err) {
+    hideLoading();
+    showMessage('Upload Failed', err.message);
+  }
+});
+
+// ─── Load animations from the source HTML ───
+async function loadAnimationsFromSource(filename) {
+  // Fetch the source HTML, extract the script section, and eval it
+  // This gives us NARRATION, ANIMATIONS, and SLIDE_META arrays
+  const resp = await fetch(`/workspace/${filename}`);
+  const html = await resp.text();
+  
+  // Extract script content
+  const scriptMatch = html.match(/<script[^>]*>([\s\S]*?)<\/script>/);
+  if (!scriptMatch) throw new Error('No <script> block found in source file');
+  
+  const scriptCode = scriptMatch[1];
+  
+  // Create a function scope and eval the script to extract the arrays
+  const fn = new Function(scriptCode + '\nreturn { NARRATION, ANIMATIONS, SLIDE_META };');
+  const extracted = fn();
+  
+  state.narration = extracted.NARRATION || state.narration;
+  state.animations = extracted.ANIMATIONS || [];
+  state.slideMeta = extracted.SLIDE_META || [];
+  
+  if (state.animations.length !== state.narration.length) {
+    console.warn(`Animation count (${state.animations.length}) doesn't match narration count (${state.narration.length})`);
+  }
+}
+
+// ─── Load config ───
+async function loadConfig() {
+  try {
+    const resp = await fetch('/config');
+    const cfg = await resp.json();
+    state.config = cfg;
+    canvas.width = cfg.canvas_width || 1920;
+    canvas.height = cfg.canvas_height || 1080;
+  } catch (e) {
+    console.warn('Could not load config, using defaults');
+  }
+}
+
+// ─── Load voices ───
+async function loadVoices() {
+  try {
+    const resp = await fetch('/list_voices');
+    const data = await resp.json();
+    const select = $('voice-select');
+    select.innerHTML = '';
+    
+    // Sort: deeper, male, English voices first
+    const voices = (data.voices || []).sort((a, b) => {
+      const aScore = (a.name.match(/male|david|daniel|alex|dennis/i) ? 0 : 1) +
+                     (a.language.startsWith('en') ? 0 : 2);
+      const bScore = (b.name.match(/male|david|daniel|alex|dennis/i) ? 0 : 1) +
+                     (b.language.startsWith('en') ? 0 : 2);
+      return aScore - bScore;
+    });
+    
+    if (voices.length === 0) {
+      select.innerHTML = '<option>default</option>';
+      return;
+    }
+    
+    voices.forEach(v => {
+      const opt = document.createElement('option');
+      opt.value = v.name || v;
+      opt.textContent = `${v.name || v} (${v.language || '?'})`;
+      select.appendChild(opt);
+    });
+  } catch (e) {
+    console.warn('Could not load voices:', e);
+    $('voice-select').innerHTML = '<option>default</option>';
+  }
+}
+
+// ─── Speed slider ───
+$('speed-slider').addEventListener('input', e => {
+  const val = parseFloat(e.target.value);
+  $('speed-val').textContent = val.toFixed(1) + '×';
+});
+
+// ─── Synthesize all TTS audio ───
+$('btn-synth').addEventListener('click', async () => {
+  if (!state.slides.length) return;
+  
+  const voice = $('voice-select').value;
+  const speed = parseFloat($('speed-slider').value);
+  
+  showLoading(`Synthesizing ${state.slides.length} slides via Lollms TTS...\nVoice: ${voice}\nSpeed: ${speed}×`);
+  
+  try {
+    const resp = await fetch('/synthesize_all', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        file_id: state.fileId,
+        slides: state.slides,
+        voice: voice,
+        speed: speed
+      })
+    });
+    
+    const data = await resp.json();
+    
+    if (data.error) throw new Error(data.error);
+    
+    // Create audio elements for each slide
+    state.audioFiles = data.audio_files.map(af => {
+      const audioEl = new Audio(af.url);
+      audioEl.crossOrigin = 'anonymous';
+      audioEl.preload = 'auto';
+      return { index: af.index, url: af.url, audioEl: audioEl };
+    });
+    
+    // Preload all audio
+    await Promise.all(state.audioFiles.map(af => new Promise(resolve => {
+      af.audioEl.addEventListener('canplaythrough', resolve, { once: true });
+      af.audioEl.addEventListener('error', resolve, { once: true });
+      af.audioEl.load();
+    })));
+    
+    hideLoading();
+    setAudioStatus('green', `AUDIO READY (${state.audioFiles.length} clips)`);
+    showMessage('Audio Synthesized', `${state.audioFiles.length} TTS clips generated and cached.\nYou can now Play (preview) or Record (export video).`);
+  } catch (err) {
+    hideLoading();
+    setAudioStatus('red', 'TTS FAILED');
+    showMessage('TTS Synthesis Failed', err.message);
+  }
+});
+
+// ─── Animation loop ───
+function startAnimation(slideIndex) {
+  if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
+  
+  state.slideStartTime = performance.now();
+  const animFn = state.animations[slideIndex];
+  
+  if (!animFn) {
+    // Fallback: draw placeholder text
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#444';
+    ctx.font = '48px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`Slide ${slideIndex + 1}`, canvas.width/2, canvas.height/2);
+    return;
+  }
+  
+  function loop(now) {
+    const t = now - state.slideStartTime;
+    const w = canvas.width;
+    const h = canvas.height;
+    
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    try {
+      animFn(ctx, w, h, t);
+    } catch (e) {
+      console.error('Animation error:', e);
+    }
+    ctx.restore();
+    
+    state.animFrameId = requestAnimationFrame(loop);
+  }
+  state.animFrameId = requestAnimationFrame(loop);
+}
+
+// ─── Update slide info ───
+function updateSlideInfo() {
+  const meta = state.slideMeta[state.currentSlide];
+  if (meta) {
+    $('slide-title').textContent = meta.title || `Slide ${state.currentSlide + 1}`;
+    $('slide-subtitle').textContent = meta.subtitle || '';
+    $('slide-title').style.textShadow = `0 0 20px ${meta.color || '#ff0844'}`;
+  }
+  
+  const narration = state.narration[state.currentSlide];
+  if (narration) {
+    $('caption-bar').textContent = narration;
+  }
+  
+  const progress = ((state.currentSlide + 1) / state.narration.length) * 100;
+  $('progress-fill').style.width = progress + '%';
+}
+
+// ─── Play (preview with audio) ───
+async function playSequence(isRecording = false) {
+  if (state.isPlaying) return;
+  state.isPlaying = true;
+  state.isRecording = isRecording;
+  
+  if (isRecording) {
+    document.body.classList.add('recording');
+    $('btn-record').classList.add('recording');
+    $('btn-record').textContent = '⬤ STOP';
+  }
+  
+  const audioCtx = getAudioContext();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  
+  // Connect all audio elements to the audio destination (for recording)
+  if (isRecording) {
+    state.sourceNodes = [];
+    for (const af of state.audioFiles) {
+      try {
+        const src = audioCtx.createMediaElementSource(af.audioEl);
+        src.connect(state.audioDest);
+        src.connect(audioCtx.destination); // also play through speakers
+        state.sourceNodes.push(src);
+      } catch (e) {
+        // Element already connected — skip
+        console.warn('Could not connect audio element:', e);
+      }
+    }
+  }
+  
+  for (let i = 0; i < state.narration.length; i++) {
+    state.currentSlide = i;
+    updateSlideInfo();
+    startAnimation(i);
+    
+    const audio = state.audioFiles[i];
+    if (audio && audio.audioEl) {
+      audio.audioEl.currentTime = 0;
+      audio.audioEl.playbackRate = parseFloat($('speed-slider').value);
+      await audio.audioEl.play();
+      
+      // Wait for audio to finish
+      await new Promise(resolve => {
+        audio.audioEl.addEventListener('ended', resolve, { once: true });
+      });
+    } else {
+      // No audio — wait a fixed time
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+  }
+  
+  state.isPlaying = false;
+  
+  if (isRecording) {
+    stopRecording();
+  }
+}
+
+// ─── Recording ───
+$('btn-record').addEventListener('click', async () => {
+  if (state.isRecording) {
+    // Stop
+    state.audioFiles.forEach(af => af.audioEl.pause());
+    stopRecording();
+    return;
+  }
+  
+  if (state.audioFiles.length === 0) {
+    showMessage('No Audio', 'Click "Synthesize Audio" first to generate TTS clips before recording.');
+    return;
+  }
+  
+  // GUARDRAIL: Check all audio elements are ready
+  const allReady = state.audioFiles.every(af => af.audioEl.readyState >= 2);
+  if (!allReady) {
+    showMessage('Audio Not Ready', 'Some audio clips are still loading. Wait a moment and try again.');
+    return;
+  }
+  
+  // GUARDRAIL: Check audioDest has audio tracks
+  const audioCtx = getAudioContext();
+  if (audioCtx.state === 'suspended') await audioCtx.resume();
+  
+  // Prepare audio elements for Web Audio routing
+  state.sourceNodes = [];
+  for (const af of state.audioFiles) {
+    try {
+      const src = audioCtx.createMediaElementSource(af.audioEl);
+      src.connect(state.audioDest);
+      src.connect(audioCtx.destination);
+      state.sourceNodes.push(src);
+    } catch (e) {
+      console.warn('Audio element already connected:', e);
+    }
+  }
+  
+  const audioTracks = state.audioDest.stream.getAudioTracks();
+  if (audioTracks.length === 0) {
+    setAudioStatus('red', 'NO AUDIO TRACK');
+    showMessage('Recording Failed', 'No audio track available. Cannot record a silent video.');
+    return;
+  }
+  
+  setAudioStatus('green', 'RECORDING');
+  
+  // Start canvas stream
+  const canvasStream = canvas.captureStream(state.config.canvas_fps || 30);
+  
+  // Merge canvas video + audio destination
+  const combinedStream = new MediaStream([
+    ...canvasStream.getVideoTracks(),
+    ...audioTracks
+  ]);
+  
+  // Pick supported MIME type
+  const mimeTypes = [
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm'
+  ];
+  const mimeType = mimeTypes.find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+  
+  // Create recorder
+  state.chunks = [];
+  state.recorder = new MediaRecorder(combinedStream, {
+    mimeType: mimeType,
+    videoBitsPerSecond: 4_000_000,
+    audioBitsPerSecond: 128_000
+  });
+  
+  state.recorder.ondataavailable = e => {
+    if (e.data.size > 0) state.chunks.push(e.data);
+  };
+  
+  state.recorder.onstop = () => {
+    if (state.chunks.length === 0) {
+      showMessage('Recording Failed', 'No data captured.');
+      return;
+    }
+    
+    const blob = new Blob(state.chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `video-studio-${Date.now()}.webm`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    
+    // Show download notification
+    $('download-notif').style.display = 'block';
+    setTimeout(() => $('download-notif').style.display = 'none', 15000);
+    
+    setAudioStatus('green', 'COMPLETE');
+  };
+  
+  // Start recorder with 500ms timeslice for better seek granularity
+  state.recorder.start(500);
+  
+  // Start playback
+  playSequence(true);
+});
+
+function stopRecording() {
+  if (state.recorder && state.recorder.state === 'recording') {
+    state.recorder.stop();
+  }
+  state.isRecording = false;
+  document.body.classList.remove('recording');
+  $('btn-record').classList.remove('recording');
+  $('btn-record').textContent = '⬤ Record';
+  
+  // Disconnect source nodes
+  state.sourceNodes.forEach(n => {
+    try { n.disconnect(); } catch(e) {}
+  });
+  state.sourceNodes = [];
+}
+
+// ─── Play button (preview) ───
+$('btn-play').addEventListener('click', () => {
+  if (state.isPlaying) {
+    // Stop
+    state.audioFiles.forEach(af => af.audioEl.pause());
+    state.isPlaying = false;
+    $('btn-play').textContent = '▶ Play';
+    return;
+  }
+  
+  if (state.audioFiles.length === 0) {
+    showMessage('No Audio', 'Click "Synthesize Audio" first. Or click Record to record without preview audio.');
+    return;
+  }
+  
+  $('btn-play').textContent = '⏸ Stop';
+  playSequence(false).then(() => {
+    $('btn-play').textContent = '▶ Play';
+  });
+});
+
+// ─── Initial canvas draw ───
+ctx.fillStyle = '#000';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.fillStyle = '#333';
+ctx.font = '32px monospace';
+ctx.textAlign = 'center';
+ctx.fillText('Upload a video-source HTML file to begin', canvas.width/2, canvas.height/2);
+</script>
+</body>
+</html>
